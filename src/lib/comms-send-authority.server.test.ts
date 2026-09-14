@@ -159,6 +159,7 @@ function table(name: string) {
     });
     const updateChain: Record<string, unknown> = {};
     updateChain["eq"] = () => updateChain;
+    updateChain["neq"] = () => updateChain;
     updateChain["select"] = () => updateChain;
     updateChain["then"] = (resolve: (value: unknown) => unknown) => done().then(resolve);
     return updateChain;

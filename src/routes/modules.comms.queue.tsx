@@ -10,7 +10,7 @@
  */
 
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -189,6 +189,7 @@ async function sendDraft(draftId: string, organizationId: string): Promise<void>
 
 function QueueView({ identity }: { identity: WorkspaceIdentity }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -262,19 +263,20 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
-  /* One record, one place: the review this message must clear. */
+  /* One record, one place: the review this message must clear. Opening it
+     takes the person straight to that review rather than leaving them to find
+     it — there is no second approval anywhere else. */
   const reviewOne = useMutation({
     mutationFn: (id: string) => openReview(id, identity.organizationId),
-    onSuccess: () => {
-      toast.success("A review is open for this message", {
-        description: "Open Review to read it, clear what it raises, then approve it there.",
-      });
+    onSuccess: (sessionId: string) => {
       void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
+      void navigate({ to: "/modules/comms/review", search: { session: sessionId } });
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const loading = queue.isLoading;
+
   const isBusy =
     batchSend.isPending ||
     rejectOne.isPending ||

@@ -123,3 +123,23 @@ export function approveReview(input: {
 }) {
   return post<{ id: string }>({ action: "approve", ...input });
 }
+
+export interface SendReadinessView {
+  ready: boolean;
+  code: string | null;
+  message: string;
+  blockers: string[];
+  configured: boolean;
+}
+
+/**
+ * Whether this message could be sent right now — asked without sending it.
+ * The server decides; this only shows the answer. Sending still happens on
+ * the queue, by a person.
+ */
+export function sendReadiness(organizationId: string, draftId: string) {
+  return call<SendReadinessView>(
+    { method: "GET" },
+    `/api/public/comms/send?organizationId=${encodeURIComponent(organizationId)}&draftId=${encodeURIComponent(draftId)}`,
+  );
+}

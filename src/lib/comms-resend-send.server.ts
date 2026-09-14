@@ -145,3 +145,87 @@ export async function sendDraftViaResend(input: {
     ...(providerMessageId ? { providerMessageId } : {}),
   };
 }
+
+export interface SendReadinessReport {
+  /** True only when pressing Send now would actually be allowed to proceed. */
+  ready: boolean;
+  code: string | null;
+  message: string;
+  blockers: string[];
+  /** False when this server cannot send email at all. Never says why in detail. */
+  configured: boolean;
+}
+
+/**
+ * The same decision as a send, asked without sending. Nothing is claimed, no
+ * provider is contacted, and no record is written. It exists so a person can
+ * see, before they commit, whether the approval on record still covers the
+ * message as it now stands.
+ */
+export async function resendSendReadiness(input: {
+  token: string;
+  organizationId: string;
+  draftId: string;
+}): Promise<SendReadinessReport> {
+  const apiKey = process.env["RESEND_API_KEY"];
+  const from = process.env["RESEND_FROM_EMAIL"];
+  if (!apiKey || !from) {
+    return {
+      ready: false,
+      code: "server_not_configured",
+      configured: false,
+      message:
+        "Email sending is not set up on this server, so nothing can be sent from here yet. The review itself still works.",
+      blockers: ["This workspace has no configured sending address."],
+    };
+  }
+
+  const caller = await identifySender(input.token, input.organizationId);
+  let payload;
+  let draftId: string;
+  try {
+    const draft = await loadDraftForSend(caller.client, input.organizationId, input.draftId);
+    draftId = draft.id;
+    payload = await outboundPayloadForDraft(caller.client, {
+      organizationId: input.organizationId,
+      draft,
+      channel: "email_resend",
+      senderIdentity: from,
+    });
+  } catch (error) {
+    if (error instanceof OutboundPayloadUnavailable) {
+      return {
+        ready: false,
+        code: error.code,
+        configured: true,
+        message: error.message,
+        blockers: [],
+      };
+    }
+    throw error;
+  }
+
+  const readiness = await reviewReadinessForSend(caller, {
+    organizationId: input.organizationId,
+    draftId,
+    payload,
+  });
+  if (readiness.decision.allowed) {
+    return {
+      ready: true,
+      code: null,
+      configured: true,
+      message:
+        "Approved for exactly this message, as it stands right now. Sending it is still a person's decision.",
+      blockers: [],
+    };
+  }
+  return {
+    ready: false,
+    code: readiness.decision.code,
+    configured: true,
+    message: readiness.decision.message,
+    blockers: readiness.decision.blockers,
+  };
+}
+

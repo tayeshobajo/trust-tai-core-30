@@ -188,9 +188,25 @@ read back through the run. The guarantee is unchanged; if Codex later adds
 the column, the read can be simplified. Nothing writes the missing column, so
 approvals do not fail.
 
-Not yet checked against the live database: that the `authenticated` role
-really has SELECT only (that needs a real member's token), and any end-to-end
-write. No rows have been written to the workspace from this code.
+Codex then applied `comms_review_delivery_hardened` to the same project
+(persisted verbatim at `docs/migrations/20260914170000_comms_review_delivery_hardened.sql`;
+the earlier proposed file is marked superseded and was never applied
+independently). Codex also deployed `comms-send` v6 with `verify_jwt=true`
+as a refusal-only handler in place of v5, and the repository copy of that
+function is now the same refusal handler so a routine redeploy cannot restore
+the unsafe version.
+
+Proved by Codex against the live database, with every fixture rolled back: a
+valid claim; a duplicate of the same payload under a changed caller key
+rejected; a settled receipt that cannot be rewritten; and editing a bound
+draft invalidating its approval. 47 focused tests passed alongside.
+
+Not yet proved against the live database: that the `authenticated` role
+really has SELECT only (that needs a real member's token); the deployed
+function returning 410 to an authenticated member (no member browser session
+was available, OPTIONS returns 200); and that a real review run writes the
+voice provenance columns — the code writes them, with a fallback if a column
+is absent, but no run has been made. No message has been sent to anybody.
 
 ## Next backend step
 
@@ -354,6 +370,24 @@ Still not done, and not claimed:
   sessions), frozen voice provenance on runs, and a claim-time trigger that
   revalidates the same invariant the server checks while holding the session
   row locked.
-- The deployed legacy send function is still active.
-- Nothing here has been proved against the live database, and no message has
-  been sent to anybody.
+- The deployed legacy send function has been replaced by a refusal-only v6,
+  but its 410 has not been exercised by a signed-in member.
+- No live model run and no real send have happened.
+
+## 14 Sep 2026 — signed-in handoff (queue → review → approval → send-ready)
+
+- The queue's **Review** now binds the one review record and takes the person
+  straight to it (`/modules/comms/review?session=…`). There is no second
+  approval queue; the review screen is where approval happens.
+- The review screen, when it governs a queued message, shows a **Sending**
+  panel: what channel and sending identity this review is bound to, and the
+  server's own answer to "could this be sent right now" — asked through
+  `GET /api/public/comms/send`, which runs the identical readiness decision
+  as a send but claims nothing, contacts no provider and writes no row.
+- A missing sending configuration is reported honestly ("not set up on this
+  server") without naming or exposing any credential.
+- Editing the message, saving a new version, changing the recipient, sender,
+  attachment or a voice rule moves the answer back to not-ready, because the
+  panel asks the same authority the dispatch path asks.
+- Sending itself still happens only from the queue, by a person, and the
+  server decides again at that moment.

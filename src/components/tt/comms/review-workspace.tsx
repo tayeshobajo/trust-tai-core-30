@@ -27,6 +27,7 @@ import {
   loadReview,
   reviseDraft,
   runReview,
+  sendReadiness,
 } from "@/data/supabase/comms-review-client";
 import { canApproveReview } from "@/domain/comms-review";
 import type { ObligationVerdict } from "@/domain/comms-obligations";
@@ -36,8 +37,15 @@ import { cn } from "@/lib/utils";
 const field =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-export function ReviewWorkspace({ identity }: { identity: WorkspaceIdentity }) {
-  const [openSession, setOpenSession] = useState<string | null>(null);
+export function ReviewWorkspace({
+  identity,
+  openSessionId,
+}: {
+  identity: WorkspaceIdentity;
+  /** The review the queue sent this person to, when they arrived from there. */
+  openSessionId?: string;
+}) {
+  const [openSession, setOpenSession] = useState<string | null>(openSessionId ?? null);
 
   return (
     <div className="space-y-8">
@@ -477,8 +485,84 @@ function ReviewDetail({
             )}
             <p className="mt-3 text-xs text-muted-foreground">{state.approvalScopeNote}</p>
           </div>
+
+          {state.session.draftId ? (
+            <SendReadiness
+              organizationId={identity.organizationId}
+              draftId={state.session.draftId}
+              channel={state.session.intendedChannel}
+              sender={state.session.senderIdentity}
+              approvedAt={state.approval.approval?.approvedAt ?? null}
+            />
+          ) : null}
         </aside>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Whether this message could go out as it now stands, asked of the server and
+ * shown plainly. Nothing here sends: the button lives on the queue, and the
+ * server decides again at that moment. What this answers is the question a
+ * person actually has after approving — "is that it, then?"
+ */
+function SendReadiness({
+  organizationId,
+  draftId,
+  channel,
+  sender,
+  approvedAt,
+}: {
+  organizationId: string;
+  draftId: string;
+  channel: string | null;
+  sender: string | null;
+  approvedAt: string | null;
+}) {
+  const query = useQuery({
+    queryKey: ["comms", "send-readiness", organizationId, draftId, approvedAt],
+    queryFn: () => sendReadiness(organizationId, draftId),
+  });
+  const state = query.data;
+
+  return (
+    <div className="rounded-lg border border-border bg-card/60 p-4">
+      <h4 className="text-sm font-medium text-foreground">Sending</h4>
+      <p className="mt-1 text-xs text-muted-foreground">
+        This review governs one message in the queue
+        {channel === "email_gmail"
+          ? ", going out by Gmail"
+          : channel === "email_resend"
+            ? ", going out by email"
+            : channel === "linkedin_manual"
+              ? ", to be sent by hand on LinkedIn"
+              : ""}
+        {sender ? ` as ${sender}` : ""}.
+      </p>
+      {query.isLoading ? (
+        <p className="mt-2 text-sm text-muted-foreground">Checking…</p>
+      ) : query.isError ? (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Whether this could be sent could not be checked just now. Nothing changed.
+        </p>
+      ) : state ? (
+        <>
+          <p className="mt-2 text-sm text-foreground">{state.message}</p>
+          {state.blockers.length > 0 ? (
+            <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+              {state.blockers.map((blocker) => (
+                <li key={blocker}>{blocker}</li>
+              ))}
+            </ul>
+          ) : null}
+          {state.ready ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Send it from the queue when you are ready. Nothing goes out from this screen.
+            </p>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }

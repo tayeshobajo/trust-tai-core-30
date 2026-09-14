@@ -1,14 +1,9 @@
--- SUPERSEDED — do not apply.
---
--- This proposal was reviewed, hardened by Codex and applied to the shared
--- project as migration `comms_review_delivery_hardened`. The exact applied
--- text lives in:
---   docs/migrations/20260914170000_comms_review_delivery_hardened.sql
---
--- This file was never applied on its own and is kept only as the record of
--- what was proposed before review. Nothing here should be run.
---
--- PROPOSED — NOT APPLIED. For Codex review.
+-- APPLIED to the shared project as `comms_review_delivery_hardened`.
+-- Recorded here verbatim. Do not re-run. Supersedes
+-- docs/migrations/proposed/20260914170000_comms_review_delivery.sql, which was
+-- never applied on its own.
+
+-- Reviewed delivery migration with Codex hardening.
 --
 -- Slice 3 completion: bind a review to the draft it reviewed, bind an
 -- approval to the exact outbound payload it approved, and record every
@@ -365,4 +360,70 @@ create trigger comms_freeze_run_voice
   before insert or update on public.comms_review_runs
   for each row execute function private.comms_freeze_run_voice();
 
+
+-- Codex final hardening: service-only writes, strict claim actor and lifecycle.
+revoke delete, truncate on public.comms_review_deliveries from service_role;
+alter function private.comms_session_binding_moved() set search_path = '';
+alter function private.comms_delivery_immutable() set search_path = '';
+alter function private.comms_stamp_approval() security invoker;
+alter function private.comms_stamp_approval() set search_path = '';
+alter function private.comms_delivery_claim_guard() security invoker;
+alter function private.comms_delivery_claim_guard() set search_path = '';
+alter function private.comms_freeze_run_voice() security invoker;
+alter function private.comms_freeze_run_voice() set search_path = '';
+create or replace function private.comms_delivery_actor_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+ if new.status <> 'attempting' or new.settled_at is not null or new.provider_message_id is not null then
+  raise exception 'A new delivery must start as an unsettled attempt';
+ end if;
+ if not exists(select 1 from public.organization_memberships where organization_id=new.organization_id
+  and user_id=new.attempted_by and status='active' and role in ('owner','admin')) then
+  raise exception 'Only an active owner or admin may claim delivery';
+ end if;
+ if not exists(select 1 from public.comms_review_approvals a join public.comms_review_sessions s
+  on s.id=a.session_id and s.organization_id=a.organization_id
+  where a.id=new.approval_id and a.organization_id=new.organization_id and s.status<>'closed') then
+  raise exception 'A closed review cannot authorize delivery';
+ end if;
+ if new.payload_fingerprint !~ '^[0-9a-f]{64}$' then raise exception 'A SHA-256 payload is required'; end if;
+ return new;
+end $$;
+create trigger comms_delivery_actor_guard before insert on public.comms_review_deliveries
+for each row execute function private.comms_delivery_actor_guard();
+create or replace function private.comms_delivery_immutable() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+ if old.status <> 'attempting' then raise exception 'A settled delivery is immutable'; end if;
+ if (to_jsonb(new)-array['status','provider_message_id','error_detail','settled_at']) is distinct from
+    (to_jsonb(old)-array['status','provider_message_id','error_detail','settled_at']) then
+  raise exception 'Delivery identity is immutable';
+ end if;
+ if new.status='attempting' or new.settled_at is null then raise exception 'Settlement requires a final outcome and time'; end if;
+ return new;
+end $$;
+-- Authenticated edits to existing data must invalidate review evidence in the
+-- same transaction. Definer is needed ONLY here to update protected sessions.
+create or replace function private.comms_review_external_context_changed() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+ if tg_table_name='comms_drafts' then
+  if (to_jsonb(new)-array['review_state','updated_at']) is distinct from
+     (to_jsonb(old)-array['review_state','updated_at']) then
+   update public.comms_review_sessions set context_revision=context_revision+1,status='open'
+    where organization_id=new.organization_id and draft_id=new.id and status<>'closed';
+  end if;
+ elsif tg_table_name='comms_voice_profiles' then
+  update public.comms_review_sessions set context_revision=context_revision+1,status='open'
+   where organization_id=coalesce(new.organization_id,old.organization_id) and status<>'closed';
+ end if;
+ return coalesce(new,old);
+end $$;
+create trigger comms_review_draft_context_changed after update on public.comms_drafts
+for each row execute function private.comms_review_external_context_changed();
+create trigger comms_review_voice_context_changed after insert or update or delete on public.comms_voice_profiles
+for each row execute function private.comms_review_external_context_changed();
+revoke all on function private.comms_session_binding_moved(),private.comms_delivery_immutable(),
+ private.comms_stamp_approval(),private.comms_delivery_claim_guard(),private.comms_freeze_run_voice(),
+ private.comms_delivery_actor_guard(),private.comms_review_external_context_changed() from public,anon,authenticated;
 commit;
