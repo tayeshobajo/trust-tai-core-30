@@ -19,6 +19,12 @@ const DESCRIPTION =
   "Check a reply before it goes: what was asked, what the draft answers, what it claims, and who approved these exact words.";
 
 export const Route = createFileRoute("/modules/comms/review")({
+  /* The queue hands a message over by naming its review. Nothing else about
+     this screen changes: the review is still opened and read as the caller. */
+  validateSearch: (search: Record<string, unknown>): { session?: string } => {
+    const value = typeof search["session"] === "string" ? search["session"].trim() : "";
+    return value ? { session: value } : {};
+  },
   head: () => ({
     meta: [
       { title: TITLE },
@@ -34,6 +40,7 @@ export const Route = createFileRoute("/modules/comms/review")({
 });
 
 function ReviewRoute() {
+  const { session } = Route.useSearch();
   return (
     <WorkspaceGate appId="comms">
       {(identity) => (
@@ -46,7 +53,7 @@ function ReviewRoute() {
               appId="comms"
             />
             <CommsTabs active="review" />
-            <ReviewWorkspace identity={identity} />
+            <ReviewWorkspace identity={identity} {...(session ? { openSessionId: session } : {})} />
           </div>
         </AppShell>
       )}

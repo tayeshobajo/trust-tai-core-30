@@ -36,8 +36,15 @@ import { cn } from "@/lib/utils";
 const field =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-export function ReviewWorkspace({ identity }: { identity: WorkspaceIdentity }) {
-  const [openSession, setOpenSession] = useState<string | null>(null);
+export function ReviewWorkspace({
+  identity,
+  openSessionId,
+}: {
+  identity: WorkspaceIdentity;
+  /** The review the queue sent this person to, when they arrived from there. */
+  openSessionId?: string;
+}) {
+  const [openSession, setOpenSession] = useState<string | null>(openSessionId ?? null);
 
   return (
     <div className="space-y-8">
