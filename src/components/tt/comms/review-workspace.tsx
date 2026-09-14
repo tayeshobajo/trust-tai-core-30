@@ -292,7 +292,17 @@ function ReviewDetail({
   });
   const [edited, setEdited] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const refresh = () => queryClient.invalidateQueries({ queryKey: key });
+  /* Anything that changes the words, the context or the decision changes the
+     answer to "could this be sent?". Both readings are thrown away together,
+     so the panel can never keep showing a readiness that belonged to an
+     earlier version. */
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: key }),
+      queryClient.invalidateQueries({ queryKey: ["comms", "send-readiness"] }),
+      queryClient.invalidateQueries({ queryKey: ["comms", "reviews", identity.organizationId] }),
+    ]);
+  };
 
   const state = query.data;
   const current = state?.currentVersion ?? null;
@@ -493,6 +503,10 @@ function ReviewDetail({
               channel={state.session.intendedChannel}
               sender={state.session.senderIdentity}
               approvedAt={state.approval.approval?.approvedAt ?? null}
+              versionId={current.id}
+              contextRevision={state.session.contextRevision}
+              contextFingerprint={state.fingerprint}
+              dirty={dirty}
             />
           ) : null}
         </aside>
@@ -507,24 +521,51 @@ function ReviewDetail({
  * server decides again at that moment. What this answers is the question a
  * person actually has after approving — "is that it, then?"
  */
-function SendReadiness({
+export function SendReadiness({
   organizationId,
   draftId,
   channel,
   sender,
   approvedAt,
+  versionId,
+  contextRevision,
+  contextFingerprint,
+  dirty,
 }: {
   organizationId: string;
   draftId: string;
   channel: string | null;
   sender: string | null;
   approvedAt: string | null;
+  versionId: string;
+  contextRevision: number;
+  contextFingerprint: string;
+  dirty: boolean;
 }) {
+  /* The answer belongs to one exact saved state: this version, this revision
+     of the context, this reading of the words, this approval. Change any of
+     them and this is a different question, asked again from the start. */
   const query = useQuery({
-    queryKey: ["comms", "send-readiness", organizationId, draftId, approvedAt],
+    queryKey: [
+      "comms",
+      "send-readiness",
+      organizationId,
+      draftId,
+      versionId,
+      contextRevision,
+      contextFingerprint,
+      approvedAt,
+    ],
     queryFn: () => sendReadiness(organizationId, draftId),
+    /* While the editor holds an unsaved edit there is nothing truthful to
+       ask about, so nothing is asked. */
+    enabled: !dirty,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
-  const state = query.data;
+  const state = dirty ? null : query.data;
+  const checkedAt = query.dataUpdatedAt ? new Date(query.dataUpdatedAt) : null;
+
 
   return (
     <div className="rounded-lg border border-border bg-card/60 p-4">
@@ -540,7 +581,11 @@ function SendReadiness({
               : ""}
         {sender ? ` as ${sender}` : ""}.
       </p>
-      {query.isLoading ? (
+      {dirty ? (
+        <p className="mt-2 text-sm text-foreground" data-testid="send-readiness-state">
+          You have unsaved changes. Save them and run the review again before this can be sent.
+        </p>
+      ) : query.isLoading || query.isFetching ? (
         <p className="mt-2 text-sm text-muted-foreground">Checking…</p>
       ) : query.isError ? (
         <p className="mt-2 text-sm text-muted-foreground">
@@ -548,7 +593,9 @@ function SendReadiness({
         </p>
       ) : state ? (
         <>
-          <p className="mt-2 text-sm text-foreground">{state.message}</p>
+          <p className="mt-2 text-sm text-foreground" data-testid="send-readiness-state">
+            {state.message}
+          </p>
           {state.blockers.length > 0 ? (
             <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
               {state.blockers.map((blocker) => (
@@ -563,6 +610,26 @@ function SendReadiness({
           ) : null}
         </>
       ) : null}
+      {/* This answer was true when it was asked. Somebody else may have edited
+          the message or the voice rules since; this screen is not listening
+          for that, so it says when it last asked and lets you ask again. */}
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          className="text-xs font-medium text-foreground underline underline-offset-4"
+          onClick={() => void query.refetch()}
+          disabled={dirty}
+        >
+          Check again
+        </button>
+        <span className="text-xs text-muted-foreground">
+          {dirty
+            ? "Not checked while there are unsaved changes."
+            : checkedAt
+              ? `Last checked ${checkedAt.toLocaleTimeString()}.`
+              : "Not checked yet."}
+        </span>
+      </div>
     </div>
   );
 }

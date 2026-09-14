@@ -391,3 +391,68 @@ Still not done, and not claimed:
   panel asks the same authority the dispatch path asks.
 - Sending itself still happens only from the queue, by a person, and the
   server decides again at that moment.
+
+## 14 Sep 2026 — stale readiness closed, and what the run now proves
+
+Codex's inspection of `f3028e1` was right on both counts, and both are fixed.
+
+**The Sending panel could show a readiness that no longer applied.** Its
+question was keyed only on the workspace, the draft and the approval time, and
+nothing after an edit threw that answer away. Now:
+
+- The question is keyed on the exact saved state it belongs to — this version,
+  the session's context revision, the context fingerprint (which moves when the
+  words, the material, the situation, the sender or the voice rules move) and
+  the approval time.
+- While the editor holds an unsaved change the panel asks nothing at all and
+  says so: "You have unsaved changes. Save them and run the review again before
+  this can be sent."
+- Every mutation on the screen — save, review, decide a finding, approve —
+  discards both the review reading and the readiness reading together.
+- The answer is refetched when the window regains focus, states when it was
+  last asked, and offers **Check again**.
+- It is **not** subscribed to the database. A change made elsewhere is not
+  pushed here; that is why the panel shows its own asking time rather than
+  implying live truth.
+- Regression: `src/components/tt/comms/review-workspace.send-readiness.test.tsx`
+  walks ready → unsaved → saved-new-version and proves the answer is re-asked
+  exactly when the saved state changes, and never while dirty. No provider is
+  contacted in the test; the only call is the read-only readiness question.
+
+**Run provenance is now reconstructable.** `style_context_snapshot` carried
+only metadata, and the checksum was a non-cryptographic 32-bit hash. A run now
+stores the **exact rules text** it was held against, plus a SHA-256 of that
+text (`rulesChecksum`, with `rulesAlgorithm: "sha256"`), and
+`voice_snapshot_checksum` is SHA-256 as well. The voice stamp inside the
+context fingerprint uses the same SHA-256, so an edit to the rules invalidates
+old evidence rather than silently redefining what was measured. The stored
+text is this workspace's own voice rules and stays in this workspace's rows.
+No examples are drawn from past messages, so no other client's names, dates or
+commitments can enter a review.
+
+### Still only code, not live evidence
+
+The live database holds **zero review runs and zero delivery attempts**.
+Everything above is verified by tests against the applied schema; none of it is
+evidence that a real run or a real send behaved this way. The voice provenance
+columns have not yet been populated by a live model run.
+
+### Pilot checklist (to be walked by a signed-in member, no client sends)
+
+1. **Two questions, one answer** — material asking two things, a reply
+   answering one: coverage must name the unanswered question, and approval must
+   refuse.
+2. **Corrected rerun** — answer the missing question, save, run again: the
+   finding clears and the new run is bound to the new version.
+3. **Voice and profile provenance** — after the run, the run row carries
+   `voice_profile_id`, `voice_version`, a SHA-256 `voice_snapshot_checksum` and
+   the exact rules text in `style_context_snapshot`.
+4. **Author versus reviewer** — a teammate's draft reviewed by an admin: the
+   version's author stays the teammate, the reviewer is the admin, and the
+   sending identity is chosen explicitly, never inferred.
+5. **Approve, then edit** — approve, then change one word: the Sending panel
+   goes to not-ready without a refresh of the page.
+6. **Unread PDF** — attach material that cannot be read: the review says the
+   material was not read, and approval refuses on incomplete sources.
+7. **Retired legacy path** — a signed-in member calls the deployed `comms-send`
+   function and receives 410.
