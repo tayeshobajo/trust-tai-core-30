@@ -202,3 +202,33 @@ To verify after applying:
    refused, in the interface and at the database.
 4. Attach a PDF. It should appear in "What Comms read" as not read, and the
    coverage line should say so.
+
+## 14 Sep 2026 — hardening migration persisted in the repository
+
+The applied hardening SQL (applied by Codex as `comms_review_runs_hardened`,
+atomically with the base migration) is now stored verbatim at
+`docs/migrations/20260914160000_comms_review_hardening.sql`. It supersedes the
+base file's permissions: `authenticated` has SELECT only on all seven review
+tables, and history cannot be rewritten even through the service API. Nothing
+was re-applied from here.
+
+Application changes made to match the applied database exactly:
+
+- Approval readiness now mirrors the database guard: every ask must be either
+  answered or explicitly pending the other side's confirmation, and every
+  verdict must have been reached semantically. A verdict matched only by
+  wording blocks approval and says so.
+- A source that contains no question at all is covered by definition, so a
+  simple reply can be approved. The coverage note still says plainly that no
+  ask was found — nothing asked is never reported as everything answered.
+- The review run no longer sends a context revision on insert; the database
+  sets it from the session under lock, so the recorded revision is the
+  database's, not the application's.
+- Repeated source material is folded before saving, and one obligation is
+  saved per ask per run, matching the new unique keys. A repeat can no longer
+  fail an entire save and leave a review with nothing to read.
+
+Evidence: 2,801 unit tests, typecheck and build pass. Still code evidence only
+— no signed-in session is available here, so no live review run, no live
+approval, and no proof from this sandbox that ordinary members are read-only.
+Shared-suite approval and every send path remain explicitly unmet.

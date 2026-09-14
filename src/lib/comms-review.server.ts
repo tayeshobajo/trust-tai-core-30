@@ -416,7 +416,17 @@ export async function createReviewSession(
     .maybeSingle();
   if (versionError || !versionRow) fail("Your draft could not be saved. Nothing was recorded.");
 
-  const classified = input.sources.map((source) => classifySource(source));
+  /* The same material offered twice is one piece of material. Duplicates are
+     dropped here, before the insert, so one repeat cannot fail the whole batch
+     and leave the review with nothing to read. */
+  const seenChecksums = new Set<string>();
+  const classified = input.sources
+    .map((source) => classifySource(source))
+    .filter((source) => {
+      if (seenChecksums.has(source.checksum)) return false;
+      seenChecksums.add(source.checksum);
+      return true;
+    });
   if (classified.length > 0) {
     const { error } = await writer.from("comms_review_sources").insert(
       classified.map((source) => ({
@@ -624,7 +634,6 @@ export async function runReview(
       status: "running",
       prompt_version: REVIEW_PROMPT_VERSION,
       context_fingerprint: fingerprint,
-      context_revision: session.contextRevision,
       stages: [RUN_STAGES.packet],
       started_at: new Date().toISOString(),
       created_by: caller.userId,
@@ -757,25 +766,34 @@ export async function runReview(
   });
   const coverage = summarizeObligations(verdicts);
 
-  const obligationRows = verdicts.map((verdict) => ({
-    organization_id: input.organizationId,
-    session_id: input.sessionId,
-    run_id: runId,
-    version_id: input.versionId,
-    source_id: verdict.anchor.sourceId,
-    obligation_key: verdict.obligationId,
-    kind: verdict.kind,
-    excerpt: verdict.excerpt,
-    excerpt_start: verdict.anchor.start,
-    excerpt_end: verdict.anchor.end,
-    status: verdict.status,
-    method: verdict.method,
-    confidence: verdict.confidence,
-    answer_excerpt: verdict.answer?.quote ?? null,
-    answer_start: verdict.answer?.start ?? null,
-    answer_end: verdict.answer?.end ?? null,
-    because: verdict.because,
-  }));
+  /* One row per ask: the database holds one obligation per key per run, so a
+     repeated key is folded here rather than failing the whole save. */
+  const seenObligationKeys = new Set<string>();
+  const obligationRows = verdicts
+    .filter((verdict) => {
+      if (seenObligationKeys.has(verdict.obligationId)) return false;
+      seenObligationKeys.add(verdict.obligationId);
+      return true;
+    })
+    .map((verdict) => ({
+      organization_id: input.organizationId,
+      session_id: input.sessionId,
+      run_id: runId,
+      version_id: input.versionId,
+      source_id: verdict.anchor.sourceId,
+      obligation_key: verdict.obligationId,
+      kind: verdict.kind,
+      excerpt: verdict.excerpt,
+      excerpt_start: verdict.anchor.start,
+      excerpt_end: verdict.anchor.end,
+      status: verdict.status,
+      method: verdict.method,
+      confidence: verdict.confidence,
+      answer_excerpt: verdict.answer?.quote ?? null,
+      answer_start: verdict.answer?.start ?? null,
+      answer_end: verdict.answer?.end ?? null,
+      because: verdict.because,
+    }));
 
   const limitations = list(parsed["limitations"]);
 
@@ -1115,7 +1133,14 @@ export async function loadReview(
       currentRevision: session.contextRevision,
       findings,
       sources,
-      coverage,
+      coverage: {
+        outstanding: coverage.outstanding,
+        uncertain: coverage.uncertain,
+        verdicts: coverage.verdicts.map((verdict) => ({
+          status: verdict.status,
+          method: verdict.method,
+        })),
+      },
     }),
     fingerprint,
     runIsCurrent: reviewRunIsCurrent({

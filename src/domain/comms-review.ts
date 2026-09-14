@@ -314,7 +314,16 @@ export function approvalReadiness(input: {
   currentRevision: number;
   findings: Pick<ReviewFinding, "severity" | "state" | "versionId">[];
   sources: { status: string }[];
-  coverage: { complete: boolean; outstanding: number; uncertain: number };
+  /**
+   * Coverage as the database will judge it: every ask either answered or
+   * explicitly pending the other side's confirmation, and every verdict
+   * reached semantically. A lexical guess never counts.
+   */
+  coverage: {
+    outstanding: number;
+    uncertain: number;
+    verdicts: { status: string; method: string }[];
+  };
 }): ApprovalReadiness {
   const blockers: string[] = [];
 
@@ -346,7 +355,10 @@ export function approvalReadiness(input: {
     );
   }
 
-  if (!input.coverage.complete) {
+  const settled = input.coverage.verdicts.every(
+    (verdict) => verdict.status === "answered" || verdict.status === "pending_confirmation",
+  );
+  if (!settled) {
     const parts: string[] = [];
     if (input.coverage.outstanding > 0) parts.push(`${input.coverage.outstanding} unanswered`);
     if (input.coverage.uncertain > 0) parts.push(`${input.coverage.uncertain} not verifiable`);
@@ -354,6 +366,12 @@ export function approvalReadiness(input: {
       parts.length > 0
         ? `The reply does not yet cover everything asked: ${parts.join(", ")}.`
         : "The reply does not yet cover everything that was asked.",
+    );
+  }
+  const guessed = input.coverage.verdicts.filter((verdict) => verdict.method !== "semantic").length;
+  if (guessed > 0) {
+    blockers.push(
+      "Some asks were only matched by wording, not judged. Run the review again so each one is properly read.",
     );
   }
 
