@@ -84,6 +84,12 @@ export interface ObligationCoverage {
   complete: boolean;
   /** True only when nothing is missing and nothing is uncertain. */
   settled: boolean;
+  /**
+   * False when no completed review stands behind these counts: the draft was
+   * never judged, or the last run failed. Silence then means "not looked at",
+   * which is a different fact from "nothing was asked".
+   */
+  evaluated: boolean;
   note: string;
 }
 
