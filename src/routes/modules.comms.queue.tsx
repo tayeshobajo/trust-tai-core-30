@@ -146,25 +146,24 @@ async function reopenDraft(draftId: string, identity: WorkspaceIdentity): Promis
   }
 }
 
-async function sendDraft(draftId: string): Promise<void> {
+/** The one governed send path, shared with Comms: the app's own send endpoint. */
+async function sendDraft(draftId: string, organizationId: string): Promise<void> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated.");
 
-  const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] as string;
-  const res = await fetch(`${supabaseUrl}/functions/v1/comms-send`, {
+  const res = await fetch("/api/public/comms/send", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ draft_id: draftId }),
+    body: JSON.stringify({ organizationId, draftId }),
   });
-
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({ error: "Send failed." }))) as { error?: string };
-    throw new Error(body.error ?? "Send failed.");
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? "That message was not sent.");
   }
 }
 
@@ -200,7 +199,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
       for (const id of ids.slice(0, 20)) {
         try {
           await approveDraft(id);
-          await sendDraft(id);
+          await sendDraft(id, identity.organizationId);
           results.push({ id, ok: true });
         } catch (err) {
           results.push({ id, ok: false, error: err instanceof Error ? err.message : "Failed." });
@@ -232,7 +231,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
   const approveAndSendOne = useMutation({
     mutationFn: async (id: string) => {
       await approveDraft(id);
-      await sendDraft(id);
+      await sendDraft(id, identity.organizationId);
     },
     onSuccess: () => {
       toast.success("Sent");
