@@ -465,7 +465,11 @@ function ReviewDetail({
             />
           ) : null}
 
-          <Coverage verdicts={state.obligations.verdicts} note={state.obligations.note} />
+          <Coverage
+            verdicts={state.obligations.verdicts}
+            note={state.obligations.note}
+            evaluated={state.obligations.evaluated}
+          />
 
           <div className="rounded-lg border border-border bg-card/60 p-4">
             <h4 className="text-sm font-medium text-foreground">Approval</h4>
