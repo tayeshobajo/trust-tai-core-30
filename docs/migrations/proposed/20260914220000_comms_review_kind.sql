@@ -1,3 +1,12 @@
+-- SUPERSEDED — do not apply.
+--
+-- This proposal was reviewed and applied to the shared project
+-- `okydosoacqdnursmmenf` as migration `comms_review_kind`. The exact applied
+-- text lives in:
+--   docs/migrations/20260914220000_comms_review_kind.sql
+--
+-- Kept only as the record of what was proposed. Nothing here should be run.
+--
 -- PROPOSED — for Codex review. Not applied by the app, and the app does not
 -- require it: every write below is attempted and falls back cleanly (42703)
 -- when the column is absent, in which case the screen says the kind was not
