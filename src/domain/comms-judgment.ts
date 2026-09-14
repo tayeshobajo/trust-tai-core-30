@@ -406,6 +406,10 @@ export interface ThreadJudgmentEntry {
   occurredAt: string;
   /** True on the newest message from each side, what most deserves an answer. */
   latestForSide: boolean;
+  /** True when the whole message is here. False means part of it was cut. */
+  complete: boolean;
+  /** Characters of the original message that are not in `text`. */
+  omittedChars?: number;
 }
 
 interface ThreadSourceMessage {
@@ -416,21 +420,30 @@ interface ThreadSourceMessage {
   occurredAt: string;
 }
 
-/** Hard bounds so one long thread can never flood the reasoning packet. */
+/**
+ * Bounds so one long thread cannot flood the packet. A single message is kept
+ * whole up to this size, which is long enough for a real email including the
+ * question people bury at the bottom of it.
+ */
 const THREAD_ENTRY_LIMIT = 8;
-const THREAD_MESSAGE_CHARS = 900;
+const THREAD_MESSAGE_CHARS = 6000;
 
-function trimMessageText(text: string): string {
-  const clean = text.replace(/\s+/g, " ").trim();
-  if (clean.length <= THREAD_MESSAGE_CHARS) return clean;
-  return `${clean.slice(0, THREAD_MESSAGE_CHARS).trimEnd()}…`;
+function boundMessageText(text: string): { text: string; complete: boolean; omitted: number } {
+  const clean = text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  if (clean.length <= THREAD_MESSAGE_CHARS) return { text: clean, complete: true, omitted: 0 };
+  return {
+    text: `${clean.slice(0, THREAD_MESSAGE_CHARS).trimEnd()}…`,
+    complete: false,
+    omitted: clean.length - THREAD_MESSAGE_CHARS,
+  };
 }
 
 /**
  * The recent conversation as drafting evidence, newest last. Comms never
  * drafts blind to the thread: the latest message from each side is marked so
- * the judgment can name what is actually owed. Text is trimmed, never
- * dropped, a long message is shortened, a short one is whole.
+ * the judgment can name what is actually owed. A message is kept whole, and
+ * on the rare message too long for that, what was cut is counted rather than
+ * quietly dropped.
  */
 export function threadContextForJudgment(
   messages: ThreadSourceMessage[],
@@ -440,11 +453,64 @@ export function threadContextForJudgment(
   const recent = ordered.slice(-Math.max(1, limit));
   const lastInbound = recent.map((m) => m.direction).lastIndexOf("inbound");
   const lastOutbound = recent.map((m) => m.direction).lastIndexOf("outbound");
-  return recent.map((message, index) => ({
-    direction: message.direction,
-    ...(message.subject?.trim() ? { subject: message.subject.trim() } : {}),
-    text: trimMessageText(message.bodyText ?? message.snippet ?? ""),
-    occurredAt: message.occurredAt,
-    latestForSide: index === lastInbound || index === lastOutbound,
-  }));
+  return recent.map((message, index) => {
+    const bounded = boundMessageText(message.bodyText ?? message.snippet ?? "");
+    return {
+      direction: message.direction,
+      ...(message.subject?.trim() ? { subject: message.subject.trim() } : {}),
+      text: bounded.text,
+      occurredAt: message.occurredAt,
+      latestForSide: index === lastInbound || index === lastOutbound,
+      complete: bounded.complete,
+      ...(bounded.omitted > 0 ? { omittedChars: bounded.omitted } : {}),
+    };
+  });
 }
+
+/** What of the conversation was actually read, in counts a person can check. */
+export interface ThreadWindow {
+  entries: ThreadJudgmentEntry[];
+  /** Messages in the whole conversation, when the store could count them. */
+  messagesInThread: number | null;
+  /** Messages loaded from the store, newest first. */
+  messagesLoaded: number;
+  /** Messages handed to the judgment. */
+  messagesRead: number;
+  /** True only when every message exists here, whole. */
+  complete: boolean;
+  because: string;
+}
+
+/**
+ * The read window, stated honestly.
+ *
+ * Coverage is never implied. When a 63-message thread is read 8 messages
+ * deep, this says so, and a later review cannot claim it reviewed the rest.
+ */
+export function threadWindowForJudgment(input: {
+  entries: ThreadJudgmentEntry[];
+  messagesInThread: number | null;
+  messagesLoaded: number;
+}): ThreadWindow {
+  const read = input.entries.length;
+  const whole = input.entries.every((entry) => entry.complete);
+  const allPresent = input.messagesInThread === null ? false : read >= input.messagesInThread;
+  const complete = whole && allPresent;
+
+  const total = input.messagesInThread;
+  const because = complete
+    ? `The whole conversation is here: ${read} of ${total} messages, each one whole.`
+    : total === null
+      ? `The newest ${read} messages were read. The store could not say how long the conversation is, so coverage is unknown.`
+      : `The newest ${read} of ${total} messages were read${whole ? "" : ", and at least one was too long to include whole"}. Earlier messages were not read.`;
+
+  return {
+    entries: input.entries,
+    messagesInThread: input.messagesInThread,
+    messagesLoaded: input.messagesLoaded,
+    messagesRead: read,
+    complete,
+    because,
+  };
+}
+
