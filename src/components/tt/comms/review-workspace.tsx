@@ -527,18 +527,45 @@ function SendReadiness({
   channel,
   sender,
   approvedAt,
+  versionId,
+  contextRevision,
+  contextFingerprint,
+  dirty,
 }: {
   organizationId: string;
   draftId: string;
   channel: string | null;
   sender: string | null;
   approvedAt: string | null;
+  versionId: string;
+  contextRevision: number;
+  contextFingerprint: string;
+  dirty: boolean;
 }) {
+  /* The answer belongs to one exact saved state: this version, this revision
+     of the context, this reading of the words, this approval. Change any of
+     them and this is a different question, asked again from the start. */
   const query = useQuery({
-    queryKey: ["comms", "send-readiness", organizationId, draftId, approvedAt],
+    queryKey: [
+      "comms",
+      "send-readiness",
+      organizationId,
+      draftId,
+      versionId,
+      contextRevision,
+      contextFingerprint,
+      approvedAt,
+    ],
     queryFn: () => sendReadiness(organizationId, draftId),
+    /* While the editor holds an unsaved edit there is nothing truthful to
+       ask about, so nothing is asked. */
+    enabled: !dirty,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
-  const state = query.data;
+  const state = dirty ? null : query.data;
+  const checkedAt = query.dataUpdatedAt ? new Date(query.dataUpdatedAt) : null;
+
 
   return (
     <div className="rounded-lg border border-border bg-card/60 p-4">
