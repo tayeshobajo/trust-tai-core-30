@@ -344,16 +344,20 @@ export function DraftsWorkspace({
           <ReviewDetail
             identity={identity}
             sessionId={selection.session}
+            onDirty={setDetailDirty}
             onBack={() => move({})}
           />
-        ) : selectedRow?.draftId ? (
+        ) : selection.draft ? (
           <DraftPane
-            item={(queue.data ?? []).find((entry) => entry.draft.id === selectedRow.draftId)}
+            item={draftQuery.data ?? undefined}
+            loading={draftQuery.isPending}
+            error={draftQuery.error ? (draftQuery.error as Error).message : null}
             busy={bind.isPending || reject.isPending || send.isPending}
-            onReview={() => bind.mutate(selectedRow.draftId ?? "")}
-            onReject={() => reject.mutate(selectedRow.draftId ?? "")}
-            onSend={() => send.mutate(selectedRow.draftId ?? "")}
+            onReview={() => bind.mutate(selection.draft ?? "")}
+            onReject={() => reject.mutate(selection.draft ?? "")}
+            onSend={() => send.mutate(selection.draft ?? "")}
           />
+
         ) : (
           <div className="rounded-xl border border-border p-8">
             <p className="text-[13px] text-muted-foreground">
