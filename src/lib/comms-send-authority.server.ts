@@ -219,6 +219,12 @@ export async function reviewReadinessForSend(
     : null;
 
   let run: { id: string; status: string; contextRevision: number | null } | null = null;
+  /* The context the review actually judged, as the review itself recorded it.
+     Comparing the approval against this is real evidence; comparing it against
+     itself would prove nothing. Whether that context is still current is a
+     separate question, answered by the revision the database maintains on the
+     session whenever a version, a source or the goal changes. */
+  let runContextFingerprint = "";
   if (approval) {
     const runRes = await caller.client
       .from("comms_review_runs")
@@ -234,6 +240,7 @@ export async function reviewReadinessForSend(
     }
     const runRow = (runRes.data ?? null) as Row | null;
     if (runRow) {
+      runContextFingerprint = str(runRow["context_fingerprint"]);
       run = {
         id: str(runRow["id"]),
         status: str(runRow["status"]),
@@ -270,7 +277,7 @@ export async function reviewReadinessForSend(
       run,
       blockers,
       currentContextRevision: nullableNum(session["context_revision"]),
-      currentContextFingerprint: approval?.contextFingerprint ?? "",
+      currentContextFingerprint: runContextFingerprint,
       payloadFingerprint: fingerprint,
       callerMaySend: caller.maySend,
     }),
