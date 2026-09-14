@@ -521,7 +521,7 @@ function ReviewDetail({
  * server decides again at that moment. What this answers is the question a
  * person actually has after approving — "is that it, then?"
  */
-function SendReadiness({
+export function SendReadiness({
   organizationId,
   draftId,
   channel,
