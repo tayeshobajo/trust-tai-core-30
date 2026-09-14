@@ -20,7 +20,6 @@ import {
   summarizeDraftGrounding,
   threadContextForJudgment,
   threadWindowForJudgment,
-
   unearnedAskInBody,
   writeCommunicationJudgment,
   writeDraftGrounding,
@@ -474,7 +473,6 @@ describe("threadContextForJudgment", () => {
     expect(long[0]!.complete).toBe(true);
     expect(long[1]!.text).toBe("short");
   });
-
 
   it("falls back to the snippet when no full body is stored", () => {
     const entries = threadContextForJudgment([

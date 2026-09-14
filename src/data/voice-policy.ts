@@ -145,7 +145,6 @@ export interface VoiceCheckOptions {
   signoff?: string;
 }
 
-
 /**
  * Read a draft against the Voice DNA.
  *
@@ -192,7 +191,6 @@ export function checkVoice(input: string, options: VoiceCheckOptions): VoiceVerd
   if (requireSignoff && !input.replace(/\s+/g, " ").includes(signoff.replace(/\s+/g, " "))) {
     add("signoff", `Missing ${signoff.replace(/\s+/g, " ")}`);
   }
-
 
   return {
     text,

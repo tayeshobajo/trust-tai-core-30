@@ -429,7 +429,10 @@ const THREAD_ENTRY_LIMIT = 8;
 const THREAD_MESSAGE_CHARS = 6000;
 
 function boundMessageText(text: string): { text: string; complete: boolean; omitted: number } {
-  const clean = text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  const clean = text
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   if (clean.length <= THREAD_MESSAGE_CHARS) return { text: clean, complete: true, omitted: 0 };
   return {
     text: `${clean.slice(0, THREAD_MESSAGE_CHARS).trimEnd()}…`,
@@ -513,4 +516,3 @@ export function threadWindowForJudgment(input: {
     because,
   };
 }
-

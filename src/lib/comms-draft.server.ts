@@ -82,7 +82,6 @@ import {
  */
 export const DRAFT_PROMPT_VERSION = "comms-draft/2026-09-14";
 
-
 const REGISTERS: VoiceRegister[] = [
   "warm_intro",
   "follow_up",
@@ -215,7 +214,6 @@ export interface DraftResult {
   promptVersion: string;
 }
 
-
 export function parseRegister(value: unknown): VoiceRegister {
   return REGISTERS.includes(value as VoiceRegister) ? (value as VoiceRegister) : "follow_up";
 }
@@ -285,10 +283,7 @@ interface ThreadRow {
  */
 const THREAD_WINDOW = 40;
 
-async function loadThread(
-  supabase: CallerClient,
-  relationshipId: string,
-): Promise<ThreadWindow> {
+async function loadThread(supabase: CallerClient, relationshipId: string): Promise<ThreadWindow> {
   const variants = [
     "direction, subject, body_text, snippet, occurred_at",
     "direction, subject, snippet, occurred_at",
@@ -327,11 +322,7 @@ async function loadSender(
   supabase: CallerClient,
   user: { id: string; email?: string | null },
 ): Promise<SenderProfile> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
   const row = (data ?? {}) as Record<string, unknown>;
   const email = String(row["email"] ?? user.email ?? "").trim();
   const name =
@@ -344,7 +335,6 @@ async function loadSender(
     ...(email ? { email } : {}),
   };
 }
-
 
 /**
  * Voice evidence from how Tai actually communicated: the drafts a person
@@ -703,7 +693,6 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
     )
     .map((ask, index) => ({ ...ask, id: `ask-${index + 1}` }));
 
-
   /* The grounding gate. A real thread plus a known identity grounds a reply;
      identity plus one real prior interaction plus a reason grounds a
      proactive note. Below that bar the only honest outcome is no draft, producing one would require inventing the reason, the facts, or the
@@ -810,7 +799,6 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
     learnedStyleExamples: voiceExamples,
   };
 
-
   /* From here the provider does the work, through the shared runtime
      boundary. Every post-grounding failure is typed, the person keeps the
      calm sentence, the operator gets a machine-readable code in the response
@@ -853,7 +841,6 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
   });
 }
 
-
 export interface DraftPassInput {
   /** The governed evidence packet both passes reason over. */
   evidencePacket: Record<string, unknown>;
@@ -868,7 +855,6 @@ export interface DraftPassInput {
   /** How much of the conversation was read. */
   sourceWindow?: Omit<ThreadWindow, "entries">;
 }
-
 
 /**
  * Judgment first, write second, deterministic voice pass last, over the
@@ -1008,7 +994,6 @@ on the thread, and close.`,
     promptVersion: DRAFT_PROMPT_VERSION,
   };
 }
-
 
 function safeJson(raw: string): Record<string, unknown> | null {
   const match = raw.match(/\{[\s\S]*\}/);
