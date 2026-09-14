@@ -924,11 +924,18 @@ export async function runReview(
   const runProvenance = {
     voice_profile_id: voice.profileId,
     voice_version: voice.version,
-    voice_snapshot_checksum: voice.rules ? sourceChecksum(voice.rules) : null,
+    voice_snapshot_checksum: voice.rules ? sha256(voice.rules) : null,
     style_context_snapshot: {
       stamp: voice.stamp,
       title: voice.title,
       rulesPresent: voice.rules !== null,
+      /* The exact rules text this review was held against, kept with the run
+         so an audit can reconstruct what was measured even after somebody
+         edits the stored rules. It is this workspace's own writing and stays
+         inside this workspace's rows; no other client's words are here. */
+      rulesText: voice.rules,
+      rulesChecksum: voice.rules ? sha256(voice.rules) : null,
+      rulesAlgorithm: "sha256",
       exampleCount: voice.examples.length,
       examplesNote: voice.examplesNote,
       status: voice.status,
