@@ -114,11 +114,15 @@ untouched while Codex reviewed it):
   workspaces, so a session id alone never reaches across one.
 - **No swallowed writes.** A run whose findings or coverage could not be
   stored is recorded as failed, not complete, and says so.
-- **Approval has a real gate.** Approving now requires a completed review of
-  exactly this version, fingerprint and context revision; every source read;
-  every obligation answered; and no must-fix finding left standing. Keeping
-  your own wording answers a suggestion but does not clear a must fix. A
+- **Approval has a real gate.** Approving requires a completed review of
+  exactly this version, fingerprint and context revision, bound to that run's
+  id; every source read; every obligation answered; and zero must-fix
+  findings on that review. Accepting or keeping a must fix does not clear it:
+  only changed words and a fresh review that no longer raises it do. A
   missing review is never treated as optional.
+- **Decisions carry a person.** A finding decision is written with the
+  decider's verified id and the time, taken from the session, never from the
+  request body.
 - **Context revision.** Approval staleness no longer rests on the version id
   alone: the session carries a revision that the database bumps when a
   version, a source, or the goal, recipient or situation changes, and both the
@@ -130,8 +134,9 @@ Dependency: the follow-up hardening migration Codex is authoring must revoke
 all `authenticated` writes on the seven review tables (keeping
 organization-scoped SELECT), add `session_id` to findings, add `session_id`,
 `version_id`, `obligation_key` and `excerpt_start`/`excerpt_end` to
-obligations, and add `context_revision` to sessions, runs and approvals with
-the triggers that maintain and enforce it. The application code above is
+obligations (replacing `source_start`/`source_end`), add `decided_by` and
+`decided_at` to findings, and add `context_revision` to sessions, runs and
+approvals with the triggers that maintain and enforce it. The application code above is
 written against exactly those names. Until both migrations are applied the
 Review page cannot save anything, and says so.
 
@@ -145,8 +150,9 @@ Review page cannot save anything, and says so.
 - Quoted-answer verification proves that a claimed answer is really in the
   draft. It does not prove that every implicit request in a message was
   found. That limitation stays stated in the interface and here.
-- Suite-wide approval integration is not done: this is a review-approval
-  record, and no send path reads it.
+- Suite-wide approval and send integration is explicitly **unmet**. This is a
+  review-approval record only. `comms-quick-reply`, `comms-send`, the LinkedIn
+  send path and the suite approvals surface neither read nor require it.
 
 ## Next backend step
 

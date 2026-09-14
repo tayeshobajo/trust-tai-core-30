@@ -434,6 +434,7 @@ function ReviewDetail({
           {mustFix.length > 0 ? (
             <FindingList
               heading="Must fix"
+              note="Marking these does not clear them. A must fix is cleared by changing the words and reviewing again."
               findings={mustFix}
               onDecide={(findingId, next) => decide.mutate({ findingId, state: next })}
             />
@@ -484,10 +485,12 @@ function ReviewDetail({
 
 function FindingList({
   heading,
+  note,
   findings,
   onDecide,
 }: {
   heading: string;
+  note?: string;
   findings: {
     id: string;
     why: string;
@@ -500,6 +503,7 @@ function FindingList({
   return (
     <div className="space-y-3">
       <h4 className="text-sm font-medium text-foreground">{heading}</h4>
+      {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
       {findings.map((finding) => (
         <div key={finding.id} className="rounded-lg border border-border bg-card/60 p-4">
           {finding.excerpt ? (

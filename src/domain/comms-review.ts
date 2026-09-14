@@ -300,9 +300,10 @@ export interface ApprovalReadiness {
  *   - every source was genuinely read; an unread attachment means the review
  *     did not see the whole picture,
  *   - every obligation is answered. Uncertain and pending are not answered,
- *   - nothing marked must fix is still standing. Keeping your own wording is
- *     a legitimate answer to a suggestion, but it does not clear a must fix:
- *     that takes a new review of the changed words, or a recorded override.
+ *   - the current review found nothing marked must fix. Accepting or keeping
+ *     a must fix does not clear it: a must fix is cleared only by changing
+ *     the words and running a fresh review that no longer raises it. Marking
+ *     your own homework has never been evidence.
  *
  * This is a review-approval gate. It is not, on its own, permission to send.
  */
@@ -356,15 +357,15 @@ export function approvalReadiness(input: {
     );
   }
 
-  const mustFix = input.findings.filter(
-    (finding) =>
-      finding.severity === "must_fix" && finding.state !== "accepted" && finding.state !== "edited",
-  ).length;
+  /* A must fix on the current review blocks approval whatever was clicked.
+     Accepting or keeping one is a note about intent, not proof the problem
+     is gone; only changed words and a fresh review are that. */
+  const mustFix = input.findings.filter((finding) => finding.severity === "must_fix").length;
   if (mustFix > 0) {
     blockers.push(
       mustFix === 1
-        ? "One must-fix finding is still standing. Change the words and review again; keeping your own wording does not clear a must fix."
-        : `${mustFix} must-fix findings are still standing. Change the words and review again; keeping your own wording does not clear a must fix.`,
+        ? "This review raised one must-fix finding. Change the words and review again; marking it accepted or kept does not clear it."
+        : `This review raised ${mustFix} must-fix findings. Change the words and review again; marking them accepted or kept does not clear them.`,
     );
   }
 
