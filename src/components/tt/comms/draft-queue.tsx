@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/trust-tai/supabase";
 import { cn } from "@/lib/utils";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-interface DraftRow {
+export interface DraftRow {
   id: string;
   organization_id: string;
   relationship_id: string;
@@ -30,7 +30,7 @@ interface DraftRow {
   created_at: string;
 }
 
-interface RelationshipRow {
+export interface RelationshipRow {
   id: string;
   full_name: string;
   company_name: string | null;
@@ -38,12 +38,12 @@ interface RelationshipRow {
   stage: string;
 }
 
-interface QueueItem {
+export interface QueueItem {
   draft: DraftRow;
   relationship: RelationshipRow | null;
 }
 
-async function fetchQueue(organizationId: string): Promise<QueueItem[]> {
+export async function fetchQueue(organizationId: string): Promise<QueueItem[]> {
   const { data: drafts, error } = await supabase
     .from("comms_drafts")
     .select(
@@ -81,7 +81,7 @@ async function fetchQueue(organizationId: string): Promise<QueueItem[]> {
  * by whoever had the page open, over a value any member can write. There is
  * one approval record now, and it lives with the review.
  */
-async function openReview(draftId: string, organizationId: string): Promise<string> {
+export async function openReview(draftId: string, organizationId: string): Promise<string> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -101,7 +101,7 @@ async function openReview(draftId: string, organizationId: string): Promise<stri
   return body.sessionId;
 }
 
-async function rejectDraft(draftId: string): Promise<void> {
+export async function rejectDraft(draftId: string): Promise<void> {
   const { error } = await supabase
     .from("comms_drafts")
     .update({ review_state: "discarded", updated_at: new Date().toISOString() })
@@ -115,7 +115,7 @@ async function rejectDraft(draftId: string): Promise<void> {
  * so it goes back through the one governed intake rather than quietly sitting
  * in Comms alone.
  */
-async function reopenDraft(draftId: string, identity: WorkspaceIdentity): Promise<void> {
+export async function reopenDraft(draftId: string, identity: WorkspaceIdentity): Promise<void> {
   await supabase
     .from("comms_drafts")
     .update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
@@ -133,7 +133,7 @@ async function reopenDraft(draftId: string, identity: WorkspaceIdentity): Promis
 }
 
 /** The one governed send path, shared with Comms: the app's own send endpoint. */
-async function sendDraft(draftId: string, organizationId: string): Promise<void> {
+export async function sendDraft(draftId: string, organizationId: string): Promise<void> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
