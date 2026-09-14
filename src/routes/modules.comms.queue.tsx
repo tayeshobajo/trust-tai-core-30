@@ -262,8 +262,19 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  /* One record, one place: the review this message must clear. */
+  const reviewOne = useMutation({
+    mutationFn: (id: string) => openReview(id, identity.organizationId),
+    onSuccess: (sessionId) => {
+      void navigate({ to: "/modules/comms/review", search: { session: sessionId } });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const loading = queue.isLoading;
-  const isBusy = batchSend.isPending || rejectOne.isPending || approveAndSendOne.isPending;
+  const isBusy =
+    batchSend.isPending || rejectOne.isPending || approveAndSendOne.isPending ||
+    reviewOne.isPending;
 
   return (
     <div className="space-y-8">
