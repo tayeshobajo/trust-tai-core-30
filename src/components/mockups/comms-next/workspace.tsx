@@ -835,7 +835,7 @@ export function CommsNextWorkspace() {
       <div className="mt-6">
         {view === "conversations" ? (
           <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
-            <div className={cn(showDetailOnMobile && "hidden lg:block")}>
+            <div className={cn("min-w-0", showDetailOnMobile && "hidden lg:block")}>
               <ThreadList
                 mode={mode}
                 setMode={setMode}
