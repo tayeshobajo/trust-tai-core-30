@@ -676,8 +676,9 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
   const register = request.register;
 
   // The governed evidence packet both passes reason over.
-  const [thread, voiceExamples, projectContext, ledger] = await Promise.all([
+  const [threadWindow, sender, voiceExamples, projectContext, ledger] = await Promise.all([
     loadThread(supabase, request.relationshipId),
+    loadSender(supabase, { id: user.user.id, email: user.user.email ?? null }),
     loadVoiceExamples(supabase, organizationId),
     /* The bounded project layer: direction, work in flight, and what has
        actually gone out. Selected and capped, never a history dump. */
@@ -688,6 +689,18 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
     }),
     loadCases(supabase, organizationId),
   ]);
+  const thread = threadWindow.entries;
+
+  /* Every question and actionable request in what they actually wrote,
+     deterministic and positioned. A question at the bottom of a long email
+     counts exactly as much as one at the top. */
+  const asks: SourceAsk[] = thread
+    .filter((entry) => entry.direction === "inbound")
+    .flatMap((entry, index) =>
+      extractAsks(entry.text, `Their message ${index + 1}, ${entry.occurredAt}`),
+    )
+    .map((ask, index) => ({ ...ask, id: `ask-${index + 1}` }));
+
 
   /* The grounding gate. A real thread plus a known identity grounds a reply;
      identity plus one real prior interaction plus a reason grounds a
