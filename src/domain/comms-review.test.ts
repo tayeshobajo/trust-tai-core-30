@@ -246,19 +246,15 @@ describe("what has to be true before a person may approve", () => {
     expect(uncertain.blockers.join(" ")).toMatch(/not verifiable/);
   });
 
-  it("does not let keeping your own wording clear a must fix", () => {
-    const kept = approvalReadiness({
-      ...READY,
-      findings: [{ severity: "must_fix", state: "kept", versionId: "v1" }],
-    });
-    expect(kept.ready).toBe(false);
-    expect(kept.blockers.join(" ")).toMatch(/keeping your own wording does not clear a must fix/i);
-
-    const open = approvalReadiness({
-      ...READY,
-      findings: [{ severity: "must_fix", state: "open", versionId: "v1" }],
-    });
-    expect(open.ready).toBe(false);
+  it("does not let any click clear a must fix", () => {
+    for (const state of ["open", "kept", "accepted", "edited"] as const) {
+      const readiness = approvalReadiness({
+        ...READY,
+        findings: [{ severity: "must_fix", state, versionId: "v1" }],
+      });
+      expect(readiness.ready).toBe(false);
+      expect(readiness.blockers.join(" ")).toMatch(/does not clear/i);
+    }
   });
 
   it("lets a lesser finding be kept without blocking approval", () => {
@@ -266,7 +262,7 @@ describe("what has to be true before a person may approve", () => {
       ...READY,
       findings: [
         { severity: "consider", state: "kept", versionId: "v1" },
-        { severity: "must_fix", state: "accepted", versionId: "v1" },
+        { severity: "note", state: "open", versionId: "v1" },
       ],
     });
     expect(readiness.ready).toBe(true);

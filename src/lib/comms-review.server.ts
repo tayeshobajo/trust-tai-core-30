@@ -882,9 +882,16 @@ export async function decideFinding(
     .maybeSingle();
   if (!existing) throw new ReviewFailure("not_found", "That finding could not be found.");
 
+  /* A decision on a finding is a person's decision, so it is written with
+     the person on it. The id comes from the verified session, never from
+     the request. */
   const { error } = await writerClient()
     .from("comms_review_findings")
-    .update({ state: input.state })
+    .update({
+      state: input.state,
+      decided_by: caller.userId,
+      decided_at: new Date().toISOString(),
+    })
     .eq("id", input.findingId)
     .eq("organization_id", input.organizationId);
   if (error) fail("That decision could not be recorded.");
