@@ -61,9 +61,9 @@ import {
   classifySource,
   segmentSource,
   sourceCoverageNote,
-
   type ClassifiedSource,
 } from "@/domain/comms-sources";
+import { sha256 } from "@/domain/sha256";
 import {
   lexicalHint,
   obligationsFromSource,
