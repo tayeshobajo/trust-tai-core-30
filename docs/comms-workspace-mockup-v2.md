@@ -130,3 +130,25 @@ Honest gaps, stated rather than implied:
   sentence drops its anchor by design rather than drifting to the wrong words.
 - Attachment parsing is sample behaviour only: text and Markdown show content,
   PDF and images are reported unread and are never treated as read.
+
+## Visual acceptance evidence (captured, not claimed)
+
+Route: `/mockups/comms-workspace-v2`. Playwright, real browser, no console errors.
+Screenshots under `/tmp/browser/comms-v2/`.
+
+| Screenshot | Size | What it shows |
+| --- | --- | --- |
+| `desktop-conversation.png` | 1440x900 | Collapsed suite rail, 56px toolbar with New review, 300px work list with filter + Needs attention items, single conversation header, editable goal, next step with source link, reply editor and primary Review draft all inside the viewport with no page scroll. |
+| `desktop-review-selected.png` | 1440x900 | Focus review: list collapsed, breadcrumb back, draft ~62% with anchored highlights and colour-plus-underline margin markers, notes pane with "4 issues to resolve", exact sentence, why it matters for this client, grounded suggestion, Accept / Edit / Keep. |
+| `desktop-approved.png` | 1440x900 | Two accepted changes rewrote the draft in place, version stepped to v3, review re-run, reviewer role approves, footer reads "Approved for v3" and offers Send (simulated). |
+| `desktop-invalidated.png` | 1440x900 | Editing the approved draft immediately drops approval: notes say the review no longer describes what is written, footer says the previous decision no longer applies, only Review changes remains. |
+| `mobile-review-selected.png` | 375x812 | Focus navigation with Back, full-width draft, sticky footer, notes reachable as a bottom sheet via the issues button. |
+| `tablet-review-selected.png` | 768x1024 | List collapsed, readable draft width, notes via the sheet rather than a squeezed column. |
+
+## Honest gaps
+
+- Everything is simulated. No Supabase read or write, no model run, no approval record, no provider contact. "Send (simulated)" only sets a local line of text.
+- Question coverage counts are fixture values. Accepting a change rewrites the draft but does not recompute coverage, so the count can lag the text. Production coverage is computed; this prototype does not compute it.
+- Anchors match on the current sentence text. Rewriting a sentence by hand drops its highlight, which is the intended invalidation behaviour here, not a matching engine.
+- PDFs and images in intake are reported unread. Nothing is parsed or inferred from them.
+- Approval is blocked only by open must-fix findings. Confirm-with-a-human notes do not block, by design.
