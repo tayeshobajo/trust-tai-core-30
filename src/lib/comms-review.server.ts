@@ -49,6 +49,7 @@ import {
 import {
   classifySource,
   segmentSource,
+  sourceChecksum,
   sourceCoverageNote,
   type ClassifiedSource,
 } from "@/domain/comms-sources";
@@ -557,29 +558,46 @@ interface ReviewPacketSource {
 /* ------------------------------------------------- sender and stored voice */
 
 interface VerifiedSender {
-  id: string;
+  id: string | null;
   name: string | null;
   email: string | null;
 }
 
-/**
- * Who is actually writing. Read from this person's own profile with their own
- * token — never assumed, and never replaced by Tai. A review that judged a
- * salesperson's letter as though Tai had signed it would be judging a message
- * nobody is going to send.
- */
-async function verifiedSender(caller: Caller): Promise<VerifiedSender> {
+/** One person, read from their own profile row under the caller's RLS. */
+async function profileOf(caller: Caller, userId: string | null): Promise<VerifiedSender> {
+  if (!userId) return { id: null, name: null, email: null };
   const { data, error } = await caller.client
     .from("profiles")
     .select("id, full_name, display_name, email")
-    .eq("id", caller.userId)
+    .eq("id", userId)
     .maybeSingle();
   const row: Row = error || !data ? {} : (data as Row);
   return {
-    id: caller.userId,
+    id: userId,
     name: nullableStr(row["full_name"]) ?? nullableStr(row["display_name"]),
     email: nullableStr(row["email"]),
   };
+}
+
+/**
+ * Who wrote it, and who is reading the review, are two different people.
+ *
+ * The author is stamped on the immutable version at the moment it was
+ * written. An admin opening a teammate's draft is a reviewer, not the author,
+ * and must never be substituted for them: a review that judged Priya's letter
+ * as though the admin had signed it would be judging a message nobody is
+ * going to send. Neither is Tai: sending on somebody else's behalf is an
+ * explicit, authorised choice, never inferred from who happens to be looking.
+ */
+async function authorAndReviewer(
+  caller: Caller,
+  authorUserId: string | null,
+): Promise<{ author: VerifiedSender; reviewer: VerifiedSender; sameperson: boolean }> {
+  const [author, reviewer] = await Promise.all([
+    profileOf(caller, authorUserId),
+    profileOf(caller, caller.userId),
+  ]);
+  return { author, reviewer, sameperson: authorUserId === caller.userId };
 }
 
 interface VoicePacket {
@@ -588,8 +606,10 @@ interface VoicePacket {
   title: string | null;
   profileId: string | null;
   version: number | null;
-  /** Wording that has already been approved or sent, as illustration only. */
+  /** Curated style examples only. Empty unless somebody deliberately chose them. */
   examples: { subject: string | null; excerpt: string }[];
+  /** Why there are no examples, when there are none. */
+  examplesNote: string;
   /** Said plainly to the model and recorded on the run. */
   status: string;
   /** The exact thing recorded in provenance. */
@@ -602,6 +622,8 @@ const NO_VOICE: VoicePacket = {
   profileId: null,
   version: null,
   examples: [],
+  examplesNote:
+    "No curated style examples exist for this workspace, so none were shown. Past messages to other clients are deliberately not used: they carry other people's names, dates and commitments.",
   status:
     "No stored voice rules were available for this workspace. Judge the writing on clarity and honesty only, and do not claim it was measured against a house voice.",
   stamp: "voice_profile:none",
@@ -626,28 +648,26 @@ async function loadVoicePacket(caller: Caller, organizationId: string): Promise<
   const profileId = str(row["id"]);
   const version = num(row["version"]) ?? 1;
 
-  /* Illustration, not instruction: wording this workspace has already
-     approved or sent. Examples never override the written rules. */
-  const { data: exampleData } = await caller.client
-    .from("comms_drafts")
-    .select("subject, body, created_at")
-    .eq("organization_id", organizationId)
-    .in("review_state", ["approved", "sent"])
-    .order("created_at", { ascending: false })
-    .limit(3);
-  const examples = ((exampleData ?? []) as Row[]).map((example) => ({
-    subject: nullableStr(example["subject"]),
-    excerpt: str(example["body"]).replace(/\s+/g, " ").trim().slice(0, 400),
-  }));
+  /* Deliberately no examples drawn from past messages.
+     `comms_drafts.review_state` is writable by any member, so "approved"
+     there is not proof that anybody chose that message as a model of the
+     house voice — and worse, those messages belong to other clients. Their
+     names, dates, prices and promises must never travel into this reply. If
+     curated examples are added later they belong in their own authorised
+     place, clearly labelled as style and never as fact. */
 
   return {
     rules,
     title: nullableStr(row["title"]) ?? "Voice DNA",
     profileId,
     version,
-    examples,
+    examples: [],
+    examplesNote: NO_VOICE.examplesNote,
     status: `Held against this workspace's stored voice rules, version ${version}.`,
-    stamp: `voice_profile:${profileId}@v${version}`,
+    /* The version number alone does not identify the text: hashing the exact
+       rules that were used means an edit invalidates old evidence even if
+       nobody bumped the version. */
+    stamp: `voice_profile:${profileId}@v${version}#${sourceChecksum(rules)}`,
   };
 }
 
@@ -722,7 +742,7 @@ export async function runReview(
     }
   }
 
-  const sender = await verifiedSender(caller);
+  const { author, reviewer, sameperson } = await authorAndReviewer(caller, version.authorUserId);
   const voice = await loadVoicePacket(caller, input.organizationId);
 
   const fingerprint = contextFingerprint({
@@ -734,7 +754,8 @@ export async function runReview(
     goal: session.goal,
     situation: session.situation,
     sourceChecksums: sourceRows.map((row) => str(row["checksum"])),
-    senderName: sender.name,
+    senderName: author.name,
+    senderUserId: author.id,
     voiceVersion: voice.stamp,
   });
 
@@ -824,11 +845,17 @@ export async function runReview(
       text: obligation.excerpt,
     })),
     draft: { subject: version.subject, body: version.body, version: version.version },
+    reviewedBy: {
+      name: reviewer.name,
+      note: sameperson
+        ? "The author is asking for this review of their own words."
+        : "A colleague is reviewing this draft. They are not the author, and the message will not go out under their name.",
+    },
     writtenBy: {
-      name: sender.name,
-      email: sender.email,
-      note: sender.name
-        ? `This message goes out from ${sender.name}. Judge it as their words, and never treat another name or signature as the author.`
+      name: author.name,
+      email: author.email,
+      note: author.name
+        ? `This message goes out from ${author.name}. Judge it as their words, and never treat another name or signature as the author.`
         : "The sender's name is not recorded. Do not invent one, and do not assume the message is from Tai.",
     },
     voice: {
@@ -836,8 +863,9 @@ export async function runReview(
       title: voice.title,
       version: voice.version,
       rules: voice.rules,
-      approvedExamples: voice.examples,
-      note: "These rules are read-only here. Anything you would change about the voice itself is a suggestion for a person, not an edit.",
+      styleExamples: voice.examples,
+      styleExamplesNote: voice.examplesNote,
+      note: "These rules are read-only here, and they are style only: never take a fact, a name, a date or a price from them. Anything you would change about the voice itself is a suggestion for a person, not an edit.",
     },
   };
 
@@ -1256,8 +1284,8 @@ export async function loadReview(
      goal, situation, the verified sender and the exact stored voice rules.
      An approval must go stale for a changed goal or a changed voice, not
      only for changed words. */
-  const [sender, voice] = await Promise.all([
-    verifiedSender(caller),
+  const [{ author }, voice] = await Promise.all([
+    authorAndReviewer(caller, currentVersion?.authorUserId ?? null),
     loadVoicePacket(caller, input.organizationId),
   ]);
   const fingerprint = currentVersion
@@ -1270,7 +1298,8 @@ export async function loadReview(
         goal: session.goal,
         situation: session.situation,
         sourceChecksums: sourceRows.map((row) => str(row["checksum"])),
-        senderName: sender.name,
+        senderName: author.name,
+        senderUserId: author.id,
         voiceVersion: voice.stamp,
       })
     : "";

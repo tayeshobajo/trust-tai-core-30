@@ -73,6 +73,7 @@ import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/cli
 import { Route as ApiPublicClientsLogoRouteImport } from './routes/api/public/clients.logo'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicCommsReviewRouteImport } from './routes/api/public/comms.review'
+import { Route as ApiPublicCommsSendRouteImport } from './routes/api/public/comms.send'
 import { Route as ApiPublicContentBriefRouteImport } from './routes/api/public/content.brief'
 import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/public/content.generate'
 import { Route as ApiPublicContentImageRouteImport } from './routes/api/public/content.image'
@@ -437,6 +438,11 @@ const ApiPublicCommsReviewRoute = ApiPublicCommsReviewRouteImport.update({
   path: '/api/public/comms/review',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCommsSendRoute = ApiPublicCommsSendRouteImport.update({
+  id: '/api/public/comms/send',
+  path: '/api/public/comms/send',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicContentBriefRoute = ApiPublicContentBriefRouteImport.update({
   id: '/api/public/content/brief',
   path: '/api/public/content/brief',
@@ -732,6 +738,7 @@ export interface FileRoutesByFullPath {
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/comms/review': typeof ApiPublicCommsReviewRoute
+  '/api/public/comms/send': typeof ApiPublicCommsSendRoute
   '/api/public/content/brief': typeof ApiPublicContentBriefRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
@@ -830,6 +837,7 @@ export interface FileRoutesByTo {
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/comms/review': typeof ApiPublicCommsReviewRoute
+  '/api/public/comms/send': typeof ApiPublicCommsSendRoute
   '/api/public/content/brief': typeof ApiPublicContentBriefRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
@@ -938,6 +946,7 @@ export interface FileRoutesById {
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/comms/review': typeof ApiPublicCommsReviewRoute
+  '/api/public/comms/send': typeof ApiPublicCommsSendRoute
   '/api/public/content/brief': typeof ApiPublicContentBriefRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
@@ -1047,6 +1056,7 @@ export interface FileRouteTypes {
     | '/api/public/clients/logo'
     | '/api/public/comms/draft'
     | '/api/public/comms/review'
+    | '/api/public/comms/send'
     | '/api/public/content/brief'
     | '/api/public/content/generate'
     | '/api/public/content/image'
@@ -1145,6 +1155,7 @@ export interface FileRouteTypes {
     | '/api/public/clients/logo'
     | '/api/public/comms/draft'
     | '/api/public/comms/review'
+    | '/api/public/comms/send'
     | '/api/public/content/brief'
     | '/api/public/content/generate'
     | '/api/public/content/image'
@@ -1252,6 +1263,7 @@ export interface FileRouteTypes {
     | '/api/public/clients/logo'
     | '/api/public/comms/draft'
     | '/api/public/comms/review'
+    | '/api/public/comms/send'
     | '/api/public/content/brief'
     | '/api/public/content/generate'
     | '/api/public/content/image'
@@ -1322,6 +1334,7 @@ export interface RootRouteChildren {
   ApiPublicClientsLogoRoute: typeof ApiPublicClientsLogoRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicCommsReviewRoute: typeof ApiPublicCommsReviewRoute
+  ApiPublicCommsSendRoute: typeof ApiPublicCommsSendRoute
   ApiPublicContentBriefRoute: typeof ApiPublicContentBriefRoute
   ApiPublicContentGenerateRoute: typeof ApiPublicContentGenerateRoute
   ApiPublicContentImageRoute: typeof ApiPublicContentImageRoute
@@ -1810,6 +1823,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/comms/review'
       fullPath: '/api/public/comms/review'
       preLoaderRoute: typeof ApiPublicCommsReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/comms/send': {
+      id: '/api/public/comms/send'
+      path: '/api/public/comms/send'
+      fullPath: '/api/public/comms/send'
+      preLoaderRoute: typeof ApiPublicCommsSendRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/content/brief': {
@@ -2312,6 +2332,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicClientsLogoRoute: ApiPublicClientsLogoRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicCommsReviewRoute: ApiPublicCommsReviewRoute,
+  ApiPublicCommsSendRoute: ApiPublicCommsSendRoute,
   ApiPublicContentBriefRoute: ApiPublicContentBriefRoute,
   ApiPublicContentGenerateRoute: ApiPublicContentGenerateRoute,
   ApiPublicContentImageRoute: ApiPublicContentImageRoute,

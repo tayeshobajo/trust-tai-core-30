@@ -145,6 +145,8 @@ export interface ReviewContext {
   sourceChecksums: string[];
   /** The verified sender the message will go out as. */
   senderName: string | null;
+  /** The author of record, not whoever happens to be reviewing. */
+  senderUserId?: string | null;
   /** The exact stored voice rules the review was held against, if any. */
   voiceVersion: string | null;
 }
@@ -164,6 +166,7 @@ export function contextFingerprint(context: ReviewContext): string {
     (context.goal ?? "").trim(),
     (context.situation ?? "").trim(),
     (context.senderName ?? "").trim(),
+    (context.senderUserId ?? "").trim(),
     (context.voiceVersion ?? "").trim(),
     [...context.sourceChecksums].sort().join(","),
   ];

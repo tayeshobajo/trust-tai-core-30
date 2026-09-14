@@ -36,14 +36,16 @@ const ORG = "org-1";
 const USER = "user-1";
 const SESSION = "session-1";
 const VERSION = "version-1";
+/** The teammate who actually wrote the draft. The caller is only reviewing it. */
+const AUTHOR = "author-2";
 
 type Result = { data: unknown; error: unknown };
 const ok = (data: unknown = null): Result => ({ data, error: null });
 const boom = (message: string): Result => ({ data: null, error: { message } });
 
 interface TableStub {
-  /** What a read of this table returns. */
-  read?: Result;
+  /** What a read of this table returns; may depend on the `eq` filters used. */
+  read?: Result | ((filters: Record<string, unknown>) => Result);
   /** What an insert returns, and a place to record what was attempted. */
   insert?: Result;
   /** What an update returns. */
@@ -57,15 +59,23 @@ interface Attempt {
 }
 
 /** A chainable query double: enough of PostgREST's shape to be honest. */
-function chain(result: Result): Record<string, unknown> {
+function chain(
+  result: Result | ((filters: Record<string, unknown>) => Result),
+  filters: Record<string, unknown> = {},
+): Record<string, unknown> {
   const node: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "in", "is", "neq", "order", "limit"]) {
+  for (const method of ["select", "in", "is", "neq", "order", "limit"]) {
     node[method] = () => node;
   }
-  node["maybeSingle"] = async () => result;
-  node["single"] = async () => result;
+  node["eq"] = (column: string, value: unknown) => {
+    filters[column] = value;
+    return node;
+  };
+  const settle = () => (typeof result === "function" ? result(filters) : result);
+  node["maybeSingle"] = async () => settle();
+  node["single"] = async () => settle();
   node["then"] = (resolve: (value: Result) => unknown, reject?: (reason: unknown) => unknown) =>
-    Promise.resolve(result).then(resolve, reject);
+    Promise.resolve(settle()).then(resolve, reject);
   return node;
 }
 
@@ -79,7 +89,7 @@ function fakeClient(tables: Record<string, TableStub>, attempts: Attempt[], user
     },
     from(table: string) {
       const stub = tables[table] ?? {};
-      const node = chain(stub.read ?? ok([]));
+      const node = chain(stub.read ?? ok([]), {});
       node["insert"] = (payload: unknown) => {
         attempts.push({ table, op: "insert", payload });
         return chain(stub.insert ?? ok(null));
@@ -100,7 +110,10 @@ function baseTables(over: Record<string, TableStub> = {}): Record<string, TableS
   return {
     organization_memberships: { read: MEMBERSHIP("active") },
     profiles: {
-      read: ok({ id: USER, full_name: "Sam Ellis", email: "sam@trusttai.example" }),
+      read: (filters) =>
+        filters["id"] === AUTHOR
+          ? ok({ id: AUTHOR, full_name: "Priya Raman", email: "priya@trusttai.example" })
+          : ok({ id: USER, full_name: "Sam Ellis", email: "sam@trusttai.example" }),
     },
     comms_voice_profiles: {
       read: ok({
@@ -131,6 +144,7 @@ function baseTables(over: Record<string, TableStub> = {}): Record<string, TableS
         session_id: SESSION,
         organization_id: ORG,
         version: 1,
+        author_user_id: AUTHOR,
         subject: "Re: dates",
         body: "The migration finishes on 4 October. Cost stays as quoted.",
         created_at: "2026-09-14T09:05:00.000Z",
@@ -349,15 +363,56 @@ describe("runReview at the server boundary", () => {
       string,
       Record<string, unknown>
     >;
-    expect(packet["writtenBy"]?.["name"]).toBe("Sam Ellis");
+    expect(packet["writtenBy"]?.["name"]).toBe("Priya Raman");
     expect(String(packet["writtenBy"]?.["note"])).not.toMatch(/Tai/);
+    expect(packet["reviewedBy"]?.["name"]).toBe("Sam Ellis");
+    expect(String(packet["reviewedBy"]?.["note"])).toMatch(/not the author/i);
     expect(packet["voice"]?.["rules"]).toBe("Write plainly. Never pad a sentence.");
     expect(packet["voice"]?.["version"]).toBe(3);
     expect(String(packet["voice"]?.["note"])).toMatch(/read-only/i);
     expect(packet["situation"]).toBe("She asked twice for the date.");
 
     const startedRun = attempts[0]?.payload as Record<string, unknown>;
-    expect(startedRun["stages"]).toContain("voice_profile:voice-1@v3");
+    expect(String(startedRun["stages"])).toMatch(/voice_profile:voice-1@v3#/);
+  });
+
+  it("never carries another client's words in as a style example", async () => {
+    const leak = {
+      subject: "Northwind renewal",
+      body: "Northwind's renewal is 12 March and the price is 48,000.",
+    };
+    const { call } = run(baseTables({ comms_drafts: { read: ok([leak]) } }));
+    await call();
+
+    const sent = String(callModel.mock.calls[0]?.[0]?.input);
+    expect(sent).not.toMatch(/Northwind/);
+    expect(sent).not.toMatch(/48,000/);
+    const packet = JSON.parse(sent) as Record<string, Record<string, unknown>>;
+    expect(packet["voice"]?.["styleExamples"]).toEqual([]);
+    expect(String(packet["voice"]?.["styleExamplesNote"])).toMatch(/other people's names/i);
+    expect(String(packet["voice"]?.["note"])).toMatch(/style only/i);
+  });
+
+  it("changes the voice stamp when the rules text changes without a version bump", async () => {
+    const first = run(baseTables());
+    await first.call();
+    const stampOne = (first.attempts[0]?.payload as Record<string, unknown>)["stages"];
+
+    const second = run(
+      baseTables({
+        comms_voice_profiles: {
+          read: ok({
+            id: "voice-1",
+            title: "Voice DNA",
+            content_markdown: "Write plainly. Never pad a sentence. Never flatter.",
+            version: 3,
+          }),
+        },
+      }),
+    );
+    await second.call();
+    const stampTwo = (second.attempts[0]?.payload as Record<string, unknown>)["stages"];
+    expect(stampTwo).not.toEqual(stampOne);
   });
 
   it("discloses the fallback instead of claiming a calibrated voice", async () => {

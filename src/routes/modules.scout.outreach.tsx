@@ -135,7 +135,9 @@ async function fetchReady(organizationId: string): Promise<ProspectCard[]> {
       .eq("register", "scout_intro")
       .in("review_state", ["needs_human_review", "approved", "sending", "sent"])
       .in("relationship_id", relIds);
-    const relToProspect = new Map(relRows.map((rel) => [String(rel["id"]), String(rel["prospect_id"])]));
+    const relToProspect = new Map(
+      relRows.map((rel) => [String(rel["id"]), String(rel["prospect_id"])]),
+    );
     for (const draft of (drafts ?? []) as Row[]) {
       const prospect = relToProspect.get(String(draft["relationship_id"]));
       if (prospect) drafted.add(prospect);
@@ -172,9 +174,7 @@ async function fetchDrafts(organizationId: string): Promise<DraftCardData[]> {
     relationshipId: String(row["relationship_id"]),
     subject: str(row["subject"]),
     body: String(row["body"] ?? ""),
-    templateName: str(
-      ((row["rationale"] ?? {}) as Row)["template_name"],
-    ),
+    templateName: str(((row["rationale"] ?? {}) as Row)["template_name"]),
     recipient: str(rel?.["full_name"]) ?? "Unknown",
     company: str(rel?.["company_name"]),
     email: str(rel?.["email"]),
@@ -225,7 +225,9 @@ async function fetchSent(organizationId: string): Promise<SentCardData[]> {
     .eq("direction", "inbound")
     .in("relationship_id", relIds);
   if (!inboundError) {
-    const sentAtByRel = new Map(rows.map((row) => [String(row["relationship_id"]), String(row["updated_at"] ?? "")]));
+    const sentAtByRel = new Map(
+      rows.map((row) => [String(row["relationship_id"]), String(row["updated_at"] ?? "")]),
+    );
     for (const message of (inbound ?? []) as Row[]) {
       const relId = String(message["relationship_id"]);
       const sentAt = sentAtByRel.get(relId);
@@ -342,26 +344,24 @@ async function reopenDraft(draftId: string): Promise<void> {
     .eq("review_state", "approved");
 }
 
-/** The exact send path the Comms queue uses: the comms-send edge function with the person's token. */
-async function sendDraft(draftId: string): Promise<void> {
+/** The one governed send path, shared with Comms: the app's own send endpoint. */
+async function sendDraft(draftId: string, organizationId: string): Promise<void> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated.");
 
-  const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] as string;
-  const res = await fetch(`${supabaseUrl}/functions/v1/comms-send`, {
+  const res = await fetch("/api/public/comms/send", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ draft_id: draftId }),
+    body: JSON.stringify({ organizationId, draftId }),
   });
-
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({ error: "Send failed." }))) as { error?: string };
-    throw new Error(body.error ?? "Send failed.");
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? "That message was not sent.");
   }
 }
 
@@ -400,8 +400,7 @@ function OutreachView({ identity }: { identity: WorkspaceIdentity }) {
   const selectedTemplate =
     activeTemplates.find((template) => template.id === templateId) ?? activeTemplates[0] ?? null;
 
-  const invalidateAll = () =>
-    queryClient.invalidateQueries({ queryKey: ["scout", "outreach"] });
+  const invalidateAll = () => queryClient.invalidateQueries({ queryKey: ["scout", "outreach"] });
 
   const draft = useMutation({
     mutationFn: (prospect: ProspectCard) => {
@@ -423,7 +422,7 @@ function OutreachView({ identity }: { identity: WorkspaceIdentity }) {
   const approveAndSend = useMutation({
     mutationFn: async (input: { id: string; subject: string; body: string }) => {
       await approveDraft(input.id, input.subject, input.body);
-      await sendDraft(input.id);
+      await sendDraft(input.id, identity.organizationId);
     },
     onSuccess: async () => {
       toast.success("Sent");
@@ -490,7 +489,11 @@ function OutreachView({ identity }: { identity: WorkspaceIdentity }) {
           onReject={(id) => reject.mutate(id)}
           busy={approveAndSend.isPending || reject.isPending}
         />
-        <SentColumn sent={sent.data ?? []} loading={sent.isLoading} error={sent.error as Error | null} />
+        <SentColumn
+          sent={sent.data ?? []}
+          loading={sent.isLoading}
+          error={sent.error as Error | null}
+        />
       </div>
     </div>
   );
