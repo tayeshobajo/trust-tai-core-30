@@ -87,7 +87,10 @@ source, late question, hallucinated obligation id, unverifiable quote),
 
 ## Send gates: where they stand after slice 3
 
-One authority decides every send it covers: `src/domain/comms-delivery.ts`
+One authority decides every send it covers **inside this app**. It does not
+govern the edge function still deployed on the shared project (see the table
+below), so "one rule, every door" is not yet true of the system as a whole.
+: `src/domain/comms-delivery.ts`
 holds the rule, `src/lib/comms-send-authority.server.ts` gathers the facts and
 owns the attempt. There is no second approval queue - suite approval and review
 approval refer to the same decision record.
@@ -97,8 +100,9 @@ approval refer to the same decision record.
 | Gmail (`comms-gmail-send.server.ts`) | Gated. The approval is required after the message is fully built and before the claim; a refusal means Gmail is never called |
 | Queue and Scout outreach email | Gated, and moved in-app to `/api/public/comms/send`. The old supabase/functions/comms-send edge function is no longer called by this app; undeploying it is a separate action Codex owns |
 | LinkedIn mark-sent | Gated. Recording it requires a current approval, and the record is labelled a person's attestation, not a delivery by LinkedIn |
-| `comms-quick-reply` | **Still open.** It replies without any review |
-| Scheduled sends | None exist |
+| `comms-quick-reply` | Gated. It no longer writes its own approval: the reply is saved as needing human review, bound to a review, and held unless that review's approval already covers exactly this message |
+| Deployed legacy `comms-send` edge function | **Still open.** Active (v5) on the shared project and reachable with any session token. A fail-closed replacement body and deployment/test instructions are prepared (`guarded.index.ts` beside it, and `docs/comms-send-legacy-retirement.md`); deploying it is Codex's step. It is not disabled today |
+| Scheduled sends | None exist in this app |
 
 **The gate refuses everything today, deliberately.** The database cannot yet
 tie a draft to the review that approved it, or an approval to the exact payload
@@ -295,3 +299,61 @@ Send gates still open, unchanged by this slice: `comms-quick-reply`,
 `supabase/functions/comms-send` (reads `comms_drafts.review_state`, a
 different record), `comms-linkedin-send.server.ts`, any scheduled send, and
 the shared suite approvals surface. No send path reads a review approval.
+
+## 14 Sep 2026 — Slice 3 completion pass (after independent review of 51acd8a)
+
+Corrected in this pass:
+
+- **Binding is real.** A review can be created for a draft, carrying the draft,
+  the channel it is meant to leave by and the sending identity. Approval then
+  derives the outbound payload on the server from the draft on record — never
+  from the browser — refuses when the draft no longer says what the review
+  read, and records the payload fingerprint and channel on the approval.
+- **Findings are read by their real column.** The gate selects `severity, why`;
+  `summary` does not exist in the applied schema.
+- **Current context is recomputed, not borrowed.** The gate rebuilds the
+  fingerprint through the shared review loader from the current version, the
+  current sources, the situation, the verified author and the stored voice
+  rules, and compares the approval against that. A voice rule edited after
+  approval now invalidates it. Closed reviews are ignored; two open reviews of
+  one draft are an explicit refusal; the approval must name this review, and
+  the run must be this review's run of this approval's version.
+- **The payload fingerprint is collision-resistant.** SHA-256 over a canonical,
+  length-prefixed encoding of the exact provider payload — channel, normalised
+  subject and body, recipient, cc, bcc, sending identity and, per attachment,
+  name, type, size and content or immutable storage identity. A replacement
+  file of the same length invalidates the approval. Approval, the gate and
+  every dispatch path build it through one helper.
+- **Claiming is strict.** Only a unique violation whose existing row is this
+  same draft, approval, payload and channel counts as a replay; every other
+  insert failure refuses and reaches no provider. A claim that returns no
+  identifier refuses. Settling only moves an attempt still in flight, verifies
+  exactly one row moved, and says plainly when a receipt could not be stored
+  instead of claiming it was.
+- **Quick reply** is inside the gate (see the table above).
+
+Evidence: `src/lib/comms-send-authority.server.test.ts` (21 tests: the approved
+path calls the provider exactly once and records the attempt first; refusals
+for no review, no approval, unfinished review, edited words, moved voice or
+material, revised conversation, newer version, two open reviews, an approval
+from another review, a run of another version, view-only role, inactive or
+absent membership, missing server credentials; duplicate claim; provider
+refusal; lost answer; unstorable receipt) and
+`src/lib/comms-review-approval.server.test.ts` (the positive binding →
+approval → fingerprint path, and the refusal when the draft drifted). Every
+double answers with columns the applied schema actually has.
+
+Still not done, and not claimed:
+
+- `docs/migrations/proposed/20260914170000_comms_review_delivery.sql` is
+  **proposed, not applied**. It now carries service-role grants and a PUBLIC
+  revoke, same-organization composite bindings for draft, session, approval and
+  delivery, immutable delivery identity with one-way outcomes,
+  `unique (organization_id, draft_id, payload_fingerprint)` independent of the
+  caller's key, a database-stamped approval revision (bigint, matching
+  sessions), frozen voice provenance on runs, and a claim-time trigger that
+  revalidates the same invariant the server checks while holding the session
+  row locked.
+- The deployed legacy send function is still active.
+- Nothing here has been proved against the live database, and no message has
+  been sent to anybody.
