@@ -246,26 +246,33 @@ interface ThreadRow {
 }
 
 /**
- * The recent conversation for this relationship, read with the caller's
- * token. Drafting blind to the thread is the failure this removes. The
- * message-fidelity columns are preferred; an older schema sheds body_text
- * and retries with snippets.
+ * The conversation for this relationship, read newest first.
+ *
+ * Reading the oldest 40 messages of a long thread and calling it context is
+ * how a reviewer misses the request that arrived this morning. The store is
+ * asked for the newest window, the window is re-ordered oldest to newest for
+ * reading, and the total message count travels with it so coverage can be
+ * stated instead of implied. The message-fidelity columns are preferred; an
+ * older schema sheds body_text and retries with snippets.
  */
+const THREAD_WINDOW = 40;
+
 async function loadThread(
   supabase: CallerClient,
   relationshipId: string,
-): Promise<ReturnType<typeof threadContextForJudgment>> {
+): Promise<ThreadWindow> {
   const variants = [
     "direction, subject, body_text, snippet, occurred_at",
     "direction, subject, snippet, occurred_at",
   ];
   for (const columns of variants) {
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from("comms_messages")
-      .select(columns)
+      .select(columns, { count: "exact" })
+      // Newest first, so the latest request is always inside the window.
+      .order("occurred_at", { ascending: false })
       .eq("relationship_id", relationshipId)
-      .order("occurred_at", { ascending: true })
-      .limit(40);
+      .limit(THREAD_WINDOW);
     if (error) continue;
     const rows = ((data ?? []) as unknown as ThreadRow[])
       .filter((row) => row.direction === "inbound" || row.direction === "outbound")
@@ -277,10 +284,39 @@ async function loadThread(
         occurredAt: String(row.occurred_at ?? ""),
       }))
       .filter((row) => row.occurredAt);
-    return threadContextForJudgment(rows);
+    return threadWindowForJudgment({
+      // threadContextForJudgment sorts oldest-to-newest itself.
+      entries: threadContextForJudgment(rows),
+      messagesInThread: typeof count === "number" ? count : null,
+      messagesLoaded: rows.length,
+    });
   }
-  return [];
+  return threadWindowForJudgment({ entries: [], messagesInThread: 0, messagesLoaded: 0 });
 }
+
+/** The signed-in author, so a message closes with the right person's name. */
+async function loadSender(
+  supabase: CallerClient,
+  user: { id: string; email?: string | null },
+): Promise<SenderProfile> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+  const row = (data ?? {}) as Record<string, unknown>;
+  const email = String(row["email"] ?? user.email ?? "").trim();
+  const name =
+    String(row["full_name"] ?? "").trim() ||
+    String(row["display_name"] ?? "").trim() ||
+    (email ? (email.split("@")[0] ?? "") : "");
+  return {
+    id: user.id,
+    name,
+    ...(email ? { email } : {}),
+  };
+}
+
 
 /**
  * Voice evidence from how Tai actually communicated: the drafts a person
