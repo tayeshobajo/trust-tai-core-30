@@ -55,7 +55,13 @@ import {
   ProviderCallFailedError,
   ProviderNotConfiguredError,
   runtimeModelCaller,
+  runtimeProviderStatus,
 } from "@/lib/intelligence-runtime.server";
+import {
+  diagnosticStages,
+  diagnosticsLogLine,
+  providerDiagnostics,
+} from "@/domain/comms-provider-diagnostics";
 
 import {
   classifySource,
@@ -1076,7 +1082,23 @@ export async function runReview(
           : error instanceof Error && error.message === "forbidden"
             ? "access_denied"
             : "provider_call_failed";
-    const recorded = await markFailed(code, [RUN_STAGES.packet, voice.stamp]);
+    /* A failed run that says only "provider_call_failed" tells an operator
+       nothing they can act on. The configured provider and model are
+       secret-free facts, the status is the provider's own, and the category
+       is derived without keeping any message, prompt or draft text. */
+    const status = runtimeProviderStatus();
+    const diagnostics = providerDiagnostics({
+      error,
+      configured: { provider: status.provider, model: status.model },
+      notConfigured: code === "provider_not_configured",
+    });
+    console.error(diagnosticsLogLine("comms-review", diagnostics));
+    const recorded = await markFailed(
+      code,
+      [RUN_STAGES.packet, voice.stamp, ...diagnosticStages(diagnostics)],
+      diagnostics.provider ?? undefined,
+      diagnostics.model ?? undefined,
+    );
     throw new ReviewFailure(
       code,
       `${
@@ -1595,7 +1617,10 @@ export async function loadReview(
     statusNote: str(row["status_note"]),
     charCount: num(row["char_count"]) ?? 0,
   }));
-  const coverage = summarizeObligations(verdicts);
+  /* Coverage only counts for something when a completed run stands behind it.
+     No run, or a failed one, means the questions were never judged — which
+     the summary must say instead of reporting a source with no asks in it. */
+  const coverage = summarizeObligations(verdicts, latestRun?.status === "complete");
 
   return {
     session,
