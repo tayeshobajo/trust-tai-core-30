@@ -249,9 +249,14 @@ export function DraftsWorkspace({
               )}
             >
               {DRAFTS_FILTER_LABEL[option]}
-              <span className="ml-1 text-muted-foreground">
-                {option === "all" ? rows.length : rows.filter((row) => row.state === option).length}
-              </span>
+              {failed || loading ? null : (
+                <span className="ml-1 text-muted-foreground">
+                  {option === "all"
+                    ? rows.length
+                    : rows.filter((row) => row.state === option).length}
+                </span>
+              )}
+
             </button>
           ))}
         </div>
