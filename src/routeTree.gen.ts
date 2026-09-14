@@ -17,6 +17,7 @@ import { Route as MockupsCommsFamiliarARouteImport } from './routes/mockups.comm
 import { Route as MockupsCommsFamiliarBRouteImport } from './routes/mockups.comms-familiar-b'
 import { Route as MockupsCommsFamiliarCRouteImport } from './routes/mockups.comms-familiar-c'
 import { Route as MockupsCommsNextRouteImport } from './routes/mockups.comms-next'
+import { Route as MockupsCommsWorkspaceV2RouteImport } from './routes/mockups.comms-workspace-v2'
 import { Route as MockupsPulseNextRouteImport } from './routes/mockups.pulse-next'
 import { Route as MockupsStudioContentRouteImport } from './routes/mockups.studio-content'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
@@ -157,6 +158,11 @@ const MockupsCommsFamiliarCRoute = MockupsCommsFamiliarCRouteImport.update({
 const MockupsCommsNextRoute = MockupsCommsNextRouteImport.update({
   id: '/mockups/comms-next',
   path: '/mockups/comms-next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MockupsCommsWorkspaceV2Route = MockupsCommsWorkspaceV2RouteImport.update({
+  id: '/mockups/comms-workspace-v2',
+  path: '/mockups/comms-workspace-v2',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MockupsPulseNextRoute = MockupsPulseNextRouteImport.update({
@@ -700,6 +706,7 @@ export interface FileRoutesByFullPath {
   '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
   '/mockups/comms-familiar-c': typeof MockupsCommsFamiliarCRoute
   '/mockups/comms-next': typeof MockupsCommsNextRoute
+  '/mockups/comms-workspace-v2': typeof MockupsCommsWorkspaceV2Route
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
@@ -810,6 +817,7 @@ export interface FileRoutesByTo {
   '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
   '/mockups/comms-familiar-c': typeof MockupsCommsFamiliarCRoute
   '/mockups/comms-next': typeof MockupsCommsNextRoute
+  '/mockups/comms-workspace-v2': typeof MockupsCommsWorkspaceV2Route
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
@@ -914,6 +922,7 @@ export interface FileRoutesById {
   '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
   '/mockups/comms-familiar-c': typeof MockupsCommsFamiliarCRoute
   '/mockups/comms-next': typeof MockupsCommsNextRoute
+  '/mockups/comms-workspace-v2': typeof MockupsCommsWorkspaceV2Route
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
@@ -1027,6 +1036,7 @@ export interface FileRouteTypes {
     | '/mockups/comms-familiar-b'
     | '/mockups/comms-familiar-c'
     | '/mockups/comms-next'
+    | '/mockups/comms-workspace-v2'
     | '/mockups/pulse-next'
     | '/mockups/studio-content'
     | '/modules/$slug'
@@ -1137,6 +1147,7 @@ export interface FileRouteTypes {
     | '/mockups/comms-familiar-b'
     | '/mockups/comms-familiar-c'
     | '/mockups/comms-next'
+    | '/mockups/comms-workspace-v2'
     | '/mockups/pulse-next'
     | '/mockups/studio-content'
     | '/modules/$slug'
@@ -1240,6 +1251,7 @@ export interface FileRouteTypes {
     | '/mockups/comms-familiar-b'
     | '/mockups/comms-familiar-c'
     | '/mockups/comms-next'
+    | '/mockups/comms-workspace-v2'
     | '/mockups/pulse-next'
     | '/mockups/studio-content'
     | '/modules/$slug'
@@ -1351,6 +1363,7 @@ export interface RootRouteChildren {
   MockupsCommsFamiliarBRoute: typeof MockupsCommsFamiliarBRoute
   MockupsCommsFamiliarCRoute: typeof MockupsCommsFamiliarCRoute
   MockupsCommsNextRoute: typeof MockupsCommsNextRoute
+  MockupsCommsWorkspaceV2Route: typeof MockupsCommsWorkspaceV2Route
   MockupsPulseNextRoute: typeof MockupsPulseNextRoute
   MockupsStudioContentRoute: typeof MockupsStudioContentRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
@@ -1470,6 +1483,13 @@ declare module '@tanstack/react-router' {
       path: '/mockups/comms-next'
       fullPath: '/mockups/comms-next'
       preLoaderRoute: typeof MockupsCommsNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mockups/comms-workspace-v2': {
+      id: '/mockups/comms-workspace-v2'
+      path: '/mockups/comms-workspace-v2'
+      fullPath: '/mockups/comms-workspace-v2'
+      preLoaderRoute: typeof MockupsCommsWorkspaceV2RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mockups/pulse-next': {
@@ -2373,6 +2393,7 @@ const rootRouteChildren: RootRouteChildren = {
   MockupsCommsFamiliarBRoute: MockupsCommsFamiliarBRoute,
   MockupsCommsFamiliarCRoute: MockupsCommsFamiliarCRoute,
   MockupsCommsNextRoute: MockupsCommsNextRoute,
+  MockupsCommsWorkspaceV2Route: MockupsCommsWorkspaceV2Route,
   MockupsPulseNextRoute: MockupsPulseNextRoute,
   MockupsStudioContentRoute: MockupsStudioContentRoute,
   ModulesSlugRoute: ModulesSlugRoute,
