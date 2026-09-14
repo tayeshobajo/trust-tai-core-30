@@ -9,6 +9,8 @@
 import { supabase } from "@/integrations/trust-tai/supabase";
 
 import type { DraftKind } from "@/domain/comms-draft-kind";
+import type { ProposalSections } from "@/domain/comms-proposal";
+
 
 import type { ObligationCoverage } from "@/domain/comms-obligations";
 import type {
@@ -90,11 +92,21 @@ export interface CreateReviewFields {
   body: string;
   /** Message, email or proposal. Recorded when the workspace can store it. */
   kind?: DraftKind;
+  /**
+   * The sections a proposal was written as. When present the server renders
+   * the words from these; what is typed here never stands in for them.
+   */
+  sections?: ProposalSections;
   sources: { label?: string; filename?: string; mediaType?: string; text?: string }[];
 }
 
 export function createReview(fields: CreateReviewFields) {
-  return post<{ sessionId: string; versionId: string; kindPersisted?: boolean }>({
+  return post<{
+    sessionId: string;
+    versionId: string;
+    kindPersisted?: boolean;
+    structurePersisted?: boolean;
+  }>({
     action: "create",
     ...fields,
   });
@@ -105,9 +117,14 @@ export function reviseDraft(input: {
   sessionId: string;
   subject: string;
   body: string;
+  sections?: ProposalSections;
 }) {
-  return post<ReviewVersion>({ action: "revise", ...input });
+  return post<{ version: ReviewVersion; structurePersisted: boolean }>({
+    action: "revise",
+    ...input,
+  });
 }
+
 
 export function runReview(input: { organizationId: string; sessionId: string; versionId: string }) {
   return post<{ runId: string }>({ action: "run", ...input });

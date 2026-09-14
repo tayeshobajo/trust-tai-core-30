@@ -12,6 +12,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { readDraftKind } from "@/domain/comms-draft-kind";
+import type { ProposalSections } from "@/domain/comms-proposal";
+import { validateProposalSections } from "@/domain/comms-proposal-source";
+
 
 import {
   approveVersion,
@@ -64,6 +67,21 @@ function sourcesOf(value: unknown): SourceInput[] {
     } satisfies SourceInput;
   });
 }
+
+/**
+ * The sections a proposal was written as, validated here before anything is
+ * stored. When they are present the server renders the words from them; the
+ * browser's own rendering is not trusted to stand for the structure, so a
+ * mismatch cannot survive into the record.
+ */
+function sectionsOf(
+  value: unknown,
+): { sections: ProposalSections | null } | { error: string } {
+  if (value === undefined || value === null) return { sections: null };
+  const checked = validateProposalSections(value);
+  return checked.ok ? { sections: checked.sections } : { error: checked.error };
+}
+
 
 export const Route = createFileRoute("/api/public/comms/review")({
   server: {
@@ -121,8 +139,12 @@ export const Route = createFileRoute("/api/public/comms/review")({
         try {
           switch (action) {
             case "create": {
+              const sections = sectionsOf(body["sections"]);
+              if ("error" in sections) {
+                return Response.json({ error: sections.error }, { status: 400 });
+              }
               const draftBody = textOf(body["body"]).trim();
-              if (!draftBody) {
+              if (!sections.sections && !draftBody) {
                 return Response.json(
                   { error: "Paste the reply you mean to send before asking for a review." },
                   { status: 400 },
@@ -140,6 +162,7 @@ export const Route = createFileRoute("/api/public/comms/review")({
                   body: draftBody,
                   sources: sourcesOf(body["sources"]),
                   ...(readDraftKind(body["kind"]) ? { kind: readDraftKind(body["kind"])! } : {}),
+                  ...(sections.sections ? { sections: sections.sections } : {}),
                 }),
               );
             }
@@ -168,15 +191,21 @@ export const Route = createFileRoute("/api/public/comms/review")({
               );
             }
             case "revise": {
+              const sections = sectionsOf(body["sections"]);
+              if ("error" in sections) {
+                return Response.json({ error: sections.error }, { status: 400 });
+              }
               return Response.json(
                 await reviseDraft(token, {
                   organizationId,
                   sessionId: textOf(body["sessionId"]),
                   subject: textOf(body["subject"]),
                   body: textOf(body["body"]),
+                  ...(sections.sections ? { sections: sections.sections } : {}),
                 }),
               );
             }
+
             case "run": {
               return Response.json(
                 await runReview(token, {

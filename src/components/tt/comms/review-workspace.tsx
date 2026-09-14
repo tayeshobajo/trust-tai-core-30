@@ -20,7 +20,9 @@ import { useEffect, useState } from "react";
 
 import { ProposalComposer } from "@/components/tt/comms/proposal-composer";
 import { DRAFT_KIND_LABEL, type DraftKind } from "@/domain/comms-draft-kind";
-import { EMPTY_PROPOSAL, renderProposal, type ProposalSections } from "@/domain/comms-proposal";
+import { renderProposal, type ProposalSections } from "@/domain/comms-proposal";
+import { emptyProposal, proposalHasContent } from "@/domain/comms-proposal-source";
+
 
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import {
@@ -96,19 +98,21 @@ export function NewReview({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<{ filename: string; mediaType: string; text?: string }[]>([]);
-  const [proposal, setProposal] = useState<ProposalSections>(EMPTY_PROPOSAL);
+  const [proposal, setProposal] = useState<ProposalSections>(emptyProposal);
   const [error, setError] = useState<string | null>(null);
-  const [kindStored, setKindStored] = useState<boolean | null>(null);
 
-  /* A proposal is written as sections; the exact words reviewed are rendered
-     from those same sections, so the structure and the text cannot drift. */
+  /* A proposal is written as sections; the words reviewed are rendered from
+     those same sections — here for the writer to see, and again on the server,
+     which is the rendering that is actually stored. */
   const composed = kind === "proposal" ? renderProposal(proposal) : body;
 
+  /* Headings alone are not writing. Only what a person actually typed counts
+     as unsaved work, so an untouched proposal never blocks navigation. */
   const dirty =
     Boolean(
       title || recipientName || recipientEmail || goal || received || subject || body ||
         files.length,
-    ) || (kind === "proposal" && composed.trim().length > 0);
+    ) || (kind === "proposal" && proposalHasContent(proposal));
 
   useEffect(() => {
     onDirty?.(dirty);
@@ -126,6 +130,7 @@ export function NewReview({
         subject,
         kind,
         body: composed,
+        ...(kind === "proposal" ? { sections: proposal } : {}),
         sources: [
           ...(received.trim() ? [{ label: "What you were sent", text: received }] : []),
           ...files.map((file) => ({
@@ -137,12 +142,14 @@ export function NewReview({
         ],
       }),
     onSuccess: (result) => {
-      setKindStored(result.kindPersisted ?? false);
+      /* What was and was not stored is shown on the saved record itself, not
+         here: this form is about to be replaced by it. */
       onDirty?.(false);
       onOpened(result.sessionId);
     },
     onError: (cause: Error) => setError(cause.message),
   });
+
 
   async function attach(list: FileList | null) {
     if (!list) return;
@@ -262,12 +269,7 @@ export function NewReview({
       </label>
 
       {error ? <p className="text-sm text-[var(--danger,#b3261e)]">{error}</p> : null}
-      {kindStored === false ? (
-        <p className="text-xs text-muted-foreground">
-          This workspace cannot record what kind of draft this is yet, so it was saved without
-          that label. Everything else was stored.
-        </p>
-      ) : null}
+
 
       <TTButton type="submit" pending={open.isPending} pendingLabel="Opening review…">
         Open {DRAFT_KIND_LABEL[kind].toLowerCase()} review
@@ -322,10 +324,13 @@ export function ReviewDetail({
   identity,
   sessionId,
   onBack,
+  onDirty,
 }: {
   identity: WorkspaceIdentity;
   sessionId: string;
   onBack: () => void;
+  /** Told whenever there is an unsaved edit, so the page can protect it. */
+  onDirty?: (dirty: boolean) => void;
 }) {
   const queryClient = useQueryClient();
   const key = ["comms", "review", identity.organizationId, sessionId];
@@ -334,7 +339,12 @@ export function ReviewDetail({
     queryFn: () => loadReview(identity.organizationId, sessionId),
   });
   const [edited, setEdited] = useState<string | null>(null);
+  const [editedSections, setEditedSections] = useState<ProposalSections | null>(null);
+  /* Set when a person deliberately turns a structured proposal into plain
+     text. The new version then carries no structure, and says so. */
+  const [asPlainText, setAsPlainText] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [structureStored, setStructureStored] = useState<boolean | null>(null);
   /* Anything that changes the words, the context or the decision changes the
      answer to "could this be sent?". Both readings are thrown away together,
      so the panel can never keep showing a readiness that belonged to an
@@ -349,8 +359,30 @@ export function ReviewDetail({
 
   const state = query.data;
   const current = state?.currentVersion ?? null;
+  const structure = current?.structuredSource ?? null;
+  /* Sections are edited when this version was written as sections and the
+     person has not converted it to plain text. */
+  const structured = structure !== null && !asPlainText;
+  const sections = editedSections ?? structure?.sections ?? null;
   const bodyText = edited ?? current?.body ?? "";
-  const dirty = current !== null && edited !== null && edited !== current.body;
+  const dirty = structured
+    ? sections !== null &&
+      structure !== null &&
+      JSON.stringify(sections) !== JSON.stringify(structure.sections)
+    : current !== null && edited !== null && edited !== current.body;
+
+  /* A new record, or a new version of this one, replaces what is on screen:
+     an edit typed against older words must never be saved over newer ones. */
+  useEffect(() => {
+    setEdited(null);
+    setEditedSections(null);
+    setAsPlainText(false);
+    setStructureStored(null);
+  }, [sessionId, current?.id]);
+
+  useEffect(() => {
+    onDirty?.(dirty);
+  }, [dirty, onDirty]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -358,14 +390,19 @@ export function ReviewDetail({
         organizationId: identity.organizationId,
         sessionId,
         subject: current?.subject ?? "",
-        body: bodyText,
+        body: structured && sections ? renderProposal(sections) : bodyText,
+        ...(structured && sections ? { sections } : {}),
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      setStructureStored(structured ? result.structurePersisted : null);
       setEdited(null);
+      setEditedSections(null);
+      onDirty?.(false);
       void refresh();
     },
     onError: (cause: Error) => setError(cause.message),
   });
+
 
   const review = useMutation({
     mutationFn: () =>
@@ -420,21 +457,68 @@ export function ReviewDetail({
         </TTButton>
         <h3 className="text-lg font-medium text-foreground">{state.session.title}</h3>
         <MetaPill>Version {current.version}</MetaPill>
+        <MetaPill>
+          {state.session.kind ? DRAFT_KIND_LABEL[state.session.kind] : "Kind not recorded"}
+        </MetaPill>
         {state.latestRun && !state.runIsCurrent ? <MetaPill>Review is out of date</MetaPill> : null}
+
       </div>
 
       {error ? <p className="text-sm text-[var(--danger,#b3261e)]">{error}</p> : null}
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="space-y-4">
-          <label className="block space-y-1.5 text-sm">
-            <span className="text-muted-foreground">Your reply</span>
-            <textarea
-              className={cn(field, "min-h-[26rem] leading-relaxed")}
-              value={bodyText}
-              onChange={(event) => setEdited(event.target.value)}
-            />
-          </label>
+          {structured && sections ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm text-muted-foreground">
+                  This proposal was written as sections. The words below are rendered from them.
+                </span>
+                <TTButton
+                  variant="quiet"
+                  size="sm"
+                  onClick={() => {
+                    setEdited(renderProposal(sections));
+                    setAsPlainText(true);
+                  }}
+                >
+                  Edit as plain text
+                </TTButton>
+              </div>
+              <ProposalComposer
+                key={current.id}
+                sections={sections}
+                onChange={setEditedSections}
+              />
+            </div>
+          ) : (
+            <label className="block space-y-1.5 text-sm">
+              <span className="text-muted-foreground">Your reply</span>
+              <textarea
+                className={cn(field, "min-h-[26rem] leading-relaxed")}
+                value={bodyText}
+                onChange={(event) => setEdited(event.target.value)}
+              />
+            </label>
+          )}
+          {asPlainText ? (
+            <p className="text-xs text-muted-foreground">
+              Saving now records these words as plain text. The sections are not carried forward,
+              so this version will not be rebuildable from them.
+            </p>
+          ) : null}
+          {!structured && !asPlainText && state.session.kind === "proposal" ? (
+            <p className="text-xs text-muted-foreground">
+              The sections this proposal was written as were not recorded, so it is edited here as
+              text. The words on record are exactly what was reviewed.
+            </p>
+          ) : null}
+          {structureStored === false ? (
+            <p className="text-xs text-muted-foreground">
+              The words were saved, but this workspace could not store the sections they came from.
+              This version cannot be rebuilt from its structure.
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-3">
             <TTButton
               onClick={() => save.mutate()}
@@ -459,6 +543,7 @@ export function ReviewDetail({
               Save your edit first. A review always judges one exact version, never a moving one.
             </p>
           ) : null}
+
 
           <div className="rounded-lg border border-border bg-card/60 p-4">
             <h4 className="text-sm font-medium text-foreground">What Comms read</h4>

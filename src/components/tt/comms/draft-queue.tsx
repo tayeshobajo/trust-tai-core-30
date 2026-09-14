@@ -74,6 +74,37 @@ export async function fetchQueue(organizationId: string): Promise<QueueItem[]> {
 }
 
 /**
+ * One draft, fetched by name.
+ *
+ * The waiting list is capped, so a link to a specific draft cannot rely on it
+ * being in that list. The workspace is part of the query, so a draft id alone
+ * never reaches across workspaces, and RLS still has the last word.
+ */
+export async function fetchDraftById(
+  organizationId: string,
+  draftId: string,
+): Promise<QueueItem | null> {
+  const { data: draft, error } = await supabase
+    .from("comms_drafts")
+    .select(
+      "id, organization_id, relationship_id, subject, body, intent, register, review_state, rationale, created_at",
+    )
+    .eq("organization_id", organizationId)
+    .eq("id", draftId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!draft) return null;
+  const row = draft as DraftRow;
+  const { data: relationship } = await supabase
+    .from("comms_relationships")
+    .select("id, full_name, company_name, email, stage")
+    .eq("id", row.relationship_id)
+    .maybeSingle();
+  return { draft: row, relationship: (relationship as RelationshipRow | null) ?? null };
+}
+
+
+/**
  * Opening the one review this message has to clear.
  *
  * This queue used to write `review_state = 'approved'` straight onto the
@@ -189,9 +220,13 @@ export function DraftQueue({ identity }: { identity: WorkspaceIdentity }) {
           await sendDraft(id, identity.organizationId);
           results.push({ id, ok: true });
         } catch (err) {
+          /* A failure here may mean the gate refused, or it may mean nobody
+             knows what the provider did. Neither is a reason to move the
+             draft: the send record is the authority, and a silent re-park
+             would invite a second attempt at something that may have gone. */
           results.push({ id, ok: false, error: err instanceof Error ? err.message : "Failed." });
-          await reopenDraft(id, identity);
         }
+
       }
       return results;
     },
@@ -223,11 +258,14 @@ export function DraftQueue({ identity }: { identity: WorkspaceIdentity }) {
       toast.success("Sent");
       void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
     },
-    onError: async (err: Error, id: string) => {
+    /* The draft is left exactly as the send path left it. What happened is
+       settled by the send record, not by this screen guessing. */
+    onError: (err: Error) => {
       toast.error(err.message);
-      await reopenDraft(id, identity);
+      void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
     },
   });
+
 
   /* One record, one place: the review this message must clear. Opening it
      takes the person straight to that review rather than leaving them to find
