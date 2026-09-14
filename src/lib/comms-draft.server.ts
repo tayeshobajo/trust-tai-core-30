@@ -201,9 +201,18 @@ export interface DraftResult {
   judgment: CommunicationJudgment;
   /** What the draft stands on, and what would sharpen it. Shown before send. */
   grounding: DraftGroundingSummary;
+  /** How much of the conversation was actually read. Never implied. */
+  sourceWindow: Omit<ThreadWindow, "entries">;
+  /** Every question and request in the source, and how the draft answers it. */
+  coverage: CoverageReport;
+  /** Who the draft is written by, and the closing it carries. */
+  sender: { name: string | null; signoff: string | null };
   provider: string;
   model: string;
+  /** The prompt contract this run used, for later regression evaluation. */
+  promptVersion: string;
 }
+
 
 export function parseRegister(value: unknown): VoiceRegister {
   return REGISTERS.includes(value as VoiceRegister) ? (value as VoiceRegister) : "follow_up";
