@@ -39,6 +39,8 @@ const STATUS: Record<ReviewFailureCode, number> = {
   provider_not_configured: 503,
   provider_call_failed: 502,
   review_unreadable: 502,
+  not_ready: 409,
+  server_not_configured: 503,
   write_failed: 500,
 };
 

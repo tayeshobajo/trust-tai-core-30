@@ -6,7 +6,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  approvalReadiness,
   canApproveReview,
+  reviewRunIsCurrent,
   contextFingerprint,
   nextVersionNumber,
   readApproval,
@@ -33,6 +35,7 @@ function approval(over: Partial<ReviewApproval> = {}): ReviewApproval {
     versionId: "v1",
     runId: "r-1",
     contextFingerprint: contextFingerprint(base),
+    contextRevision: 3,
     approvedBy: "user-owner",
     approvedAt: "2026-09-14T10:00:00.000Z",
     approverRole: "owner",
@@ -82,6 +85,7 @@ describe("reading an approval", () => {
       approvals: [],
       currentVersionId: "v1",
       currentFingerprint: contextFingerprint(base),
+      currentRevision: 3,
     });
     expect(reading.freshness).toBe("none");
     expect(reading.sendable).toBe(false);
@@ -92,6 +96,7 @@ describe("reading an approval", () => {
       approvals: [approval()],
       currentVersionId: "v1",
       currentFingerprint: contextFingerprint(base),
+      currentRevision: 3,
     });
     expect(reading.freshness).toBe("fresh");
     expect(reading.sendable).toBe(true);
@@ -102,6 +107,7 @@ describe("reading an approval", () => {
       approvals: [approval()],
       currentVersionId: "v2",
       currentFingerprint: contextFingerprint({ ...base, versionId: "v2" }),
+      currentRevision: 3,
     });
     expect(reading.freshness).toBe("stale_version");
     expect(reading.sendable).toBe(false);
@@ -113,6 +119,7 @@ describe("reading an approval", () => {
       approvals: [approval()],
       currentVersionId: "v1",
       currentFingerprint: contextFingerprint({ ...base, recipientEmail: "someone@else.example" }),
+      currentRevision: 3,
     });
     expect(reading.freshness).toBe("stale_context");
     expect(reading.sendable).toBe(false);
@@ -124,6 +131,7 @@ describe("reading an approval", () => {
       approvals: [older, approval()],
       currentVersionId: "v1",
       currentFingerprint: contextFingerprint(base),
+      currentRevision: 3,
     });
     expect(reading.approval?.id).toBe("ap-1");
     expect(reading.freshness).toBe("fresh");
@@ -140,5 +148,134 @@ describe("version binding", () => {
     expect(runAppliesToCurrentVersion({ versionId: "v1" }, "v1")).toBe(true);
     expect(runAppliesToCurrentVersion({ versionId: "v1" }, "v2")).toBe(false);
     expect(runAppliesToCurrentVersion(null, "v1")).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------- run currency */
+
+const RUN = {
+  versionId: "v1",
+  contextFingerprint: "fp-1",
+  contextRevision: 3,
+  status: "complete" as const,
+};
+
+describe("a run only speaks for the work in front of you", () => {
+  const at = { currentVersionId: "v1", currentFingerprint: "fp-1", currentRevision: 3 };
+
+  it("counts when the version, the fingerprint and the revision all match", () => {
+    expect(reviewRunIsCurrent({ run: RUN, ...at })).toBe(true);
+  });
+
+  it("does not count when the words moved", () => {
+    expect(reviewRunIsCurrent({ run: RUN, ...at, currentVersionId: "v2" })).toBe(false);
+  });
+
+  it("does not count when the context moved under the same version", () => {
+    expect(reviewRunIsCurrent({ run: RUN, ...at, currentFingerprint: "fp-2" })).toBe(false);
+    expect(reviewRunIsCurrent({ run: RUN, ...at, currentRevision: 4 })).toBe(false);
+  });
+
+  it("does not count when the run never finished", () => {
+    expect(reviewRunIsCurrent({ run: { ...RUN, status: "running" }, ...at })).toBe(false);
+    expect(reviewRunIsCurrent({ run: { ...RUN, status: "failed" }, ...at })).toBe(false);
+    expect(reviewRunIsCurrent({ run: null, ...at })).toBe(false);
+  });
+});
+
+/* ---------------------------------------------------------- readiness */
+
+const READY = {
+  run: RUN,
+  currentVersionId: "v1",
+  currentFingerprint: "fp-1",
+  currentRevision: 3,
+  findings: [] as { severity: "must_fix" | "consider" | "note"; state: "open" | "accepted" | "kept" | "edited"; versionId: string }[],
+  sources: [{ status: "parsed" }],
+  coverage: { complete: true, outstanding: 0, uncertain: 0 },
+};
+
+describe("what has to be true before a person may approve", () => {
+  it("is ready when everything was read, answered and judged on these words", () => {
+    const readiness = approvalReadiness(READY);
+    expect(readiness.ready).toBe(true);
+    expect(readiness.blockers).toEqual([]);
+  });
+
+  it("is never ready without a review; a missing review is not optional", () => {
+    const readiness = approvalReadiness({ ...READY, run: null });
+    expect(readiness.ready).toBe(false);
+    expect(readiness.blockers[0]).toMatch(/not been reviewed/i);
+  });
+
+  it("is not ready on a failed or still-running review", () => {
+    expect(approvalReadiness({ ...READY, run: { ...RUN, status: "failed" } }).ready).toBe(false);
+    expect(approvalReadiness({ ...READY, run: { ...RUN, status: "running" } }).ready).toBe(false);
+  });
+
+  it("is not ready when the review judged older words or an older context", () => {
+    expect(approvalReadiness({ ...READY, currentVersionId: "v2" }).ready).toBe(false);
+    expect(approvalReadiness({ ...READY, currentRevision: 4 }).ready).toBe(false);
+  });
+
+  it("is not ready while any source went unread", () => {
+    const readiness = approvalReadiness({
+      ...READY,
+      sources: [{ status: "parsed" }, { status: "unsupported" }],
+    });
+    expect(readiness.ready).toBe(false);
+    expect(readiness.blockers.join(" ")).toMatch(/could not be read/i);
+  });
+
+  it("is not ready while anything asked is unanswered or unverifiable", () => {
+    const outstanding = approvalReadiness({
+      ...READY,
+      coverage: { complete: false, outstanding: 2, uncertain: 0 },
+    });
+    expect(outstanding.blockers.join(" ")).toMatch(/2 unanswered/);
+
+    const uncertain = approvalReadiness({
+      ...READY,
+      coverage: { complete: false, outstanding: 0, uncertain: 1 },
+    });
+    expect(uncertain.ready).toBe(false);
+    expect(uncertain.blockers.join(" ")).toMatch(/not verifiable/);
+  });
+
+  it("does not let keeping your own wording clear a must fix", () => {
+    const kept = approvalReadiness({
+      ...READY,
+      findings: [{ severity: "must_fix", state: "kept", versionId: "v1" }],
+    });
+    expect(kept.ready).toBe(false);
+    expect(kept.blockers.join(" ")).toMatch(/keeping your own wording does not clear a must fix/i);
+
+    const open = approvalReadiness({
+      ...READY,
+      findings: [{ severity: "must_fix", state: "open", versionId: "v1" }],
+    });
+    expect(open.ready).toBe(false);
+  });
+
+  it("lets a lesser finding be kept without blocking approval", () => {
+    const readiness = approvalReadiness({
+      ...READY,
+      findings: [
+        { severity: "consider", state: "kept", versionId: "v1" },
+        { severity: "must_fix", state: "accepted", versionId: "v1" },
+      ],
+    });
+    expect(readiness.ready).toBe(true);
+  });
+
+  it("names every blocker at once rather than one at a time", () => {
+    const readiness = approvalReadiness({
+      ...READY,
+      run: null,
+      sources: [{ status: "unreadable" }],
+      coverage: { complete: false, outstanding: 1, uncertain: 0 },
+      findings: [{ severity: "must_fix", state: "open", versionId: "v1" }],
+    });
+    expect(readiness.blockers).toHaveLength(4);
   });
 });

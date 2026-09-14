@@ -40,6 +40,13 @@ export interface ReviewSession {
   recipientName: string | null;
   recipientEmail: string | null;
   status: ReviewSessionStatus;
+  /**
+   * Incremented by the database whenever anything a review depends on moves:
+   * a new version, a source added or removed, or the goal, recipient or
+   * situation edited. An approval is only good for the revision it was made
+   * against.
+   */
+  contextRevision: number;
   createdBy: string | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
@@ -80,6 +87,8 @@ export interface ReviewRun {
   model: string | null;
   promptVersion: string | null;
   contextFingerprint: string | null;
+  /** The session context revision this run read. */
+  contextRevision: number | null;
   stages: string[];
   latencyMs: number | null;
   errorCode: string | null;
@@ -97,6 +106,8 @@ export interface ReviewApproval {
   versionId: string;
   runId: string | null;
   contextFingerprint: string;
+  /** The session context revision this approval was given against. */
+  contextRevision: number | null;
   approvedBy: string;
   approvedAt: ISODateTime;
   approverRole: string | null;
@@ -174,6 +185,8 @@ export function readApproval(input: {
   approvals: ReviewApproval[];
   currentVersionId: string;
   currentFingerprint: string;
+  /** The session's context revision as it stands now. */
+  currentRevision: number;
 }): ApprovalReading {
   const latest = [...input.approvals].sort((a, b) =>
     a.approvedAt < b.approvedAt ? 1 : a.approvedAt > b.approvedAt ? -1 : 0,
@@ -193,6 +206,15 @@ export function readApproval(input: {
       freshness: "stale_version",
       approval: latest,
       note: "The draft has been edited since it was approved. Approve the current version before it goes anywhere.",
+      sendable: false,
+    };
+  }
+
+  if (latest.contextRevision !== null && latest.contextRevision !== input.currentRevision) {
+    return {
+      freshness: "stale_context",
+      approval: latest,
+      note: "The review context changed after this approval, so it no longer covers the message. Review it again and approve the current state.",
       sendable: false,
     };
   }
@@ -243,3 +265,115 @@ export function runAppliesToCurrentVersion(
 
 export const STALE_RUN_NOTE =
   "This review read an earlier version of the draft. Run it again to judge the words as they stand.";
+
+/**
+ * A run only speaks for the work on screen when it judged this version, this
+ * fingerprint and this revision. Any of the three moving makes it history.
+ */
+export function reviewRunIsCurrent(input: {
+  run: Pick<ReviewRun, "versionId" | "contextFingerprint" | "contextRevision" | "status"> | null;
+  currentVersionId: string;
+  currentFingerprint: string;
+  currentRevision: number;
+}): boolean {
+  const run = input.run;
+  if (!run || run.status !== "complete") return false;
+  if (run.versionId !== input.currentVersionId) return false;
+  if (run.contextFingerprint && run.contextFingerprint !== input.currentFingerprint) return false;
+  if (run.contextRevision !== null && run.contextRevision !== input.currentRevision) return false;
+  return true;
+}
+
+/* -------------------------------------------------------------- readiness */
+
+export interface ApprovalReadiness {
+  ready: boolean;
+  /** Plain sentences naming everything standing between here and approval. */
+  blockers: string[];
+}
+
+/**
+ * What has to be true before a person may approve. Deliberately strict:
+ *
+ *   - there is a completed review of exactly this state, not an older one,
+ *     and not no review at all. A missing review is never "optional",
+ *   - every source was genuinely read; an unread attachment means the review
+ *     did not see the whole picture,
+ *   - every obligation is answered. Uncertain and pending are not answered,
+ *   - nothing marked must fix is still standing. Keeping your own wording is
+ *     a legitimate answer to a suggestion, but it does not clear a must fix:
+ *     that takes a new review of the changed words, or a recorded override.
+ *
+ * This is a review-approval gate. It is not, on its own, permission to send.
+ */
+export function approvalReadiness(input: {
+  run: Pick<ReviewRun, "versionId" | "contextFingerprint" | "contextRevision" | "status"> | null;
+  currentVersionId: string;
+  currentFingerprint: string;
+  currentRevision: number;
+  findings: Pick<ReviewFinding, "severity" | "state" | "versionId">[];
+  sources: { status: string }[];
+  coverage: { complete: boolean; outstanding: number; uncertain: number };
+}): ApprovalReadiness {
+  const blockers: string[] = [];
+
+  if (!input.run) {
+    blockers.push("This draft has not been reviewed yet. Run a review before approving it.");
+  } else if (input.run.status !== "complete") {
+    blockers.push(
+      input.run.status === "failed"
+        ? "The last review did not complete, so there is nothing to approve against. Run it again."
+        : "A review is still running. Wait for it to finish.",
+    );
+  } else if (
+    !reviewRunIsCurrent({
+      run: input.run,
+      currentVersionId: input.currentVersionId,
+      currentFingerprint: input.currentFingerprint,
+      currentRevision: input.currentRevision,
+    })
+  ) {
+    blockers.push(STALE_RUN_NOTE);
+  }
+
+  const unread = input.sources.filter((source) => source.status !== "parsed").length;
+  if (unread > 0) {
+    blockers.push(
+      unread === 1
+        ? "One piece of source material could not be read, so the review did not cover it. Paste its text, or remove it."
+        : `${unread} pieces of source material could not be read, so the review did not cover them. Paste their text, or remove them.`,
+    );
+  }
+
+  if (!input.coverage.complete) {
+    const parts: string[] = [];
+    if (input.coverage.outstanding > 0) parts.push(`${input.coverage.outstanding} unanswered`);
+    if (input.coverage.uncertain > 0) parts.push(`${input.coverage.uncertain} not verifiable`);
+    blockers.push(
+      parts.length > 0
+        ? `The reply does not yet cover everything asked: ${parts.join(", ")}.`
+        : "The reply does not yet cover everything that was asked.",
+    );
+  }
+
+  const mustFix = input.findings.filter(
+    (finding) =>
+      finding.severity === "must_fix" && finding.state !== "accepted" && finding.state !== "edited",
+  ).length;
+  if (mustFix > 0) {
+    blockers.push(
+      mustFix === 1
+        ? "One must-fix finding is still standing. Change the words and review again; keeping your own wording does not clear a must fix."
+        : `${mustFix} must-fix findings are still standing. Change the words and review again; keeping your own wording does not clear a must fix.`,
+    );
+  }
+
+  return { ready: blockers.length === 0, blockers };
+}
+
+/**
+ * What approval here does and does not mean. Kept as one sentence so the
+ * screen, the docs and any future send gate say the same thing.
+ */
+export const APPROVAL_SCOPE_NOTE =
+  "Approving records that a person judged these exact words fit to send. It is not a send: no Comms send path reads this approval yet.";
