@@ -449,7 +449,7 @@ describe("threadContextForJudgment", () => {
     expect(threadContextForJudgment([])).toEqual([]);
   });
 
-  it("bounds the window and trims long bodies without dropping short ones", () => {
+  it("bounds the window and keeps long bodies whole", () => {
     const many = Array.from({ length: 12 }, (_, index) =>
       message(
         "inbound",
@@ -461,14 +461,18 @@ describe("threadContextForJudgment", () => {
     expect(entries).toHaveLength(8);
     expect(entries[0]!.text).toBe("Note 4");
 
+    // A real email, long enough that the old 900-character cut would have
+    // dropped the question people bury at the bottom of it.
+    const buried = `${"context. ".repeat(200)}Who owns updates after launch?`;
     const long = threadContextForJudgment([
-      message("inbound", "2026-08-01T10:00:00Z", "x".repeat(2000)),
+      message("inbound", "2026-08-01T10:00:00Z", buried),
       message("inbound", "2026-08-02T10:00:00Z", "short"),
     ]);
-    expect(long[0]!.text.length).toBeLessThanOrEqual(901);
-    expect(long[0]!.text.endsWith("…")).toBe(true);
+    expect(long[0]!.text).toContain("Who owns updates after launch?");
+    expect(long[0]!.complete).toBe(true);
     expect(long[1]!.text).toBe("short");
   });
+
 
   it("falls back to the snippet when no full body is stored", () => {
     const entries = threadContextForJudgment([
