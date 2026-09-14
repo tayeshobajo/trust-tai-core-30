@@ -15,7 +15,12 @@ import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { Markdown } from "@/components/tt/markdown";
 import { MetaPill, PageHeader, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { getVoiceProfile, saveVoiceProfile, type VoiceProfile } from "@/data/supabase/comms-voice";
+import {
+  getVoiceProfile,
+  listVoiceSnapshots,
+  saveVoiceProfile,
+  type VoiceProfile,
+} from "@/data/supabase/comms-voice";
 import { checkVoice } from "@/data/voice-policy";
 import { DEFAULT_VOICE_DOCUMENT, VOICE_RULES } from "@/domain/voice";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -62,6 +67,11 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => getVoiceProfile(identity.organizationId),
   });
 
+  const snapshotsQuery = useQuery({
+    queryKey: ["comms", "voice-snapshots", identity.organizationId],
+    queryFn: () => listVoiceSnapshots(identity.organizationId),
+  });
+
   const save = useMutation({
     mutationFn: (current: VoiceProfile | null) =>
       saveVoiceProfile({
@@ -72,6 +82,17 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
       }),
     onSuccess: async (next) => {
       queryClient.setQueryData(["comms", "voice", identity.organizationId], next);
+      /* Changing how Tai sounds changes what every open review was measured
+         against. Anything that reports readiness has to ask again rather than
+         keep showing an answer that was true under the old rules. */
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["comms", "send-readiness"] }),
+        queryClient.invalidateQueries({ queryKey: ["comms", "review"] }),
+        queryClient.invalidateQueries({ queryKey: ["comms", "reviews", identity.organizationId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["comms", "voice-snapshots", identity.organizationId],
+        }),
+      ]);
       setMode("preview");
     },
   });
@@ -213,6 +234,49 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
                 </ul>
               )
             ) : null}
+          </div>
+
+          <div className="tt-surface p-5">
+            <p className="tt-eyebrow">Versions reviews were held against</p>
+            {snapshotsQuery.isLoading ? (
+              <p className="mt-3 text-[13px] text-muted-foreground">Reading review records…</p>
+            ) : snapshotsQuery.isError ? (
+              <p className="mt-3 text-[13px] text-destructive">
+                {(snapshotsQuery.error as Error).message} Nothing is shown rather than a guess.
+              </p>
+            ) : (snapshotsQuery.data ?? []).length === 0 ? (
+              <p className="mt-3 text-[13px] text-muted-foreground">
+                No review has been held against this document yet, so there is no snapshot to show.
+                There is no separate edit history: a version only leaves a record once a review was
+                actually measured against it.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {(snapshotsQuery.data ?? []).map((snapshot) => (
+                  <li key={`${snapshot.version}-${snapshot.checksum}`}>
+                    <p className="text-[13px] text-foreground">
+                      {snapshot.version === null ? "Version not recorded" : `Version ${snapshot.version}`}
+                      {" · "}
+                      {snapshot.runCount} {snapshot.runCount === 1 ? "review" : "reviews"}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                      {snapshot.checksum ? `sha256 ${snapshot.checksum.slice(0, 12)}` : "no checksum"}
+                      {snapshot.textRetained ? " · exact text kept" : " · text not kept"}
+                    </p>
+                    {snapshot.lastUsedAt ? (
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Last used {new Date(snapshot.lastUsedAt).toLocaleString()}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+              Reviews use this workspace&apos;s own rules only. No message written to another client
+              is ever borrowed as an example: those carry other people&apos;s names, prices and
+              promises.
+            </p>
           </div>
         </aside>
       </div>

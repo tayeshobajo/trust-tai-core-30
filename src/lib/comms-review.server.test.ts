@@ -509,4 +509,34 @@ describe("opening a review records what kind of draft it is", () => {
       attempts.filter((attempt) => attempt.table === "comms_review_sessions").length,
     ).toBeGreaterThan(1);
   });
+  it("refuses sections that do not validate, before anything is written", async () => {
+    const { attempts } = stand(() => ok({ id: SESSION, organization_id: ORG, status: "open" }));
+    await expect(
+      createReviewSession("token", {
+        ...input,
+        sections: { currency: "XBT" } as never,
+      }),
+    ).rejects.toBeInstanceOf(ReviewFailure);
+    expect(attempts).toHaveLength(0);
+  });
+
+  it("refuses sections on a draft that is not a proposal, before anything is written", async () => {
+    const { attempts } = stand(() => ok({ id: SESSION, organization_id: ORG, status: "open" }));
+    await expect(
+      createReviewSession("token", {
+        ...input,
+        kind: "message" as const,
+        sections: {
+          schemaVersion: 1,
+          currency: "USD",
+          scope: "Rebuild the depot page.",
+          deliverables: ["Design"],
+          assumptions: [],
+          nextSteps: [],
+          lines: [{ label: "Design", quantity: "1", unitPrice: "1000" }],
+        } as never,
+      }),
+    ).rejects.toBeInstanceOf(ReviewFailure);
+    expect(attempts).toHaveLength(0);
+  });
 });

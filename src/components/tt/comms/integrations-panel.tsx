@@ -8,6 +8,7 @@
 
 import { MetaPill, SectionHeading, TTCard } from "@/components/tt/primitives";
 import { GmailConnection } from "@/components/tt/comms/gmail-connection";
+import { RuntimeReadiness } from "@/components/tt/comms/runtime-readiness";
 import { AmbientRule } from "@/components/tt/ambient";
 import {
   INTEGRATION_PROVIDER_LABEL,
@@ -63,9 +64,9 @@ export function IntegrationsPanel({
   provisioned: boolean;
 }) {
   return (
-    <section className="space-y-6">
+    <section className="space-y-10">
       <SectionHeading
-        title="Connections"
+        title="Accounts and sync"
         description="Comms reads the outside world only through approved sources, and only under your own access. Nothing is sent from here."
       />
 
@@ -114,6 +115,12 @@ export function IntegrationsPanel({
           );
         })}
       </div>
+
+      <SectionHeading
+        title="Review and sending"
+        description="Kept separate from the accounts above: being connected, being able to review, and being allowed to send are three different things."
+      />
+      <RuntimeReadiness organizationId={organizationId} />
     </section>
   );
 }

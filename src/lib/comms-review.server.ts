@@ -417,6 +417,30 @@ function canonicalBody(body: string, sections?: ProposalSections): string {
 }
 
 /**
+ * Validate proposal sections HERE, before anything is written, whatever door
+ * the call came in by. The HTTP endpoint validates too, but it is not the only
+ * entrypoint: any server caller reaching these functions gets the same check,
+ * so a malformed or mislabelled structure can never reach a first write.
+ */
+function checkedSections(
+  sections: ProposalSections | undefined,
+  kind: DraftKind | null | undefined,
+): ProposalSections | undefined {
+  if (!sections) return undefined;
+  if (kind && kind !== "proposal") {
+    throw new ReviewFailure(
+      "write_failed",
+      "Only a proposal can carry proposal sections. Nothing was saved.",
+    );
+  }
+  const checked = validateProposalSections(sections);
+  if (!checked.ok) {
+    throw new ReviewFailure("write_failed", `${checked.error} Nothing was saved.`);
+  }
+  return checked.sections;
+}
+
+/**
  * Insert a version, keeping its structure with it when the database can hold
  * it. If the structure column is absent the words are still recorded, and the
  * caller is told the structure was not — never that everything was stored.
@@ -512,6 +536,9 @@ export async function createReviewSession(
   structurePersisted: boolean;
 }> {
   const caller = await identify(token, input.organizationId);
+  /* Before the first write, not after it: a structure that does not validate,
+     or that contradicts the kind it claims, stops here with nothing saved. */
+  const sections = checkedSections(input.sections, input.kind);
   const writer = writerClient();
   const now = new Date().toISOString();
 
@@ -579,14 +606,21 @@ export async function createReviewSession(
       session_id: session.id,
       version: 1,
       subject: input.subject?.trim() || null,
-      body: canonicalBody(input.body, input.sections),
+      body: canonicalBody(input.body, sections),
       origin: "intake",
       author_user_id: caller.userId,
       created_at: now,
     },
-    input.sections,
+    sections,
   );
-  if (!first.row) fail("Your draft could not be saved. Nothing was recorded.");
+  /* The session row exists by now. Saying "nothing was recorded" would be
+     false: an empty review is on record, with no words in it. Say exactly
+     that, and name it, so a person can find it rather than hunt a ghost. */
+  if (!first.row) {
+    fail(
+      `Your words could not be saved. An empty review was left open (${session.id}) and holds no draft; open it and write the draft again, or leave it.`,
+    );
+  }
   const structurePersisted = first.structurePersisted;
 
   /* The same material offered twice is one piece of material. Duplicates are
@@ -746,6 +780,9 @@ export async function reviseDraft(
 ): Promise<{ version: ReviewVersion; structurePersisted: boolean }> {
   const caller = await identify(token, input.organizationId);
   const session = await requireSession(caller, input.organizationId, input.sessionId);
+  /* Same check as intake, on the session's own recorded kind: an edit cannot
+     turn a message into a structured proposal by sending sections. */
+  const sections = checkedSections(input.sections, session.kind);
   const writer = writerClient();
 
   const { data } = await caller.client
@@ -767,12 +804,12 @@ export async function reviseDraft(
       session_id: session.id,
       version,
       subject: input.subject?.trim() || null,
-      body: canonicalBody(input.body, input.sections),
+      body: canonicalBody(input.body, sections),
       origin: "edit",
       author_user_id: caller.userId,
       created_at: new Date().toISOString(),
     },
-    input.sections,
+    sections,
   );
   if (!saved.row) fail("That edit could not be saved. Your previous version is unchanged.");
   return { version: toVersion(saved.row), structurePersisted: saved.structurePersisted };
