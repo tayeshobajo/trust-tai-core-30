@@ -904,21 +904,48 @@ export async function runReview(
     voiceVersion: voice.stamp,
   });
 
-  const { data: runRow, error: runError } = await writer
+  const runBase = {
+    organization_id: input.organizationId,
+    session_id: input.sessionId,
+    version_id: input.versionId,
+    status: "running",
+    prompt_version: REVIEW_PROMPT_VERSION,
+    context_fingerprint: fingerprint,
+    stages: [RUN_STAGES.packet, voice.stamp],
+    started_at: new Date().toISOString(),
+    created_by: caller.userId,
+  };
+  /* Provenance as columns, not only as a stage string: which voice profile,
+     which version, a hash of the exact rules the review was held against, and
+     the style material shown. The database freezes these at insertion, so a
+     later edit to the rules invalidates this evidence instead of quietly
+     redefining what the review measured. */
+  const runProvenance = {
+    voice_profile_id: voice.profileId,
+    voice_version: voice.version,
+    voice_snapshot_checksum: voice.rules ? sourceChecksum(voice.rules) : null,
+    style_context_snapshot: {
+      stamp: voice.stamp,
+      title: voice.title,
+      rulesPresent: voice.rules !== null,
+      exampleCount: voice.examples.length,
+      examplesNote: voice.examplesNote,
+      status: voice.status,
+    },
+  };
+
+  let runAttempt = await writer
     .from("comms_review_runs")
-    .insert({
-      organization_id: input.organizationId,
-      session_id: input.sessionId,
-      version_id: input.versionId,
-      status: "running",
-      prompt_version: REVIEW_PROMPT_VERSION,
-      context_fingerprint: fingerprint,
-      stages: [RUN_STAGES.packet, voice.stamp],
-      started_at: new Date().toISOString(),
-      created_by: caller.userId,
-    })
+    .insert({ ...runBase, ...runProvenance } as never)
     .select("*")
     .maybeSingle();
+  if (runAttempt.error && missingColumn(runAttempt.error)) {
+    /* The provenance columns are not there. The review still runs; the stage
+       string still names the voice, and the progress record says the column
+       gate is unmet rather than pretending it is stored. */
+    runAttempt = await writer.from("comms_review_runs").insert(runBase).select("*").maybeSingle();
+  }
+  const { data: runRow, error: runError } = runAttempt;
   if (runError || !runRow) fail("That review could not be started. Nothing was recorded.");
   const startedRun = toRun(runRow as Row);
   const runId = startedRun.id;
