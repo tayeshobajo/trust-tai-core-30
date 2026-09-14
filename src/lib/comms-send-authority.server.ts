@@ -61,10 +61,7 @@ export interface SendCaller {
   maySend: boolean;
 }
 
-export async function identifySender(
-  token: string,
-  organizationId: string,
-): Promise<SendCaller> {
+export async function identifySender(token: string, organizationId: string): Promise<SendCaller> {
   const client = createClient(trustTaiSupabaseUrl(), trustTaiSupabaseKey(), {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },

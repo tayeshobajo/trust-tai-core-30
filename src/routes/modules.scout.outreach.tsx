@@ -135,7 +135,9 @@ async function fetchReady(organizationId: string): Promise<ProspectCard[]> {
       .eq("register", "scout_intro")
       .in("review_state", ["needs_human_review", "approved", "sending", "sent"])
       .in("relationship_id", relIds);
-    const relToProspect = new Map(relRows.map((rel) => [String(rel["id"]), String(rel["prospect_id"])]));
+    const relToProspect = new Map(
+      relRows.map((rel) => [String(rel["id"]), String(rel["prospect_id"])]),
+    );
     for (const draft of (drafts ?? []) as Row[]) {
       const prospect = relToProspect.get(String(draft["relationship_id"]));
       if (prospect) drafted.add(prospect);
@@ -172,9 +174,7 @@ async function fetchDrafts(organizationId: string): Promise<DraftCardData[]> {
     relationshipId: String(row["relationship_id"]),
     subject: str(row["subject"]),
     body: String(row["body"] ?? ""),
-    templateName: str(
-      ((row["rationale"] ?? {}) as Row)["template_name"],
-    ),
+    templateName: str(((row["rationale"] ?? {}) as Row)["template_name"]),
     recipient: str(rel?.["full_name"]) ?? "Unknown",
     company: str(rel?.["company_name"]),
     email: str(rel?.["email"]),
@@ -225,7 +225,9 @@ async function fetchSent(organizationId: string): Promise<SentCardData[]> {
     .eq("direction", "inbound")
     .in("relationship_id", relIds);
   if (!inboundError) {
-    const sentAtByRel = new Map(rows.map((row) => [String(row["relationship_id"]), String(row["updated_at"] ?? "")]));
+    const sentAtByRel = new Map(
+      rows.map((row) => [String(row["relationship_id"]), String(row["updated_at"] ?? "")]),
+    );
     for (const message of (inbound ?? []) as Row[]) {
       const relId = String(message["relationship_id"]);
       const sentAt = sentAtByRel.get(relId);
@@ -398,8 +400,7 @@ function OutreachView({ identity }: { identity: WorkspaceIdentity }) {
   const selectedTemplate =
     activeTemplates.find((template) => template.id === templateId) ?? activeTemplates[0] ?? null;
 
-  const invalidateAll = () =>
-    queryClient.invalidateQueries({ queryKey: ["scout", "outreach"] });
+  const invalidateAll = () => queryClient.invalidateQueries({ queryKey: ["scout", "outreach"] });
 
   const draft = useMutation({
     mutationFn: (prospect: ProspectCard) => {
@@ -488,7 +489,11 @@ function OutreachView({ identity }: { identity: WorkspaceIdentity }) {
           onReject={(id) => reject.mutate(id)}
           busy={approveAndSend.isPending || reject.isPending}
         />
-        <SentColumn sent={sent.data ?? []} loading={sent.isLoading} error={sent.error as Error | null} />
+        <SentColumn
+          sent={sent.data ?? []}
+          loading={sent.isLoading}
+          error={sent.error as Error | null}
+        />
       </div>
     </div>
   );

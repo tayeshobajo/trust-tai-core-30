@@ -17,7 +17,12 @@ const ORG = "org-1";
 const DRAFT = "draft-1";
 const USER = "user-1";
 
-const DRAFT_ROW = { id: DRAFT, subject: "Re: dates", body: "Wednesday works.", relationship_id: "rel-1" };
+const DRAFT_ROW = {
+  id: DRAFT,
+  subject: "Re: dates",
+  body: "Wednesday works.",
+  relationship_id: "rel-1",
+};
 const REL_ROW = { id: "rel-1", email: "megan@northlight.example" };
 
 const FINGERPRINT = outboundFingerprint({
@@ -107,7 +112,10 @@ function table(name: string) {
       world.inserted.push(row);
       return {
         select: () => ({
-          maybeSingle: async () => ({ data: { id: "delivery-1", status: "attempting" }, error: null }),
+          maybeSingle: async () => ({
+            data: { id: "delivery-1", status: "attempting" },
+            error: null,
+          }),
         }),
       };
     }
@@ -203,25 +211,67 @@ describe("a send that is genuinely approved", () => {
 
 describe("refusals reach no provider at all", () => {
   it.each([
-    ["nobody reviewed it", () => { world.session = null; world.approval = null; }],
-    ["it was never approved", () => { world.approval = null; }],
-    ["the review never finished", () => { world.run = { ...world.run, status: "failed" }; }],
+    [
+      "nobody reviewed it",
+      () => {
+        world.session = null;
+        world.approval = null;
+      },
+    ],
+    [
+      "it was never approved",
+      () => {
+        world.approval = null;
+      },
+    ],
+    [
+      "the review never finished",
+      () => {
+        world.run = { ...world.run, status: "failed" };
+      },
+    ],
     [
       "the words were edited after approval",
-      () => { world.approval = { ...world.approval, payload_fingerprint: "other" }; },
+      () => {
+        world.approval = { ...world.approval, payload_fingerprint: "other" };
+      },
     ],
     [
       "the situation moved since the review",
-      () => { world.run = { ...world.run, context_fingerprint: "ctx-2" }; },
+      () => {
+        world.run = { ...world.run, context_fingerprint: "ctx-2" };
+      },
     ],
-    ["the conversation was revised", () => { world.session = { ...world.session, context_revision: 9 }; }],
+    [
+      "the conversation was revised",
+      () => {
+        world.session = { ...world.session, context_revision: 9 };
+      },
+    ],
     [
       "the review still holds a must-fix",
-      () => { world.findings = [{ severity: "must_fix", summary: "The price is wrong." }]; },
+      () => {
+        world.findings = [{ severity: "must_fix", summary: "The price is wrong." }];
+      },
     ],
-    ["the person may only view", () => { world.membership = { role: "member", status: "active" }; }],
-    ["the membership is not active", () => { world.membership = { role: "owner", status: "invited" }; }],
-    ["they belong to no such workspace", () => { world.membership = null; }],
+    [
+      "the person may only view",
+      () => {
+        world.membership = { role: "member", status: "active" };
+      },
+    ],
+    [
+      "the membership is not active",
+      () => {
+        world.membership = { role: "owner", status: "invited" };
+      },
+    ],
+    [
+      "they belong to no such workspace",
+      () => {
+        world.membership = null;
+      },
+    ],
   ])("refuses when %s", async (_label, arrange) => {
     arrange();
     const refused = await refusal();
