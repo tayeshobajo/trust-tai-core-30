@@ -275,10 +275,11 @@ export function DraftsWorkspace({
               Try again
             </TTButton>
           </div>
-        ) : queue.isPending || reviews.isPending ? (
+        ) : loading ? (
           <p className="text-[13px] text-muted-foreground">Reading…</p>
         ) : shown.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">Nothing in this filter.</p>
+
         ) : (
           <ul className="space-y-1.5">
             {shown.map((row) => {
