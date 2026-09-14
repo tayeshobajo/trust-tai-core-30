@@ -230,15 +230,6 @@ export function DraftsWorkspace({
   }, [selection.session, selection.draft, selection.new]);
 
 
-  /* Browser-level protection for the same unsaved typing. */
-  useEffect(() => {
-    if (!intakeDirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [intakeDirty]);
-
-  const failed = queue.error ?? reviews.error;
 
   return (
     <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
