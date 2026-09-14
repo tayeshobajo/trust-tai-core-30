@@ -55,7 +55,7 @@ export async function sendQuickReply(input: {
       ...(input.subject.trim() ? { subject: input.subject.trim() } : {}),
       body,
       // Never "approved": approval is a review decision, recorded server side.
-      reviewState: "needs_review",
+      reviewState: "needs_human_review",
       rationale: {
         quick_reply: true,
         provider_thread_id: input.providerThreadId,
