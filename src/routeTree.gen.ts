@@ -13,6 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as MockupsCommsFamiliarARouteImport } from './routes/mockups.comms-familiar-a'
+import { Route as MockupsCommsFamiliarBRouteImport } from './routes/mockups.comms-familiar-b'
+import { Route as MockupsCommsFamiliarCRouteImport } from './routes/mockups.comms-familiar-c'
 import { Route as MockupsCommsNextRouteImport } from './routes/mockups.comms-next'
 import { Route as MockupsPulseNextRouteImport } from './routes/mockups.pulse-next'
 import { Route as MockupsStudioContentRouteImport } from './routes/mockups.studio-content'
@@ -135,6 +138,21 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
   getParentRoute: () => AuthRoute,
+} as any)
+const MockupsCommsFamiliarARoute = MockupsCommsFamiliarARouteImport.update({
+  id: '/mockups/comms-familiar-a',
+  path: '/mockups/comms-familiar-a',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MockupsCommsFamiliarBRoute = MockupsCommsFamiliarBRouteImport.update({
+  id: '/mockups/comms-familiar-b',
+  path: '/mockups/comms-familiar-b',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MockupsCommsFamiliarCRoute = MockupsCommsFamiliarCRouteImport.update({
+  id: '/mockups/comms-familiar-c',
+  path: '/mockups/comms-familiar-c',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MockupsCommsNextRoute = MockupsCommsNextRouteImport.update({
   id: '/mockups/comms-next',
@@ -678,6 +696,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
+  '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
+  '/mockups/comms-familiar-c': typeof MockupsCommsFamiliarCRoute
   '/mockups/comms-next': typeof MockupsCommsNextRoute
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
@@ -785,6 +806,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
+  '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
+  '/mockups/comms-familiar-c': typeof MockupsCommsFamiliarCRoute
   '/mockups/comms-next': typeof MockupsCommsNextRoute
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
@@ -886,6 +910,9 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
+  '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
+  '/mockups/comms-familiar-c': typeof MockupsCommsFamiliarCRoute
   '/mockups/comms-next': typeof MockupsCommsNextRoute
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
@@ -996,6 +1023,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
+    | '/mockups/comms-familiar-a'
+    | '/mockups/comms-familiar-b'
+    | '/mockups/comms-familiar-c'
     | '/mockups/comms-next'
     | '/mockups/pulse-next'
     | '/mockups/studio-content'
@@ -1103,6 +1133,9 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/auth/callback'
+    | '/mockups/comms-familiar-a'
+    | '/mockups/comms-familiar-b'
+    | '/mockups/comms-familiar-c'
     | '/mockups/comms-next'
     | '/mockups/pulse-next'
     | '/mockups/studio-content'
@@ -1203,6 +1236,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
+    | '/mockups/comms-familiar-a'
+    | '/mockups/comms-familiar-b'
+    | '/mockups/comms-familiar-c'
     | '/mockups/comms-next'
     | '/mockups/pulse-next'
     | '/mockups/studio-content'
@@ -1311,6 +1347,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
+  MockupsCommsFamiliarARoute: typeof MockupsCommsFamiliarARoute
+  MockupsCommsFamiliarBRoute: typeof MockupsCommsFamiliarBRoute
+  MockupsCommsFamiliarCRoute: typeof MockupsCommsFamiliarCRoute
   MockupsCommsNextRoute: typeof MockupsCommsNextRoute
   MockupsPulseNextRoute: typeof MockupsPulseNextRoute
   MockupsStudioContentRoute: typeof MockupsStudioContentRoute
@@ -1404,6 +1443,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/mockups/comms-familiar-a': {
+      id: '/mockups/comms-familiar-a'
+      path: '/mockups/comms-familiar-a'
+      fullPath: '/mockups/comms-familiar-a'
+      preLoaderRoute: typeof MockupsCommsFamiliarARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mockups/comms-familiar-b': {
+      id: '/mockups/comms-familiar-b'
+      path: '/mockups/comms-familiar-b'
+      fullPath: '/mockups/comms-familiar-b'
+      preLoaderRoute: typeof MockupsCommsFamiliarBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mockups/comms-familiar-c': {
+      id: '/mockups/comms-familiar-c'
+      path: '/mockups/comms-familiar-c'
+      fullPath: '/mockups/comms-familiar-c'
+      preLoaderRoute: typeof MockupsCommsFamiliarCRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/mockups/comms-next': {
       id: '/mockups/comms-next'
@@ -2309,6 +2369,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
+  MockupsCommsFamiliarARoute: MockupsCommsFamiliarARoute,
+  MockupsCommsFamiliarBRoute: MockupsCommsFamiliarBRoute,
+  MockupsCommsFamiliarCRoute: MockupsCommsFamiliarCRoute,
   MockupsCommsNextRoute: MockupsCommsNextRoute,
   MockupsPulseNextRoute: MockupsPulseNextRoute,
   MockupsStudioContentRoute: MockupsStudioContentRoute,
