@@ -712,10 +712,40 @@ export async function sendDraftViaGmail(input: {
     return { draftId: draft.id, state: "sending" };
   }
 
-  const result = await gmailSendRequest(accessToken, buildSendRequestBody(raw, target));
+  /* The provider call itself. A transport error here is the one genuinely
+     ambiguous outcome: Gmail may have accepted the message before the
+     connection died. It is recorded as `unknown` on the shared ledger, which
+     blocks any further claim on this exact payload, and the draft is left in
+     `sending` so nothing retries it behind a person's back. */
+  let result: Awaited<ReturnType<typeof gmailSendRequest>>;
+  try {
+    result = await gmailSendRequest(accessToken, buildSendRequestBody(raw, target));
+  } catch (cause) {
+    const detail = cause instanceof Error ? cause.message : "The connection to Gmail failed.";
+    const settled = await settleDelivery({
+      organizationId: input.organizationId,
+      deliveryId: attempt.id,
+      state: "unknown",
+      channel: "email_gmail",
+      error: detail,
+    });
+    return {
+      draftId: draft.id,
+      state: "unknown",
+      error: detail,
+      note: settled.note,
+    };
+  }
 
   if (!result.ok) {
     const failure = classifyGmailSendFailure(result.status, result.text);
+    const settled = await settleDelivery({
+      organizationId: input.organizationId,
+      deliveryId: attempt.id,
+      state: "failed",
+      channel: "email_gmail",
+      error: failure.message,
+    });
     await settleClaim(
       client,
       draft,
@@ -733,6 +763,7 @@ export async function sendDraftViaGmail(input: {
       state: "failed",
       error: failure.message,
       ...(failure.requiredScope ? { requiredScope: failure.requiredScope } : {}),
+      ...(settled.recorded ? {} : { note: settled.note }),
     };
   }
 
@@ -744,23 +775,25 @@ export async function sendDraftViaGmail(input: {
         ? target.providerThreadId
         : "";
   if (!providerMessageId || !providerThreadId) {
-    await settleClaim(
-      client,
-      draft,
-      {
-        ...claimSend,
-        state: "failed",
-        error: "Gmail accepted nothing recognizable. Retry the send.",
-      },
-      "send_failed",
-      false,
-    );
+    /* Gmail answered, but with nothing that identifies a message. Whether it
+       accepted the send cannot be told from this, so it is unknown, not
+       failed, and it is not offered as a retry. */
+    const detail = "Gmail answered without naming a message, so nobody can say whether it went out.";
+    const settled = await settleDelivery({
+      organizationId: input.organizationId,
+      deliveryId: attempt.id,
+      state: "unknown",
+      channel: "email_gmail",
+      error: detail,
+    });
     return {
       draftId: draft.id,
-      state: "failed",
-      error: "Gmail accepted nothing recognizable. Retry the send.",
+      state: "unknown",
+      error: detail,
+      note: settled.note,
     };
   }
+
 
   const sentAt = new Date().toISOString();
 
