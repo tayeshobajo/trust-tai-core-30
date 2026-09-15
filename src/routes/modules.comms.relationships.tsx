@@ -723,7 +723,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           }
           onMarkReviewed={(id) => decideAttention(markReviewed(attentionState, id))}
           onRestoreAttention={(id) => decideAttention(clearAttentionDecision(attentionState, id))}
-          onOpenRelationship={(id) => setSelectedId(id)}
+          onOpenRelationship={openRelationship}
         />
       }
     >
