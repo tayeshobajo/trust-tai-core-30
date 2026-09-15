@@ -23,7 +23,7 @@ const relationship = {
   fullName: "Dana Okoye",
   companyName: "Northlight",
   email: "dana@northlight.test",
-  stage: "prospect",
+  stage: "client",
   intent: "explore",
   nextAction: null,
   metadata: {},
