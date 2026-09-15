@@ -147,3 +147,104 @@ What those words mean here:
 **This is not 100%.** 100% is reached only when every applicable criterion meets
 its own required level; 27 rows require live workspace evidence that does not
 exist yet.
+
+---
+
+## What each kind of evidence does and does not prove
+
+Kept apart deliberately, because they are routinely confused:
+
+1. **Real screens, signed out** (Task 4) — real routes, real CSS, real focus
+   order, axe-core. Proves layout, contrast and keyboard behaviour on what a
+   visitor can reach. Does **not** prove any populated screen.
+2. **Fixtures and component tests** — populated lists, failed reads, long
+   proposals. Proves behaviour of the code. Does **not** prove the database
+   returns those shapes.
+3. **Real provider evaluation** (Tasks 1 and 5) — real model, real prompt,
+   synthetic material. Proves the reviewer's judgment. Does **not** prove the
+   application completes and saves a review.
+4. **Database read-only** — proves what exists today. Nothing was written.
+5. **Tai's feedback** — the only thing that closes P4.4, P4.9 and the Tai half
+   of P8.3. Model scores are not a substitute and are never counted as one.
+
+## Persistence and record state, confirmed 2026-09-15
+
+- Run `b7bee2e2-4b13-476e-9f61-af008d374215` still failed, still
+  `provider_call_failed`, still prompt `comms-review/2026-09-14`, provider and
+  model null. Untouched by six tasks.
+- Sessions `8d418c05-55b8-4dd9-8e83-1d0defbb7a8f` and
+  `2419b89e-f1da-4f7b-95b3-21fd3e15493f` intact; 3 versions.
+- `comms_review_deliveries`: **0 rows**. Nothing has ever been dispatched.
+- `comms_review_runs.opportunities`: **does not exist**. Private review notes
+  are shown once and lost. The minimum secure proposal is
+  `docs/migrations/proposed/20260915120000_comms_review_opportunities.sql`,
+  unapplied, for Codex. A temporary display is not persistence and is not
+  counted as one.
+- No successful persisted run exists. No draft workflow has been completed
+  against real records. The no-send approval boundary is proven against a
+  database double only.
+
+## Release scope, monitoring and rollback
+
+**Scope** — the Comms workspace only: five destinations, intake for Message,
+Email and Proposal, immutable versions, one review per version, one approval
+authority, the delivery ledger, Voice DNA reads and authorized edits,
+Connections. No other room changes. No schema change ships with it; the
+optional private-notes column is separate and is Codex's.
+
+**Monitoring, first week after any deployment** — (a) does a review complete
+and write provider, model, prompt version, voice profile and checksum; (b) does
+any run land `failed` with a `provider_call_failed`, as the historical one did;
+(c) does `comms_review_deliveries` stay empty until a delivery is deliberately
+authorized, and does every row that appears carry a settlement; (d) does any row
+sit at `unknown`, which is a human reconciliation, never a retry; (e) do Drafts
+totals disclose when they cover loaded records only.
+
+**Rollback** — revert the application to the named commit and redeploy. No
+migration is reversed; no review, version, approval or delivery row is deleted.
+The retired `comms-send` function stays retired: restoring version 5 would
+reinstate administrative credentials and browser-trusted approval, and is
+forbidden as a recovery step. Only the candidate commit is an established
+rollback target; any earlier commit needs its compatibility evidence recorded
+first.
+
+## Proposed controlled test — for separate approval, not requested yet
+
+Prepared so it can be approved in one step later. **Not** being requested now,
+because live acceptance still has fixable and unfinished work in front of it.
+
+- Recipient: a Trust Tai-controlled mailbox only, named by Tai at the time.
+  No client address, no real thread.
+- Message: a Message-kind draft titled "Comms delivery check — internal only",
+  one paragraph, no commitments, no figures, no attachments.
+- Path: normal intake, save, review, correct if asked, approval by an owner,
+  one send through the single authority.
+- Expected record: exactly one delivery row, claimed once, settled `sent` with
+  a provider reference, fingerprint matching the approved payload.
+- Stop condition: any refusal, or an `unknown` outcome, ends the test and is
+  reconciled by hand.
+
+## Remaining actions
+
+**Lovable (me)** — nothing is outstanding that can be done without a session.
+Every fixable defect found in this queue is fixed and covered by tests.
+
+**Codex** — review and apply
+`docs/migrations/proposed/20260915120000_comms_review_opportunities.sql` to give
+private review notes real retention (closes C09 / P4.5 retention); confirm
+applied schema against the candidate after it lands.
+
+**Tai** — record ratings in `docs/comms-review-examples-for-tai.md` (P4.4, P4.9,
+Tai half of P8.3); decide C19 scope (learning from decisions: schedule or drop);
+agree or reject the P1.5 N/A on saving raw reply text; provide a signed-in
+session or a QA account so the 27 blocked rows can be run; authorize deployment
+and the controlled test separately if and when he wants them.
+
+## Did this queue resolve acceptance?
+
+**No.** The authentication dependency recorded in Task 1 is unchanged: nothing
+in this environment can sign in to the authorized workspace, so no persisted
+review, no real-record draft workflow and no live tab walkthrough exists.
+Six tasks of independent work were completed and four real defects were fixed,
+but **completion of this queue did not resolve acceptance**. The verdict stays
+**Ready for authorized pilot**, not production.
