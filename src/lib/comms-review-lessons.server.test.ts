@@ -28,6 +28,10 @@ vi.mock("@/lib/intelligence-runtime.server", async (importOriginal) => {
   return { ...actual, runtimeModelCaller };
 });
 
+import {
+  lessonCategory,
+  LESSON_CATALOGUE_VERSION,
+} from "@/domain/comms-lessons";
 import { promoteLesson, ReviewFailure, runReview } from "@/lib/comms-review.server";
 
 const ORG = "org-1";
@@ -45,7 +49,7 @@ const boom = (message: string): Result => ({ data: null, error: { message } });
 
 interface TableStub {
   read?: Result | ((filters: Record<string, unknown>) => Result);
-  insert?: Result;
+  insert?: Result | ((payload: Record<string, unknown>) => Result);
   update?: Result;
 }
 
@@ -86,8 +90,10 @@ function harness(tables: Record<string, TableStub>, user: string | null = USER) 
       const stub = tables[table] ?? {};
       const node = chain(stub.read ?? ok([]), {});
       node["insert"] = (payload: unknown) => {
-        attempts.push({ table, op: "insert", payload: payload as Record<string, unknown> });
-        return chain(stub.insert ?? ok(null));
+        const body = payload as Record<string, unknown>;
+        attempts.push({ table, op: "insert", payload: body });
+        const answer = typeof stub.insert === "function" ? stub.insert(body) : stub.insert;
+        return chain(answer ?? ok(null));
       };
       node["update"] = (payload: unknown) => {
         attempts.push({ table, op: "update", payload: payload as Record<string, unknown> });
@@ -407,5 +413,78 @@ describe("the active set is part of what a review was judged against", () => {
     expect(guidance).toContain("Expect the opening line to give the reason for writing");
     expect(guidance).not.toContain("Acme");
     expect(guidance).not.toContain("flat opener");
+  });
+});
+
+/* ----------------------------------------- a database without the column */
+
+describe("a database missing the newest column still keeps what it supports", () => {
+  it("drops only kept_lessons_snapshot, never the voice provenance", async () => {
+    const runRow = {
+      id: RUN,
+      session_id: SESSION,
+      version_id: VERSION,
+      status: "running",
+      context_revision: 2,
+      started_at: "2026-09-14T09:06:00.000Z",
+      stages: [],
+      coverage: {},
+      limitations: [],
+    };
+    const attempts = harness(
+      reviewTables({
+        comms_review_lessons: { read: ok([lessonRow()]) },
+        comms_review_runs: {
+          /* The real shape of a workspace that has the voice columns and not
+             the newest one: the named column is absent, nothing else is. */
+          insert: (payload) =>
+            "kept_lessons_snapshot" in payload
+              ? {
+                  data: null,
+                  error: {
+                    code: "PGRST204",
+                    message: "Could not find the 'kept_lessons_snapshot' column of 'comms_review_runs' in the schema cache",
+                  },
+                }
+              : ok(runRow),
+        },
+      }),
+    );
+    callModel.mockResolvedValue(MODEL_ANSWER);
+    await runReview("token", { organizationId: ORG, sessionId: SESSION, versionId: VERSION });
+
+    const inserts = attempts.filter(
+      (one) => one.table === "comms_review_runs" && one.op === "insert",
+    );
+    expect(inserts).toHaveLength(2);
+    const retry = inserts[1]!.payload;
+    expect(retry).not.toHaveProperty("kept_lessons_snapshot");
+    /* Everything this database does support is still written down. */
+    expect(retry["voice_profile_id"]).toBe("voice-1");
+    expect(retry["voice_version"]).toBe(3);
+    expect(retry["voice_snapshot_checksum"]).toEqual(expect.any(String));
+    expect(retry["style_context_snapshot"]).toMatchObject({ rulesText: "Write plainly." });
+    /* And the run itself still completed against the habits in force. */
+    expect(String(retry["stages"])).toContain("lessons:");
+    const completion = attempts.find(
+      (one) => one.table === "comms_review_runs" && one.op === "update" && one.payload["status"] === "complete",
+    );
+    expect(completion).toBeDefined();
+  });
+});
+
+describe("the snapshot names the wording, not only the categories", () => {
+  it("records the catalogue version, the lesson ids and the exact sentences", async () => {
+    const { insert } = await runWith(ok([lessonRow()]));
+    const snapshot = insert?.payload["kept_lessons_snapshot"] as Record<string, unknown>;
+    expect(snapshot["catalogueVersion"]).toBe(LESSON_CATALOGUE_VERSION);
+    expect(snapshot["lessons"]).toEqual([
+      {
+        id: "lesson-1",
+        category: "open_with_the_reason",
+        guidance: lessonCategory("open_with_the_reason")?.guidance,
+        promotedAt: "2026-09-16T09:00:00.000Z",
+      },
+    ]);
   });
 });
