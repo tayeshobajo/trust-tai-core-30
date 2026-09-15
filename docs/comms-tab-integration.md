@@ -15,34 +15,34 @@ Five destinations plus a persistent **New draft** action (Message / Email / Prop
 The previous ten destinations are not restored; the retired ones remain reachable
 from inside the work they belong to, and all old links still resolve.
 
-| Tab | Route | Backed by |
-| --- | --- | --- |
-| Dashboard | `/modules/comms` | `commsService.list` → `buildPlan` (`src/domain/comms-plan.ts`), `comms_drafts` (`review_state = needs_human_review`), `listReviews` (`/api/public/comms/review`) |
-| Conversations | `/modules/comms/relationships` | existing relationship room: `comms_relationships`, `comms_messages`, Gmail sync, composer, Save to Scout |
-| Drafts & Reviews | `/modules/comms/drafts` | `DraftQueue` (moved from the Queue page, unchanged behaviour) + `ReviewWorkspace` (review sessions, versions, runs, findings, coverage, approval) |
-| Voice DNA | `/modules/comms/voice` | existing voice profile service (`src/data/supabase/comms-voice.ts`) |
-| Connections | `/modules/comms/integrations` | existing integrations panel, Gmail connection, provider status |
+| Tab              | Route                          | Backed by                                                                                                                                                        |
+| ---------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard        | `/modules/comms`               | `commsService.list` → `buildPlan` (`src/domain/comms-plan.ts`), `comms_drafts` (`review_state = needs_human_review`), `listReviews` (`/api/public/comms/review`) |
+| Conversations    | `/modules/comms/relationships` | existing relationship room: `comms_relationships`, `comms_messages`, Gmail sync, composer, Save to Scout                                                         |
+| Drafts & Reviews | `/modules/comms/drafts`        | `DraftQueue` (moved from the Queue page, unchanged behaviour) + `ReviewWorkspace` (review sessions, versions, runs, findings, coverage, approval)                |
+| Voice DNA        | `/modules/comms/voice`         | existing voice profile service (`src/data/supabase/comms-voice.ts`)                                                                                              |
+| Connections      | `/modules/comms/integrations`  | existing integrations panel, Gmail connection, provider status                                                                                                   |
 
 ### Compatible routes (old deep links preserved)
 
-| Old link | Now |
-| --- | --- |
-| `/modules/comms` (was Relationships) | Dashboard; the relationship room moved to `/modules/comms/relationships` |
-| `/modules/comms/dashboard` | 307 → `/modules/comms/conversations` (same conversation list, unchanged) |
-| `/modules/comms/queue` | 307 → `/modules/comms/drafts` |
-| `/modules/comms/review?session=…` | unchanged; renders under the Drafts & Reviews tab |
-| `/modules/comms/plan`, `/modules/comms/inbox`, `/modules/comms/to-scout` | unchanged routes, off the tab bar, linked contextually |
+| Old link                                                                 | Now                                                                      |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `/modules/comms` (was Relationships)                                     | Dashboard; the relationship room moved to `/modules/comms/relationships` |
+| `/modules/comms/dashboard`                                               | 307 → `/modules/comms/conversations` (same conversation list, unchanged) |
+| `/modules/comms/queue`                                                   | 307 → `/modules/comms/drafts`                                            |
+| `/modules/comms/review?session=…`                                        | unchanged; renders under the Drafts & Reviews tab                        |
+| `/modules/comms/plan`, `/modules/comms/inbox`, `/modules/comms/to-scout` | unchanged routes, off the tab bar, linked contextually                   |
 
 ## Capability → existing service / record
 
-| Capability | Existing service | Record |
-| --- | --- | --- |
-| Replies owed, promises, follow-ups | `buildPlan` / `planItemsFor` | `comms_relationships` (`response_due_at`, `follow_up_due_at`, commitments in metadata) |
-| Drafts held for a human | `comms_drafts` read + `/api/public/comms/review` `action: bind` | `comms_drafts`, `comms_review_sessions` |
-| Review, versions, findings, coverage, approval | `src/lib/comms-review.server.ts` | the seven `comms_review_*` tables (migration `comms_review_runs_hardened`) |
-| Send readiness and dispatch | `src/lib/comms-send-authority.server.ts`, `/api/public/comms/send` | `comms_review_approvals`, `comms_delivery_attempts` (migration `comms_review_delivery_hardened`) |
-| Voice profile and version | `src/data/supabase/comms-voice.ts`, `loadVoicePacket` | `comms_voice_profiles` |
-| Connection state | `src/components/tt/comms/integrations-panel.tsx`, `gmail-connection.tsx` | `comms_integrations` |
+| Capability                                     | Existing service                                                         | Record                                                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Replies owed, promises, follow-ups             | `buildPlan` / `planItemsFor`                                             | `comms_relationships` (`response_due_at`, `follow_up_due_at`, commitments in metadata)           |
+| Drafts held for a human                        | `comms_drafts` read + `/api/public/comms/review` `action: bind`          | `comms_drafts`, `comms_review_sessions`                                                          |
+| Review, versions, findings, coverage, approval | `src/lib/comms-review.server.ts`                                         | the seven `comms_review_*` tables (migration `comms_review_runs_hardened`)                       |
+| Send readiness and dispatch                    | `src/lib/comms-send-authority.server.ts`, `/api/public/comms/send`       | `comms_review_approvals`, `comms_delivery_attempts` (migration `comms_review_delivery_hardened`) |
+| Voice profile and version                      | `src/data/supabase/comms-voice.ts`, `loadVoicePacket`                    | `comms_voice_profiles`                                                                           |
+| Connection state                               | `src/components/tt/comms/integrations-panel.tsx`, `gmail-connection.tsx` | `comms_integrations`                                                                             |
 
 Preserved unchanged by this work: membership rules, immutable versions, context
 revisions, provenance, the idempotent dispatch gate, and the retired legacy edge
@@ -50,13 +50,13 @@ function (still 410).
 
 ## Outcome contract (extends C01–C22)
 
-| ID | Outcome | Status |
-| --- | --- | --- |
-| T01 | Dashboard answers "what needs action and why" from real scoped records; each item opens the exact destination; no invented deadlines; silence alone is not risk | Implemented (code-tested); live-verified pending |
-| T02 | Conversations: real threads, goal, draft, review the same draft, person memory, Save to Scout, honest sources | Consolidated to one surface (the relationship room); code-tested, live-verified pending |
-| T03 | Drafts & Reviews: one page, real list, resume after reload, versions, findings, one role-checked approval; standalone intake for Message/Email/Proposal | Implemented in code — one list with a focused pane, structured proposal sections wired through storage and rehydrated on resume; the two columns they need are proposed, not applied, so kind and structure read as "not recorded" live |
-| T04 | Voice DNA: stored profile, authorized editing, version history, applied version shown in review, saved changes clear readiness | Implemented (code-tested); live-verified pending |
-| T05 | Connections: real account/channel/sending identity, separate facts for connection health, AI availability and send readiness; no secrets shown | Implemented (code-tested); live-verified pending |
+| ID  | Outcome                                                                                                                                                         | Status                                                                                                                                                                                                                                  |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T01 | Dashboard answers "what needs action and why" from real scoped records; each item opens the exact destination; no invented deadlines; silence alone is not risk | Implemented (code-tested); live-verified pending                                                                                                                                                                                        |
+| T02 | Conversations: real threads, goal, draft, review the same draft, person memory, Save to Scout, honest sources                                                   | Consolidated to one surface (the relationship room); code-tested, live-verified pending                                                                                                                                                 |
+| T03 | Drafts & Reviews: one page, real list, resume after reload, versions, findings, one role-checked approval; standalone intake for Message/Email/Proposal         | Implemented in code — one list with a focused pane, structured proposal sections wired through storage and rehydrated on resume; the two columns they need are proposed, not applied, so kind and structure read as "not recorded" live |
+| T04 | Voice DNA: stored profile, authorized editing, version history, applied version shown in review, saved changes clear readiness                                  | Implemented (code-tested); live-verified pending                                                                                                                                                                                        |
+| T05 | Connections: real account/channel/sending identity, separate facts for connection health, AI availability and send readiness; no secrets shown                  | Implemented (code-tested); live-verified pending                                                                                                                                                                                        |
 
 ## Acceptance evidence, slice 1 (navigation + Dashboard)
 
@@ -164,7 +164,6 @@ Date: 2026-09-14. No publish, no client send, no SQL applied.
   fallback. Live-unverified, and neither `kind` nor `structured_source` exists
   in the applied schema yet, so today the screen reports them as not recorded.
 
-
 ### Proposed SQL (not applied)
 
 `docs/migrations/proposed/20260914220000_comms_review_kind.sql` — additive
@@ -182,7 +181,6 @@ Codex review; the app works without it.
 - **Hosted deployment is behind Git**; nothing in this slice is live.
 - No send path has been exercised; suite approval → send integration remains
   explicitly unmet.
-
 
 ## Migration `comms_review_kind` — applied
 
@@ -253,7 +251,6 @@ offers a retry.
   of this slice.
 - T02 Conversations was unaudited at the time of this slice; see Slice 4.
 
-
 ## Slice 4 — Conversations consolidation and T04/T05 corrections
 
 Date: 2026-09-15. No publish, no client send, no schema applied, QA record
@@ -310,7 +307,7 @@ untouched.
 anything" because legacy `comms-send` is a 410 refusal. That was false as a
 statement about the app: `/api/public/comms/send` is a separate governed route
 that dispatches on a valid current approval. The document now says deploying
-adds no *new* send path, that sending still requires a human approval bound to a
+adds no _new_ send path, that sending still requires a human approval bound to a
 completed review (none has completed), and that "no client send during QA" is a
 restraint in the test procedure. It also records a bounded preview-deploy path
 and a commit/diff manifest instead of a false all-or-nothing choice.
@@ -322,3 +319,54 @@ and a commit/diff manifest instead of a false all-or-nothing choice.
   `b7bee2e2-4b13-476e-9f61-af008d374215` and session
   `8d418c05-55b8-4dd9-8e83-1d0defbb7a8f` are untouched.
 - `openai/gpt-5-mini` remains configured and unverified.
+
+## Slice 5 — T02 Conversations in the approved geometry
+
+Code evidence (this environment has no signed-in session; none of this is live
+evidence).
+
+- **Compact header, no hero.** `src/routes/modules.comms.relationships.tsx` no
+  longer renders the gradient `PageHeader` block. One eyebrow row carries the
+  room actions (Roadmap handoff, Close/Reopen conversation, Add relationship),
+  with the five tabs immediately below. The room's own header already states
+  who the person is, so the page does not say it twice.
+- **List plus newest relevant thread.** The workspace is one grid
+  (list 300–320px + room) sized to `calc(100dvh-190px)`, so the reply sits on
+  the first screen instead of below a card stack.
+- **Older history on demand.** `ConversationRoom` opens on the three most
+  recent day groups and offers "Earlier history · N". The earlier days are the
+  same records, rendered when asked for — nothing is summarised or dropped.
+- **Working goal visible with the reply.** The goal row above the composer
+  edits `relationship.nextAction` through the existing `commsService.update`
+  mutation. Real persisted data, no new store, no fixture.
+- **Exact draft → its bound review.** The saved-draft strip gains "Review this
+  draft", which calls the existing `openReview(draftId, organizationId)` and
+  navigates to `/modules/comms/drafts?session=<id>`. One review surface, one
+  approval authority; nothing new was created.
+- **Navigation guard.** `useBlocker` in the room asks before leaving with
+  unsent writing in the reply bar (tab change, record change, back), and
+  `enableBeforeUnload` covers a reload. `ReplyRecordBar` reports its own dirty
+  state; preparing a draft clears it.
+- **Preserved unchanged.** Close/reopen, follow-ups, Scout links, add
+  interaction, export, edit/retract, attachments, the context drawer, the
+  `?relationship=` deep link and the legacy `/modules/comms/conversations`
+  redirect.
+
+### Evidence captured
+
+| Artifact                                                   | What it shows                                                                                                                           |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `/tmp/browser/t02/prod-signedout-desktop.png`              | **Live app, signed out.** The production route fails closed: "This workspace is closed until you sign in." No workspace data is served. |
+| `/tmp/browser/t02/mockup-desktop.png`, `mockup-mobile.png` | **Fixture only.** The approved `/mockups/comms-workspace-v2` geometry the production room was aligned to. Sample data, no records.      |
+
+No signed-in screenshot of the production room exists. This sandbox has no
+Supabase session for the external project and cannot mint one
+(`LOVABLE_BROWSER_AUTH_STATUS=no_supabase`). A signed-in capture requires a
+person to sign in at
+`https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/modules/comms/relationships`.
+
+### Tests run this turn
+
+`comms-runtime-health.test.ts`, `comms-voice-concurrency.test.ts`,
+`comms-proposal-source.test.ts` (the three Codex ran independently at d9fd490,
+15 tests) plus `drafts-workspace.test.tsx` — 4 files, 20 tests, all passing.

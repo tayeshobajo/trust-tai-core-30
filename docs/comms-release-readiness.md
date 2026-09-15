@@ -1,27 +1,36 @@
 # Comms release readiness — a decision document for Tai
 
-Date: 2026-09-14. Nothing in this document has been published, and no message
+Date: 2026-09-15. Nothing in this document has been published, and no message
 has been sent to a client.
 
 ## The short version
 
-**The AI review has never succeeded in production, and it cannot be diagnosed
-from here.** Every screen, gate and record described below is built and tested
-in code, but code tests are not live evidence. The single live attempt failed
-without recording why. The reviewed code now records why — but only once it is
-running in production.
+The AI review has never succeeded in production. The one live attempt recorded
+no reason, because the build that ran it could not record one. The reviewed
+code does record it — once that code is running somewhere a person can sign in.
 
-So the decision in front of you is not "is the feature ready". It is: **deploy
-the reviewed code so the next failure explains itself, or leave production as
-it is and accept that the cause stays unknown.**
+This is **not** a choice between publishing the whole suite and never learning
+the cause. A preview already exists and needs no publish:
 
-## Commit versus what is running
+|                                  |                                                                      |
+| -------------------------------- | -------------------------------------------------------------------- |
+| Preview (Lovable login required) | https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app |
+| Published production             | https://trusttai-os-foundation.lovable.app                           |
+| Custom domain                    | https://cmd.trusttai.com                                             |
 
-| | |
-| --- | --- |
-| Reviewed working commit | `0f0b92f9787cbedd14dc1bef8c08719492f738a0` |
-| Hosted build | behind this commit — the live run wrote the old 16-hex voice checksum, while this code writes SHA-256 |
-| Evidence of the gap | run `b7bee2e2-4b13-476e-9f61-af008d374215`, checksum `e69ea084ee545ebf` |
+The preview serves this project's current build and reads the same external
+Supabase project (`okydosoacqdnursmmenf`) through the same publishable key,
+the same authentication and the same RLS. Using it changes nothing in
+production.
+
+## Pinned scope
+
+|                                      |                                                                                                                                                                                                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Last commit whose full suite was run | `d9fd490cfea8919614e2cb121ac750f5d6d459c2`                                                                                                                                                                                                                                     |
+| Changes on top of it                 | the T02 Conversations geometry slice: earlier-history toggle in the room, compact Comms header, in-room working goal, saved draft → its bound review, navigation guard on unsent writing                                                                                       |
+| Hosted production build              | **not directly observed.** The only evidence is historical: live run `b7bee2e2-4b13-476e-9f61-af008d374215` wrote a 16-hex voice checksum where this code writes SHA-256. That shows the hosted build was older _at that moment_; it is not a reading of what is deployed now. |
+| Unrelated files in the last merge    | `content-service.ts`, `content-request-service.ts`, `projects-service.ts`, `scout-intro-templates.ts`, `roadmap-intel-service.test.ts` — inspected: Prettier reflow only, no behaviour change. Not part of this slice, and nothing further was done to them.                   |
 
 ## What deploying would and would not change
 
@@ -51,29 +60,29 @@ real statement is narrower:
 
 Deploying does **not** change:
 
-- Provider or model configuration. `openai/gpt-5-mini` is what is *configured*;
-  with zero completed runs it is not *verified*, and must not be described as
+- Provider or model configuration. `openai/gpt-5-mini` is what is _configured_;
+  with zero completed runs it is not _verified_, and must not be described as
   working.
 - The legacy `comms-send` refusal (v6).
 
-## A bounded alternative to publishing the suite
+## The bounded path, on the preview
 
-The choice is not "publish everything" versus "never learn the cause". The
-diagnostics are self-contained, and the smaller path is:
+1. Open the preview URL above and sign in there. No publish, no production
+   deployment, no change to provider or model configuration, no change to the
+   workspace's Voice DNA.
+2. Run the review once against a **synthetic QA context only**. Do not touch
+   session `8d418c05-55b8-4dd9-8e83-1d0defbb7a8f` or run
+   `b7bee2e2-4b13-476e-9f61-af008d374215`, and never approve or send.
+3. Copy the failure verbatim: the reviewed code now names provider, model, HTTP
+   status and error category on a failed run.
 
-1. Deploy to the **preview** build (`project--<id>-dev.lovable.app`) rather than
-   production, sign in there, and run the review once.
-2. The exact scope to review before either deploy is the diff of the reviewed
-   commit against the hosted build — the manifest below.
-3. No deployment was made this turn.
+|                     |                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Diagnostics surface | `src/domain/comms-provider-diagnostics.ts`, `src/lib/comms-review.server.ts`                                       |
+| Wording fix         | `src/components/tt/comms/review-workspace.tsx`                                                                     |
+| Send behaviour      | unchanged; the governed route `src/routes/api/public/comms.send.ts` and the legacy edge refusal are both untouched |
 
-| | |
-| --- | --- |
-| Reviewed commit | `0f0b92f9787cbedd14dc1bef8c08719492f738a0` and later |
-| Diagnostics surface | `src/domain/comms-provider-diagnostics.ts`, `src/lib/comms-review.server.ts` |
-| Wording fix | `src/components/tt/comms/review-workspace.tsx` |
-| Send behaviour | unchanged: `src/routes/api/public/comms.send.ts`, `supabase/functions/comms-send` |
-
+No deployment and no publish was made in this turn.
 
 ## The provider failure, stated honestly
 

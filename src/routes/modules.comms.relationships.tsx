@@ -11,7 +11,7 @@
  * caller's own access. Nothing is sent from here; a person always sends.
  */
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
@@ -22,6 +22,7 @@ import { isClosed } from "@/domain/comms-dashboard";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
+import { openReview } from "@/components/tt/comms/draft-queue";
 import { CaptureForm } from "@/components/tt/comms/capture-form";
 import { CommsInbox } from "@/components/tt/comms/comms-inbox";
 import { CommsSidebarPanels } from "@/components/tt/comms/comms-sidebar";
@@ -171,6 +172,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
    * their own attention, not a fact about the relationship.
    */
   const [attentionState, setAttentionState] = useState<AttentionState>(EMPTY_ATTENTION_STATE);
+  /**
+   * Unsaved writing in the reply bar. Leaving the room, changing person or
+   * moving to another tab asks first; nothing is silently thrown away.
+   */
+  const [replyDirty, setReplyDirty] = useState(false);
+  /** The working goal, edited in place and written to the relationship. */
+  const [goalDraft, setGoalDraft] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setAttentionState(loadAttentionState(identity.organizationId));
@@ -572,6 +581,28 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     }
   }
 
+  useBlocker({
+    shouldBlockFn: () => {
+      if (!replyDirty) return false;
+      return !window.confirm("You have an unsent reply here. Leave without keeping it?");
+    },
+    enableBeforeUnload: () => replyDirty,
+  });
+
+  /**
+   * A saved draft becomes a review of exactly that record: the existing
+   * binding endpoint is asked for its review, and the workspace opens on it.
+   * No second review surface, no second approval.
+   */
+  const sendForReview = useMutation({
+    mutationFn: (draftId: string) => openReview(draftId, identity.organizationId),
+    onSuccess: (sessionId) => {
+      setReplyDirty(false);
+      void navigate({ to: "/modules/comms/drafts", search: { session: sessionId } });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (relationshipsQuery.isError) {
     return (
       <div className="mx-auto max-w-reading px-6 py-10">
@@ -630,57 +661,49 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         />
       }
     >
-      <div className="-mx-4 -mt-8 w-auto bg-[linear-gradient(180deg,var(--cloud)_0%,transparent_200px)] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-mt-10 lg:px-8">
-        <PageHeader
-          appId="comms"
-          eyebrow="Comms"
-          title="Relationships, kept warm."
-          supporting="Comms remembers interactions, helps Tai decide the next move, and drafts in Tai's voice so every relationship stays cared for."
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              {selected ? (
-                <SequenceInRoadmap
-                  subject={{
-                    kind: "relationship",
-                    id: selected.id,
-                    label: selected.companyName || selected.fullName,
-                  }}
-                  objective={`Turn the relationship with ${selected.companyName || selected.fullName} into a sequenced path both sides have agreed.`}
-                  blockedBecause={
-                    roadmapHandoffReadiness(selected).ready
-                      ? null
-                      : roadmapHandoffReadiness(selected).because
-                  }
-                  context={{
-                    organizationId: identity.organizationId,
-                    userId: identity.userId,
-                    userLabel: identity.name,
-                  }}
-                />
-              ) : null}
-              {selected ? (
-                <TTButton variant="quiet" onClick={() => setInteracting(true)}>
-                  Add interaction
-                </TTButton>
-              ) : null}
-              {selected ? (
-                <TTButton
-                  variant="quiet"
-                  disabled={closeConversation.isPending}
-                  onClick={() => closeConversation.mutate(!isClosed(selected))}
-                >
-                  {isClosed(selected) ? "Reopen conversation" : "Close conversation"}
-                </TTButton>
-              ) : null}
-
-              <TTButton onClick={() => setCapturing((value) => !value)}>
-                {capturing ? "Close" : "Add relationship"}
+      <div className="-mx-4 -mt-8 w-auto px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-mt-10 lg:px-8">
+        {/* One compact header. The room itself says who this is, so the page
+            does not repeat it in a hero. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <p className="tt-eyebrow">Comms</p>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {selected ? (
+              <SequenceInRoadmap
+                subject={{
+                  kind: "relationship",
+                  id: selected.id,
+                  label: selected.companyName || selected.fullName,
+                }}
+                objective={`Turn the relationship with ${selected.companyName || selected.fullName} into a sequenced path both sides have agreed.`}
+                blockedBecause={
+                  roadmapHandoffReadiness(selected).ready
+                    ? null
+                    : roadmapHandoffReadiness(selected).because
+                }
+                context={{
+                  organizationId: identity.organizationId,
+                  userId: identity.userId,
+                  userLabel: identity.name,
+                }}
+              />
+            ) : null}
+            {selected ? (
+              <TTButton
+                variant="quiet"
+                size="sm"
+                disabled={closeConversation.isPending}
+                onClick={() => closeConversation.mutate(!isClosed(selected))}
+              >
+                {isClosed(selected) ? "Reopen conversation" : "Close conversation"}
               </TTButton>
-            </div>
-          }
-        />
+            ) : null}
+            <TTButton size="sm" onClick={() => setCapturing((value) => !value)}>
+              {capturing ? "Close" : "Add relationship"}
+            </TTButton>
+          </div>
+        </div>
 
-        <div className="mt-5">
+        <div className="mt-3">
           <CommsTabs active="conversations" />
         </div>
 
@@ -703,8 +726,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
         {/* Inbox finds the person; conversation owns the room. Intelligence
           appears when called, context is an overlay drawer, never a column. */}
-        <div className="mt-5 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
-          <aside className="tt-surface max-h-[78vh] overflow-hidden p-0 lg:sticky lg:top-20">
+        <div className="mt-4 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className="tt-surface max-h-[calc(100dvh-190px)] overflow-hidden p-0 lg:sticky lg:top-20">
             <CommsInbox
               view={view}
               page={pageView}
@@ -725,7 +748,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             />
           </aside>
 
-          <main className="tt-surface flex h-[78vh] min-h-[560px] flex-col overflow-hidden p-0">
+          <main className="tt-surface flex h-[calc(100dvh-190px)] min-h-[560px] flex-col overflow-hidden p-0">
             {relationshipsQuery.isLoading ? (
               <p className="p-8 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                 Opening your conversations…
@@ -899,9 +922,61 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                           >
                             Resume draft
                           </TTButton>
+                          <TTButton
+                            size="sm"
+                            type="button"
+                            disabled={sendForReview.isPending}
+                            onClick={() => sendForReview.mutate(activeDraft.id)}
+                          >
+                            {sendForReview.isPending ? "Opening review…" : "Review this draft"}
+                          </TTButton>
                         </div>
                       </div>
                     ) : null}
+                    {/* The working goal, visible with the reply rather than
+                        buried in the context drawer. It is the relationship's
+                        own next action, edited in place and written back. */}
+                    <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-2 sm:px-5">
+                      <span className="tt-eyebrow shrink-0">Goal</span>
+                      {goalDraft !== null ? (
+                        <>
+                          <input
+                            autoFocus
+                            value={goalDraft}
+                            onChange={(event) => setGoalDraft(event.target.value)}
+                            aria-label="What should this conversation achieve?"
+                            className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-card px-2.5 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          />
+                          <TTButton
+                            size="sm"
+                            type="button"
+                            disabled={update.isPending}
+                            onClick={() => {
+                              update.mutate({ nextAction: goalDraft.trim() || null });
+                              setGoalDraft(null);
+                            }}
+                          >
+                            Save goal
+                          </TTButton>
+                          <TTButton
+                            variant="quiet"
+                            size="sm"
+                            type="button"
+                            onClick={() => setGoalDraft(null)}
+                          >
+                            Cancel
+                          </TTButton>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setGoalDraft(selected.nextAction ?? "")}
+                          className="text-left text-[13px] text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {selected.nextAction?.trim() || "No goal set for this conversation yet."}
+                        </button>
+                      )}
+                    </div>
                     <ReplyRecordBar
                       drafting={drafting}
                       busy={recordInteraction.isPending || saveDraft.isPending}
@@ -909,6 +984,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                       purposeHint={move?.needed ? move.action : null}
                       onPrepareDraft={(register, purpose) => void compose(register, purpose)}
                       onRecordInteraction={() => setInteracting(true)}
+                      onDirtyChange={setReplyDirty}
                     />
                   </>
                 )}

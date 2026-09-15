@@ -11,7 +11,8 @@
  * never as a permanent tax on reading width.
  */
 
-import { FileText } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, FileText } from "lucide-react";
 
 import {
   EVENT_LABEL,
@@ -219,6 +220,19 @@ export function ConversationRoom({
   // conversation is doing. Provenance and the rest live in the context drawer.
   const chips = [INTENT_LABEL[effectiveIntent(relationship)], STAGE_LABEL[relationship.stage]];
 
+  /**
+   * The newest relevant part of the thread opens; the rest is real history
+   * kept one click away, so the reply stays on the first screen. Nothing is
+   * hidden permanently and nothing is summarised: the earlier days are the
+   * same records, rendered when asked for.
+   */
+  const RECENT_DAYS = 3;
+  const [showEarlier, setShowEarlier] = useState(false);
+  const earlier = days.length > RECENT_DAYS ? days.slice(0, days.length - RECENT_DAYS) : [];
+  const recent = earlier.length ? days.slice(days.length - RECENT_DAYS) : days;
+  const earlierCount = earlier.reduce((total, day) => total + day.events.length, 0);
+  const shownDays = showEarlier ? days : recent;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-4 py-2.5 sm:px-5">
@@ -296,13 +310,27 @@ export function ConversationRoom({
         {/* The thread gets the room the third rail released, held to a
             readable column rather than stretched edge to edge. */}
         <div className="mx-auto w-full max-w-[880px] space-y-6">
+          {earlier.length ? (
+            <button
+              type="button"
+              onClick={() => setShowEarlier((value) => !value)}
+              aria-expanded={showEarlier}
+              className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronDown
+                aria-hidden
+                className={cn("size-4 transition-transform", showEarlier ? "rotate-180" : "")}
+              />
+              {showEarlier ? "Hide earlier history" : `Earlier history · ${earlierCount}`}
+            </button>
+          ) : null}
           {days.length === 0 ? (
             <p className="py-10 text-center text-[13px] text-muted-foreground">
               Nothing is on the record yet. Add an interaction that already happened, or prepare the
               first message below.
             </p>
           ) : (
-            days.map((day) => (
+            shownDays.map((day) => (
               <section key={day.key} className="space-y-3">
                 <div className="flex items-center gap-3">
                   <span className="h-px flex-1 bg-border" />
