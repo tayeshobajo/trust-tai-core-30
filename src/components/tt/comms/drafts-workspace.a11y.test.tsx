@@ -118,7 +118,7 @@ describe("the real Drafts & Reviews screen", () => {
       capped: true,
     });
     const { container } = view();
-    await waitFor(() => expect(screen.getByText(/Draft d-1|Dana Reid/)).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText(/Dana Reid/).length).toBeGreaterThan(0));
 
     expect(await violations(container)).toEqual([]);
   });
@@ -143,7 +143,7 @@ describe("the real Drafts & Reviews screen", () => {
     fetchQueue.mockResolvedValue([draft("d-1")]);
     listReviews.mockResolvedValue({ rows: [session({})], total: 1, capped: false });
     const { container } = view();
-    await waitFor(() => expect(screen.getByText(/Dana Reid/)).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText(/Dana Reid/).length).toBeGreaterThan(0));
 
     const unnamed = [...container.querySelectorAll("button, a[href]")].filter((el) => {
       const name = (el.getAttribute("aria-label") ?? el.textContent ?? "").trim();
