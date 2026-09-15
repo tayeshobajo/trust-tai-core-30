@@ -570,8 +570,8 @@ describe("listing the reviews", () => {
         USER,
       ),
     );
-    const sessions = await listReviews("token", ORG);
-    expect(sessions).toHaveLength(1);
-    expect(sessions[0]?.id).toBe(SESSION);
+    const page = await listReviews("token", ORG);
+    expect(page.rows).toHaveLength(1);
+    expect(page.rows[0]?.id).toBe(SESSION);
   });
 });
