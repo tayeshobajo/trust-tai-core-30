@@ -134,12 +134,26 @@ export async function callRoadmapProvider(
   }
 }
 
+/**
+ * `json_object` format is refused by the Responses API unless the word "json"
+ * appears in the INPUT messages: the instructions do not count. Room packets
+ * are data, so most of them never happen to contain the word and the call is
+ * rejected with a 400 before any reasoning starts. One short line of framing
+ * satisfies the rule without touching the packet's meaning or the room's
+ * requirements; nothing is added when the word is already there, and a caller
+ * with its own strict schema is left alone.
+ */
+export function inputForJsonObjectFormat(input: string): string {
+  return /json/i.test(input) ? input : `Reply with json only.\n${input}`;
+}
+
 async function runProviderCall(
   selected: NonNullable<ReturnType<typeof selectScoutProvider>>,
   instructions: string,
   input: string,
   options: ProviderCallOptions,
 ): Promise<{ raw: string; provider: string; model: string }> {
+  const jsonObjectFormat = !options.responseFormat && !options.webSearch;
   const doFetch = options.gateway?.fetch ?? fetch;
   const response = await doFetch(selected.endpoint, {
     method: "POST",
@@ -152,7 +166,8 @@ async function runProviderCall(
     body: JSON.stringify({
       model: selected.model,
       instructions,
-      input,
+      input: jsonObjectFormat ? inputForJsonObjectFormat(input) : input,
+
       stream: true,
       store: false,
       reasoning: { effort: "medium", summary: "auto" },
