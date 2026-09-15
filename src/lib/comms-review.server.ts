@@ -427,9 +427,21 @@ function missingColumn(
   return new RegExp(`\\b${column}\\b`, "i").test(text);
 }
 
+/**
+ * The voice provenance columns, named so that a database missing them can be
+ * degraded to deliberately rather than by stripping every extra field.
+ */
+const VOICE_PROVENANCE_COLUMNS = [
+  "voice_profile_id",
+  "voice_version",
+  "voice_snapshot_checksum",
+  "style_context_snapshot",
+] as const;
+
 function fail(message: string): never {
   throw new ReviewFailure("write_failed", message);
 }
+
 
 /**
  * The words that will actually be reviewed.
