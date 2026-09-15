@@ -179,7 +179,11 @@ function table(name: string) {
   chain["update"] = (row: Record<string, unknown>) => {
     if (name === "comms_review_deliveries") world.settled.push(row);
     const done = async () => ({
-      data: world.settleFails ? null : world.settleNoRows ? [] : [{ id: "delivery-1", status: row["status"] }],
+      data: world.settleFails
+        ? null
+        : world.settleNoRows
+          ? []
+          : [{ id: "delivery-1", status: row["status"] }],
       error: world.settleFails ? { code: "XX000", message: "write failed" } : null,
     });
     const updateChain: Record<string, unknown> = {};
