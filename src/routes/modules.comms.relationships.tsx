@@ -793,7 +793,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         {/* Inbox finds the person; conversation owns the room. Intelligence
           appears when called, context is an overlay drawer, never a column. */}
         <div className="mt-4 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="tt-surface max-h-[calc(100dvh-190px)] overflow-hidden p-0 lg:sticky lg:top-20">
+          <aside
+            className={cn(
+              "tt-surface max-h-[calc(100dvh-190px)] overflow-hidden p-0 lg:sticky lg:top-20 lg:block",
+              mobilePane === "room" ? "hidden" : "",
+            )}
+          >
             <CommsInbox
               view={view}
               page={pageView}
@@ -805,16 +810,17 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               health={healthFilter}
               onHealth={(status) => changeView({ health: status })}
               selectedId={selected?.id ?? null}
-              onSelect={(id) => {
-                setSelectedId(id);
-                setDraftError(null);
-                setProfileOpen(false);
-              }}
+              onSelect={openRelationship}
               empty={relationships.length === 0}
             />
           </aside>
 
-          <main className="tt-surface flex h-[calc(100dvh-190px)] min-h-[560px] flex-col overflow-hidden p-0">
+          <main
+            className={cn(
+              "tt-surface h-[calc(100dvh-190px)] min-h-[560px] flex-col overflow-hidden p-0 lg:flex",
+              mobilePane === "list" ? "hidden" : "flex",
+            )}
+          >
             {relationshipsQuery.isLoading ? (
               <p className="p-8 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                 Opening your conversations…
@@ -825,6 +831,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 days={days}
                 health={health}
                 organizationId={context.organizationId}
+                historyGaps={historyGaps}
+                onRetryHistory={() => {
+                  void touchesQuery.refetch();
+                  void messagesQuery.refetch();
+                  void draftsQuery.refetch();
+                }}
+                onBack={() => setMobilePane("list")}
                 onViewProfile={() => setProfileOpen((value) => !value)}
                 onOpenContext={() => setContextOpen(true)}
                 onAddInteraction={() => setInteracting(true)}
