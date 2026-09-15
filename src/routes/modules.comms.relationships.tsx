@@ -361,6 +361,29 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: refresh,
   });
 
+  /**
+   * Closing a conversation is a human decision, recorded on the relationship.
+   * Nothing is archived automatically and nothing is ever sent from here. It
+   * lives in the room now that the room is the only conversation surface.
+   */
+  const closeConversation = useMutation({
+    mutationFn: (closed: boolean) =>
+      setConversationClosed({
+        relationship: selected!,
+        closed,
+        organizationId: identity.organizationId,
+        userId: identity.userId,
+      }),
+    onSuccess: (_row, closed) => {
+      toast.success(closed ? "Conversation closed" : "Conversation reopened", {
+        description: selected?.fullName ?? "",
+      });
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+
   const remember = useMutation({
     mutationFn: (item: Omit<MemoryItem, "at">) => commsService.remember(selected!, item, context),
     onSuccess: refresh,
