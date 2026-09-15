@@ -256,4 +256,3 @@ export async function listVoiceSnapshots(organizationId: ID): Promise<VoiceSnaps
     windowSize: SNAPSHOT_WINDOW,
   };
 }
-

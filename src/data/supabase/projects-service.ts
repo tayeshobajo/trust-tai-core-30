@@ -36,7 +36,6 @@ import {
   type LinkableRoadmap,
 } from "@/domain/project-roadmap-link";
 
-
 import { can, type AccessContext } from "@/domain/access";
 import {
   ROUTE_EVENT_KEY,
@@ -331,8 +330,6 @@ export const projectsService = {
     });
     return next;
   },
-
-
 
   async findByMilestone(milestoneId: ID, organizationId: ID): Promise<ExecutionProject | null> {
     const { data, error } = await supabase

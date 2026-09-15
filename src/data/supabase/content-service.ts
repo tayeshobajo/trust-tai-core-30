@@ -239,7 +239,12 @@ export const contentService = {
     if (existing.data) {
       const current = toItem(existing.data as Row);
       /* A post a person already decided on is history. A rerun leaves it. */
-      if (current.state !== "preparing" && current.state !== "ready" && current.state !== "exception" && current.state !== "failed") {
+      if (
+        current.state !== "preparing" &&
+        current.state !== "ready" &&
+        current.state !== "exception" &&
+        current.state !== "failed"
+      ) {
         return current;
       }
       const { error } = await supabase
@@ -252,9 +257,13 @@ export const contentService = {
     }
 
     const itemId = id("citm");
-    const { error } = await supabase
-      .from("content_items")
-      .insert({ ...row, id: itemId, publish: { state: "none" }, verification: { state: "unverified", because: "Not checked yet." }, created_at: now });
+    const { error } = await supabase.from("content_items").insert({
+      ...row,
+      id: itemId,
+      publish: { state: "none" },
+      verification: { state: "unverified", because: "Not checked yet." },
+      created_at: now,
+    });
     if (error) fail(error);
     return toItem({ ...row, id: itemId, created_at: now });
   },
@@ -401,11 +410,15 @@ export const contentService = {
 
   /* ------------------------------------------------------------- publish */
 
-
   async recordAttempt(
     context: ContentContext,
     item: ContentItem,
-    input: { state: "attempted" | "executed" | "failed"; provider: string; because: string; receipt?: Record<string, unknown> },
+    input: {
+      state: "attempted" | "executed" | "failed";
+      provider: string;
+      because: string;
+      receipt?: Record<string, unknown>;
+    },
   ): Promise<void> {
     const { error } = await supabase.from("content_publish_attempts").insert({
       id: id("cpub"),

@@ -23,7 +23,6 @@ import { RELATIONSHIP_STAGES } from "@/domain/comms";
 import { readMeetingKind, type MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
 
-
 export type Row = Record<string, unknown>;
 
 /** Any Postgrest error is surfaced with its own message, never swallowed. */
@@ -174,7 +173,6 @@ export interface TouchRow {
 
 export const TOUCH_COLUMNS =
   "id, organization_id, relationship_id, thread_id, channel, direction, occurred_at, summary, body, logged_by, meeting_kind, provenance";
-
 
 export function toTouch(row: TouchRow): Touch {
   return {

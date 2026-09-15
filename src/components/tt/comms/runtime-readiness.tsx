@@ -49,11 +49,7 @@ export function RuntimeReadiness({ organizationId }: { organizationId: string })
         {availability.isError ? (
           <p className="text-sm text-destructive">
             {(availability.error as Error).message}{" "}
-            <button
-              type="button"
-              className="underline"
-              onClick={() => void availability.refetch()}
-            >
+            <button type="button" className="underline" onClick={() => void availability.refetch()}>
               Try again
             </button>
           </p>
@@ -116,7 +112,6 @@ export function RuntimeReadiness({ organizationId }: { organizationId: string })
             </div>
           ) : null}
         </div>
-
       </TTCard>
 
       <TTCard className="space-y-3 p-5">

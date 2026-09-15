@@ -49,7 +49,15 @@ describe("reviewRunHealth", () => {
     queue(
       { count: 312 },
       { data: [{ id: "old-success" }] },
-      { data: [{ status: "failed", error_code: "provider_call_failed", started_at: "2026-09-14T00:00:00.000Z" }] },
+      {
+        data: [
+          {
+            status: "failed",
+            error_code: "provider_call_failed",
+            started_at: "2026-09-14T00:00:00.000Z",
+          },
+        ],
+      },
     );
 
     const health = await reviewRunHealth("org-1");

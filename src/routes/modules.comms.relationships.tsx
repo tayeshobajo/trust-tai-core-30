@@ -20,7 +20,6 @@ import { toast } from "sonner";
 import { setConversationClosed } from "@/data/comms-dashboard";
 import { isClosed } from "@/domain/comms-dashboard";
 
-
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { CaptureForm } from "@/components/tt/comms/capture-form";
@@ -387,7 +386,6 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     },
     onError: (error: Error) => toast.error(error.message),
   });
-
 
   const remember = useMutation({
     mutationFn: (item: Omit<MemoryItem, "at">) => commsService.remember(selected!, item, context),

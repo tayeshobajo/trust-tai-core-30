@@ -100,7 +100,6 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
-
   if (voiceQuery.isError) {
     return (
       <div className="mx-auto max-w-reading px-6 py-10">
@@ -177,7 +176,6 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
                       Cancel
                     </TTButton>
                   </div>
-
                 )
               ) : (
                 <MetaPill>View only</MetaPill>
@@ -227,7 +225,6 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
               ) : null}
             </div>
           ) : null}
-
         </section>
 
         <aside className="space-y-6">

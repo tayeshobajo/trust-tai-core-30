@@ -43,7 +43,9 @@ function missingTable(error: unknown): boolean {
 }
 
 function fail(error: unknown): never {
-  throw new Error(missingTable(error) ? CONTENT_COMMAND_MIGRATION : String((error as Error).message));
+  throw new Error(
+    missingTable(error) ? CONTENT_COMMAND_MIGRATION : String((error as Error).message),
+  );
 }
 
 function id(prefix: string): string {
