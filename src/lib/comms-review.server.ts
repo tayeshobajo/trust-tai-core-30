@@ -1841,12 +1841,20 @@ export async function loadReview(
 /** The reviews open in this workspace, newest first. */
 export async function listReviews(token: string, organizationId: string): Promise<ReviewSession[]> {
   const caller = await identify(token, organizationId);
-  const { data } = await caller.client
+  const { data, error } = await caller.client
     .from("comms_review_sessions")
     .select("*")
     .eq("organization_id", organizationId)
     .order("updated_at", { ascending: false })
     .limit(50);
+  /* A read that failed is not a workspace with no reviews in it. Returning an
+     empty list here would reach the queue as a confident "nothing waiting". */
+  if (error) {
+    throw new ReviewFailure(
+      "review_unreadable",
+      "The reviews could not be read just now, so none are listed rather than shown as none. Try again in a moment.",
+    );
+  }
   return ((data ?? []) as Row[]).map(toSession);
 }
 
