@@ -179,7 +179,41 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [replyDirty, setReplyDirty] = useState(false);
   /** The working goal, edited in place and written to the relationship. */
   const [goalDraft, setGoalDraft] = useState<string | null>(null);
+  /**
+   * On a narrow screen the list and the room are two screens, not a stack:
+   * choosing a person opens their conversation, and the room offers the way
+   * back. On desktop both are always visible and this is ignored.
+   */
+  const [mobilePane, setMobilePane] = useState<"list" | "room">("list");
+  /** A pending departure with unsaved writing: Stay or Discard, never silent. */
+  const [leaving, setLeaving] = useState<{ proceed: () => void; reset: () => void } | null>(null);
   const navigate = useNavigate();
+
+  /**
+   * Changing person is a departure too. Unsaved writing is asked about with
+   * the same words as leaving the page, and the switch only happens if the
+   * person chooses to discard.
+   */
+  function openRelationship(id: string) {
+    const go = () => {
+      setSelectedId(id);
+      setDraftError(null);
+      setProfileOpen(false);
+      setGoalDraft(null);
+      setMobilePane("room");
+    };
+    if (replyDirty) {
+      setLeaving({
+        proceed: () => {
+          setReplyDirty(false);
+          go();
+        },
+        reset: () => {},
+      });
+      return;
+    }
+    go();
+  }
 
   useEffect(() => {
     setAttentionState(loadAttentionState(identity.organizationId));
