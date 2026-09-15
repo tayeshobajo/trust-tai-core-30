@@ -117,9 +117,9 @@ export function ReplyRecordBar({
                   size="sm"
                   type="button"
                   onClick={() => {
-                  setValue(purposeHint);
-                  onDirtyChange?.(purposeHint.trim().length > 0);
-                }}
+                    setValue(purposeHint);
+                    onDirtyChange?.(purposeHint.trim().length > 0);
+                  }}
                 >
                   Use this reason
                 </TTButton>

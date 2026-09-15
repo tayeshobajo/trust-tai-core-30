@@ -12,11 +12,11 @@ code does record it — once that code is running somewhere a person can sign in
 This is **not** a choice between publishing the whole suite and never learning
 the cause. A preview already exists and needs no publish:
 
-| | |
-| --- | --- |
+|                                  |                                                                      |
+| -------------------------------- | -------------------------------------------------------------------- |
 | Preview (Lovable login required) | https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app |
-| Published production | https://trusttai-os-foundation.lovable.app |
-| Custom domain | https://cmd.trusttai.com |
+| Published production             | https://trusttai-os-foundation.lovable.app                           |
+| Custom domain                    | https://cmd.trusttai.com                                             |
 
 The preview serves this project's current build and reads the same external
 Supabase project (`okydosoacqdnursmmenf`) through the same publishable key,
@@ -25,12 +25,12 @@ production.
 
 ## Pinned scope
 
-| | |
-| --- | --- |
-| Last commit whose full suite was run | `d9fd490cfea8919614e2cb121ac750f5d6d459c2` |
-| Changes on top of it | the T02 Conversations geometry slice: earlier-history toggle in the room, compact Comms header, in-room working goal, saved draft → its bound review, navigation guard on unsent writing |
-| Hosted production build | **not directly observed.** The only evidence is historical: live run `b7bee2e2-4b13-476e-9f61-af008d374215` wrote a 16-hex voice checksum where this code writes SHA-256. That shows the hosted build was older *at that moment*; it is not a reading of what is deployed now. |
-| Unrelated files in the last merge | `content-service.ts`, `content-request-service.ts`, `projects-service.ts`, `scout-intro-templates.ts`, `roadmap-intel-service.test.ts` — inspected: Prettier reflow only, no behaviour change. Not part of this slice, and nothing further was done to them. |
+|                                      |                                                                                                                                                                                                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Last commit whose full suite was run | `d9fd490cfea8919614e2cb121ac750f5d6d459c2`                                                                                                                                                                                                                                     |
+| Changes on top of it                 | the T02 Conversations geometry slice: earlier-history toggle in the room, compact Comms header, in-room working goal, saved draft → its bound review, navigation guard on unsent writing                                                                                       |
+| Hosted production build              | **not directly observed.** The only evidence is historical: live run `b7bee2e2-4b13-476e-9f61-af008d374215` wrote a 16-hex voice checksum where this code writes SHA-256. That shows the hosted build was older _at that moment_; it is not a reading of what is deployed now. |
+| Unrelated files in the last merge    | `content-service.ts`, `content-request-service.ts`, `projects-service.ts`, `scout-intro-templates.ts`, `roadmap-intel-service.test.ts` — inspected: Prettier reflow only, no behaviour change. Not part of this slice, and nothing further was done to them.                   |
 
 ## What deploying would and would not change
 
@@ -60,8 +60,8 @@ real statement is narrower:
 
 Deploying does **not** change:
 
-- Provider or model configuration. `openai/gpt-5-mini` is what is *configured*;
-  with zero completed runs it is not *verified*, and must not be described as
+- Provider or model configuration. `openai/gpt-5-mini` is what is _configured_;
+  with zero completed runs it is not _verified_, and must not be described as
   working.
 - The legacy `comms-send` refusal (v6).
 
@@ -76,14 +76,13 @@ Deploying does **not** change:
 3. Copy the failure verbatim: the reviewed code now names provider, model, HTTP
    status and error category on a failed run.
 
-| | |
-| --- | --- |
-| Diagnostics surface | `src/domain/comms-provider-diagnostics.ts`, `src/lib/comms-review.server.ts` |
-| Wording fix | `src/components/tt/comms/review-workspace.tsx` |
-| Send behaviour | unchanged; the governed route `src/routes/api/public/comms.send.ts` and the legacy edge refusal are both untouched |
+|                     |                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Diagnostics surface | `src/domain/comms-provider-diagnostics.ts`, `src/lib/comms-review.server.ts`                                       |
+| Wording fix         | `src/components/tt/comms/review-workspace.tsx`                                                                     |
+| Send behaviour      | unchanged; the governed route `src/routes/api/public/comms.send.ts` and the legacy edge refusal are both untouched |
 
 No deployment and no publish was made in this turn.
-
 
 ## The provider failure, stated honestly
 
