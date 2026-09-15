@@ -341,13 +341,22 @@ export function SendComposer({
         );
       } else if (outcome.state === "failed") {
         setError(outcome.error ?? "That send failed. The draft is kept. You can try again.");
+      } else if (outcome.state === "unknown") {
+        /* Neither sent nor failed. Offering a retry here is how a message
+           gets sent twice, so the words say what to check instead. */
+        setError(
+          outcome.note ??
+            `${outcome.error ?? "Gmail never answered."} Nobody can say whether this went out. Check the recipient's thread in Gmail before trying again.`,
+        );
       } else if (outcome.state === "sending") {
         setNotice("Sending through Gmail…");
       } else {
         setNotice(
-          outcome.replayed ? "Already sent, nothing was sent twice." : "Sent through Gmail.",
+          outcome.note ??
+            (outcome.replayed ? "Already sent, nothing was sent twice." : "Sent through Gmail."),
         );
       }
+
       onChanged();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "That send failed.");
