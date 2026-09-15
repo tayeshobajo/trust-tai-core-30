@@ -15,6 +15,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { toast } from "sonner";
+
+import { setConversationClosed } from "@/data/comms-dashboard";
+import { isClosed } from "@/domain/comms-dashboard";
+
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
