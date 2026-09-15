@@ -347,6 +347,12 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
               </li>
             ))}
           </ul>
+          {reviews.data?.capped ? (
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              Counted from the {reviews.data.rows.length} most recent of {reviews.data.total}{" "}
+              reviews, so an older one waiting on approval is not in this number.
+            </p>
+          ) : null}
           {showingNote(Math.min(SHOWN, awaitingApproval.length), awaitingApproval.length) ? (
             <p className="mt-2 text-[12px] text-muted-foreground">
               {showingNote(Math.min(SHOWN, awaitingApproval.length), awaitingApproval.length)}{" "}
