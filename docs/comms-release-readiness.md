@@ -65,23 +65,24 @@ Deploying does **not** change:
   working.
 - The legacy `comms-send` refusal (v6).
 
-## A bounded alternative to publishing the suite
+## The bounded path, on the preview
 
-The choice is not "publish everything" versus "never learn the cause". The
-diagnostics are self-contained, and the smaller path is:
-
-1. Deploy to the **preview** build (`project--<id>-dev.lovable.app`) rather than
-   production, sign in there, and run the review once.
-2. The exact scope to review before either deploy is the diff of the reviewed
-   commit against the hosted build — the manifest below.
-3. No deployment was made this turn.
+1. Open the preview URL above and sign in there. No publish, no production
+   deployment, no change to provider or model configuration, no change to the
+   workspace's Voice DNA.
+2. Run the review once against a **synthetic QA context only**. Do not touch
+   session `8d418c05-55b8-4dd9-8e83-1d0defbb7a8f` or run
+   `b7bee2e2-4b13-476e-9f61-af008d374215`, and never approve or send.
+3. Copy the failure verbatim: the reviewed code now names provider, model, HTTP
+   status and error category on a failed run.
 
 | | |
 | --- | --- |
-| Reviewed commit | `0f0b92f9787cbedd14dc1bef8c08719492f738a0` and later |
 | Diagnostics surface | `src/domain/comms-provider-diagnostics.ts`, `src/lib/comms-review.server.ts` |
 | Wording fix | `src/components/tt/comms/review-workspace.tsx` |
-| Send behaviour | unchanged: `src/routes/api/public/comms.send.ts`, `supabase/functions/comms-send` |
+| Send behaviour | unchanged; the governed route `src/routes/api/public/comms.send.ts` and the legacy edge refusal are both untouched |
+
+No deployment and no publish was made in this turn.
 
 
 ## The provider failure, stated honestly
