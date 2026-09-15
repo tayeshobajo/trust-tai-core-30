@@ -1176,28 +1176,61 @@ export async function runReview(
       examplesNote: voice.examplesNote,
       status: voice.status,
     },
-    /* The exact kept habits this review was held against: the stamp that is
-       in the fingerprint, and the catalogue ids behind it. Style ids only, so
-       nothing from another conversation is stored here either. */
+  };
+  /* The exact kept habits this review was held against: the stamp that is in
+     the fingerprint, the catalogue version, the actual lesson ids, and the
+     exact sentences reused. Style material only, so nothing from another
+     conversation is stored here either. Kept apart from the voice columns
+     because it is a newer column: a database without it must still record
+     everything it does support. */
+  const keptSnapshot = {
     kept_lessons_snapshot: {
       stamp: keptStamp,
       state: kept.state,
+      catalogueVersion: LESSON_CATALOGUE_VERSION,
       categories: keptCategories,
+      lessons: activeLessons(kept.lessons)
+        .map((one) => ({
+          id: one.id,
+          category: one.category,
+          guidance: lessonCategory(one.category)?.guidance ?? null,
+          promotedAt: one.promotedAt,
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
       algorithm: "sha256",
     },
   };
 
+  /* Degrade one named column at a time, never by stripping everything this
+     database does support: a workspace without the newest column must still
+     keep its voice provenance. */
+  let provenanceStored: "full" | "voice_only" | "none" = "full";
   let runAttempt = await writer
     .from("comms_review_runs")
-    .insert({ ...runBase, ...runProvenance } as never)
+    .insert({ ...runBase, ...runProvenance, ...keptSnapshot } as never)
     .select("*")
     .maybeSingle();
-  if (runAttempt.error && missingColumn(runAttempt.error)) {
-    /* The provenance columns are not there. The review still runs; the stage
-       string still names the voice, and the progress record says the column
-       gate is unmet rather than pretending it is stored. */
+  if (runAttempt.error && missingColumn(runAttempt.error, "kept_lessons_snapshot")) {
+    provenanceStored = "voice_only";
+    runAttempt = await writer
+      .from("comms_review_runs")
+      .insert({ ...runBase, ...runProvenance } as never)
+      .select("*")
+      .maybeSingle();
+  }
+  if (
+    runAttempt.error &&
+    VOICE_PROVENANCE_COLUMNS.some((column) => missingColumn(runAttempt.error, column))
+  ) {
+    /* The voice provenance columns are not there either. The review still
+       runs; the stage string still names the voice and the habits, and the
+       progress record says the column gate is unmet rather than pretending
+       the provenance is stored. */
+    provenanceStored = "none";
     runAttempt = await writer.from("comms_review_runs").insert(runBase).select("*").maybeSingle();
   }
+  void provenanceStored;
+
   const { data: runRow, error: runError } = runAttempt;
   if (runError || !runRow) fail("That review could not be started. Nothing was recorded.");
   const startedRun = toRun(runRow as Row);
