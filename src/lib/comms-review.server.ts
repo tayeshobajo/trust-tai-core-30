@@ -42,14 +42,17 @@ import { outboundFingerprint, type DeliveryChannel } from "@/domain/comms-delive
 import {
   activeLessons,
   canPromoteLesson,
+  lessonCategory,
   lessonGuidance,
   lessonSetStamp,
   validateLessonCategory,
   validatePrivateNote,
+  LESSON_CATALOGUE_VERSION,
   LESSONS_UNREADABLE_REFUSAL,
   type LessonSetState,
   type ReviewLesson,
 } from "@/domain/comms-lessons";
+
 import {
   loadDraftForSend,
   outboundPayloadForDraft,
@@ -424,9 +427,21 @@ function missingColumn(
   return new RegExp(`\\b${column}\\b`, "i").test(text);
 }
 
+/**
+ * The voice provenance columns, named so that a database missing them can be
+ * degraded to deliberately rather than by stripping every extra field.
+ */
+const VOICE_PROVENANCE_COLUMNS = [
+  "voice_profile_id",
+  "voice_version",
+  "voice_snapshot_checksum",
+  "style_context_snapshot",
+] as const;
+
 function fail(message: string): never {
   throw new ReviewFailure("write_failed", message);
 }
+
 
 /**
  * The words that will actually be reviewed.
@@ -1176,28 +1191,58 @@ export async function runReview(
       examplesNote: voice.examplesNote,
       status: voice.status,
     },
-    /* The exact kept habits this review was held against: the stamp that is
-       in the fingerprint, and the catalogue ids behind it. Style ids only, so
-       nothing from another conversation is stored here either. */
+  };
+  /* The exact kept habits this review was held against: the stamp that is in
+     the fingerprint, the catalogue version, the actual lesson ids, and the
+     exact sentences reused. Style material only, so nothing from another
+     conversation is stored here either. Kept apart from the voice columns
+     because it is a newer column: a database without it must still record
+     everything it does support. */
+  const keptSnapshot = {
     kept_lessons_snapshot: {
       stamp: keptStamp,
       state: kept.state,
+      catalogueVersion: LESSON_CATALOGUE_VERSION,
       categories: keptCategories,
+      lessons: activeLessons(kept.lessons)
+        .map((one) => ({
+          id: one.id,
+          category: one.category,
+          guidance: lessonCategory(one.category)?.guidance ?? null,
+          promotedAt: one.promotedAt,
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
       algorithm: "sha256",
     },
   };
 
+  /* Degrade one named column at a time, never by stripping everything this
+     database does support: a workspace without the newest column must still
+     keep its voice provenance. */
+  /* Anything missing that we did not name is a real mismatch and surfaces. */
   let runAttempt = await writer
     .from("comms_review_runs")
-    .insert({ ...runBase, ...runProvenance } as never)
+    .insert({ ...runBase, ...runProvenance, ...keptSnapshot } as never)
     .select("*")
     .maybeSingle();
-  if (runAttempt.error && missingColumn(runAttempt.error)) {
-    /* The provenance columns are not there. The review still runs; the stage
-       string still names the voice, and the progress record says the column
-       gate is unmet rather than pretending it is stored. */
+  if (runAttempt.error && missingColumn(runAttempt.error, "kept_lessons_snapshot")) {
+    runAttempt = await writer
+      .from("comms_review_runs")
+      .insert({ ...runBase, ...runProvenance } as never)
+      .select("*")
+      .maybeSingle();
+  }
+  if (
+    runAttempt.error &&
+    VOICE_PROVENANCE_COLUMNS.some((column) => missingColumn(runAttempt.error, column))
+  ) {
+    /* The voice provenance columns are not there either. The review still
+       runs; the stage string still names the voice and the habits, and the
+       progress record says the column gate is unmet rather than pretending
+       the provenance is stored. */
     runAttempt = await writer.from("comms_review_runs").insert(runBase).select("*").maybeSingle();
   }
+
   const { data: runRow, error: runError } = runAttempt;
   if (runError || !runRow) fail("That review could not be started. Nothing was recorded.");
   const startedRun = toRun(runRow as Row);
@@ -2351,11 +2396,18 @@ export async function promoteLesson(
   return toLesson((data ?? {}) as Row);
 }
 
-/** Stop using a lesson. The record stays, with who revoked it and when. */
+/**
+ * Stop using a habit. The record stays, with who revoked it and when.
+ *
+ * Revoking twice is the same answer twice: the original record comes back
+ * unchanged, because the first revocation is the truth of when it stopped
+ * being used. A habit that is not here at all is a different answer, and says
+ * so rather than reporting a success that never happened.
+ */
 export async function revokeLesson(
   token: string,
   input: { organizationId: string; lessonId: string },
-): Promise<void> {
+): Promise<ReviewLesson> {
   const caller = await identify(token, input.organizationId);
   if (!canPromoteLesson(caller.role)) {
     throw new ReviewFailure(
@@ -2363,13 +2415,53 @@ export async function revokeLesson(
       "Only an owner or an admin can revoke a lesson for this workspace.",
     );
   }
-  const { error } = await writerClient()
+  const writer = writerClient();
+  const existing = await writer
+    .from("comms_review_lessons")
+    .select(LESSON_COLUMNS)
+    .eq("id", input.lessonId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+  if (existing.error) {
+    if (missingTable(existing.error)) throw new ReviewFailure("write_failed", LESSONS_UNAVAILABLE);
+    throw new ReviewFailure(
+      "write_failed",
+      "That habit could not be read just now, so nothing was changed. Try again in a moment.",
+    );
+  }
+  const current = (existing.data ?? null) as Row | null;
+  if (!current) {
+    throw new ReviewFailure("not_found", "That habit is not in this workspace, so nothing changed.");
+  }
+  if (nullableStr(current["revoked_at"])) return toLesson(current);
+
+  const { data, error } = await writer
     .from("comms_review_lessons")
     .update({ revoked_at: new Date().toISOString(), revoked_by: caller.userId })
     .eq("id", input.lessonId)
-    .eq("organization_id", input.organizationId);
+    .eq("organization_id", input.organizationId)
+    /* Only a habit still in use. A second revoke that races this one changes
+       nothing and reads the original back below. */
+    .is("revoked_at", null)
+    .select(LESSON_COLUMNS)
+    .maybeSingle();
   if (error) {
     if (missingTable(error)) throw new ReviewFailure("write_failed", LESSONS_UNAVAILABLE);
     fail("That lesson could not be revoked.");
   }
+  const updated = (data ?? null) as Row | null;
+  if (updated) return toLesson(updated);
+
+  const after = await writer
+    .from("comms_review_lessons")
+    .select(LESSON_COLUMNS)
+    .eq("id", input.lessonId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+  const row = (after.data ?? null) as Row | null;
+  if (after.error || !row) {
+    fail("That habit could not be confirmed as stopped, so treat it as still in use.");
+  }
+  return toLesson(row);
 }
+

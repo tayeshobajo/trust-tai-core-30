@@ -45,6 +45,8 @@ interface World {
   /** The context as it stands now, recomputed rather than taken from the run. */
   current: { fingerprint: string; revision: number; currentVersionId: string | null };
   currentThrows: boolean;
+  /** What the context becomes after the attempt is claimed, if anything. */
+  currentAfterClaim: { fingerprint: string; revision: number; currentVersionId: string | null } | null;
   approval: Record<string, unknown> | null;
   run: Record<string, unknown> | null;
   findings: Record<string, unknown>[];
@@ -78,6 +80,7 @@ function freshWorld(): World {
     extraSession: null,
     current: { fingerprint: "ctx-1", revision: 3, currentVersionId: "version-1" },
     currentThrows: false,
+    currentAfterClaim: null,
     approval: {
       id: "approval-1",
       session_id: "session-1",
@@ -226,6 +229,10 @@ vi.mock("@supabase/supabase-js", () => ({ createClient }));
 vi.mock("@/lib/comms-review.server", () => ({
   currentReviewContext: async () => {
     if (world.currentThrows) throw new Error("unreadable");
+    /* Once the attempt is on record, a test may move the context underneath
+       it: that is the promotion-or-revocation race the claim-time recheck
+       exists for. */
+    if (world.currentAfterClaim && world.inserted.length > 0) return world.currentAfterClaim;
     return world.current;
   },
 }));
@@ -475,5 +482,18 @@ describe("what the provider did", () => {
     world.settleFails = true;
     const result = await send();
     expect(result.note).toMatch(/could not be recorded|check/i);
+  });
+});
+
+describe("a habit kept or stopped after the attempt is claimed", () => {
+  it("refuses at the claim, calls no provider, and closes the attempt as failed", async () => {
+    /* The fingerprint carries the kept habits, so keeping or stopping one in
+       the gap between deciding and claiming changes it. */
+    world.currentAfterClaim = { fingerprint: "ctx-2", revision: 3, currentVersionId: "version-1" };
+    const refused = await refusal();
+    expect(refused.message).toMatch(/nothing was sent/i);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(world.settled).toHaveLength(1);
+    expect(world.settled[0]?.["status"]).toBe("failed");
   });
 });

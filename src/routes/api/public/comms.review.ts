@@ -257,12 +257,15 @@ export const Route = createFileRoute("/api/public/comms/review")({
               );
             }
             case "lesson.revoke": {
-              await revokeLesson(token, {
+              /* The record itself comes back, so a repeated revoke returns
+                 the original moment rather than looking like a fresh one. */
+              const lesson = await revokeLesson(token, {
                 organizationId,
                 lessonId: textOf(body["lessonId"]),
               });
-              return Response.json({ ok: true });
+              return Response.json({ ok: true, lesson });
             }
+
             case "approve": {
               return Response.json(
                 await approveVersion(token, {

@@ -17,10 +17,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const settleDelivery = vi.fn();
 const claimDelivery = vi.fn();
 const requireSendApproval = vi.fn();
+/* The second asking: after the attempt is on record and before the provider
+   hears anything, the path checks the context has not moved underneath it. */
+const requireCurrentContextAfterClaim = vi.fn();
 
 vi.mock("@/lib/comms-send-authority.server", () => ({
   requireSendApproval,
   claimDelivery,
+  requireCurrentContextAfterClaim,
   settleDelivery,
   SendRefused: class extends Error {},
 }));

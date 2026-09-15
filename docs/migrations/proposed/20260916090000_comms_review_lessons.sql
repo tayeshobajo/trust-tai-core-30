@@ -20,6 +20,19 @@
 -- Cross-organization reuse is impossible by construction: every foreign key
 -- below carries organization_id, so a row cannot bind a finding, run or draft
 -- from another workspace even if application code asked it to.
+--
+-- Revision 2 (Codex review at b9f9954):
+--  * adds the nullable comms_review_runs.kept_lessons_snapshot column the
+--    application already writes. Nullable on purpose: a run recorded before
+--    this migration has NULL, meaning "not recorded", which is not the same
+--    as a run that genuinely had no habits in force. Old rows are untouched.
+--  * REVOKEs existing default privileges from service_role before granting,
+--    so no inherited DELETE or TRUNCATE survives.
+--  * the source foreign keys no longer cascade: deleting a finding or a run
+--    must not silently take audit history with it. Only the workspace itself
+--    cascades, which is deliberate teardown.
+--  * the immutability trigger now freezes the private note and the whole
+--    revocation pair once revoked.
 
 -- Composite keys the new foreign keys need. Both are additive uniqueness over
 -- columns that are already unique-by-id, so neither can fail on real data.
@@ -30,6 +43,17 @@ ALTER TABLE public.comms_review_runs
 ALTER TABLE public.comms_review_findings
   ADD CONSTRAINT comms_review_findings_run_org_key
   UNIQUE (id, run_id, organization_id);
+
+-- The frozen record of the habits a run was actually held against: the stamp
+-- that is in its context fingerprint, the catalogue version, the exact lesson
+-- ids and the exact sentences reused. Nullable and with no default, so runs
+-- recorded before this column read as "not recorded" rather than as "no
+-- habits were in force". Style material only; nothing from a conversation.
+ALTER TABLE public.comms_review_runs
+  ADD COLUMN IF NOT EXISTS kept_lessons_snapshot jsonb;
+
+COMMENT ON COLUMN public.comms_review_runs.kept_lessons_snapshot IS
+  'Frozen at insertion: the kept writing habits this run was judged against, as stamp, catalogue version, lesson ids and the exact catalogue wording. NULL means not recorded, never none in force.';
 
 CREATE TABLE IF NOT EXISTS public.comms_review_lessons (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -81,12 +105,13 @@ CREATE TABLE IF NOT EXISTS public.comms_review_lessons (
   -- The finding belongs to this run, in this workspace.
   CONSTRAINT comms_review_lessons_finding_fkey
     FOREIGN KEY (source_finding_id, source_run_id, organization_id)
-    REFERENCES public.comms_review_findings(id, run_id, organization_id) ON DELETE CASCADE,
+    -- No cascade: audit history is never taken away by deleting its source.
+    REFERENCES public.comms_review_findings(id, run_id, organization_id) ON DELETE RESTRICT,
   -- ...and that run belongs to this draft, in this workspace. Together these
   -- make "a habit from another client's conversation" unrepresentable.
   CONSTRAINT comms_review_lessons_run_fkey
     FOREIGN KEY (source_run_id, source_session_id, organization_id)
-    REFERENCES public.comms_review_runs(id, session_id, organization_id) ON DELETE CASCADE
+    REFERENCES public.comms_review_runs(id, session_id, organization_id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS comms_review_lessons_org_live_idx
@@ -115,11 +140,19 @@ BEGIN
     OR NEW.promoted_by IS DISTINCT FROM OLD.promoted_by
     OR NEW.promoted_by_role IS DISTINCT FROM OLD.promoted_by_role
     OR NEW.promoted_at IS DISTINCT FROM OLD.promoted_at
+    -- A private note is part of the record of the decision, not a scratchpad.
+    OR NEW.private_note IS DISTINCT FROM OLD.private_note
   THEN
     RAISE EXCEPTION 'A kept habit cannot be edited. Stop using it and keep another.';
   END IF;
-  IF OLD.revoked_at IS NOT NULL AND NEW.revoked_at IS NULL THEN
-    RAISE EXCEPTION 'Revocation is one way.';
+  -- Revocation happens once. Once a row is revoked neither half of the pair
+  -- can be rewritten: not un-revoked, not re-dated, not reattributed. A second
+  -- revoke therefore changes nothing and the original record stands.
+  IF OLD.revoked_at IS NOT NULL
+    AND (NEW.revoked_at IS DISTINCT FROM OLD.revoked_at
+      OR NEW.revoked_by IS DISTINCT FROM OLD.revoked_by)
+  THEN
+    RAISE EXCEPTION 'Revocation is one way and is recorded once.';
   END IF;
   RETURN NEW;
 END;
@@ -135,6 +168,9 @@ CREATE TRIGGER comms_review_lessons_immutable_trg
 REVOKE ALL ON public.comms_review_lessons FROM PUBLIC;
 REVOKE ALL ON public.comms_review_lessons FROM anon;
 REVOKE ALL ON public.comms_review_lessons FROM authenticated;
+-- Including service_role: a GRANT alone would leave any inherited DELETE or
+-- TRUNCATE in place, and this table's history must not be removable.
+REVOKE ALL ON public.comms_review_lessons FROM service_role;
 GRANT SELECT ON public.comms_review_lessons TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.comms_review_lessons TO service_role;
 -- Deliberately no DELETE to service_role: audit history is revoked, never
