@@ -253,6 +253,15 @@ export function ConversationRoom({
     <div className="flex h-full min-h-0 flex-col">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-4 py-2.5 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="shrink-0 rounded-md border border-border px-2 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+            >
+              ← All people
+            </button>
+          ) : null}
           <span
             aria-hidden
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary font-mono text-[12px] text-muted-foreground"
