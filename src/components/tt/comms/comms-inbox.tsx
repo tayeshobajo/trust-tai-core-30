@@ -30,8 +30,6 @@ import {
   SegmentPill,
   SEGMENT_AVATAR,
   SEGMENT_EDGE,
-  SEGMENT_SURFACE,
-  SEGMENT_SURFACE_SELECTED,
 } from "./health-marks";
 import { CommsPagination } from "./pagination";
 
@@ -78,7 +76,7 @@ export function ConversationListItem({
         className={cn(
           "flex w-full items-start gap-3 border-b border-border/70 border-l-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
           SEGMENT_EDGE[segment],
-          active ? SEGMENT_SURFACE_SELECTED[segment] : SEGMENT_SURFACE[segment],
+          active ? "bg-secondary" : "bg-card hover:bg-secondary/60",
         )}
       >
         <span
@@ -144,7 +142,7 @@ function Section({
   if (entries.length === 0) return null;
   return (
     <section>
-      <h3 className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/95 px-3 py-1.5 backdrop-blur">
+      <h3 className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-3 py-2">
         <span className="tt-eyebrow">{title}</span>
         <span className="font-mono text-[10px] text-muted-foreground">{entries.length}</span>
       </h3>

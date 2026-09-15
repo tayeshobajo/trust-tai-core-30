@@ -820,7 +820,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </div>
 
         {capturing ? (
-          <div className="tt-surface mt-5 space-y-5 p-6">
+          <div className="comms-card mt-5 space-y-5 p-4 sm:p-6">
             <CaptureForm
               onCreate={(input) => create.mutate(input)}
               busy={create.isPending}
@@ -841,7 +841,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         <div className="mt-4 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside
             className={cn(
-              "tt-surface max-h-[calc(100dvh-190px)] overflow-hidden p-0 lg:sticky lg:top-20 lg:block",
+              "comms-card max-h-[calc(100dvh-190px)] overflow-hidden p-0 lg:sticky lg:top-20 lg:block",
               mobilePane === "room" ? "hidden" : "",
             )}
           >
@@ -863,7 +863,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
           <main
             className={cn(
-              "tt-surface h-[calc(100dvh-190px)] min-h-[560px] flex-col overflow-hidden p-0 lg:flex",
+              "comms-card h-[calc(100dvh-190px)] min-h-[560px] flex-col overflow-hidden p-0 lg:flex",
               mobilePane === "list" ? "hidden" : "flex",
             )}
           >
@@ -902,8 +902,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 }}
               >
                 {roadmapSignal?.emerging ? (
-                  <div className="border-t border-border bg-violet-50/60 px-5 py-4">
-                    <p className="tt-eyebrow text-violet-700">Roadmap opportunity emerging</p>
+                  <div className="border-t border-border bg-secondary px-5 py-4">
+                    <p className="tt-eyebrow text-foreground">Roadmap opportunity emerging</p>
                     <p className="mt-2 text-[13px] text-muted-foreground">
                       {roadmapSignal.because}
                     </p>
@@ -923,7 +923,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 ) : null}
 
                 {profileOpen ? (
-                  <div className="border-t border-border bg-secondary/30 px-5 py-4">
+                  <div className="border-t border-border bg-secondary px-5 py-4">
                     <RelationshipPersonCard
                       organizationId={context.organizationId}
                       userId={context.userId}
@@ -998,7 +998,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                       draft is never discarded by closing, only by the
                       explicit, confirmed choice here. */}
                     {activeDraft ? (
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-cloud/40 px-4 py-2 sm:px-5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-secondary px-4 py-2 sm:px-5">
                         <p className="min-w-0 truncate text-[12px] text-muted-foreground">
                           <span className="font-medium text-foreground">Draft saved</span>
                           {activeDraft.subject?.trim() ? ` · ${activeDraft.subject.trim()}` : ""}

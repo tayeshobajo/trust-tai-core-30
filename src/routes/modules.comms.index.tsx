@@ -91,14 +91,19 @@ async function waitingDrafts(
     relationship_id?: string | null;
   }[];
   const relationshipIds = rows.flatMap((row) => (row.relationship_id ? [row.relationship_id] : []));
-  const { data: relationships } = relationshipIds.length
+  const relationshipRead = relationshipIds.length
     ? await supabase
         .from("comms_relationships")
         .select("id, full_name, company_name")
         .in("id", relationshipIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (relationshipRead.error) throw new Error(relationshipRead.error.message);
   const names = new Map(
-    ((relationships ?? []) as { id: string; full_name: string; company_name: string | null }[]).map(
+    ((relationshipRead.data ?? []) as {
+      id: string;
+      full_name: string;
+      company_name: string | null;
+    }[]).map(
       (relationship) => [relationship.id, relationship],
     ),
   );

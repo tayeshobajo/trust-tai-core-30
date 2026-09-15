@@ -14,7 +14,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
-import { AmbientRule } from "@/components/tt/ambient";
 import { aiRuntimeAvailability, reviewRunHealth } from "@/data/supabase/comms-runtime-health";
 
 export function RuntimeReadiness({ organizationId }: { organizationId: string }) {
@@ -31,7 +30,7 @@ export function RuntimeReadiness({ organizationId }: { organizationId: string })
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <TTCard className="space-y-3 p-5">
+      <TTCard className="comms-card space-y-3 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-base font-medium text-foreground">Reviewing model</h3>
           <MetaPill>
@@ -44,7 +43,6 @@ export function RuntimeReadiness({ organizationId }: { organizationId: string })
                   : "Not configured"}
           </MetaPill>
         </div>
-        <AmbientRule appId="comms" contextAccent={null} />
 
         {availability.isError ? (
           <p className="text-sm text-destructive">
@@ -114,12 +112,11 @@ export function RuntimeReadiness({ organizationId }: { organizationId: string })
         </div>
       </TTCard>
 
-      <TTCard className="space-y-3 p-5">
+       <TTCard className="comms-card space-y-3 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-base font-medium text-foreground">Whether a message may be sent</h3>
           <MetaPill>Per draft</MetaPill>
         </div>
-        <AmbientRule appId="comms" contextAccent={null} />
         <p className="text-sm leading-relaxed text-muted-foreground">
           This is never a workspace-wide state, so it is not claimed as one. Each draft is judged on
           its own: a completed review of the exact words, no standing must-fix, and an owner or
