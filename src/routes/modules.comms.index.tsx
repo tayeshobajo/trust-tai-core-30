@@ -550,6 +550,9 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
       />
       <CommsTabs active="dashboard" />
 
+      <RecentEmail identity={identity} relationships={relationships.data ?? []} />
+
+
       <div className="columns-1 gap-4 lg:columns-2 [&>section]:mb-4">
         <Section
           title="Replies owed"
