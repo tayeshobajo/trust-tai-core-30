@@ -110,6 +110,17 @@ describe("listRecentEmail", () => {
     expect(read.messages[0]!.mailbox).toBe("tai@trust-tai.com");
   });
 
+  it("never reads outside the organization it was asked for", async () => {
+    response = { data: [row("a", "2026-09-12T09:00:00.000Z", "org-2")], error: null, count: 1 };
+
+    await listRecentEmail("org-2", { limit: 5 });
+
+    expect(calls[0]!["eq:organization_id"]).toBe("org-2");
+    expect(Object.keys(calls[0]!).filter((key) => key.startsWith("eq:"))).toEqual([
+      "eq:organization_id",
+    ]);
+  });
+
   it("reports a failed read as unavailable rather than an empty inbox", async () => {
     response = { data: null, error: { message: "permission denied" }, count: null };
 
