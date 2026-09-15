@@ -644,12 +644,15 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     }
   }
 
-  useBlocker({
-    shouldBlockFn: () => {
-      if (!replyDirty) return false;
-      return !window.confirm("You have an unsent reply here. Leave without keeping it?");
-    },
+  /**
+   * Leaving with writing in the reply bar asks first, in the room's own
+   * words rather than a browser prompt: stay and keep writing, or leave and
+   * lose it. Browser back and reload are covered by the same state.
+   */
+  const leaveGuard = useBlocker({
+    shouldBlockFn: () => replyDirty,
     enableBeforeUnload: () => replyDirty,
+    withResolver: true,
   });
 
   /**
