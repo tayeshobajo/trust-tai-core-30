@@ -1919,12 +1919,27 @@ export async function loadReview(
   };
 }
 
-/** The reviews open in this workspace, newest first. */
-export async function listReviews(token: string, organizationId: string): Promise<ReviewSession[]> {
+/** One page of reviews, with the real number behind it. */
+export interface ReviewPage {
+  rows: ReviewSession[];
+  /** Every review in this workspace, not just the page. */
+  total: number;
+  /** True when the page is a part of the truth, not all of it. */
+  capped: boolean;
+}
+
+/**
+ * The reviews in this workspace, newest first, with the exact total.
+ *
+ * The page is capped; the count is not. Without the count a capped page of
+ * fifty reads as "fifty reviews", and a filter that says "showing 10 of 50"
+ * would be wrong in a workspace with two hundred.
+ */
+export async function listReviews(token: string, organizationId: string): Promise<ReviewPage> {
   const caller = await identify(token, organizationId);
-  const { data, error } = await caller.client
+  const { data, error, count } = await caller.client
     .from("comms_review_sessions")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("organization_id", organizationId)
     .order("updated_at", { ascending: false })
     .limit(50);
@@ -1936,7 +1951,11 @@ export async function listReviews(token: string, organizationId: string): Promis
       "The reviews could not be read just now, so none are listed rather than shown as none. Try again in a moment.",
     );
   }
-  return ((data ?? []) as Row[]).map(toSession);
+  const rows = ((data ?? []) as Row[]).map(toSession);
+  /* A null count means the database did not give one. Saying the page length
+     is the total would be a guess, so the page is marked capped instead. */
+  const total = typeof count === "number" ? count : rows.length;
+  return { rows, total, capped: rows.length < total || count === null };
 }
 
 /* ------------------------------------------------- one record, one answer */

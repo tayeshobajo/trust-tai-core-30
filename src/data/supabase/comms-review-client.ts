@@ -67,10 +67,14 @@ const post = <T>(body: Record<string, unknown>) =>
   call<T>({ method: "POST", body: JSON.stringify(body) });
 
 export function listReviews(organizationId: string) {
-  return call<{ sessions: ReviewSession[] }>(
+  return call<{ sessions: ReviewSession[]; total: number; capped: boolean }>(
     { method: "GET" },
     `${URL}?organizationId=${encodeURIComponent(organizationId)}`,
-  ).then((payload) => payload.sessions);
+  ).then((payload) => ({
+    rows: payload.sessions,
+    total: payload.total,
+    capped: payload.capped,
+  }));
 }
 
 export function loadReview(organizationId: string, sessionId: string) {
