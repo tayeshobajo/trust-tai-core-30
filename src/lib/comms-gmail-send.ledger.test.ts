@@ -29,7 +29,7 @@ const CONNECTION = {
   id: "int-1",
   account_email: "tai@trusttai.example",
   scopes: "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly",
-  connected: true,
+  status: "connected",
 };
 
 const draftRow = {
