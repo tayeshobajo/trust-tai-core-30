@@ -152,8 +152,23 @@ It does not touch data.
 - **Do not reverse the applied migrations.** Reviews, versions, approvals and
   delivery records are user data and evidence. The application tolerates a
   missing optional column; it does not tolerate lost approvals.
-- An older application build against the current schema is safe: extra
-  columns are ignored by older code.
+- **Rolling back the application is not safe in general, and the earlier
+  claim that it was has been withdrawn.** "Older code ignores extra columns"
+  is true only for columns an older build never read. It is false for any
+  build older than a change that added a *safeguard* — a build predating the
+  delivery ledger writes no receipt, and a build predating the hardened
+  approval checks enforces less. So a rollback is safe only to a named
+  commit, and only with the compatibility evidence recorded: that commit's
+  code read against the current schema, plus confirmation that it still
+  enforces one approval authority, exact-version binding, and claim-once
+  delivery. **The only rollback target established so far is
+  `863cafbcc0e9a4771c0aeb2e27633724ffdd15c7` plus this pack's fixes** — the
+  candidate itself. No earlier commit has been checked, so none is approved
+  as a rollback target.
+- Any rollback preserves every record and approval: no migration is reversed,
+  no review, version, approval or delivery row is deleted, and the retired
+  send path stays retired.
+
 - If a delivery is ever left Unknown, reconcile it by hand — check the
   recipient's thread and settle the record. Never retry automatically.
 
