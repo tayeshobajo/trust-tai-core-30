@@ -54,6 +54,7 @@ const KIND_TONE: Record<EventShape["kind"], string> = {
 export function ConversationEvent({
   event,
   organizationId,
+  focused,
   onEdit,
   onRetract,
   onRestore,
@@ -62,6 +63,8 @@ export function ConversationEvent({
   event: EventShape;
   /** The workspace, the access handle for inline images in email bodies. */
   organizationId?: string;
+  /** This is the message a deep link named. Scrolled to and focused, once. */
+  focused?: boolean;
   onEdit?: (touchId: string) => void;
   onRetract?: (touchId: string) => void;
   onRestore?: (touchId: string) => void;
@@ -74,6 +77,15 @@ export function ConversationEvent({
   const isEmail =
     Boolean(event.messageId) && (event.kind === "we_emailed" || event.kind === "they_emailed");
   const chips = fileAttachments(event.attachments);
+  const box = useRef<HTMLDivElement | null>(null);
+
+  // Arriving from a Dashboard row lands on the exact message. This moves the
+  // view and the keyboard focus, and changes no record.
+  useEffect(() => {
+    if (!focused || !box.current) return;
+    box.current.scrollIntoView({ block: "center" });
+    box.current.focus({ preventScroll: true });
+  }, [focused]);
 
   return (
     <li
@@ -83,11 +95,15 @@ export function ConversationEvent({
       )}
     >
       <div
+        ref={box}
+        {...(focused ? { tabIndex: -1 } : {})}
+        {...(event.messageId ? { "data-message-id": event.messageId } : {})}
         className={cn(
           "rounded-2xl border px-3.5 py-2.5",
           side === "center" ? "w-full max-w-[92%] rounded-lg" : "max-w-[85%]",
           side === "us" ? "rounded-br-md" : side === "them" ? "rounded-bl-md" : "",
           KIND_TONE[event.kind],
+          focused ? "ring-2 ring-ring" : "",
           event.retracted ? "opacity-70" : "",
         )}
       >

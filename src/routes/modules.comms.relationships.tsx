@@ -104,9 +104,19 @@ const DESCRIPTION =
 export const Route = createFileRoute("/modules/comms/relationships")({
   // A Scout handoff lands here carrying the relationship it just opened, so
   // Comms opens on exactly that person, never on whoever sorted first.
-  validateSearch: (search: Record<string, unknown>): { relationship?: string } => ({
+  // A Dashboard recent-email row adds the conversation and the exact message
+  // it names, so the room opens on that message rather than the newest one.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { relationship?: string; thread?: string; message?: string } => ({
     ...(typeof search["relationship"] === "string" && search["relationship"]
       ? { relationship: search["relationship"] as string }
+      : {}),
+    ...(typeof search["thread"] === "string" && search["thread"]
+      ? { thread: search["thread"] as string }
+      : {}),
+    ...(typeof search["message"] === "string" && search["message"]
+      ? { message: search["message"] as string }
       : {}),
   }),
   head: () => ({
