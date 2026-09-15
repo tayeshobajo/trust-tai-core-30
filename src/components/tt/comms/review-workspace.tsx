@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 
 import { ProposalComposer } from "@/components/tt/comms/proposal-composer";
 import { DRAFT_KIND_LABEL, type DraftKind } from "@/domain/comms-draft-kind";
-import { renderProposal, type ProposalSections } from "@/domain/comms-proposal";
+import { checkProposal, renderProposal, type ProposalSections } from "@/domain/comms-proposal";
 import { emptyProposal, proposalHasContent } from "@/domain/comms-proposal-source";
 
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
