@@ -285,14 +285,22 @@ export function buildSendRequestBody(
 
 export interface SendOutcome {
   draftId: string;
-  state: "sent" | "sending" | "failed" | "blocked";
+  /**
+   * `unknown` is not a failure and not a success: the provider was called and
+   * never answered, so nobody can say whether the message left. It is never
+   * retried automatically — it waits for a person to reconcile it.
+   */
+  state: "sent" | "sending" | "failed" | "blocked" | "unknown";
   /** True when a repeated click was answered from the record, not re-sent. */
   replayed?: boolean;
   providerMessageId?: string;
   providerThreadId?: string;
   error?: string;
   requiredScope?: string;
+  /** Said out loud when the outcome could not be written down. */
+  note?: string;
 }
+
 
 interface DraftRow {
   id: string;
