@@ -28,7 +28,12 @@ vi.mock("@/lib/intelligence-runtime.server", async (importOriginal) => {
   return { ...actual, runtimeModelCaller };
 });
 
-import { createReviewSession, ReviewFailure, runReview } from "@/lib/comms-review.server";
+import {
+  createReviewSession,
+  listReviews,
+  ReviewFailure,
+  runReview,
+} from "@/lib/comms-review.server";
 
 /* --------------------------------------------------------------- fixtures */
 
@@ -538,5 +543,35 @@ describe("opening a review records what kind of draft it is", () => {
       }),
     ).rejects.toBeInstanceOf(ReviewFailure);
     expect(attempts).toHaveLength(0);
+  });
+});
+
+describe("listing the reviews", () => {
+  it("a failed list read refuses rather than reporting an empty workspace", async () => {
+    const attempts: Attempt[] = [];
+    createClient.mockImplementation(() =>
+      fakeClient(baseTables({ comms_review_sessions: { read: boom("timeout") } }), attempts, USER),
+    );
+    const failure = await failureOf(listReviews("token", ORG));
+    expect(failure.code).toBe("review_unreadable");
+    expect(failure.message).toContain("could not be read");
+  });
+
+  it("lists what it read when the read succeeds", async () => {
+    const attempts: Attempt[] = [];
+    createClient.mockImplementation(() =>
+      fakeClient(
+        baseTables({
+          comms_review_sessions: {
+            read: ok([{ id: SESSION, organization_id: ORG, status: "open", kind: "proposal" }]),
+          },
+        }),
+        attempts,
+        USER,
+      ),
+    );
+    const sessions = await listReviews("token", ORG);
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.id).toBe(SESSION);
   });
 });

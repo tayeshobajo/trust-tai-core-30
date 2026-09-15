@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 
 import { ProposalComposer } from "@/components/tt/comms/proposal-composer";
 import { DRAFT_KIND_LABEL, type DraftKind } from "@/domain/comms-draft-kind";
-import { renderProposal, type ProposalSections } from "@/domain/comms-proposal";
+import { checkProposal, renderProposal, type ProposalSections } from "@/domain/comms-proposal";
 import { emptyProposal, proposalHasContent } from "@/domain/comms-proposal-source";
 
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
@@ -369,6 +369,13 @@ export function ReviewDetail({
   const structured = structure !== null && !asPlainText;
   const sections = editedSections ?? structure?.sections ?? null;
   const bodyText = edited ?? current?.body ?? "";
+  /* Pricing and scope problems are read from the sections, so they are named
+     while the sections still exist — including while the person is converting
+     to plain text, which is exactly when an unresolved blocker would otherwise
+     disappear behind a tidier paragraph. */
+  const proposalIssues = sections ? checkProposal(sections) : [];
+  const blockingIssues = proposalIssues.filter((issue) => issue.blocking);
+
   const dirty = structured
     ? sections !== null &&
       structure !== null &&
@@ -517,6 +524,33 @@ export function ReviewDetail({
               This version cannot be rebuilt from its structure.
             </p>
           ) : null}
+          {proposalIssues.length > 0 ? (
+            <div
+              className="rounded-lg border border-border bg-card/60 p-4"
+              data-testid="proposal-issues"
+            >
+              <h4 className="text-sm font-medium text-foreground">
+                {blockingIssues.length > 0
+                  ? "Unresolved in the numbers"
+                  : "Worth settling before this goes out"}
+              </h4>
+              <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+                {proposalIssues.map((issue) => (
+                  <li key={issue.code + issue.message}>
+                    {issue.blocking ? <span className="text-foreground">Blocking — </span> : null}
+                    {issue.message}
+                  </li>
+                ))}
+              </ul>
+              {asPlainText && blockingIssues.length > 0 ? (
+                <p className="mt-2 text-xs text-foreground">
+                  Saving as plain text does not settle these. The sections go, so nothing checks the
+                  numbers after that — rewriting the paragraph will not make them right.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap gap-3">
             <TTButton
               onClick={() => save.mutate()}
