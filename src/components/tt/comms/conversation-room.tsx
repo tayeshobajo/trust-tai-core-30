@@ -220,6 +220,19 @@ export function ConversationRoom({
   // conversation is doing. Provenance and the rest live in the context drawer.
   const chips = [INTENT_LABEL[effectiveIntent(relationship)], STAGE_LABEL[relationship.stage]];
 
+  /**
+   * The newest relevant part of the thread opens; the rest is real history
+   * kept one click away, so the reply stays on the first screen. Nothing is
+   * hidden permanently and nothing is summarised: the earlier days are the
+   * same records, rendered when asked for.
+   */
+  const RECENT_DAYS = 3;
+  const [showEarlier, setShowEarlier] = useState(false);
+  const earlier = days.length > RECENT_DAYS ? days.slice(0, days.length - RECENT_DAYS) : [];
+  const recent = earlier.length ? days.slice(days.length - RECENT_DAYS) : days;
+  const earlierCount = earlier.reduce((total, day) => total + day.events.length, 0);
+  const shownDays = showEarlier ? days : recent;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-4 py-2.5 sm:px-5">
