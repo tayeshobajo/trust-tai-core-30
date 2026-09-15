@@ -452,6 +452,60 @@ export async function claimDelivery(input: {
 }
 
 /**
+ * Ask the same question again, after the attempt has been claimed and before
+ * the provider is touched.
+ *
+ * The check before the claim can be overtaken: a writing habit kept or
+ * stopped in that gap changes the context fingerprint, so the approval no
+ * longer covers what would go out. This closes that window — the claim is
+ * settled as failed, nothing is handed to a provider, and the refusal says
+ * what changed.
+ */
+export async function requireCurrentContextAfterClaim(
+  caller: SendCaller,
+  input: {
+    organizationId: string;
+    draftId: string;
+    payload: OutboundPayload;
+    deliveryId: string;
+    channel: DeliveryChannel;
+  },
+  deps: { currentContext?: typeof currentReviewContext } = {},
+): Promise<void> {
+  let recheck: SendReadiness;
+  try {
+    recheck = await reviewReadinessForSend(
+      caller,
+      { organizationId: input.organizationId, draftId: input.draftId, payload: input.payload },
+      deps,
+    );
+  } catch (error) {
+    await settleDelivery({
+      organizationId: input.organizationId,
+      deliveryId: input.deliveryId,
+      state: "failed",
+      channel: input.channel,
+      error: (error as Error).message,
+    });
+    throw error;
+  }
+  if (recheck.decision.allowed) return;
+  await settleDelivery({
+    organizationId: input.organizationId,
+    deliveryId: input.deliveryId,
+    state: "failed",
+    channel: input.channel,
+    error: recheck.decision.message,
+  });
+  throw new SendRefused(
+    recheck.decision.code,
+    `${recheck.decision.message} This changed while the send was being recorded, so nothing was sent.`,
+    recheck.decision.blockers,
+  );
+}
+
+/**
+
  * Write down what actually happened, and only over an attempt that is still
  * in flight: a settled attempt is never rewritten. If the receipt cannot be
  * stored after the provider accepted the message, that is said plainly and
