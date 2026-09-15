@@ -168,6 +168,52 @@ export const EVAL_CASES: EvalCase[] = [
     },
   },
   {
+    id: "handover_guide_ambiguous",
+    catches:
+      "\"Tai will be your guide\" is read as an answer to who sends the guide. It names a role, not a sender, so the question is still open.",
+    packet: {
+      situation: "They asked who sends the handover guide before the training day.",
+      goal: "Tell them who sends it.",
+      recipient: { name: "Elena Marsh", email: "elena@fieldpost.example" },
+      sources: [source("Her email", "Who sends the handover guide?")],
+      obligations: [
+        { obligationId: "s1:0", kind: "question", text: "Who sends the handover guide?" },
+      ],
+      draft: {
+        subject: "Re: training day",
+        body: "The training day is on Tuesday, and Tai will be your guide on the day.",
+        version: 1,
+      },
+      writtenBy: TAI,
+    },
+    expect: {
+      unanswered: ["s1:0"],
+      flags: [{ kinds: ["omission", "ambiguity"], about: "guide" }],
+      forbidden: ["Monday", "Wednesday"],
+    },
+  },
+  {
+    id: "handover_guide_answered",
+    catches:
+      "A sentence that does name the sender is still treated as unanswered, so a correct reply never clears.",
+    packet: {
+      situation: "They asked who sends the handover guide before the training day.",
+      goal: "Tell them who sends it.",
+      recipient: { name: "Elena Marsh", email: "elena@fieldpost.example" },
+      sources: [source("Her email", "Who sends the handover guide?")],
+      obligations: [
+        { obligationId: "s1:0", kind: "question", text: "Who sends the handover guide?" },
+      ],
+      draft: {
+        subject: "Re: training day",
+        body: "The training day is on Tuesday. Tai will send the handover guide beforehand.",
+        version: 1,
+      },
+      writtenBy: TAI,
+    },
+    expect: { answered: ["s1:0"] },
+  },
+  {
     id: "unsupported_commitment",
     catches: "A promise nothing in the packet supports is left standing.",
     packet: {

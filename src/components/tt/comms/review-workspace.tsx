@@ -28,13 +28,16 @@ import {
   approveReview,
   createReview,
   decideFinding,
+  keepLesson,
+  revokeLesson,
   listReviews,
   loadReview,
   reviseDraft,
   runReview,
   sendReadiness,
 } from "@/data/supabase/comms-review-client";
-import { canApproveReview } from "@/domain/comms-review";
+import { canApproveReview, privateNotesReading } from "@/domain/comms-review";
+import { LessonsPanel } from "@/components/tt/comms/lessons-panel";
 import type { ObligationVerdict } from "@/domain/comms-obligations";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
@@ -441,6 +444,21 @@ export function ReviewDetail({
     onError: (cause: Error) => setError(cause.message),
   });
 
+  /* Keeping and revoking a lesson are human acts, each one explicit. */
+  const keep = useMutation({
+    mutationFn: (input: { findingId: string; lesson: string }) =>
+      keepLesson({ organizationId: identity.organizationId, ...input }),
+    onSuccess: () => void refresh(),
+    onError: (cause: Error) => setError(cause.message),
+  });
+
+  const revoke = useMutation({
+    mutationFn: (lessonId: string) =>
+      revokeLesson({ organizationId: identity.organizationId, lessonId }),
+    onSuccess: () => void refresh(),
+    onError: (cause: Error) => setError(cause.message),
+  });
+
   const decide = useMutation({
     mutationFn: (input: { findingId: string; state: "accepted" | "kept" }) =>
       decideFinding({ organizationId: identity.organizationId, ...input }),
@@ -459,6 +477,7 @@ export function ReviewDetail({
     );
   }
 
+  const privateNotes = privateNotesReading(state.latestRun);
   const mustFix = state.findings.filter((finding) => finding.severity === "must_fix");
   const rest = state.findings.filter((finding) => finding.severity !== "must_fix");
   const canApprove = canApproveReview(identity.role);
@@ -633,27 +652,26 @@ export function ReviewDetail({
             <p className="text-sm text-muted-foreground">This draft has not been reviewed yet.</p>
           )}
 
-          {state.latestRun && state.latestRun.opportunities.length > 0 ? (
+          {privateNotes.state !== "no_run" ? (
             <div
               className="rounded-lg border border-border bg-card/60 p-4"
               data-testid="review-opportunities"
             >
               <h4 className="text-sm font-medium text-foreground">Kept back for you</h4>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Private notes. None of this is in the message, and none of it goes anywhere unless
-                you put it there yourself.
-              </p>
-              <ul className="mt-3 space-y-3">
-                {state.latestRun.opportunities.map((note, index) => (
-                  <li key={`${note.evidence}-${index}`} className="text-xs text-muted-foreground">
-                    <p className="text-foreground">{note.reading}</p>
-                    <p className="mt-1">Because they wrote: &ldquo;{note.evidence}&rdquo;</p>
-                    <p className="mt-1">
-                      Worth: {note.worth} · When: {note.timing}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <p className="mt-1 text-xs text-muted-foreground">{privateNotes.note}</p>
+              {privateNotes.notes.length > 0 ? (
+                <ul className="mt-3 space-y-3">
+                  {privateNotes.notes.map((note, index) => (
+                    <li key={`${note.evidence}-${index}`} className="text-xs text-muted-foreground">
+                      <p className="text-foreground">{note.reading}</p>
+                      <p className="mt-1">Because they wrote: &ldquo;{note.evidence}&rdquo;</p>
+                      <p className="mt-1">
+                        Worth: {note.worth} · When: {note.timing}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ) : null}
 
@@ -672,6 +690,17 @@ export function ReviewDetail({
               onDecide={(findingId, next) => decide.mutate({ findingId, state: next })}
             />
           ) : null}
+
+          <LessonsPanel
+            role={identity.role}
+            findings={state.findings}
+            lessons={state.lessons.lessons}
+            available={state.lessons.available}
+            note={state.lessons.note}
+            busy={keep.isPending || revoke.isPending}
+            onKeep={(input) => keep.mutate(input)}
+            onRevoke={(lessonId) => revoke.mutate(lessonId)}
+          />
 
           <Coverage
             verdicts={state.obligations.verdicts}

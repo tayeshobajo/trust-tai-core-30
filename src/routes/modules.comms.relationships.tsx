@@ -84,6 +84,7 @@ import {
   type Commitment,
 } from "@/domain/comms-interactions";
 import type { VoiceRegister } from "@/domain/voice";
+import { rawWritingDraft } from "@/domain/comms-raw-draft";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -178,6 +179,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
    * moving to another tab asks first; nothing is silently thrown away.
    */
   const [replyDirty, setReplyDirty] = useState(false);
+  /**
+   * The reply itself, held here rather than inside the bar, so a departure
+   * can offer to save exactly these words instead of only losing them.
+   */
+  const [replyText, setReplyText] = useState("");
+  const [replyRegister, setReplyRegister] = useState<VoiceRegister>("follow_up");
   /** The working goal, edited in place and written to the relationship. */
   const [goalDraft, setGoalDraft] = useState<string | null>(null);
   /**
@@ -599,6 +606,19 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   /**
+   * The same draft service, given words a person wrote. No provider call, no
+   * judgment, no evidence: none was produced, so none is claimed.
+   */
+  const saveWritten = useMutation({
+    mutationFn: (input: { relationship: Relationship; register: VoiceRegister; text: string }) =>
+      commsService.saveDraft(
+        { relationship: input.relationship, ...rawWritingDraft(input) },
+        context,
+      ),
+    onSuccess: refresh,
+  });
+
+  /**
    * Discard is the only destructive act on a draft, and it is always a
    * separate, explicit, confirmed choice, never a side effect of closing.
    */
@@ -642,6 +662,31 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       setDraftError(error instanceof Error ? error.message : "That draft could not be prepared.");
     } finally {
       setDrafting(false);
+    }
+  }
+
+  /**
+   * Save exactly what a person wrote, with no model involved.
+   *
+   * It goes through the same draft service as everything else, so there is
+   * one draft record, one history and one review boundary. A failed save
+   * keeps every character on screen and says why.
+   */
+  async function saveWriting(register: VoiceRegister, text: string): Promise<boolean> {
+    if (!selected) return false;
+    setDraftError(null);
+    try {
+      const saved = await saveWritten.mutateAsync({ relationship: selected, register, text });
+      setReplyText("");
+      setReplyDirty(false);
+      setConfirmDiscard(false);
+      setOpenDraftKey(`${selected.id}:${saved.id}`);
+      return true;
+    } catch (error) {
+      setDraftError(
+        error instanceof Error ? error.message : "That draft could not be saved. Your words are still here.",
+      );
+      return false;
     }
   }
 
@@ -1059,10 +1104,16 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                     </div>
                     <ReplyRecordBar
                       drafting={drafting}
-                      busy={recordInteraction.isPending || saveDraft.isPending}
+                      busy={recordInteraction.isPending}
+                      saving={saveWritten.isPending}
                       error={draftError}
                       purposeHint={move?.needed ? move.action : null}
+                      value={replyText}
+                      onValueChange={setReplyText}
+                      register={replyRegister}
+                      onRegisterChange={setReplyRegister}
                       onPrepareDraft={(register, purpose) => void compose(register, purpose)}
+                      onSaveWriting={saveWriting}
                       onRecordInteraction={() => setInteracting(true)}
                       onDirtyChange={setReplyDirty}
                     />
@@ -1176,9 +1227,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 You have an unsent reply here.
               </p>
               <p className="mt-2 text-[13px] text-muted-foreground">
-                It has not been saved as a draft yet. Stay and prepare the draft to keep it, or
-                leave and lose what you have written.
+                It has not been saved as a draft yet. Stay and keep writing, save it as a draft
+                exactly as written, or leave and lose it.
               </p>
+              {draftError ? (
+                <p role="alert" className="mt-2 text-[13px] text-destructive">
+                  {draftError}
+                </p>
+              ) : null}
               <div className="mt-4 flex flex-wrap justify-end gap-2">
                 <TTButton
                   size="sm"
@@ -1191,11 +1247,32 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 >
                   Stay and keep writing
                 </TTButton>
+                {/* Saving keeps the words on the record before leaving. If the
+                    save fails nothing is lost: the dialog stays, the text
+                    stays, and the reason is said out loud. */}
+                <TTButton
+                  variant="quiet"
+                  size="sm"
+                  pending={saveWritten.isPending}
+                  pendingLabel="Saving…"
+                  onClick={() => {
+                    void (async () => {
+                      const ok = await saveWriting(replyRegister, replyText);
+                      if (!ok) return;
+                      if (leaving) leaving.proceed();
+                      else leaveGuard.proceed?.();
+                      setLeaving(null);
+                    })();
+                  }}
+                >
+                  Save as a draft and leave
+                </TTButton>
                 <TTButton
                   variant="quiet"
                   size="sm"
                   onClick={() => {
                     setReplyDirty(false);
+                    setReplyText("");
                     if (leaving) leaving.proceed();
                     else leaveGuard.proceed?.();
                     setLeaving(null);
