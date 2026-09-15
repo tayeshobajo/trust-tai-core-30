@@ -135,15 +135,55 @@ describe("a list that could not be read", () => {
 describe("a list that is only part of the truth", () => {
   it("names the real total instead of letting a page read as everything", async () => {
     fetchQueue.mockResolvedValue([]);
-    listReviews.mockResolvedValue({ rows: [session({})], total: 214, capped: true });
+    listReviews.mockResolvedValue({
+      rows: [session({})],
+      total: 214,
+      capped: true,
+      offset: 0,
+      hasMore: true,
+    });
 
     view({});
 
     await waitFor(() =>
-      expect(screen.getByText(/out of 214 reviews in this workspace/i)).toBeTruthy(),
+      expect(screen.getByText(/of 214 reviews in this workspace/i)).toBeTruthy(),
     );
   });
+
+  it("reaches older records rather than confining the filter to one page", async () => {
+    fetchQueue.mockResolvedValue([]);
+    listReviews.mockImplementation((_organization: string, offset?: number) =>
+      Promise.resolve(
+        (offset ?? 0) === 0
+          ? {
+              rows: [session({ id: "s-new" })],
+              total: 2,
+              capped: true,
+              offset: 0,
+              hasMore: true,
+            }
+          : {
+              rows: [session({ id: "s-old", title: "An older review" })],
+              total: 2,
+              capped: false,
+              offset: 50,
+              hasMore: false,
+            },
+      ),
+    );
+
+    view({});
+
+    const older = await screen.findByRole("button", { name: /show older reviews/i });
+    expect(screen.queryByText("An older review")).toBeNull();
+    fireEvent.click(older);
+
+    await waitFor(() => expect(screen.getByText("An older review")).toBeTruthy());
+    expect(listReviews).toHaveBeenCalledWith("org-1", 50);
+    expect(screen.queryByRole("button", { name: /show older reviews/i })).toBeNull();
+  });
 });
+
 
 describe("a link that names one record", () => {
   it("reads that exact draft rather than looking through the capped list", async () => {
