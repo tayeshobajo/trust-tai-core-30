@@ -23,10 +23,12 @@ import {
 import {
   claimDelivery,
   identifySender,
+  requireCurrentContextAfterClaim,
   reviewReadinessForSend,
   settleDelivery,
   SendRefused,
 } from "@/lib/comms-send-authority.server";
+
 
 export interface ResendSendResult {
   state: "sent" | "failed" | "unknown" | "duplicate";
