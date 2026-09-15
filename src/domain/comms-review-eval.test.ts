@@ -73,12 +73,12 @@ describe("scoring an answer", () => {
   });
 
   it("catches a finding that quotes words nobody wrote", () => {
-    expect(unquotedFindings("The date is set.", { findings: [{ excerpt: "next Tuesday" }] })).toEqual(
-      ["next Tuesday"],
-    );
-    expect(unquotedFindings("The date is set.", { findings: [{ excerpt: "date is set" }] })).toEqual(
-      [],
-    );
+    expect(
+      unquotedFindings("The date is set.", { findings: [{ excerpt: "next Tuesday" }] }),
+    ).toEqual(["next Tuesday"]);
+    expect(
+      unquotedFindings("The date is set.", { findings: [{ excerpt: "date is set" }] }),
+    ).toEqual([]);
   });
 });
 

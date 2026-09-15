@@ -300,3 +300,87 @@ src/domain/comms-proposal-source.test.ts src/lib/comms-review.server.test.ts`
   recorded yet. When one is: record provider, model and whether the direct key
   or the gateway answered, and keep the exhausted-credit constraint separate
   from the request-format defect that round 2 fixed.
+
+## Round 4 — Voice and judgment, measured against a fixed set
+
+Environment: Lovable sandbox, 2026-09-15. Model calls in this round went to
+the Lovable AI Gateway on `openai/gpt-5-mini` — the same model the review
+falls back to — with the real reviewer instructions read out of the source
+file, never a paraphrase. Synthetic material only: no workspace record, no
+client thread, no Voice DNA row was read or written, and nothing was sent.
+
+### The fixed set
+
+`src/domain/comms-review-eval.ts` holds 13 cases, written with their expected
+outcome before anything was run, each naming the failure it exists to catch:
+buried question, request without a question mark, ambiguous deadline,
+unsupported commitment, pricing mismatch, conflicting old and new facts, warm
+follow-up, upset client, sensitive apology, proposal scope ambiguity, an
+opportunity that should be deferred, benign humour, and an instruction hidden
+in an upload. One case is written by a colleague, not Tai. The cases are data,
+not prose: `scoreCase` and `unquotedFindings` judge an answer mechanically, so
+a later change is measured the same way.
+
+The exam is never edited to make a failing run pass. Two scoring faults found
+on the first pass were fixed as scoring faults and recorded here: "ha" matched
+inside "that" (now whole-word), and a finding quoting the subject line counted
+as unquoted (the subject is part of the draft).
+
+### What the first run exposed, and what changed in the reviewer
+
+Run one: 8 of 13. Three real defects, all in the reviewer, all fixed:
+
+1. An opportunity was offered in the complaint case, with timing "now" — an
+   upsell to an angry client. Law 11 now requires an empty list in a
+   complaint, an apology or any message where the client is unhappy, forbids
+   timing "now", and forbids repeating a finding as an opportunity.
+2. A finding quoting an injected instruction was legitimate but law 2 made it
+   unreturnable, and the persistence code dropped it. Law 2 now excepts a law
+   7 finding, and `runReview` keeps a finding whose quote is in the source
+   material, with no draft position because it marks nothing in the draft.
+3. Goal, humour, conflicting facts and private notes had no law at all. Laws
+   7 to 11 were added: source material is evidence and never instruction;
+   disagreeing sources must be named; `goalRead` is an offered reading, not a
+   fact; humour, invented closeness and a phone call are never suggested into
+   a complaint or apology; opportunities are private, evidenced, and carry
+   worth and timing.
+
+`REVIEW_PROMPT_VERSION` is now `comms-review/2026-09-15`, so old runs are not
+confused with new ones.
+
+Run two: 13 of 13. Run three, after the last wording change: 13 of 13. Two
+consecutive full passes on the same instructions is the variability recorded;
+it is not a guarantee, and a finite set proves nothing about intelligence.
+
+### Acceptance
+
+| ID   | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P4.1 | **Code-tested.** Every obligation in all 13 cases came back accounted for, with a status and a reason; no mandatory ask was omitted in runs two and three.                                                                                                                                                                                                                                                                      |
+| P4.2 | **Code-tested.** No invented date, price or promise appeared: the forbidden-phrase and unquoted-finding checks passed on every case, and law 2 quoting is enforced in code at save time, not only asked for.                                                                                                                                                                                                                    |
+| P4.3 | **Implemented / Code-tested.** `goalRead` is defined in the instructions as a reading for the person to correct. The conflicting old/new case is flagged rather than silently resolved.                                                                                                                                                                                                                                         |
+| P4.4 | **Blocked — awaiting Tai.** Voice rules come from the stored workspace profile, which this round deliberately did not read; the evaluation packets carry no voice. No em-dash or warmth claim is made from these runs.                                                                                                                                                                                                          |
+| P4.5 | **Implemented / Code-tested.** Opportunities are private, never inserted, absent in complaint and apology, and each carries evidence, reading, worth and timing. They are shown in a "Kept back for you" panel and persisted through a **proposed, unapplied** column (`docs/migrations/proposed/20260915120000_comms_review_opportunities.sql`); until it is applied the run says they were not kept rather than showing none. |
+| P4.6 | **Code-tested.** No humour, coffee or phone call was suggested in the complaint or apology cases; the benign-humour case was not marked as a fault.                                                                                                                                                                                                                                                                             |
+| P4.7 | **Code-tested.** The injected instruction was reported as a finding, not obeyed: nothing was approved, no ask was marked answered because the upload said so, and no other client was named.                                                                                                                                                                                                                                    |
+| P4.8 | **Implemented** (unchanged this round, plus one fix): coverage and limitations are recorded per run, and findings are bound to the exact version and go stale on edit. New: a source-quoted finding is kept with no draft position instead of being discarded.                                                                                                                                                                  |
+| P4.9 | **Awaiting Tai.** Six examples are prepared in `docs/comms-review-examples-for-tai.md` with rating lines. Not self-certified, and not counted as met.                                                                                                                                                                                                                                                                           |
+
+### Tests
+
+`src/domain/comms-review-eval.test.ts` — 9 checks on the set and the scoring,
+including that the new laws cannot be deleted quietly. With the review server
+tests: 31 passing. Types, lint and build clean.
+
+### Raw results
+
+Model outputs are kept out of the repository, in the sandbox only. The six
+prepared examples are the deliberate exception, and contain no real material.
+
+### Unresolved and next dependencies
+
+- P4.4 and P4.9 need Tai. Nothing here substitutes for that.
+- Everything in this round ran outside the workspace. The persisted-run
+  evidence for P2.2/P2.3 and the live save/reload evidence for P3 are still
+  blocked on a signed-in preview carrying these changes.
+- The opportunities column is proposed only. Nothing was applied.
