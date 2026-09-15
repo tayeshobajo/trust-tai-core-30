@@ -504,3 +504,68 @@ receipt). Whole suite: 262 files, 2949 tests passing. Types and build clean.
   proves the control flow, not that mail arrives.
 - Everything still waiting on the signed-in preview (P2.1–P2.3, the P3
   save-and-reload rows, the live rows in Round 5) and on Tai (P4.4, P4.9).
+
+## Round 7 — Usability, keyboard and recovery
+
+Environment: Lovable sandbox, 2026-09-15, Chromium via Playwright against
+localhost. Production Comms routes fail closed without a session here, so the
+interactive walks used the approved fixture workspace at
+`/mockups/comms-workspace-v2`, which is the same geometry and component
+language. That is stated on every row it affects rather than presented as the
+real workspace. Nothing published, nothing sent, no schema applied.
+
+### What the walks found, and what changed
+
+1. **Six unnamed buttons at the top of the keyboard path.** The collapsed
+   navigation rail showed only icons, so the first six stops announced
+   nothing at all. They now carry their names (Pulse, Scout, Comms, Roadmap,
+   Projects, People) when collapsed. Verified by re-walking: the names are
+   there. The production rail was checked too and always used text labels.
+2. **A review gave no spoken account of itself.** Saving, running, failing
+   and finishing were visible only as button states. A polite status line now
+   says which of those is happening, and on completion how many findings and
+   how many must be fixed. It names the stage that is actually happening and
+   never a percentage, because nothing can honestly say how far through a
+   review is.
+3. **Findings were a stack of boxes.** They are now a real list with a count
+   in its label, so a screen reader says "3 items" and which one this is, and
+   a decision on one is announced when it lands.
+4. **The intake error was silent.** A failed intake now announces itself
+   instead of only appearing.
+
+### Measured
+
+| Check                                              | Result                                                                                                          |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Horizontal overflow at 1440×900, 768×1024, 375×812 | 0 px at all three                                                                                               |
+| Console errors during load at all three sizes      | none                                                                                                            |
+| Focus visibility                                   | every stop carried a visible ring: 2 px outline on buttons, a 2 px focus ring on text fields                    |
+| Keyboard trap                                      | none across 25 stops; the walk moved through rail, search, list, thread, goal, reply and actions and kept going |
+| Mobile primary action                              | "Review draft" visible without scrolling past the reply box                                                     |
+
+Screenshots: `/tmp/browser/r7/desktop.png`, `tablet.png`, `mobile.png`
+(fixture workspace, sandbox only).
+
+### Acceptance
+
+| ID   | Evidence                                                                                                                                                                                                                                                                                                                                                     |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P7.1 | **Live-verified on the fixture workspace.** No horizontal overflow at any of the three sizes; the mobile view is a focused conversation, not the desktop stack; the primary action is reachable. **Blocked** for the real workspace, which needs a session.                                                                                                  |
+| P7.2 | **Live-verified on the fixture workspace.** 25 keyboard stops, every one named and visibly focused, no trap. Production dialogs return focus to the control that opened them (the relationship drawer moves focus to its own Close). **Blocked** for the real workspace.                                                                                     |
+| P7.3 | **Implemented / Code-tested.** Every input is inside its own label; icon-only controls carry names; must-fix is a separate heading and a word, never a colour alone; errors say what to do next. Colours come from the OS tokens, which pair foreground on background at AA. **Blocked:** no automated contrast audit was run against the signed-in screens. |
+| P7.4 | **Implemented.** Saving, running, failing and finishing are four distinct announced states, tied to real stages. No fabricated progress.                                                                                                                                                                                                                     |
+| P7.5 | **Code-tested / Implemented.** Unsaved writing is protected on tab, person, record, back and reload (Round 1), a failed save keeps the text, and stale readiness re-asks (earlier rounds). Signing out cancels every query and clears the cache, and no Comms draft is written to browser storage anywhere — so nothing survives into the next session.      |
+| P7.6 | **Code-tested.** A pending button is disabled and marked busy, so a double click cannot start a second review; a review is refused outright while the draft is dirty. Lists are capped with real totals (Round 5). **Blocked:** no measured duration, because no review has completed in a real workspace yet; an invented number would be worse than none.  |
+| P7.7 | **Implemented.** Controls either act or say the exact condition: a review cannot run on unsaved words and says so; approval names what is missing; Connections names the missing setup. Empty states say what is absent and what to do.                                                                                                                      |
+
+### Tests and gates
+
+Whole suite: 262 files, 2949 tests passing. Types and build clean. No test
+was changed to accommodate a fix.
+
+### Residual, minor
+
+- The interactive evidence is from the fixture workspace, not the signed-in
+  one. Owner: whoever runs the signed-in preview.
+- No automated contrast audit on the signed-in screens. Owner: same.
+- No measured review duration until a review completes live. Owner: same.
