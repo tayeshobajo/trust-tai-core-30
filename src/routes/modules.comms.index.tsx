@@ -395,11 +395,7 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
       </div>
 
       <LastChecked
-        at={Math.max(
-          relationships.dataUpdatedAt,
-          drafts.dataUpdatedAt,
-          reviews.dataUpdatedAt,
-        )}
+        at={Math.max(relationships.dataUpdatedAt, drafts.dataUpdatedAt, reviews.dataUpdatedAt)}
         pending={relationships.isFetching || drafts.isFetching || reviews.isFetching}
         onCheck={() => {
           void relationships.refetch();

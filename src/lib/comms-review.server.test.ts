@@ -584,11 +584,7 @@ describe("listing the reviews", () => {
       status: "open",
     }));
     createClient.mockImplementation(() =>
-      fakeClient(
-        baseTables({ comms_review_sessions: { read: okCount(rows, 214) } }),
-        [],
-        USER,
-      ),
+      fakeClient(baseTables({ comms_review_sessions: { read: okCount(rows, 214) } }), [], USER),
     );
     const page = await listReviews("token", ORG);
     expect(page.rows).toHaveLength(50);
