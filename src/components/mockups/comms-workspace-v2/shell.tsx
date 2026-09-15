@@ -81,7 +81,13 @@ export function MockCommsShell({
                   )}
                 >
                   <Icon aria-hidden className="size-[18px]" />
-                  {expanded ? <span>{room.label}</span> : null}
+                  {/* Collapsed, the icon is the only thing on screen, so the
+                      name still has to be readable by a screen reader. */}
+                  {expanded ? (
+                    <span>{room.label}</span>
+                  ) : (
+                    <span className="sr-only">{room.label}</span>
+                  )}
                 </button>
               </li>
             );
@@ -95,7 +101,11 @@ export function MockCommsShell({
             expanded ? "px-3" : "justify-center",
           )}
         >
-          {expanded ? <PanelLeftClose aria-hidden className="size-[18px]" /> : <ChevronRight aria-hidden className="size-[18px]" />}
+          {expanded ? (
+            <PanelLeftClose aria-hidden className="size-[18px]" />
+          ) : (
+            <ChevronRight aria-hidden className="size-[18px]" />
+          )}
           {expanded ? <span>Collapse</span> : <span className="sr-only">Expand navigation</span>}
         </button>
       </nav>
@@ -105,7 +115,10 @@ export function MockCommsShell({
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[var(--cloud-line)] bg-card px-4 md:px-6">
           <h1 className="font-display text-[15px] font-semibold tracking-tight">Comms</h1>
           <div className="relative ml-2 hidden min-w-0 flex-1 items-center sm:flex">
-            <Search aria-hidden className="pointer-events-none absolute left-3 size-[18px] text-muted-foreground" />
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute left-3 size-[18px] text-muted-foreground"
+            />
             <input
               value={search}
               onChange={(event) => onSearch(event.target.value)}
