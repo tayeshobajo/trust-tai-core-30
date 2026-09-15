@@ -188,6 +188,38 @@ function PlanList({ bucket, now }: { bucket: Bucket; now: Date }) {
   );
 }
 
+/**
+ * When this page last read the records, and a way to read them again.
+ *
+ * Nothing here is subscribed to the database. Work done elsewhere appears
+ * when this tab is returned to, or when this is pressed. Saying so is better
+ * than a page that looks live and is not.
+ */
+function LastChecked({
+  at,
+  pending,
+  onCheck,
+}: {
+  at: number;
+  pending: boolean;
+  onCheck: () => void;
+}) {
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+      <span>
+        {pending
+          ? "Reading the records now."
+          : at > 0
+            ? `Read at ${new Date(at).toLocaleTimeString()}. Work done elsewhere shows when you come back to this tab or check again.`
+            : "Not read yet."}
+      </span>
+      <TTButton size="sm" variant="quiet" onClick={onCheck} disabled={pending}>
+        Check again
+      </TTButton>
+    </p>
+  );
+}
+
 function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
   /* Overdue is a fact about the clock, not about the data. The clock is kept
      in state and stepped every minute so a page left open does not keep
@@ -355,6 +387,20 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
           <PlanList bucket={board.upcoming} now={now} />
         </Section>
       </div>
+
+      <LastChecked
+        at={Math.max(
+          relationships.dataUpdatedAt,
+          drafts.dataUpdatedAt,
+          reviews.dataUpdatedAt,
+        )}
+        pending={relationships.isFetching || drafts.isFetching || reviews.isFetching}
+        onCheck={() => {
+          void relationships.refetch();
+          void drafts.refetch();
+          void reviews.refetch();
+        }}
+      />
 
       <p className="text-[12px] text-muted-foreground">
         Silence alone is not on this list: a quiet conversation is not evidence that anything is
