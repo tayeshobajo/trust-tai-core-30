@@ -1318,13 +1318,18 @@ export async function runReview(
   }
 
   /* Findings are kept only when their quote is really in this draft. A
-     finding about words the person did not write is worse than no finding. */
+     finding about words the person did not write is worse than no finding.
+     The one exception is a quote from the source material itself: that is how
+     an instruction hidden in an upload gets reported instead of obeyed. It is
+     kept with no position, because it marks nothing in the draft. */
   const rawFindings = Array.isArray(parsed["findings"]) ? (parsed["findings"] as Row[]) : [];
   const findingRows = rawFindings
     .map((finding, index) => {
       const excerpt = str(finding["excerpt"]);
       const at = excerpt ? version.body.indexOf(excerpt) : -1;
-      if (excerpt && at < 0) return null;
+      const fromSource =
+        excerpt.length > 0 && at < 0 && sourceTexts.some((text) => text.includes(excerpt));
+      if (excerpt && at < 0 && !fromSource) return null;
       const why = str(finding["why"]).trim();
       if (!why) return null;
       const severity = (["must_fix", "consider", "note"] as const).find(
