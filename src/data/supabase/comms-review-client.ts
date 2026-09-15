@@ -166,10 +166,14 @@ export function keepLesson(input: {
   return post<ReviewLesson>({ action: "lesson.keep", ...input });
 }
 
-/** Stop using a kept lesson. The record of it stays. */
+/**
+ * Stop using a kept lesson. The record of it stays, and the record that comes
+ * back is the original revocation when it had already been stopped.
+ */
 export function revokeLesson(input: { organizationId: string; lessonId: string }) {
-  return post<{ ok: true }>({ action: "lesson.revoke", ...input });
+  return post<{ ok: true; lesson: ReviewLesson }>({ action: "lesson.revoke", ...input });
 }
+
 
 export function approveReview(input: {
   organizationId: string;
