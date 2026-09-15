@@ -4,7 +4,9 @@ import {
   checkProposal,
   EMPTY_PROPOSAL,
   formatAmount,
+  minorUnits,
   parseAmount,
+  PROPOSAL_CURRENCIES,
   priceProposal,
   renderProposal,
   type ProposalSections,
@@ -119,9 +121,9 @@ describe("the stated worked example", () => {
     const maths = priceProposal(missing);
     expect(maths.totalMinor).toBeNull();
     expect(maths.unpriced).toEqual(["Handover"]);
-    expect(checkProposal(missing).some((issue) => issue.code === "unpriced_line" && issue.blocking)).toBe(
-      true,
-    );
+    expect(
+      checkProposal(missing).some((issue) => issue.code === "unpriced_line" && issue.blocking),
+    ).toBe(true);
   });
 
   it("every currency this workspace prices in is a two-decimal one", () => {

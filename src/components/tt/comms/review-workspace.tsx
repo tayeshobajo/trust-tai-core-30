@@ -537,9 +537,7 @@ export function ReviewDetail({
               <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
                 {proposalIssues.map((issue) => (
                   <li key={issue.code + issue.message}>
-                    {issue.blocking ? (
-                      <span className="text-foreground">Blocking — </span>
-                    ) : null}
+                    {issue.blocking ? <span className="text-foreground">Blocking — </span> : null}
                     {issue.message}
                   </li>
                 ))}
