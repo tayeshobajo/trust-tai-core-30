@@ -149,3 +149,69 @@ class/component is justified because changing the global `tt-surface` or
 - No changes to authentication, database access, counting rules, review
   authority, delivery authority, or canonical C/P/T acceptance IDs.
 - Visual completion does not imply Comms 100% functional acceptance.
+
+## Implementation result
+
+### Changed files
+
+- `src/styles.css`: added the room-specific opaque `comms-card` utility.
+- `src/components/tt/comms/comms-tabs.tsx`: compact shared header, scroll-safe
+  five-tab navigation, and opaque New draft menu.
+- `src/routes/modules.comms.index.tsx`: compact Dashboard, independently sized
+  two-column cards, clearer count hierarchy, white record rows, and recipient
+  or company context from existing relationship records where available.
+- `src/routes/modules.comms.relationships.tsx`,
+  `src/components/tt/comms/comms-inbox.tsx`, and
+  `src/components/tt/comms/conversation-room.tsx`: white list and work panes,
+  restrained selected/context states, and readable message text.
+- `src/routes/modules.comms.drafts.tsx`,
+  `src/components/tt/comms/drafts-workspace.tsx`,
+  `src/components/tt/comms/review-workspace.tsx`,
+  `src/components/tt/comms/proposal-composer.tsx`, and
+  `src/components/tt/comms/lessons-panel.tsx`: white intake, editor, and review
+  panes with internal rules instead of cards around every paragraph.
+- `src/routes/modules.comms.voice.tsx`: white document, rules, passage, and
+  review-history panels.
+- `src/routes/modules.comms.integrations.tsx`,
+  `src/components/tt/comms/integrations-panel.tsx`,
+  `src/components/tt/comms/gmail-connection.tsx`, and
+  `src/components/tt/comms/runtime-readiness.tsx`: white account, runtime, and
+  per-draft readiness cards while retaining separate truthful states.
+- `src/components/tt/comms/comms-visual-contract.test.ts`: static contract for
+  the shared surface, compact header, navigation availability, Dashboard
+  sizing, five destination coverage, and single-main landmark rule.
+
+### Intentional deviations
+
+- The email uses a single 560px card. Comms retains bounded multi-pane layouts
+  because the email is a surface reference, not an application layout.
+- Pale blue remains in selected rows, contextual notices, and outgoing message
+  bubbles. It is no longer the resting background of a primary Comms card.
+- The signed-out gate is unchanged. It already expresses the same email-derived
+  white-card language and must continue to fail closed.
+
+### Verification evidence
+
+- Focused behavior: 11 tests passed for Dashboard section truth and Drafts &
+  Reviews selection/filter behavior.
+- Visual contract: covers D01, D02, D04 navigation availability, and primary
+  structure across the five production destinations.
+- Type check: passed with no diagnostics.
+- Preview build: latest observed build reported `build OK` on 2026-09-15 UTC.
+- Signed-out browser sweep: all five production addresses at 375, 768, and
+  1440px had no page overflow and no console or page errors. These captures are
+  gate-only evidence and do not pass D07.
+- No schema was applied, no publication occurred, and no send or record-changing
+  browser action was performed.
+
+### Remaining blocker
+
+- D07 signed-in visual sign-off remains open. This environment reported no
+  injected authenticated preview session, so the five actual data-bearing
+  Comms screens could not be captured without crossing the explicit no-record-
+  change boundary or asking someone else to authenticate. This does not reopen
+  the earlier missing-auth claim for Codex evidence; it describes this separate
+  browser environment only.
+- Because D07 remains open, the cleanup is code-, test-, type-, build-, and
+  signed-out-overflow verified, not fully signed-in visually accepted. It does
+  not imply Comms 100% acceptance.

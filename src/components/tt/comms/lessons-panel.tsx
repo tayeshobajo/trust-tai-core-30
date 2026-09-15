@@ -56,7 +56,7 @@ export function LessonsPanel({
   const candidates = findings.filter((finding) => isDecided(finding) && !keptFrom.has(finding.id));
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4" data-testid="review-lessons">
+    <div className="border-t border-border pt-4" data-testid="review-lessons">
       <h4 className="text-sm font-medium text-foreground">Writing habits kept here</h4>
       <p className="mt-1 text-xs text-muted-foreground">{note}</p>
 

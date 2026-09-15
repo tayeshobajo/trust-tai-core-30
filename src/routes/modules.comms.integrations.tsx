@@ -9,9 +9,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { CommsTabs } from "@/components/tt/comms/comms-tabs";
+import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { IntegrationsPanel } from "@/components/tt/comms/integrations-panel";
-import { PageHeader, TTButton } from "@/components/tt/primitives";
+import { TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { listIntegrations } from "@/data/supabase/comms-integrations";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -54,12 +54,10 @@ function Connections({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        eyebrow="Comms"
+    <div className="space-y-6">
+      <CommsPageHeader
         title="Connections"
         supporting="Comms reads only approved sources, only under your own access, and never sends anything."
-        appId="comms"
       />
       <CommsTabs active="integrations" />
 

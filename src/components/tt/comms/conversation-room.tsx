@@ -39,16 +39,16 @@ function timeOf(value: string): string {
 
 /** Each kind reads differently at a glance, without relying on colour alone. */
 const KIND_TONE: Record<EventShape["kind"], string> = {
-  we_emailed: "border-cloud-line bg-cloud",
+  we_emailed: "border-cloud-line bg-secondary",
   they_emailed: "border-border bg-card",
   they_texted: "border-border bg-card",
-  i_texted: "border-cloud-line bg-cloud",
-  linkedin_sent: "border-cloud-line bg-cloud",
-  phone_call: "border-border bg-secondary/40",
-  meeting: "border-border bg-secondary/40",
-  note: "border-dashed border-border bg-secondary/30",
-  suggestion: "border-dashed border-royal/30 bg-royal/5",
-  draft: "border-dashed border-cloud-line bg-cloud/50",
+  i_texted: "border-cloud-line bg-secondary",
+  linkedin_sent: "border-cloud-line bg-secondary",
+  phone_call: "border-border bg-card",
+  meeting: "border-border bg-card",
+  note: "border-dashed border-border bg-card",
+  suggestion: "border-dashed border-royal/30 bg-secondary",
+  draft: "border-dashed border-cloud-line bg-secondary",
 };
 
 export function ConversationEvent({
@@ -97,7 +97,7 @@ export function ConversationEvent({
         </p>
         <p
           className={cn(
-            "mt-1 whitespace-pre-wrap text-[13px] text-foreground",
+            "mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground",
             event.retracted ? "line-through decoration-muted-foreground/60" : "",
           )}
         >
@@ -112,7 +112,7 @@ export function ConversationEvent({
             inline={(event.attachments ?? []).filter((file) => file.inline)}
           />
         ) : event.body ? (
-          <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-muted-foreground">
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
             {event.body}
           </p>
         ) : null}

@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const field =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function Lines({
   label,
@@ -179,7 +179,7 @@ export function ProposalComposer({
         </label>
         <p className="text-[13px] text-foreground">
           {maths.totalMinor === null
-            ? "No total yet — every line needs a quantity and a price before one can be stated."
+            ? "No total yet. Every line needs a quantity and a price before one can be stated."
             : `Total ${formatAmount(maths.totalMinor, maths.currency)}`}
         </p>
       </div>
@@ -198,7 +198,7 @@ export function ProposalComposer({
       />
 
       {issues.length > 0 ? (
-        <ul className="space-y-1 rounded-lg border border-border bg-secondary/40 p-3 text-[13px]">
+        <ul className="space-y-1 rounded-lg bg-secondary p-3 text-[13px]">
           {issues.map((issue) => (
             <li
               key={issue.code + issue.message}
@@ -212,7 +212,7 @@ export function ProposalComposer({
 
       <div className="space-y-1.5">
         <span className="text-sm text-muted-foreground">What will be reviewed, word for word</span>
-        <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-[13px] leading-relaxed text-foreground">
+        <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-card p-3 text-sm leading-relaxed text-foreground">
           {text || "Nothing yet."}
         </pre>
       </div>

@@ -12,7 +12,6 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
-import { AmbientRule } from "@/components/tt/ambient";
 import {
   gmailAuthorizeUrl,
   gmailDisconnect,
@@ -125,7 +124,7 @@ export function GmailConnection({
     connect.isPending || exchange.isPending || readNow.isPending || disconnectAction.isPending;
 
   return (
-    <TTCard className="space-y-3 p-5">
+    <TTCard className="comms-card space-y-3 p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-base font-medium text-foreground">Mailbox</h3>
         <MetaPill>
@@ -134,7 +133,6 @@ export function GmailConnection({
             : INTEGRATION_STATUS_LABEL.disconnected}
         </MetaPill>
       </div>
-      <AmbientRule appId="comms" contextAccent={null} />
       <p className="text-sm leading-relaxed text-muted-foreground">
         Label someone <span className="text-foreground">Trust Tai/Comms</span> in Gmail. Comms picks
         them up automatically. The label is your approval to bring that person in, and their labeled

@@ -30,7 +30,7 @@ export const NEW_DRAFT_LABEL: Record<NewDraftKind, string> = {
 
 function tabClass(active: boolean) {
   return cn(
-    "-mb-px inline-flex h-10 items-center border-b-2 px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    "inline-flex h-11 shrink-0 items-center border-b-2 px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     active
       ? "border-[var(--royal)] font-medium text-foreground"
       : "border-transparent text-muted-foreground hover:border-[var(--cloud-line)] hover:text-foreground",
@@ -72,7 +72,7 @@ function NewDraftMenu() {
   };
 
   return (
-    <div ref={holder} className="relative ml-auto">
+    <div ref={holder} className="relative ml-auto shrink-0 pl-2">
       <TTButton
         size="sm"
         aria-haspopup="menu"
@@ -85,7 +85,7 @@ function NewDraftMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-[180px] overflow-hidden rounded-lg border border-border bg-background shadow-sm"
+          className="absolute right-0 z-20 mt-1 w-[180px] overflow-hidden rounded-xl border border-border bg-card"
         >
           {(Object.keys(NEW_DRAFT_LABEL) as NewDraftKind[]).map((kind) => (
             <button
@@ -108,19 +108,48 @@ export function CommsTabs({ active }: { active: CommsSection }) {
   return (
     <nav
       aria-label="Comms sections"
-      className="flex flex-wrap items-center gap-5 border-b border-border pb-px"
+      className="grid grid-cols-[minmax(0,1fr)_auto] items-end border-b border-border"
     >
-      {TABS.map((tab) => (
-        <Link
-          key={tab.section}
-          to={tab.to}
-          aria-current={active === tab.section ? "page" : undefined}
-          className={tabClass(active === tab.section)}
-        >
-          {tab.label}
-        </Link>
-      ))}
+      <div className="min-w-0 overflow-x-auto">
+        <div className="flex w-max min-w-full items-end gap-1 sm:gap-3">
+          {TABS.map((tab) => (
+            <Link
+              key={tab.section}
+              to={tab.to}
+              aria-current={active === tab.section ? "page" : undefined}
+              className={tabClass(active === tab.section)}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      </div>
       <NewDraftMenu />
     </nav>
+  );
+}
+
+export function CommsPageHeader({
+  title,
+  supporting,
+  action,
+}: {
+  title: string;
+  supporting?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <header className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 border-b border-border pb-4">
+      <div className="min-w-0">
+        <p className="tt-eyebrow">Comms</p>
+        <h1 className="tt-title-page mt-2 text-[28px] sm:text-[32px]">{title}</h1>
+        {supporting ? (
+          <p className="mt-2 max-w-reading text-sm leading-relaxed text-muted-foreground">
+            {supporting}
+          </p>
+        ) : null}
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </header>
   );
 }

@@ -9,7 +9,6 @@
 import { MetaPill, SectionHeading, TTCard } from "@/components/tt/primitives";
 import { GmailConnection } from "@/components/tt/comms/gmail-connection";
 import { RuntimeReadiness } from "@/components/tt/comms/runtime-readiness";
-import { AmbientRule } from "@/components/tt/ambient";
 import {
   INTEGRATION_PROVIDER_LABEL,
   INTEGRATION_STATUS_LABEL,
@@ -64,14 +63,14 @@ export function IntegrationsPanel({
   provisioned: boolean;
 }) {
   return (
-    <section className="space-y-10">
+    <section className="space-y-6">
       <SectionHeading
         title="Accounts and sync"
         description="Comms reads the outside world only through approved sources, and only under your own access. Nothing is sent from here."
       />
 
       {!provisioned ? (
-        <TTCard className="p-5 text-sm text-muted-foreground">
+        <TTCard className="comms-card p-4 text-sm text-muted-foreground sm:p-5">
           The integration tables are not in the workspace yet. Apply{" "}
           <code className="text-foreground">docs/comms-integrations-schema.sql</code> in the Trust
           Tai Supabase project to switch this layer on. Until then Comms runs on relationships,
@@ -91,12 +90,11 @@ export function IntegrationsPanel({
             ? INTEGRATION_STATUS_LABEL[connection.status]
             : INTEGRATION_STATUS_LABEL.disconnected;
           return (
-            <TTCard key={track.key} className="space-y-3 p-5">
+            <TTCard key={track.key} className="comms-card space-y-3 p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-base font-medium text-foreground">{track.title}</h3>
                 <MetaPill>{label}</MetaPill>
               </div>
-              <AmbientRule appId="comms" contextAccent={null} />
               <p className="text-sm leading-relaxed text-muted-foreground">{track.body}</p>
               {connection?.accountEmail ? (
                 <p className="text-xs text-muted-foreground">
