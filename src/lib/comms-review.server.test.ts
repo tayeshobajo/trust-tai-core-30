@@ -71,7 +71,7 @@ function chain(
   filters: Record<string, unknown> = {},
 ): Record<string, unknown> {
   const node: Record<string, unknown> = {};
-  for (const method of ["select", "in", "is", "neq", "order", "limit"]) {
+  for (const method of ["select", "in", "is", "neq", "order", "limit", "range"]) {
     node[method] = () => node;
   }
   node["eq"] = (column: string, value: unknown) => {
