@@ -19,8 +19,10 @@ import {
   getVoiceProfile,
   listVoiceSnapshots,
   saveVoiceProfile,
+  VoiceConflictError,
   type VoiceProfile,
 } from "@/data/supabase/comms-voice";
+
 import { checkVoice } from "@/data/voice-policy";
 import { DEFAULT_VOICE_DOCUMENT, VOICE_RULES } from "@/domain/voice";
 import type { WorkspaceIdentity } from "@/lib/workspace";
