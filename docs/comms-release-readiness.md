@@ -25,7 +25,7 @@ it is and accept that the cause stays unknown.**
 
 ## What deploying would and would not change
 
-Safe to deploy, because it cannot send anything:
+Safe to deploy, in the sense that it adds no new way to send:
 
 - Sanitized provider diagnostics: provider, model, HTTP status, error category
   and error name recorded on a failed run. Never a key, never a prompt.
@@ -33,17 +33,47 @@ Safe to deploy, because it cannot send anything:
 - The five-tab Comms workspace, single-pane Drafts & Reviews, honest counts,
   overdue follow-ups, proposal structure, Voice DNA history, and the Connections
   split into account health / model availability / per-draft readiness.
-- Reads of the two applied columns (`kind`, `structured_source`), with the code
-  still tolerating their absence.
+- Reads of the two applied columns (`kind`, `structured_source`).
+
+**Correction — the app can send.** An earlier version of this document said a
+deploy "cannot send anything" because the legacy `comms-send` edge function is a
+refusal (v6, POST 410). That is true of the legacy function only. The app's own
+governed route, `/api/public/comms/send`, is separate and **does** dispatch when
+a draft carries a valid current approval; the drafts surface calls it. So the
+real statement is narrower:
+
+- Deploying adds **no new send path** and changes **no** approval authority,
+  membership check, RLS policy, immutable version, or existing record.
+- Sending still requires a human approval bound to the exact version — which in
+  turn requires a completed review run, and none has ever completed here.
+- "No client send during QA" is therefore a **restraint in the test procedure**,
+  followed by the person running it — not a property of the deployed app.
 
 Deploying does **not** change:
 
-- Provider or model configuration (`openai/gpt-5-mini` stands until there is an
-  evaluation set).
-- The send path. `comms-send` v6 stays a refusal: POST returns 410. No client
-  send becomes possible.
-- Approval authority, membership checks, RLS, immutable versions, or any
-  existing record.
+- Provider or model configuration. `openai/gpt-5-mini` is what is *configured*;
+  with zero completed runs it is not *verified*, and must not be described as
+  working.
+- The legacy `comms-send` refusal (v6).
+
+## A bounded alternative to publishing the suite
+
+The choice is not "publish everything" versus "never learn the cause". The
+diagnostics are self-contained, and the smaller path is:
+
+1. Deploy to the **preview** build (`project--<id>-dev.lovable.app`) rather than
+   production, sign in there, and run the review once.
+2. The exact scope to review before either deploy is the diff of the reviewed
+   commit against the hosted build — the manifest below.
+3. No deployment was made this turn.
+
+| | |
+| --- | --- |
+| Reviewed commit | `0f0b92f9787cbedd14dc1bef8c08719492f738a0` and later |
+| Diagnostics surface | `src/domain/comms-provider-diagnostics.ts`, `src/lib/comms-review.server.ts` |
+| Wording fix | `src/components/tt/comms/review-workspace.tsx` |
+| Send behaviour | unchanged: `src/routes/api/public/comms.send.ts`, `supabase/functions/comms-send` |
+
 
 ## The provider failure, stated honestly
 
