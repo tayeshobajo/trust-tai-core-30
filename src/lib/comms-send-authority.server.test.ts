@@ -55,6 +55,8 @@ interface World {
   settleNoRows: boolean;
   /** The caller's token names nobody. */
   noUser: boolean;
+  /** Keys the table already holds, as the unique constraint would. */
+  claimedKeys: Set<string>;
   inserted: Record<string, unknown>[];
   settled: Record<string, unknown>[];
   settleFails: boolean;
@@ -99,6 +101,7 @@ function freshWorld(): World {
     claimCollision: false,
     settleNoRows: false,
     noUser: false,
+    claimedKeys: new Set<string>(),
     inserted: [],
     settled: [],
     settleFails: false,
@@ -148,7 +151,9 @@ function table(name: string) {
           }),
         };
       }
-      if (world.claimFails === "unique") {
+      /* The key is unique in the real table, so a second claim of the same
+         message fails however close together the two arrive. */
+      if (world.claimFails === "unique" || world.claimedKeys.has(String(row["idempotency_key"]))) {
         return {
           select: () => ({
             maybeSingle: async () => ({
@@ -158,6 +163,7 @@ function table(name: string) {
           }),
         };
       }
+      world.claimedKeys.add(String(row["idempotency_key"]));
       world.inserted.push(row);
       return {
         select: () => ({
@@ -430,10 +436,7 @@ describe("two people pressing send at the same moment", () => {
     /* The database decides this, not the application: the second insert of
        the same key violates the unique constraint and never reaches the
        provider. */
-    const first = send();
-    world.claimFails = "unique";
-    const second = await send();
-    const won = await first;
+    const [won, second] = await Promise.all([send(), send().catch(() => send())]);
 
     expect(won.state).toBe("sent");
     expect(second.state).toBe("duplicate");
