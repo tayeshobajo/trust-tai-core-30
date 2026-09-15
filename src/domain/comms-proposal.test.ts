@@ -87,3 +87,53 @@ describe("rendered proposal", () => {
     expect(text).not.toMatch(/Total: GBP/);
   });
 });
+
+describe("the stated worked example", () => {
+  const sections = {
+    ...EMPTY_PROPOSAL,
+    currency: "USD",
+    scope: "Two workshops and a handover.",
+    deliverables: ["Workshops", "Handover guide"],
+    lines: [
+      { label: "Workshop", quantity: "2", unitPrice: "125.50" },
+      { label: "Handover", quantity: "1", unitPrice: "249.00" },
+    ],
+    assumptions: [],
+    nextSteps: ["Confirm dates"],
+    discount: "50.00",
+  };
+
+  it("two at 125.50 plus one at 249.00 less 50.00 is USD 450.00", () => {
+    const maths = priceProposal(sections);
+    expect(maths.subtotalMinor).toBe(50_000);
+    expect(maths.discountMinor).toBe(5_000);
+    expect(maths.totalMinor).toBe(45_000);
+    expect(formatAmount(maths.totalMinor ?? 0, "USD")).toBe("USD 450.00");
+  });
+
+  it("a blank price leaves the total unknown rather than smaller", () => {
+    const missing = {
+      ...sections,
+      lines: [sections.lines[0]!, { label: "Handover", quantity: "1", unitPrice: "" }],
+    };
+    const maths = priceProposal(missing);
+    expect(maths.totalMinor).toBeNull();
+    expect(maths.unpriced).toEqual(["Handover"]);
+    expect(checkProposal(missing).some((issue) => issue.code === "unpriced_line" && issue.blocking)).toBe(
+      true,
+    );
+  });
+
+  it("every currency this workspace prices in is a two-decimal one", () => {
+    /* P3.4 names zero-decimal currencies. None are offered, so the claim is
+       checked rather than assumed: if one is ever added, this fails and the
+       parsing and formatting rules must be revisited with it. */
+    for (const currency of PROPOSAL_CURRENCIES) expect(minorUnits(currency)).toBe(100);
+  });
+
+  it("cannot mix currencies, because a proposal carries exactly one", () => {
+    const priced = priceProposal({ ...sections, currency: "GBP" });
+    expect(priced.currency).toBe("GBP");
+    expect(priced.lines.every((line) => line.minor !== null)).toBe(true);
+  });
+});
