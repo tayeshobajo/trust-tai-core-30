@@ -522,9 +522,25 @@ export function scoreCase(expected: EvalExpectation, answer: EvalAnswer): string
   return failures;
 }
 
-/** Findings whose excerpt is not actually in the draft. Law 2, checked. */
-export function unquotedFindings(draft: string, answer: EvalAnswer): string[] {
+/**
+ * Findings whose excerpt is not actually in anything a person wrote. Law 2,
+ * checked. The written material is the draft body, its subject line, and the
+ * source material: a reviewer quoting the client's own sentence, or an
+ * instruction planted inside a source, is quoting real words and must not be
+ * scored as invention. Only words nobody wrote are a failure.
+ */
+export function unquotedFindings(
+  written: string | string[],
+  answer: EvalAnswer,
+): string[] {
+  const corpus = (Array.isArray(written) ? written : [written]).filter(
+    (entry) => typeof entry === "string",
+  );
   return (answer.findings ?? [])
     .map((finding) => text(finding.excerpt))
-    .filter((excerpt) => excerpt.trim().length > 0 && !draft.includes(excerpt));
+    .filter(
+      (excerpt) =>
+        excerpt.trim().length > 0 &&
+        !corpus.some((entry) => entry.includes(excerpt)),
+    );
 }
