@@ -322,3 +322,54 @@ and a commit/diff manifest instead of a false all-or-nothing choice.
   `b7bee2e2-4b13-476e-9f61-af008d374215` and session
   `8d418c05-55b8-4dd9-8e83-1d0defbb7a8f` are untouched.
 - `openai/gpt-5-mini` remains configured and unverified.
+
+## Slice 5 — T02 Conversations in the approved geometry
+
+Code evidence (this environment has no signed-in session; none of this is live
+evidence).
+
+- **Compact header, no hero.** `src/routes/modules.comms.relationships.tsx` no
+  longer renders the gradient `PageHeader` block. One eyebrow row carries the
+  room actions (Roadmap handoff, Close/Reopen conversation, Add relationship),
+  with the five tabs immediately below. The room's own header already states
+  who the person is, so the page does not say it twice.
+- **List plus newest relevant thread.** The workspace is one grid
+  (list 300–320px + room) sized to `calc(100dvh-190px)`, so the reply sits on
+  the first screen instead of below a card stack.
+- **Older history on demand.** `ConversationRoom` opens on the three most
+  recent day groups and offers "Earlier history · N". The earlier days are the
+  same records, rendered when asked for — nothing is summarised or dropped.
+- **Working goal visible with the reply.** The goal row above the composer
+  edits `relationship.nextAction` through the existing `commsService.update`
+  mutation. Real persisted data, no new store, no fixture.
+- **Exact draft → its bound review.** The saved-draft strip gains "Review this
+  draft", which calls the existing `openReview(draftId, organizationId)` and
+  navigates to `/modules/comms/drafts?session=<id>`. One review surface, one
+  approval authority; nothing new was created.
+- **Navigation guard.** `useBlocker` in the room asks before leaving with
+  unsent writing in the reply bar (tab change, record change, back), and
+  `enableBeforeUnload` covers a reload. `ReplyRecordBar` reports its own dirty
+  state; preparing a draft clears it.
+- **Preserved unchanged.** Close/reopen, follow-ups, Scout links, add
+  interaction, export, edit/retract, attachments, the context drawer, the
+  `?relationship=` deep link and the legacy `/modules/comms/conversations`
+  redirect.
+
+### Evidence captured
+
+| Artifact | What it shows |
+| --- | --- |
+| `/tmp/browser/t02/prod-signedout-desktop.png` | **Live app, signed out.** The production route fails closed: "This workspace is closed until you sign in." No workspace data is served. |
+| `/tmp/browser/t02/mockup-desktop.png`, `mockup-mobile.png` | **Fixture only.** The approved `/mockups/comms-workspace-v2` geometry the production room was aligned to. Sample data, no records. |
+
+No signed-in screenshot of the production room exists. This sandbox has no
+Supabase session for the external project and cannot mint one
+(`LOVABLE_BROWSER_AUTH_STATUS=no_supabase`). A signed-in capture requires a
+person to sign in at
+`https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/modules/comms/relationships`.
+
+### Tests run this turn
+
+`comms-runtime-health.test.ts`, `comms-voice-concurrency.test.ts`,
+`comms-proposal-source.test.ts` (the three Codex ran independently at d9fd490,
+15 tests) plus `drafts-workspace.test.tsx` — 4 files, 20 tests, all passing.
