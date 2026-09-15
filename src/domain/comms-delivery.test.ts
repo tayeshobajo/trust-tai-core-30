@@ -126,7 +126,7 @@ describe("decideSend", () => {
     const decision = decideSend(input({ missingCapability: ["no draft_id"] }));
     expect(decision.allowed).toBe(false);
     if (decision.allowed) return;
-    expect(decision.message).toMatch(/20260914170000_comms_review_delivery\.sql/);
+    expect(decision.message).toMatch(/20260914170000_comms_review_delivery_hardened\.sql/);
   });
 });
 

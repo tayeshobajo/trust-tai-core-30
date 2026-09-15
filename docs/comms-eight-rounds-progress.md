@@ -450,3 +450,57 @@ the five is code-complete and live-unverified, which is a different thing.
 - Tai's rating of the six prepared examples (P4.9) and the voice judgment
   (P4.4).
 - The opportunities column from Round 4 is proposed and unapplied.
+
+## Round 6 — The decision chain, proved without sending anything
+
+Environment: Lovable sandbox, 2026-09-15. Every send path was exercised
+against a fake provider and a database double. No message was sent, no
+production publish, no schema applied, no real mailbox touched.
+
+### Inventory of paths that can put a message out
+
+| Path                               | Authority used                                                        | State                                 |
+| ---------------------------------- | --------------------------------------------------------------------- | ------------------------------------- |
+| Queue send (email)                 | `requireSendApproval` → `claimDelivery` → provider → `settleDelivery` | Covered by the boundary tests below   |
+| Scout outreach "Approve & send"    | Calls `/api/public/comms/send`, the same route as the queue           | Same authority, no second path        |
+| Quick reply                        | Enters the same review gate (Round 3); cannot dispatch on its own     | No separate authority                 |
+| Gmail send                         | `requireSendApproval` → `claimDelivery`, bytes hashed for real        | Same authority                        |
+| LinkedIn                           | `requireSendApproval`, then a person's own report — no provider       | Recorded as a human report            |
+| Retired `comms-send` edge function | None — refuses everything with 410                                    | Repo body is refusal-only             |
+| Scheduled sends                    | None exist. The only scheduled job is Gmail sync, which reads.        | Not applicable, verified by inventory |
+
+### What changed
+
+1. **A refusal pointed at the wrong file.** The "sending is held" message named
+   the superseded proposal rather than the applied delivery migration. It now
+   names `docs/migrations/20260914170000_comms_review_delivery_hardened.sql`.
+2. **LinkedIn wording.** Confirming now says plainly that it records your own
+   word, that Comms has no confirmation from LinkedIn, and that the record
+   will say it rests on you. Copying is stated not to be sending.
+
+### Acceptance
+
+| ID   | Evidence                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P6.1 | **Code-tested.** Refused, with the provider never called, for: view-only member, invited, pending, suspended, no membership at all, and a token naming nobody. Only an active owner or admin passes.                                                                                                                                                                                      |
+| P6.2 | **Code-tested.** The author is stamped on the immutable version when it was written; an admin opening a teammate's draft is the reviewer, and the packet tells the model in words that it is not the author. The sending identity is resolved separately from both.                                                                                                                       |
+| P6.3 | **Code-tested.** The approved fingerprint covers channel, subject, body, to, cc, bcc, sending identity and every attachment's name, type, size and digest, built in one place that approval and every dispatch path share.                                                                                                                                                                |
+| P6.4 | **Code-tested.** A change to any of those, to the situation, the revision or the version refuses the send. A replacement file of exactly the same size is caught, because identity is the storage path digest (or the real content digest where the bytes are in hand), never name and length. Unsaved edits show pending review (Round 3).                                               |
+| P6.5 | **Code-tested.** Failed, incomplete, closed and stale reviews, a standing must-fix, an approval belonging to another review, a run that read another version, and two open reviews claiming one draft all refuse. The draft's own status field authorises nothing.                                                                                                                        |
+| P6.6 | **Code-tested.** Two sends racing on the same approved message produce one provider call: the second loses on the unique key and is told it is already in progress. A lost answer is Unknown, is never retried automatically, and does not reset the draft.                                                                                                                               |
+| P6.7 | **Code-tested.** An attempt that cannot be written down is not attempted. A unique-key collision whose existing row is a different draft refuses instead of replaying. A receipt that cannot be stored stays unknown and asks for a person. A settled attempt cannot be rewritten: settlement only matches an attempt still in flight, and a no-match says the attempt needs reconciling. |
+| P6.8 | **Implemented / Blocked, live.** Every active route goes through the one authority (table above). The repository body of the retired function refuses with 410 and sends nothing. The deployed 410 has not been invoked from here — no authorized authenticated invocation is available in this sandbox, so that check stays blocked rather than assumed from the file.                   |
+| P6.9 | **Code-tested.** A LinkedIn record is described as your word, never as provider confirmation, in both the interface and the shared wording.                                                                                                                                                                                                                                               |
+
+New this round: 7 checks (suspended, pending, tokenless caller, unwritable
+attempt, key collision on another draft, concurrent claim, unrewritable
+receipt). Whole suite: 262 files, 2949 tests passing. Types and build clean.
+
+### Remaining blockers
+
+- P6.8's live invocation of the deployed 410.
+- Real delivery remains unverified and stays that way until Tai authorises a
+  controlled test with a named recipient and an exact message. A fake provider
+  proves the control flow, not that mail arrives.
+- Everything still waiting on the signed-in preview (P2.1–P2.3, the P3
+  save-and-reload rows, the live rows in Round 5) and on Tai (P4.4, P4.9).

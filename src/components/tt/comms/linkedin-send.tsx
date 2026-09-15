@@ -93,7 +93,7 @@ export function LinkedinSendPanel({
         <div className="mt-3 space-y-3">
           <p className="text-[12px] text-muted-foreground">
             Copy the message below, send it yourself from your own LinkedIn account, then record it
-            here. Nothing is sent from Comms.
+            here. Copying is not sending, and nothing leaves Comms either way.
           </p>
           <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-card px-3.5 py-3 font-sans text-[13px] text-foreground">
             {draft.body}
@@ -105,8 +105,9 @@ export function LinkedinSendPanel({
             {confirming ? (
               <>
                 <span className="text-[12px] text-muted-foreground">
-                  Only confirm after you have actually sent it on LinkedIn. This records the send;
-                  it sends nothing.
+                  Only confirm after you have actually sent it on LinkedIn. This records your own
+                  word that you sent it. Comms sends nothing and has no confirmation from LinkedIn,
+                  so the record will say it rests on you.
                 </span>
                 <TTButton size="sm" type="button" disabled={busy} onClick={() => void record()}>
                   {busy ? "Recording…" : "Yes, I sent it"}

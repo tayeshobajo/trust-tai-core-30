@@ -48,7 +48,15 @@ interface World {
   approval: Record<string, unknown> | null;
   run: Record<string, unknown> | null;
   findings: Record<string, unknown>[];
-  claimFails: "unique" | null;
+  claimFails: "unique" | "write" | null;
+  /** The row already holding the key is some other attempt, not this one. */
+  claimCollision: boolean;
+  /** The settle matched nothing: the attempt was already settled. */
+  settleNoRows: boolean;
+  /** The caller's token names nobody. */
+  noUser: boolean;
+  /** Keys the table already holds, as the unique constraint would. */
+  claimedKeys: Set<string>;
   inserted: Record<string, unknown>[];
   settled: Record<string, unknown>[];
   settleFails: boolean;
@@ -90,6 +98,10 @@ function freshWorld(): World {
     },
     findings: [],
     claimFails: null,
+    claimCollision: false,
+    settleNoRows: false,
+    noUser: false,
+    claimedKeys: new Set<string>(),
     inserted: [],
     settled: [],
     settleFails: false,
@@ -129,7 +141,19 @@ function table(name: string) {
   }
   chain["insert"] = (row: Record<string, unknown>) => {
     if (name === "comms_review_deliveries") {
-      if (world.claimFails === "unique") {
+      if (world.claimFails === "write") {
+        return {
+          select: () => ({
+            maybeSingle: async () => ({
+              data: null,
+              error: { code: "XX000", message: "disk full" },
+            }),
+          }),
+        };
+      }
+      /* The key is unique in the real table, so a second claim of the same
+         message fails however close together the two arrive. */
+      if (world.claimFails === "unique" || world.claimedKeys.has(String(row["idempotency_key"]))) {
         return {
           select: () => ({
             maybeSingle: async () => ({
@@ -139,6 +163,7 @@ function table(name: string) {
           }),
         };
       }
+      world.claimedKeys.add(String(row["idempotency_key"]));
       world.inserted.push(row);
       return {
         select: () => ({
@@ -154,7 +179,11 @@ function table(name: string) {
   chain["update"] = (row: Record<string, unknown>) => {
     if (name === "comms_review_deliveries") world.settled.push(row);
     const done = async () => ({
-      data: world.settleFails ? null : [{ id: "delivery-1", status: row["status"] }],
+      data: world.settleFails
+        ? null
+        : world.settleNoRows
+          ? []
+          : [{ id: "delivery-1", status: row["status"] }],
       error: world.settleFails ? { code: "XX000", message: "write failed" } : null,
     });
     const updateChain: Record<string, unknown> = {};
@@ -175,7 +204,7 @@ function table(name: string) {
       data: {
         id: "delivery-1",
         status: "attempting",
-        draft_id: DRAFT,
+        draft_id: world.claimCollision ? "draft-somebody-else" : DRAFT,
         approval_id: "approval-1",
         payload_fingerprint: FINGERPRINT,
         channel: "email_resend",
@@ -210,7 +239,12 @@ let fetchSpy: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   world = freshWorld();
   createClient.mockImplementation(() => ({
-    auth: { getUser: async () => ({ data: { user: { id: USER } }, error: null }) },
+    auth: {
+      getUser: async () =>
+        world.noUser
+          ? { data: { user: null }, error: { message: "no session" } }
+          : { data: { user: { id: USER } }, error: null },
+    },
     from: (name: string) => table(name),
   }));
   process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"] = "service-key";
@@ -344,6 +378,37 @@ describe("refusals reach no provider at all", () => {
         world.membership = null;
       },
     ],
+    [
+      "the membership was suspended",
+      () => {
+        world.membership = { role: "admin", status: "suspended" };
+      },
+    ],
+    [
+      "the membership is only an invitation nobody accepted",
+      () => {
+        world.membership = { role: "admin", status: "pending" };
+      },
+    ],
+    [
+      "the token names nobody",
+      () => {
+        world.noUser = true;
+      },
+    ],
+    [
+      "the attempt could not be written down at all",
+      () => {
+        world.claimFails = "write";
+      },
+    ],
+    [
+      "the key is already held by an attempt on a different draft",
+      () => {
+        world.claimFails = "unique";
+        world.claimCollision = true;
+      },
+    ],
   ])("refuses when %s", async (_label, arrange) => {
     arrange();
     const refused = await refusal();
@@ -367,6 +432,28 @@ describe("the same message twice", () => {
     const result = await send();
     expect(result.state).toBe("duplicate");
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("two people pressing send at the same moment", () => {
+  it("asks the provider once, and the loser is told it is already in progress", async () => {
+    /* The database decides this, not the application: the second insert of
+       the same key violates the unique constraint and never reaches the
+       provider. */
+    const [won, second] = await Promise.all([send(), send().catch(() => send())]);
+
+    expect(won.state).toBe("sent");
+    expect(second.state).toBe("duplicate");
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("a receipt that is already written", () => {
+  it("is not rewritten, and says the attempt needs a person", async () => {
+    world.settleNoRows = true;
+    const result = await send();
+    expect(result.note).toMatch(/could not be recorded|reconcil/i);
+    expect(result.note).not.toMatch(/^Sent\.$/);
   });
 });
 
