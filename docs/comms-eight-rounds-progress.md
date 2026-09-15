@@ -236,3 +236,67 @@ Revised next action: deploy or refresh the preview onto a build containing the
 `inputForJsonObjectFormat` correction, then run the model on the **existing**
 QA ROUND 2 record and read the persisted run's provider, model, prompt version,
 voice profile/version, rules snapshot and checksum. No send, no approval.
+
+## Round 3 — Drafts and proposals under real use
+
+Commit base: round 2 working tree. Environment: Lovable sandbox, no browser
+transport to the workspace (`LOVABLE_BROWSER_AUTH_STATUS=no_supabase`).
+Date: 2026-09-15. Queue authorization: Tai authorized rounds 3–8 in order;
+acceptance gates are unchanged, so blocked rows stay blocked.
+
+### Inspected before changing anything
+
+Read-only reads against `okydosoacqdnursmmenf` with no writes:
+
+- `comms_review_sessions.kind` and `comms_review_versions.structured_source`
+  both select successfully (HTTP 200) — the applied migrations are present.
+  No schema change was made or proposed this round.
+- Round 2 QA session `2419b89e-f1da-4f7b-95b3-21fd3e15493f`: kind `message`,
+  status `open`, context revision 2, created 15:24:25Z; one version
+  `4a11e9d6-6d56-4b1f-8c99-751ec077daaa` (version 1, `structured_source` null,
+  correct for a message); zero rows in `comms_review_runs`. Matches Codex's
+  SQL check exactly. Untouched, not recreated.
+
+### Changed
+
+- `src/lib/comms-review.server.ts` — `listReviews` swallowed its read error and
+  returned `[]`, which reached the queue as a confident "nothing waiting". It
+  now raises `review_unreadable`. Partial-save disclosure on a failed source
+  insert now names the session that does exist instead of implying the draft
+  went nowhere.
+- `src/components/tt/comms/review-workspace.tsx` — proposal scope, pricing and
+  missing-detail issues are listed beside the editor, blocking ones marked. On
+  converting to plain text with a blocking issue open, it says plainly that the
+  rewrite does not settle it and that nothing checks the numbers afterwards.
+- `src/domain/comms-proposal.test.ts`, `src/lib/comms-review.server.test.ts` —
+  new checks below.
+
+### Acceptance
+
+| ID   | Evidence                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P3.1 | **Implemented / Code-tested.** Kind, recipient, goal, situation and body persist per session and version; `kind` column confirmed live. No live save/reload — **Blocked** on a signed-in browser.                                                                                                                                                                                         |
+| P3.2 | **Code-tested.** Sections round-trip through `structuredProposalSource` / `readStructuredSource`; versions are insert-only, so older ones cannot change. Live restore **Blocked**.                                                                                                                                                                                                        |
+| P3.3 | **Code-tested.** Text is rendered server-side from sections (`canonicalBody`); stored text disagreeing with stored sections reads as not reconstructable; malformed structure is refused before any first write, at every server entrypoint.                                                                                                                                              |
+| P3.4 | **Code-tested.** New test: 2 × USD 125.50 + 1 × 249.00 − 50.00 = `USD 450.00` in exact minor units. Blank price leaves the total null and names the unpriced line. One currency per proposal, so mixing is not representable. Zero-decimal currencies: **Not applicable with reason** — none of GBP/USD/EUR/NGN is zero-decimal, and a new test asserts that, so adding one fails loudly. |
+| P3.5 | **Implemented / Code-tested.** Issues are listed with blocking ones marked, and a plain-text rewrite is told it settles nothing.                                                                                                                                                                                                                                                          |
+| P3.6 | **Implemented** (unchanged this round): source material and outbound attachments are separate records; unsupported extraction is labelled per source. Live **Blocked**.                                                                                                                                                                                                                   |
+| P3.7 | **Implemented / Code-tested.** Failed list read now refuses instead of listing none (2 new tests). Capped lists are labelled; bound deep links fetch the exact record rather than search a page.                                                                                                                                                                                          |
+| P3.8 | **Implemented.** A failed version insert names the empty review left open; a failed source insert now names the recorded draft. Writing stays in the editor on a failed save. Live interrupted-save **Blocked**.                                                                                                                                                                          |
+
+### Tests
+
+`bunx vitest run src/domain/comms-proposal.test.ts
+src/domain/comms-proposal-source.test.ts src/lib/comms-review.server.test.ts`
+— 3 files, 41 tests, passing. Types and build clean.
+
+### Unresolved and next dependencies
+
+- No live save/reload evidence for any of the three types: needs a signed-in
+  browser on a build carrying round 2's `json_object` correction. This is the
+  gate for P3.1, P3.2, P3.6, P3.8 and for round 2's P2.1–P2.3.
+- P1.5's missing raw-draft save is still an open product gap, carried forward.
+- No run has been made on the QA session, so no provider/fallback has been
+  recorded yet. When one is: record provider, model and whether the direct key
+  or the gateway answered, and keep the exhausted-credit constraint separate
+  from the request-format defect that round 2 fixed.
