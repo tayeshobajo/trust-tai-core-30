@@ -866,40 +866,47 @@ function FindingList({
     <div className="space-y-3">
       <h4 className="text-sm font-medium text-foreground">{heading}</h4>
       {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
-      {findings.map((finding) => (
-        <div key={finding.id} className="rounded-lg border border-border bg-card/60 p-4">
-          {finding.excerpt ? (
-            <p className="text-sm italic text-muted-foreground">“{finding.excerpt}”</p>
-          ) : null}
-          <p className="mt-2 text-sm text-foreground">{finding.why}</p>
-          {finding.suggestion ? (
-            <p className="mt-2 text-sm text-muted-foreground">Suggested: {finding.suggestion}</p>
-          ) : null}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <TTButton
-              size="sm"
-              variant="secondary"
-              onClick={() => onDecide(finding.id, "accepted")}
-              disabled={finding.state !== "open"}
-            >
-              Accepted
-            </TTButton>
-            <TTButton
-              size="sm"
-              variant="quiet"
-              onClick={() => onDecide(finding.id, "kept")}
-              disabled={finding.state !== "open"}
-            >
-              Keeping mine
-            </TTButton>
-            {finding.state !== "open" ? (
-              <span className="self-center text-xs text-muted-foreground">
-                {finding.state === "accepted" ? "Accepted" : "Kept as written"}
-              </span>
+      {/* A real list, so a screen reader says how many there are and which one
+          this is, and so the group is skippable. */}
+      <ul className="space-y-3" aria-label={`${heading}: ${findings.length}`}>
+        {findings.map((finding) => (
+          <li key={finding.id} className="rounded-lg border border-border bg-card/60 p-4">
+            {finding.excerpt ? (
+              <p className="text-sm italic text-muted-foreground">
+                <span className="sr-only">Their words: </span>
+                &ldquo;{finding.excerpt}&rdquo;
+              </p>
             ) : null}
-          </div>
-        </div>
-      ))}
+            <p className="mt-2 text-sm text-foreground">{finding.why}</p>
+            {finding.suggestion ? (
+              <p className="mt-2 text-sm text-muted-foreground">Suggested: {finding.suggestion}</p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <TTButton
+                size="sm"
+                variant="secondary"
+                onClick={() => onDecide(finding.id, "accepted")}
+                disabled={finding.state !== "open"}
+              >
+                Accepted
+              </TTButton>
+              <TTButton
+                size="sm"
+                variant="quiet"
+                onClick={() => onDecide(finding.id, "kept")}
+                disabled={finding.state !== "open"}
+              >
+                Keeping mine
+              </TTButton>
+              {finding.state !== "open" ? (
+                <span role="status" className="self-center text-xs text-muted-foreground">
+                  {finding.state === "accepted" ? "Accepted" : "Kept as written"}
+                </span>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
