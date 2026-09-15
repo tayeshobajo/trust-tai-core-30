@@ -248,3 +248,21 @@ review, no real-record draft workflow and no live tab walkthrough exists.
 Six tasks of independent work were completed and four real defects were fixed,
 but **completion of this queue did not resolve acceptance**. The verdict stays
 **Ready for authorized pilot**, not production.
+
+---
+
+## Addendum — Codex live evidence, 2026-09-15
+
+Codex provided independent signed-in evidence: a fresh draft created through
+the New draft → Message path persisted as kind `message`, revision 2, one
+immutable version, zero review runs (session `9b329dbe-02ca-40d6-9f54-9ec728c64446`;
+record owned by Codex, not to be duplicated or modified). The sign-in
+succeeded; a browser transport timeout after the save is recorded as
+infrastructure, not an application failure.
+
+Effect on rows: **fresh message creation and draft-type persistence** move
+from BLOCKED to Codex-verified. All other blocked rows — reload persistence,
+persisted AI review, provenance reconstruction, current-build identity, and
+every delivery/live-workflow check — are unchanged and remain BLOCKED with
+their original wording and owners. No count is restated here; the closure
+progress log carries the full row.
