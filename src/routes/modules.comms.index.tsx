@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
@@ -19,10 +19,24 @@ import { TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService } from "@/data/supabase/comms-service";
 import { listReviews } from "@/data/supabase/comms-review-client";
+import { listRecentEmail } from "@/data/comms-recent-email";
+import { listIntegrations } from "@/data/supabase/comms-integrations";
+import { gmailSync } from "@/data/supabase/comms-gmail";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { buildPlan, dueLabel, type PlanItem } from "@/domain/comms-plan";
 import { buildWorkBoard, showingNote, type Bucket } from "@/domain/comms-work-board";
 import { draftSearch, readFailureMessage, sectionState } from "@/domain/comms-section-state";
+import {
+  mailboxSyncLines,
+  recentEmailRows,
+  REPLY_STATE_LABEL,
+  REPLY_STATE_NOTE,
+  RECENT_EMAIL_PAGE,
+  RECENT_EMAIL_WINDOW_DAYS,
+  windowNote,
+  type RecentEmailRow,
+} from "@/domain/comms-recent-email";
+import type { Relationship } from "@/domain/comms";
 import type { ReviewSession } from "@/domain/comms-review";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
