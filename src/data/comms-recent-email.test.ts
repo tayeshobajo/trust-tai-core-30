@@ -10,11 +10,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls: Record<string, unknown>[] = [];
-let response: { data: unknown[] | null; error: { message: string } | null; count: number | null } = {
-  data: [],
-  error: null,
-  count: 0,
-};
+type Reply = { data: unknown[] | null; error: { message: string } | null; count: number | null };
+let response: Reply = { data: [], error: null, count: 0 };
+/** Replies handed out in order, for the fallback retry test. */
+let queued: Reply[] = [];
 
 vi.mock("@/integrations/trust-tai/supabase", () => {
   function builder(record: Record<string, unknown>) {
@@ -40,7 +39,7 @@ vi.mock("@/integrations/trust-tai/supabase", () => {
       },
       range(from: number, to: number) {
         record["range"] = [from, to];
-        return Promise.resolve(response);
+        return Promise.resolve(queued.length > 0 ? queued.shift()! : response);
       },
     };
     return chain;
@@ -80,6 +79,7 @@ function row(id: string, occurredAt: string, organizationId = "org-1") {
 describe("listRecentEmail", () => {
   beforeEach(() => {
     calls.length = 0;
+    queued = [];
     response = { data: [], error: null, count: 0 };
   });
 
@@ -127,31 +127,17 @@ describe("listRecentEmail", () => {
   });
 
   it("sheds a column an older schema does not have and retries once", async () => {
-    let first = true;
-    const original = response;
-    void original;
-    const stub = {
-      data: [row("a", "2026-09-12T09:00:00.000Z")],
-      error: null,
-      count: 1,
-    };
+    // First attempt fails naming body_text; the retry without it succeeds.
+    queued = [
+      { data: null, error: { message: "column comms_messages.body_text" }, count: null },
+      { data: [row("a", "2026-09-12T09:00:00.000Z")], error: null, count: 1 },
+    ];
 
-    // The first attempt fails naming body_text; the second must succeed.
-    Object.defineProperty(globalThis, "__unused", { value: 0, configurable: true });
-    response = { data: null, error: { message: "column comms_messages.body_text" }, count: null };
-    const promise = listRecentEmail("org-1", { limit: 5 }).then((read) => {
-      expect(read.messages).toHaveLength(1);
-      return read;
-    });
-    // Swap in the success for the retry.
-    queueMicrotask(() => {
-      if (first) {
-        first = false;
-        response = stub;
-      }
-    });
-    await promise;
-    expect(calls.length).toBeGreaterThan(1);
-    expect(calls[1]!["columns"]).not.toContain("body_text");
+    const read = await listRecentEmail("org-1", { limit: 5 });
+
+    expect(read.messages).toHaveLength(1);
+    expect(calls).toHaveLength(2);
+    expect(String(calls[0]!["columns"])).toContain("body_text");
+    expect(String(calls[1]!["columns"])).not.toContain("body_text");
   });
 });
