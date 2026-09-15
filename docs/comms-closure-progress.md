@@ -123,3 +123,35 @@ ALTER TABLE public.comms_review_runs
 
 Nothing in this task applied SQL, published, sent, or altered a historical QA
 record.
+
+## Task 3 of 6 — five tabs and permissions as one system (P1.2, P1.6, P5.1–P5.8, P6.1–P6.9)
+
+Build: working tree on base commit `863cafbcc0e9a4771c0aeb2e27633724ffdd15c7`
+plus Task 2's paging fix and this task's delivery-ledger fix.
+Environment: sandbox (Node/vitest + read-only reads against external Supabase
+`okydosoacqdnursmmenf`) and one unauthenticated live probe of the retired
+endpoint. Gates on this build: types clean, **263 test files / 2,957 tests
+passing**, build OK.
+
+### The one missing dependency (recorded once, as required)
+
+No signed-in session exists in this environment: sandbox auth status is
+`no_supabase`, the preview answers every request with **401**, and the
+external workspace cannot be signed into from here. A service key is present
+and was used **read-only for schema state only** — never to impersonate a
+signed-in user, and never as evidence of a user-visible check. Every row below
+marked *live half blocked* needs exactly one thing: **one signed-in preview
+session on this build.** Nothing else is missing.
+
+| ID | Evidence type | Build / environment | Sanitized record IDs | Result | Remaining owner |
+| --- | --- | --- | --- | --- | --- |
+| F3.1 | **Code-verified** (read of the real paths); live half **Blocked** | This build, sandbox | none created | Counts are exact where they can be: the waiting-drafts count is a database-side exact count, and the reviews count says outright when it is drawn from the most recent N of M rather than quietly estimating. Deep links resolve the named record directly rather than hoping it is in the capped list, and a draft that already has a live review corrects its own address to that review. Changes invalidate the other tabs' reads together (review + readiness + list) so one cannot show a stale reading of the other. The dashboard is deliberately not push-live; it refetches on focus and offers an explicit "Check again" with a last-checked time. **Walking it on persisted synthetic records is blocked.** | Holder of a signed-in preview |
+| F3.2 | **Code-verified** | This build, sandbox | none | Close and reopen persist on the relationship and reopening removes only the closed mark. Rescheduling a follow-up always writes a new date; clearing one is a separate, separately-labelled action with its own confirmation wording — no obligation is deleted under the name of a reschedule. Swept every server-side writer of the two obligation fields: the only automatic clear is the reply-due date on an outbound reply, which is the obligation being answered, not dropped. Scout and Roadmap handoffs pass record ids, reusing the same person and the same relationship row rather than copying identity. | — |
+| F3.3 | **Code-verified**; live half **Blocked** | This build, sandbox | none | Voice DNA saves under optimistic concurrency: the update is bound to the version read, and a zero-row result re-reads and raises a conflict the person resolves — no silent overwrite. A successful save invalidates readiness, the open review, the review list and the snapshots together. History separates the two facts explicitly, counting "captured" and "evaluated" apart, so a run that never reached the model is never shown as a measurement. **No production Voice DNA record was read, written or evaluated**; concurrency on real rows needs an isolated test workspace and a session. | Holder of a signed-in preview + isolated test workspace |
+| F3.4 | **Code-verified** | This build, sandbox | none | Connections keeps three separate facts separate and says so: per-mailbox connection and sync health with its own last error and read-only/send-capable grant; whether AI is configured, stated as not being a promise that a review will succeed; and the historical record of runs, which says plainly "nothing here has been proven to work" when nothing ever has. Per-draft readiness is explicitly never a workspace-wide state. Retries are user actions with pending states, not silent background retries; real error text is shown rather than swallowed. | — |
+| F3.5 | **Code-tested** (database and provider are doubles); live half **Blocked** | This build, sandbox test suite | none | Approval binds the exact current version, context revision, recipient and payload fingerprint, recomputed at send time rather than trusted from the run; an edit after approval invalidates it. Inactive membership, view-only role and a caller from another workspace are each refused and the provider is never reached. The **real** rollback constraints are the database's own: the unique key over draft + approval + payload fingerprint + channel, and the settle that only matches a row still `attempting`. Those are code-verified; exercising them against real rows needs a session. | Holder of a signed-in preview |
+| F3.6 | **Live-verified** (safe, no send) | Retired endpoint, probed today | none | Full inventory of sending paths: Gmail, email provider, LinkedIn (a person's own report of having sent, never provider delivery), the retired endpoint, and the queue/Scout callers — all of which pass through the one approval gate. The retired endpoint was probed safely after confirming it is a refusal handler: unauthenticated **401**; with the public key, **410** with a refusal body naming the replacement and stating nothing was sent and nothing changed. No credentials were disclosed and no active send path was invoked. | — |
+| F3.7 | **Defect found and fixed**, now **Code-tested** (simulated provider) | This build, change made in this task | none — `comms_review_deliveries` remains **empty**, confirmed read-only | **Was failing.** The Gmail path opened a claim on the shared delivery ledger and never closed it: on success, refusal or silence the row stayed `attempting` forever, so the immutable receipt was never written. Fixed — the provider call now settles the ledger in every branch. Six simulated-delivery tests pin the behaviour: one claim only (a claim already held never reaches the provider and never settles somebody else's attempt), a refusal settles as failed, a lost answer settles as **unknown** and is never offered as a retry, an answer with no message id is also unknown, and a receipt that cannot be stored is reported as such rather than as a clean send. Every one of these is a **simulation** — no provider was called, no message was sent, and no production delivery record was created. | — |
+
+Nothing in this task published, sent, applied SQL, altered a real client
+thread or production Voice DNA, or marked a Tai or Codex decision.
