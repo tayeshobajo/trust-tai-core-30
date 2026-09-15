@@ -159,14 +159,23 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
                     <TTButton
                       size="sm"
                       disabled={save.isPending}
-                      onClick={() => save.mutate(profile)}
+                      onClick={() => save.mutate({ current: profile })}
                     >
                       {save.isPending ? "Saving" : "Save"}
+                    </TTButton>
+                    <TTButton
+                      size="sm"
+                      variant="quiet"
+                      disabled={save.isPending}
+                      onClick={() => setDraft(DEFAULT_VOICE_DOCUMENT)}
+                    >
+                      Reset to starting document
                     </TTButton>
                     <TTButton size="sm" variant="quiet" onClick={() => setMode("preview")}>
                       Cancel
                     </TTButton>
                   </div>
+
                 )
               ) : (
                 <MetaPill>View only</MetaPill>
