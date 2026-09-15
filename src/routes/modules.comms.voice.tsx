@@ -73,12 +73,13 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   const save = useMutation({
-    mutationFn: (current: VoiceProfile | null) =>
+    mutationFn: (vars: { current: VoiceProfile | null; reset?: boolean }) =>
       saveVoiceProfile({
         organizationId: identity.organizationId,
-        current,
+        current: vars.current,
         contentMarkdown: draft,
         userId: identity.userId,
+        ...(vars.reset ? { reset: true } : {}),
       }),
     onSuccess: async (next) => {
       queryClient.setQueryData(["comms", "voice", identity.organizationId], next);
@@ -96,6 +97,7 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
       setMode("preview");
     },
   });
+
 
   if (voiceQuery.isError) {
     return (
