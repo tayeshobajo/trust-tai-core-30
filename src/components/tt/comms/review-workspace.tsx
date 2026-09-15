@@ -608,6 +608,30 @@ export function ReviewDetail({
             <p className="text-sm text-muted-foreground">This draft has not been reviewed yet.</p>
           )}
 
+          {state.latestRun && state.latestRun.opportunities.length > 0 ? (
+            <div
+              className="rounded-lg border border-border bg-card/60 p-4"
+              data-testid="review-opportunities"
+            >
+              <h4 className="text-sm font-medium text-foreground">Kept back for you</h4>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Private notes. None of this is in the message, and none of it goes anywhere unless
+                you put it there yourself.
+              </p>
+              <ul className="mt-3 space-y-3">
+                {state.latestRun.opportunities.map((note, index) => (
+                  <li key={`${note.evidence}-${index}`} className="text-xs text-muted-foreground">
+                    <p className="text-foreground">{note.reading}</p>
+                    <p className="mt-1">Because they wrote: &ldquo;{note.evidence}&rdquo;</p>
+                    <p className="mt-1">
+                      Worth: {note.worth} · When: {note.timing}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           {mustFix.length > 0 ? (
             <FindingList
               heading="Must fix"
