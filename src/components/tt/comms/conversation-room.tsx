@@ -11,7 +11,7 @@
  * never as a permanent tax on reading width.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, FileText } from "lucide-react";
 
 import {
@@ -214,6 +214,7 @@ export function ConversationRoom({
   days,
   health,
   organizationId,
+  focusMessageId,
   historyGaps,
   onRetryHistory,
   onBack,
