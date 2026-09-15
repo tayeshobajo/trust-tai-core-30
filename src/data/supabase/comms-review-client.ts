@@ -66,16 +66,27 @@ async function call<T>(init: RequestInit, url: string = URL): Promise<T> {
 const post = <T>(body: Record<string, unknown>) =>
   call<T>({ method: "POST", body: JSON.stringify(body) });
 
-export function listReviews(organizationId: string) {
-  return call<{ sessions: ReviewSession[]; total: number; capped: boolean }>(
+export function listReviews(organizationId: string, offset = 0) {
+  return call<{
+    sessions: ReviewSession[];
+    total: number;
+    capped: boolean;
+    offset?: number;
+    hasMore?: boolean;
+  }>(
     { method: "GET" },
-    `${URL}?organizationId=${encodeURIComponent(organizationId)}`,
+    `${URL}?organizationId=${encodeURIComponent(organizationId)}&offset=${Math.max(0, Math.trunc(offset))}`,
   ).then((payload) => ({
     rows: payload.sessions,
     total: payload.total,
     capped: payload.capped,
+    offset: payload.offset ?? offset,
+    /* An older server that does not answer this reads as "nothing more to
+       show" only when the page was short; a full page stays open. */
+    hasMore: payload.hasMore ?? payload.sessions.length >= 50,
   }));
 }
+
 
 export function loadReview(organizationId: string, sessionId: string) {
   return call<ReviewStateView>(

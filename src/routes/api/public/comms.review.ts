@@ -110,13 +110,18 @@ export const Route = createFileRoute("/api/public/comms/review")({
             return Response.json(await loadReview(token, { organizationId, sessionId }));
           }
           {
-            const page = await listReviews(token, organizationId);
+            const asked = Number(url.searchParams.get("offset") ?? "0");
+            const offset = Number.isFinite(asked) ? asked : 0;
+            const page = await listReviews(token, organizationId, { offset });
             return Response.json({
               sessions: page.rows,
               total: page.total,
               capped: page.capped,
+              offset: page.offset,
+              hasMore: page.hasMore,
             });
           }
+
         } catch (error) {
           return failure(error);
         }

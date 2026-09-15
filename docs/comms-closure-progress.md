@@ -71,3 +71,55 @@ On a preview build carrying this commit, signed in to an active membership:
    against the draft. Record both run IDs here.
 
 Do not approve, do not send.
+
+## Task 2 — Durable drafts and the proposal workflow (P1.4–P1.5, P3.1–P3.8, P8.2)
+
+Environment: Lovable sandbox, 2026-09-15, base commit
+`863cafbcc0e9a4771c0aeb2e27633724ffdd15c7` plus the paging fix described in
+F2.5 below. External Supabase `okydosoacqdnursmmenf`. No publish, no send, no
+schema applied, no QA record created or altered. Gates after the change:
+types clean, 262 files / 2,951 tests passing.
+
+| ID   | Evidence type                                      | Build / environment                          | Records                              | Result                                                                                                                                                                                                                                                                                                                                                                                | Remaining owner                            |
+| ---- | -------------------------------------------------- | -------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| F2.1 | **Code-tested**; live half **Blocked**              | Sandbox test suite on the commit above        | none (no workspace record created)   | Save → reload → edit → new immutable version → review → correction → re-run is implemented for all three kinds, and each step is covered by tests over fake records: the version row is never mutated, identity, kind, recipient, goal and context revision carry forward unchanged. Proving it **on real records** needs a signed-in workspace — see the one environment blocker above. | Holder of a signed-in preview on this build |
+| F2.2 | **Code-verified by execution** (deterministic, no workspace needed) | Sandbox, real `comms-proposal` module executed | none                                 | **Closed.** Executed the exact figures: USD 125.50 × 2 + 249 − 50 → subtotal 500.00, total **USD 450.00** to the penny (integer minor units, no float rounding). Adding an unpriced line makes subtotal and total **null**, names the line, raises a blocking `unpriced_line`, and the rendered words say "Total: not stated — some lines are still unpriced." A blocking warning cannot be written away, because the outbound words are re-rendered from the same structure the checks read. Mixed currencies are **not applicable by construction**: a proposal carries one currency field, so two currencies cannot coexist in one set of sections. Restoring the sections as an editable structure on reload is code-tested; on real records it is blocked with F2.1. | Holder of a signed-in preview (reload half) |
+| F2.3 | **Code-verified**                                    | Sandbox, `comms-sources` module               | none                                 | **Closed at the boundary.** The three roles are separate types, not one bag: review sources are context only and the module states outright that nothing in it ever becomes an outbound attachment; the imported draft is the version body; outbound attachments are a different path. Extraction is honest per source — `parsed` only when text was actually recovered, otherwise `unsupported`, `unreadable` or `empty`, each with its own sentence, and coverage is never claimed over a source that was not read. | — |
+| F2.4 | **Code-verified**                                    | Sandbox                                       | none                                 | **Closed.** Saving raw writing does not require the AI: creating a draft writes the session and the first version, and running the review is a separate action that can be skipped entirely. There is no second draft store — the workspace writes only to the canonical session/version tables, and nothing is kept in browser storage. Unsaved writing is guarded on every exit (tab, back button, link, row change) by a Stay/Leave prompt, and a failed save leaves the typed text in place rather than clearing the editor. No criterion here is marked N/A for being unbuilt. | — |
+| F2.5 | **Defect found and fixed**, now **Code-tested**      | Sandbox, change made in this task              | none                                 | **Was failing.** Direct links already worked (a record is fetched by name, not found in the page). Filters did **not**: the list read only the newest fifty reviews, so a filter could not reach anything older, and the disclosure admitted it instead of fixing it. Fixed: the review list now pages (`offset`, with `hasMore` and the exact total), the list loads older pages on request and keeps them, and the disclosure now reads "Showing N of M reviews … the filter counts only what is loaded". Without a count from the database a full page is still treated as "there may be more", never as everything. Partial saves keep their existing honest reporting (`kindPersisted`, `structurePersisted`), and a retry re-uses the same session rather than creating a second one. | Holder of a signed-in preview (live confirmation) |
+| F2.6 | **Code-tested**; live half **Blocked**               | Sandbox test suite                            | none                                 | Leaving a review and returning reopens exactly one bound review — a draft with a live review resolves to that review and the address is corrected so a reload agrees, and two open reviews claiming one draft block sending rather than picking one. Older versions are never rewritten. **Actual persistence evidence on real records is blocked** with F2.1.                     | Holder of a signed-in preview on this build |
+
+### Audit: private opportunity retention (C09 / C13 / P4.5)
+
+Honest temporary display is what exists today, and it is **not** retention.
+
+- The reviewer returns private notes about possible future work. The run tries
+  to write them, and when the column is absent it records
+  `opportunitiesStored: false` and says so rather than pretending none were
+  raised. That is honest, and it still means the notes are shown once and lost
+  on reload.
+- Therefore **C09/C13/P4.5 are not closed by the current build.** Labelled
+  **Blocked on pending SQL**, owner Codex.
+
+**Exact pending SQL** (already written, reviewed for scope, *not applied*):
+`docs/migrations/proposed/20260915120000_comms_review_opportunities.sql`.
+
+Minimum secure proposal — one additive column, nothing else:
+
+```sql
+ALTER TABLE public.comms_review_runs
+  ADD COLUMN IF NOT EXISTS opportunities jsonb NOT NULL DEFAULT '[]'::jsonb;
+```
+
+- No new grants, policies, tables or data. The column inherits the run row's
+  existing RLS, so it is readable exactly by whoever may already read the run.
+- Application behaviour on the column existing: the notes persist and reload,
+  and each one's `evidence` is checked in code to be quoted from the source
+  material before the row is written.
+- Application behaviour on the column still missing: unchanged — the run
+  reports `opportunitiesStored: false`, and the reviewer sees "these notes were
+  not kept", never a silent empty list.
+- Rollback is dropping the column; no other behaviour depends on it.
+
+Nothing in this task applied SQL, published, sent, or altered a historical QA
+record.

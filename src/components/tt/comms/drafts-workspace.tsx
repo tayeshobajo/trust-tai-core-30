@@ -134,9 +134,24 @@ export function DraftsWorkspace({
     queryKey: ["comms", "drafts-workspace", "queue", identity.organizationId],
     queryFn: () => fetchQueue(identity.organizationId),
   });
+  /* Older reviews are fetched a page at a time and kept, so a filter is not
+     confined to the newest fifty records. */
+  const [pages, setPages] = useState(1);
   const reviews = useQuery({
-    queryKey: ["comms", "reviews", identity.organizationId],
-    queryFn: () => listReviews(identity.organizationId),
+    queryKey: ["comms", "reviews", identity.organizationId, pages],
+    queryFn: async () => {
+      const collected: ReviewSession[] = [];
+      let total = 0;
+      let hasMore = false;
+      for (let page = 0; page < pages; page += 1) {
+        const answer = await listReviews(identity.organizationId, page * 50);
+        collected.push(...answer.rows);
+        total = answer.total;
+        hasMore = answer.hasMore;
+        if (!hasMore) break;
+      }
+      return { rows: collected, total, hasMore };
+    },
   });
 
   const loading = queue.isPending || reviews.isPending;
@@ -145,7 +160,9 @@ export function DraftsWorkspace({
   const shown = filter === "all" ? rows : rows.filter((row) => row.state === filter);
   /* Both reads are capped, so the list can be a part of the truth. Say so
      rather than presenting a count as the whole. */
-  const capped = (queue.data?.length ?? 0) >= 50 || (reviews.data?.capped ?? false);
+  const moreReviews = reviews.data?.hasMore ?? false;
+  const capped = (queue.data?.length ?? 0) >= 50 || moreReviews;
+
 
   /* A link can name a draft the capped list does not hold, so the record is
      fetched by name rather than found in a page of results. */
@@ -318,14 +335,27 @@ export function DraftsWorkspace({
           </ul>
         )}
         {!failed && !loading && capped ? (
-          <p className="text-[12px] text-muted-foreground">
-            The most recent records only
-            {typeof reviews.data?.total === "number"
-              ? `, out of ${reviews.data.total} reviews in this workspace`
-              : ""}
-            . Older ones are not shown here, and the filter counts only what is shown.
-          </p>
+          <div className="space-y-2">
+            <p className="text-[12px] text-muted-foreground">
+              Showing {reviews.data?.rows.length ?? 0}
+              {typeof reviews.data?.total === "number"
+                ? ` of ${reviews.data.total} reviews in this workspace`
+                : " reviews"}
+              , newest first. The filter counts only what is loaded.
+            </p>
+            {moreReviews ? (
+              <TTButton
+                size="sm"
+                variant="quiet"
+                disabled={reviews.isFetching}
+                onClick={() => setPages((count) => count + 1)}
+              >
+                {reviews.isFetching ? "Loading older…" : "Show older reviews"}
+              </TTButton>
+            ) : null}
+          </div>
         ) : null}
+
       </aside>
 
       <section className="min-w-0">
