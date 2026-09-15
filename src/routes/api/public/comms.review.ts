@@ -248,7 +248,11 @@ export const Route = createFileRoute("/api/public/comms/review")({
                 await promoteLesson(token, {
                   organizationId,
                   findingId: textOf(body["findingId"]),
-                  lesson: textOf(body["lesson"]),
+                  category: textOf(body["category"]),
+                  ...(textOf(body["sessionId"])
+                    ? { sessionId: textOf(body["sessionId"]) }
+                    : {}),
+                  privateNote: textOf(body["privateNote"]),
                 }),
               );
             }

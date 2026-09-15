@@ -197,6 +197,13 @@ export interface ReviewContext {
   senderUserId?: string | null;
   /** The exact stored voice rules the review was held against, if any. */
   voiceVersion: string | null;
+  /**
+   * The exact set of kept writing habits the review was held against. Keeping
+   * or revoking one changes this, which makes earlier runs and approvals
+   * stale instead of leaving them looking current against guidance that has
+   * since moved.
+   */
+  lessonSetStamp?: string | null;
 }
 
 /**
@@ -217,6 +224,15 @@ export function contextFingerprint(context: ReviewContext): string {
     (context.senderUserId ?? "").trim(),
     (context.voiceVersion ?? "").trim(),
     [...context.sourceChecksums].sort().join(","),
+    /* Only an actual set of kept habits enters the fingerprint. "None" and
+       "unsupported" are left out on purpose, so that runs recorded before any
+       habit was kept stay exactly as current as they were, and revoking the
+       last habit returns the fingerprint to that same value rather than
+       inventing a third state. */
+    ...(context.lessonSetStamp && !/^lessons:(none|unsupported)$/.test(context.lessonSetStamp)
+      ? [context.lessonSetStamp.trim()]
+      : []),
+
   ];
   return sourceChecksum(parts.join("\u0000"));
 }

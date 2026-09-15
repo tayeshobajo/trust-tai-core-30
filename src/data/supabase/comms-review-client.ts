@@ -158,7 +158,10 @@ export function decideFinding(input: {
 export function keepLesson(input: {
   organizationId: string;
   findingId: string;
-  lesson: string;
+  /** One bounded style category. Free text is never reused. */
+  category: string;
+  sessionId?: string;
+  privateNote?: string;
 }) {
   return post<ReviewLesson>({ action: "lesson.keep", ...input });
 }

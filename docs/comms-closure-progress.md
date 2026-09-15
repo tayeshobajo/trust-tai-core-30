@@ -274,3 +274,27 @@ Record class: **Codex live evidence**. Earlier self-reported "signed-in
 blocked" rows are not overwritten by this; the sandbox environment still
 cannot sign in itself, and this evidence arrives from Codex's browser, not
 from this environment.
+
+## Codex lessons hardening, 2026-09-16 (a017a25) — acceptance rows
+
+Build / environment: this sandbox, pinned candidate `863cafbcc0e9a4771c0aeb2e27633724ffdd15c7` plus this pack's changes. Types clean, 3,002 tests pass, build OK. **No migration applied**; both proposals remain unapplied and await explicit Tai approval.
+
+| Acceptance row | Evidence type | Result | Remaining owner |
+| --- | --- | --- | --- |
+| L1 — Composite same-organization keys bind finding → run → draft | Proposed SQL `docs/migrations/proposed/20260916090000_comms_review_lessons.sql` (two additive unique keys plus two composite FKs carrying `organization_id`) | PASS-CODE (proposal) — **not applied** | Tai approval, then Codex application |
+| L2 — The draft named by a caller must match the finding's own run | Code + boundary test (`comms-review-lessons.server.test.ts`, "refuses when the caller names a different draft") | PASS-CODE | — |
+| L3 — Verified decider and decision snapshot captured at promotion | Code + test asserting the written payload carries `decided_by`/`decided_at`/`source_run_id`/`source_session_id` from the server's own reads, never the caller's claim | PASS-CODE | — |
+| L4 — A failed run, or a source read that fails, is refused | Tests: failed run refused; finding read failure → `write_failed`, nothing written | PASS-CODE | — |
+| L5 — Explicit REVOKE of PUBLIC/anon/authenticated mutation; least service privilege | Proposed SQL (`REVOKE ALL` from PUBLIC/anon/authenticated, `SELECT` to authenticated, `SELECT/INSERT/UPDATE` only to service_role, **no** DELETE) | PASS-CODE (proposal) — **not applied** | Tai approval, then Codex application |
+| L6 — Content and provenance immutable; revocation one-way; no silent hard deletion | Proposed SQL trigger `comms_review_lessons_immutable` | PASS-CODE (proposal) — **not applied** | Tai approval, then Codex application |
+| L7 — Reuse is bounded style guidance only; no regex claim | Code: a fixed catalogue of 8 style categories chosen by id; free text refused outright. Test uses "Acme prefers Tuesday" — ordinary words, a real client fact — to show why a pattern check is not the mechanism | PASS-CODE | — |
+| L8 — No client fact or note crosses into another review | Tests: catalogue wording only in the packet; `source_note` and `private_note` absent from what a review is given | PASS-CODE | — |
+| L9 — No automatic Voice DNA write | Code: the lessons path writes one table and never touches `comms_voice_profiles` | PASS-CODE | — |
+| L10 — Active set snapshotted, hashed, and carried in run provenance | Code + test: `kept_lessons_snapshot` (stamp, state, categories, `sha256`) and the stamp in `stages` | PASS-CODE | — |
+| L11 — Keeping or revoking invalidates affected earlier evidence, consistently | Code + tests: the stamp enters the context fingerprint whenever a set exists; revoking the last habit returns the fingerprint to its no-habits value, so runs recorded before C19 are not retroactively invalidated. Startup race re-reads the set and abandons the run as `context_changed` / `stale_version` | PASS-CODE | — |
+| L12 — A read failure never becomes empty valid guidance | Code + test: `read_failed` refuses the whole run — no run row, no model call — rather than proceeding with nothing kept | PASS-CODE | — |
+| L13 — Wrong-organization linkage refused | Tests: finding not in this workspace, and run not in this workspace, both refused with nothing written | PASS-CODE | — |
+| L14 — Live verification of any of the above in the authenticated workspace | — | BLOCKED (table not applied; this environment cannot sign in) | Tai approval → Codex application → Codex live check |
+| P1.5 — Raw reply save without AI | Code (`src/domain/comms-raw-draft.ts`, `reply-record.tsx`) + unit tests: existing-service save, Stay/Save/Discard, text retained on a failed save | PASS-CODE — **reported separately from live verification, which remains BLOCKED** | Codex live check |
+
+Opportunities proposal (`20260915120000_comms_review_opportunities.sql`, Revision 2): reviewed by Codex, **not applied**. It stays unapplied until Tai approves that exact proposal; it will not be applied through another tool or agent.

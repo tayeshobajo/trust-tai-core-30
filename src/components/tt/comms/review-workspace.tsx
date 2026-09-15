@@ -446,8 +446,8 @@ export function ReviewDetail({
 
   /* Keeping and revoking a lesson are human acts, each one explicit. */
   const keep = useMutation({
-    mutationFn: (input: { findingId: string; lesson: string }) =>
-      keepLesson({ organizationId: identity.organizationId, ...input }),
+    mutationFn: (input: { findingId: string; category: string; privateNote?: string }) =>
+      keepLesson({ organizationId: identity.organizationId, sessionId, ...input }),
     onSuccess: () => void refresh(),
     onError: (cause: Error) => setError(cause.message),
   });
