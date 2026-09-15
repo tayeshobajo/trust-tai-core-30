@@ -335,14 +335,27 @@ export function DraftsWorkspace({
           </ul>
         )}
         {!failed && !loading && capped ? (
-          <p className="text-[12px] text-muted-foreground">
-            The most recent records only
-            {typeof reviews.data?.total === "number"
-              ? `, out of ${reviews.data.total} reviews in this workspace`
-              : ""}
-            . Older ones are not shown here, and the filter counts only what is shown.
-          </p>
+          <div className="space-y-2">
+            <p className="text-[12px] text-muted-foreground">
+              Showing {reviews.data?.rows.length ?? 0}
+              {typeof reviews.data?.total === "number"
+                ? ` of ${reviews.data.total} reviews in this workspace`
+                : " reviews"}
+              , newest first. The filter counts only what is loaded.
+            </p>
+            {moreReviews ? (
+              <TTButton
+                size="sm"
+                variant="quiet"
+                disabled={reviews.isFetching}
+                onClick={() => setPages((count) => count + 1)}
+              >
+                {reviews.isFetching ? "Loading older…" : "Show older reviews"}
+              </TTButton>
+            ) : null}
+          </div>
         ) : null}
+
       </aside>
 
       <section className="min-w-0">
