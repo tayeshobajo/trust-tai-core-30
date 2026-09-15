@@ -234,10 +234,12 @@ because live acceptance still has fixable and unfinished work in front of it.
 **Lovable (me)** — nothing is outstanding that can be done without a session.
 Every fixable defect found in this queue is fixed and covered by tests.
 
-**Codex** — review and apply
-`docs/migrations/proposed/20260915120000_comms_review_opportunities.sql` to give
-private review notes real retention (closes C09 / P4.5 retention); confirm
-applied schema against the candidate after it lands.
+**Codex** — the private-notes column is applied (2026-09-15,
+`comms_review_opportunities_nullable`, archived at
+`docs/migrations/20260915120000_comms_review_opportunities.sql`). Remaining:
+run a real completed review in the authenticated workspace and confirm the
+notes persist and reload (closes C09 / P4.5 retention); review the lessons
+proposal, which stays unapplied.
 
 **Tai** — record ratings in `docs/comms-review-examples-for-tai.md` (P4.4, P4.9,
 Tai half of P8.3); review C19 as built (lessons kept from decisions);
