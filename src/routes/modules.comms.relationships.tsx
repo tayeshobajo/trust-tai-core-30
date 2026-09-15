@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { setConversationClosed } from "@/data/comms-dashboard";
 import { isClosed } from "@/domain/comms-dashboard";
 
+import { cn } from "@/lib/utils";
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { openReview } from "@/components/tt/comms/draft-queue";
