@@ -1160,6 +1160,53 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             onSave={(submission) => recordInteraction.mutate(submission)}
           />
         ) : null}
+
+        {/* Writing in the reply bar is not saved anywhere until a draft is
+            prepared, so leaving asks in plain words rather than a browser
+            prompt. Staying is the safe default and keeps every character. */}
+        {leaveGuard.status === "blocked" || leaving ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Unsent reply"
+            className="fixed inset-0 z-50 grid place-items-center bg-foreground/25 p-4 backdrop-blur-sm"
+          >
+            <div className="tt-rise w-full max-w-[420px] rounded-xl border border-border bg-card p-5">
+              <p className="text-[15px] font-medium text-foreground">
+                You have an unsent reply here.
+              </p>
+              <p className="mt-2 text-[13px] text-muted-foreground">
+                It has not been saved as a draft yet. Stay and prepare the draft to keep it, or
+                leave and lose what you have written.
+              </p>
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <TTButton
+                  size="sm"
+                  autoFocus
+                  onClick={() => {
+                    if (leaving) leaving.reset();
+                    else leaveGuard.reset?.();
+                    setLeaving(null);
+                  }}
+                >
+                  Stay and keep writing
+                </TTButton>
+                <TTButton
+                  variant="quiet"
+                  size="sm"
+                  onClick={() => {
+                    setReplyDirty(false);
+                    if (leaving) leaving.proceed();
+                    else leaveGuard.proceed?.();
+                    setLeaving(null);
+                  }}
+                >
+                  Discard and leave
+                </TTButton>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </AppShell>
   );
