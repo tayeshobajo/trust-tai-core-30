@@ -155,3 +155,36 @@ session on this build.** Nothing else is missing.
 
 Nothing in this task published, sent, applied SQL, altered a real client
 thread or production Voice DNA, or marked a Tai or Codex decision.
+
+## Task 4 of 6 — accessibility and recovery on the actual screens (P1.1, P1.3, P1.7, P7.1–P7.7)
+
+Build: working tree on base commit `863cafbcc0e9a4771c0aeb2e27633724ffdd15c7`
+plus Task 2's paging fix, Task 3's delivery-ledger fix and this task's test
+additions. Environment: Chromium via Playwright against the **real application**
+on the local dev server (`http://localhost:8080`, Vite, this build) at
+1440×900, 768×1024 and 375×812; axe-core 4 (`wcag2a`+`wcag2aa`); plus jsdom
+component rendering of the production Drafts & Reviews screen. Gates on this
+build: types clean, **264 test files / 2,960 tests passing**, build OK.
+**No mockup route was used as evidence in this task.**
+
+### What the missing session costs here (the dependency recorded in Task 3)
+
+Every real Comms route was opened at all three sizes. Each one correctly
+fails closed — "This workspace is closed until you sign in." — so the
+**populated** screens (intake, editor with a long proposal, findings with a
+selected annotation, drawers, conflict recovery) cannot be photographed or
+keyboard-walked in a browser from here. They are covered at component level
+instead, and that difference is stated in every row below rather than hidden.
+
+| ID | Evidence type | Build / environment | Sanitized record IDs | Result | Remaining owner |
+| --- | --- | --- | --- | --- | --- |
+| F4.1 | **Live-verified** on the real routes that are reachable; populated screens **Blocked** | Real app, local dev server, Chromium, 1440×900 / 768×1024 / 375×812 | none created | Six real routes (`/modules/comms/`, conversations, drafts, voice, integrations, `/auth`) opened at all three sizes: **0 px horizontal overflow everywhere, 0 console errors**, no clipped action. Every Comms route fails closed to the signed-out screen, so **long proposals, the focused mobile conversation and selected annotations were not exercised on a rendered screen** and are not claimed. Screenshots: `/tmp/browser/f4/auth-{desktop,tablet,mobile}.png`. | Holder of a signed-in preview |
+| F4.2 | **Live-verified** (reachable screens) + **component-tested** (populated screens) | As above | none | Keyboard walk on the real screens: every stop is named, focus is visibly marked (2 px ring on inputs, 2 px outline on links, measured from computed style, not assumed), and there is no trap — tabbing cycles back to the start. The sign-in field is properly labelled (`for`/`id`), and the submit button enables on input rather than staying dead. **Intake, editor, findings, drawers and conflict recovery were keyboard-tested at component level only**; a browser walk of them needs a session. | Holder of a signed-in preview |
+| F4.3 | **Live-verified** (contrast + labels on reachable screens); populated screens **component-tested** | axe-core `wcag2a`+`wcag2aa`, real screens, three sizes | none | **Zero WCAG A/AA violations**, including colour contrast, on every reachable real screen at every size. The production Drafts & Reviews component, rendered with a populated list, a failed read and an empty list, also returns **zero violations** (contrast excluded there, since a test renderer cannot measure it — that exclusion is why the rendered-screen contrast check above matters). Statuses are never colour alone: each state carries a word ("Waiting on you", "In review", "Approved", "Closed"). | Holder of a signed-in preview (contrast on populated screens) |
+| F4.4 | **Code-verified / component-tested**; live half **Blocked** | This build, sandbox | none | Four distinct protections, not one: leaving the page is guarded with Stay/Leave; a **failed save keeps the typed words on screen** and only shows the reason, so a dropped network does not consume the writing; an expired session is surfaced as "Your session has expired. Sign in again." on the failing action rather than as a silent loss; and a newer version arriving replaces the editor only for a different record, never over a newer save. Signing out cancels in-flight reads and clears the cache, and nothing is written to browser storage, so no draft survives into another session. **Unload protection alone is explicitly not claimed as covering network or session recovery.** Interrupting a real network mid-save needs a session. | Holder of a signed-in preview |
+| F4.5 | **Component-tested** on the production screen | jsdom, this build | none | A failed read says "could not be read just now", offers **Try again**, and states no counts — it is never rendered as an empty success, and the empty state is a separate, differently worded screen. Both states pass the accessibility audit. Controls that cannot act are disabled with the reason in view (a review cannot be run with unsaved edits; approval is refused while the words are dirty or readiness is unmet), rather than silently doing nothing. | — |
+| F4.6 | Duration half **Blocked**; repeat-call half **Code-verified** | This build | none | **No duration is claimed, because none was measured**: a multi-page list and a full review need real records and a session, and inventing a number here would be worthless. The reproducible check is written down: open Drafts & Reviews signed in, record time-to-first-row and time-to-last-page across pages, then time one review end to end, recording browser, network and build. The **repeat-call** half is verified now: a review is only ever started by a person pressing the button — no effect runs it — and the button disables itself while the call is in flight, so a double-click and a re-render cannot produce a second model call. | Holder of a signed-in preview |
+
+Nothing in this task published, sent, applied SQL, altered a real client
+thread or production Voice DNA, used a mockup route as evidence, or marked a
+Tai or Codex decision.
