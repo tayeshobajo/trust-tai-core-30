@@ -233,6 +233,8 @@ export function ConversationRoom({
   health: ConversationHealth;
   /** The workspace, resolves inline images and attachment downloads. */
   organizationId?: string;
+  /** The stored message a deep link named. Opened on, never marked read. */
+  focusMessageId?: string;
   /** Reads that failed. The thread says so rather than looking quiet. */
   historyGaps?: HistoryGap[];
   onRetryHistory?: () => void;
