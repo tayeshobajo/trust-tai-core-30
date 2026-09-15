@@ -120,11 +120,11 @@ marked passed.
 
 - **AWAITING-TAI**: 3
 - **BLOCKED**: 27
-- **N/A-SCOPE**: 1
+- **N/A-SCOPE**: 0 (was 1; C19 reclassified and built on 2026-09-16)
 - **NOT-PERFORMED**: 1
-- **PARTIAL-BLOCKED**: 2
-- **PASS-CODE**: 43
-- **PASS-LIVE**: 13
+- **PARTIAL-BLOCKED**: 4 (P6.8 and P7.3 corrected downward on 2026-09-16)
+- **PASS-CODE**: 44
+- **PASS-LIVE**: 11
 
 Total rows: **90** (63 P criteria, 27 capability rows).
 
