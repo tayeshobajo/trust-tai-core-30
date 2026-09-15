@@ -28,7 +28,7 @@ vi.mock("@/lib/comms-send-authority.server", () => ({
 const CONNECTION = {
   id: "int-1",
   account_email: "tai@trusttai.example",
-  scopes: "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly",
+  scopes: ["https://www.googleapis.com/auth/gmail.send", "https://www.googleapis.com/auth/gmail.readonly"],
   status: "connected",
 };
 
