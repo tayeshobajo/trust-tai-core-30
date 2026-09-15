@@ -109,7 +109,14 @@ export const Route = createFileRoute("/api/public/comms/review")({
           if (sessionId) {
             return Response.json(await loadReview(token, { organizationId, sessionId }));
           }
-          return Response.json({ sessions: await listReviews(token, organizationId) });
+          {
+            const page = await listReviews(token, organizationId);
+            return Response.json({
+              sessions: page.rows,
+              total: page.total,
+              capped: page.capped,
+            });
+          }
         } catch (error) {
           return failure(error);
         }

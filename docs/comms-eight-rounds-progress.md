@@ -384,3 +384,69 @@ prepared examples are the deliberate exception, and contain no real material.
   evidence for P2.2/P2.3 and the live save/reload evidence for P3 are still
   blocked on a signed-in preview carrying these changes.
 - The opportunities column is proposed only. Nothing was applied.
+
+## Round 5 — The five destinations as one piece of work
+
+Environment: Lovable sandbox, 2026-09-15. No signed-in session to the
+workspace here, so every row below is code evidence unless it says otherwise.
+Nothing was published, nothing was sent, no schema was applied, and the
+historical QA session and failed run were not touched.
+
+### What the audit found and changed
+
+1. **The review list lied about its size.** It read the fifty most recent
+   reviews and every caller treated that page as the whole workspace: the
+   dashboard's "reviews not yet approved" count, the Drafts filters, and the
+   "showing X of N" lines. `listReviews` now returns the page, the exact
+   total, and whether it is capped. A page with no count from the database is
+   marked capped rather than reported as complete. The dashboard says when its
+   count comes from the recent fifty only, and Drafts names the real total.
+2. **Connections had no way back from a failed read.** The route showed a bare
+   error; an empty panel there reads as "nothing is connected", which is a
+   different and worse claim. It now says the state could not be read, says it
+   is not the same as nothing being connected, and offers Try again.
+3. **Nothing said when a page was last read.** The dashboard and Connections
+   now carry a plain line — read at a time, with Check again — and state that
+   work done elsewhere appears on return to the tab or on that press. Nothing
+   in Comms is subscribed to the database, and the pages no longer imply it.
+
+### Acceptance
+
+| ID   | Evidence                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P5.1 | **Code-tested.** Replies owed, past-due work and meetings needing a record come from the real relationship rows; the clock steps every minute so a page left open cannot call a passed date "due soon". Each row opens its own record, draft rows carry the draft id, review rows the session id. Silence is excluded and said to be excluded. **Blocked, live:** no persisted walk-through. |
+| P5.2 | **Implemented** (Round 1, unchanged): one room per person, history, goal, reply and review stay on the same record; close and reopen change the room's state and leave follow-ups and obligations standing. **Blocked, live.**                                                                                                                                                               |
+| P5.3 | **Code-tested.** A draft with a live review appears once, as that review; a closed review reads Closed and does not hide its draft; approved means a current approval, not a status word. 6 checks. **Blocked, live.**                                                                                                                                                                       |
+| P5.4 | **Code-tested** (Round 4 work, re-run here): 5 concurrency checks — a save writes over only the version it started from, a stale save is refused and hands back the newer row, and a blank save never silently becomes the starting document. **Blocked, live:** concurrency in a real workspace is untested.                                                                                |
+| P5.5 | **Implemented.** Captured rules and completed evaluation are shown as separate facts, grouped by profile, version and checksum, the history is labelled as bounded, and the retained rules text can be read. **Blocked, live.**                                                                                                                                                              |
+| P5.6 | **Code-tested.** Mailbox state, model configuration and per-draft sendability are three separate cards; configured is never presented as working; a success older than the recent fifty runs still counts as historical success (3 checks). Failed reads on any of the three are "not known", never zero.                                                                                    |
+| P5.7 | **Code-tested.** Every read on the dashboard, Drafts and Connections replaces a failed read with an unavailable state and a retry, counts are withheld on error and loading, and the capped page now names the real total (4 new checks).                                                                                                                                                    |
+| P5.8 | **Implemented.** Focus and refresh re-read (the query defaults refetch on focus), mutations invalidate the surfaces they change, and both the dashboard and Connections show the time of the last read with a Check again control. No subscription is claimed. **Blocked, live.**                                                                                                            |
+
+### Tests and gates
+
+Whole suite: 262 files, 2942 tests passing. Types, lint and build clean. New
+this round: 3 checks on the review total and cap, 1 on the partial-list
+disclosure.
+
+### T01–T05 standing
+
+| Outcome              | State                                                                                               |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| T01 Dashboard        | Implemented, code-tested. Blocked on a signed-in walk-through.                                      |
+| T02 Conversations    | Implemented, code-tested. Blocked on live.                                                          |
+| T03 Drafts & Reviews | Implemented, code-tested. Blocked on live save/reload for the three draft types.                    |
+| T04 Voice DNA        | Implemented, code-tested. Blocked on live, and on Tai's voice acceptance (P4.4, P4.9).              |
+| T05 Connections      | Implemented, code-tested. Blocked on live, and on a completed review ever running in the workspace. |
+
+No destination is an empty shell, and none is claimed complete: every one of
+the five is code-complete and live-unverified, which is a different thing.
+
+### Remaining blockers, unchanged
+
+- One signed-in preview on a build carrying the Round 2 request-format fix
+  would close P2.1 to P2.3, the P3 save-and-reload rows, and the live rows
+  above. Everything else is waiting behind it.
+- Tai's rating of the six prepared examples (P4.9) and the voice judgment
+  (P4.4).
+- The opportunities column from Round 4 is proposed and unapplied.

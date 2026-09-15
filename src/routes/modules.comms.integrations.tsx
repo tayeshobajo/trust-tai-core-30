@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { IntegrationsPanel } from "@/components/tt/comms/integrations-panel";
-import { PageHeader } from "@/components/tt/primitives";
+import { PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { listIntegrations } from "@/data/supabase/comms-integrations";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -64,17 +64,46 @@ function Connections({ identity }: { identity: WorkspaceIdentity }) {
       <CommsTabs active="integrations" />
 
       {query.isError ? (
-        <p className="text-sm text-destructive">
-          {query.error instanceof Error ? query.error.message : "That read failed."}
-        </p>
+        /* A failed read is said plainly and can be tried again. An empty
+           panel here would read as "nothing is connected", which is a
+           different and much worse claim. */
+        <div className="space-y-2">
+          <p className="text-sm text-destructive">
+            {query.error instanceof Error
+              ? query.error.message
+              : "The connection state could not be read, so none is shown. This is not the same as nothing being connected."}
+          </p>
+          <TTButton size="sm" variant="quiet" onClick={() => void query.refetch()}>
+            Try again
+          </TTButton>
+        </div>
       ) : query.isLoading ? (
         <p className="text-sm text-muted-foreground">Reading connection state…</p>
       ) : (
-        <IntegrationsPanel
-          organizationId={identity.organizationId}
-          connections={query.data?.connections ?? []}
-          provisioned={query.data?.provisioned ?? false}
-        />
+        <div className="space-y-4">
+          <IntegrationsPanel
+            organizationId={identity.organizationId}
+            connections={query.data?.connections ?? []}
+            provisioned={query.data?.provisioned ?? false}
+          />
+          {/* Nothing here is subscribed. Say when it was read rather than
+              letting a stale page look current. */}
+          <p className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+            <span>
+              {query.isFetching
+                ? "Reading connection state now."
+                : `Read at ${new Date(query.dataUpdatedAt).toLocaleTimeString()}. Changes made elsewhere show when you return to this tab or check again.`}
+            </span>
+            <TTButton
+              size="sm"
+              variant="quiet"
+              disabled={query.isFetching}
+              onClick={() => void query.refetch()}
+            >
+              Check again
+            </TTButton>
+          </p>
+        </div>
       )}
     </div>
   );

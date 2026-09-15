@@ -141,11 +141,11 @@ export function DraftsWorkspace({
 
   const loading = queue.isPending || reviews.isPending;
   const failed = queue.error ?? reviews.error;
-  const rows = failed || loading ? [] : rowsFrom(queue.data ?? [], reviews.data ?? []);
+  const rows = failed || loading ? [] : rowsFrom(queue.data ?? [], reviews.data?.rows ?? []);
   const shown = filter === "all" ? rows : rows.filter((row) => row.state === filter);
   /* Both reads are capped, so the list can be a part of the truth. Say so
      rather than presenting a count as the whole. */
-  const capped = (queue.data?.length ?? 0) >= 50 || (reviews.data?.length ?? 0) >= 50;
+  const capped = (queue.data?.length ?? 0) >= 50 || (reviews.data?.capped ?? false);
 
   /* A link can name a draft the capped list does not hold, so the record is
      fetched by name rather than found in a page of results. */
@@ -319,7 +319,11 @@ export function DraftsWorkspace({
         )}
         {!failed && !loading && capped ? (
           <p className="text-[12px] text-muted-foreground">
-            The most recent records only — there may be older ones not shown here.
+            The most recent records only
+            {typeof reviews.data?.total === "number"
+              ? `, out of ${reviews.data.total} reviews in this workspace`
+              : ""}
+            . Older ones are not shown here, and the filter counts only what is shown.
           </p>
         ) : null}
       </aside>
