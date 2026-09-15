@@ -620,5 +620,26 @@ describe("listing the reviews", () => {
     const page = await listReviews("token", ORG);
     expect(page.total).toBe(1);
     expect(page.capped).toBe(false);
+    expect(page.hasMore).toBe(false);
+  });
+
+  it("walks back to older pages instead of stopping at the newest fifty", async () => {
+    const rows = Array.from({ length: 50 }, (_unused, index) => ({
+      id: `session-${index}`,
+      organization_id: ORG,
+      status: "open",
+    }));
+    createClient.mockImplementation(() =>
+      fakeClient(baseTables({ comms_review_sessions: { read: okCount(rows, 214) } }), [], USER),
+    );
+    const second = await listReviews("token", ORG, { offset: 50 });
+    expect(second.offset).toBe(50);
+    expect(second.hasMore).toBe(true);
+
+    const last = await listReviews("token", ORG, { offset: 200 });
+    /* Fifty rows read from an offset of two hundred would mean the workspace
+       holds more than the count claims; the page still refuses to invent one. */
+    expect(last.offset).toBe(200);
   });
 });
+
