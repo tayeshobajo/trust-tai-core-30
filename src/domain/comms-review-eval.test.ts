@@ -79,6 +79,13 @@ describe("scoring an answer", () => {
     expect(
       unquotedFindings("The date is set.", { findings: [{ excerpt: "date is set" }] }),
     ).toEqual([]);
+    /* A quote from the subject line or from the client's own source material
+       is real writing, not invention. */
+    expect(
+      unquotedFindings(["The date is set.", "Re: workshop", "Which day is it?"], {
+        findings: [{ excerpt: "Re: workshop" }, { excerpt: "Which day is it?" }],
+      }),
+    ).toEqual([]);
   });
 });
 
