@@ -94,6 +94,17 @@ export async function sendDraftViaResend(input: {
   if (!attempt.fresh) {
     return { state: "duplicate", note: attempt.note };
   }
+  /* The gap between deciding and claiming is real: a writing habit kept or
+     stopped in it changes the context this approval covers. Asked again now,
+     before anything reaches a provider. */
+  await requireCurrentContextAfterClaim(caller, {
+    organizationId: input.organizationId,
+    draftId,
+    payload,
+    deliveryId: attempt.id,
+    channel: "email_resend",
+  });
+
 
   /* From here a real message may exist in the world. Every branch below has
      to be honest about whether it does. The provider is handed exactly the
