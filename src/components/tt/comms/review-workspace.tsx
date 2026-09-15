@@ -273,7 +273,11 @@ export function NewReview({
         <input className={field} value={title} onChange={(e) => setTitle(e.target.value)} />
       </label>
 
-      {error ? <p className="text-sm text-[var(--danger,#b3261e)]">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-[var(--danger,#b3261e)]">
+          {error}
+        </p>
+      ) : null}
 
       <TTButton type="submit" pending={open.isPending} pendingLabel="Opening review…">
         Open {DRAFT_KIND_LABEL[kind].toLowerCase()} review
@@ -473,7 +477,11 @@ export function ReviewDetail({
         {state.latestRun && !state.runIsCurrent ? <MetaPill>Review is out of date</MetaPill> : null}
       </div>
 
-      {error ? <p className="text-sm text-[var(--danger,#b3261e)]">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-[var(--danger,#b3261e)]">
+          {error}
+        </p>
+      ) : null}
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="space-y-4">
@@ -575,6 +583,23 @@ export function ReviewDetail({
               Save your edit first. A review always judges one exact version, never a moving one.
             </p>
           ) : null}
+
+          {/* Said out loud for anyone not watching the buttons. It reports the
+              stage that is actually happening; there is no percentage, because
+              nothing here can honestly say how far through a review is. */}
+          <p role="status" aria-live="polite" className="sr-only">
+            {save.isPending
+              ? "Saving a new version."
+              : review.isPending
+                ? "The review is running. This takes as long as it takes."
+                : review.isError
+                  ? "The review failed. Nothing was approved."
+                  : state.latestRun?.status === "complete"
+                    ? `Review finished. ${state.findings.length} ${
+                        state.findings.length === 1 ? "finding" : "findings"
+                      }, ${mustFix.length} to fix.`
+                    : ""}
+          </p>
 
           <div className="rounded-lg border border-border bg-card/60 p-4">
             <h4 className="text-sm font-medium text-foreground">What Comms read</h4>
