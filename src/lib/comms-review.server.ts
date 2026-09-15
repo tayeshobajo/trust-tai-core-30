@@ -271,6 +271,16 @@ function toRun(row: Row): ReviewRun {
     goalRead: nullableStr(row["goal_read"]),
     coverage: (row["coverage"] as Record<string, unknown>) ?? {},
     limitations: list(row["limitations"]),
+    /* Absent on runs written before the column exists. Absent means "not
+       kept", which reads the same as none here and is said so in the panel. */
+    opportunities: Array.isArray(row["opportunities"])
+      ? (row["opportunities"] as Record<string, unknown>[]).map((entry) => ({
+          evidence: str(entry["evidence"]),
+          reading: str(entry["reading"]),
+          worth: str(entry["worth"]) || "unknown",
+          timing: str(entry["timing"]) || "unknown",
+        }))
+      : [],
     startedAt: str(row["started_at"]),
     completedAt: nullableStr(row["completed_at"]),
   };
