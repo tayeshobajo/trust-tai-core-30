@@ -1207,7 +1207,7 @@ export async function runReview(
   /* Degrade one named column at a time, never by stripping everything this
      database does support: a workspace without the newest column must still
      keep its voice provenance. */
-  let provenanceStored: "full" | "voice_only" | "none" = "full";
+  /* Anything missing that we did not name is a real mismatch and surfaces. */
   let runAttempt = await writer
     .from("comms_review_runs")
     .insert({ ...runBase, ...runProvenance, ...keptSnapshot } as never)
