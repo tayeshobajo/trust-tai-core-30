@@ -310,13 +310,27 @@ export function ConversationRoom({
         {/* The thread gets the room the third rail released, held to a
             readable column rather than stretched edge to edge. */}
         <div className="mx-auto w-full max-w-[880px] space-y-6">
+          {earlier.length ? (
+            <button
+              type="button"
+              onClick={() => setShowEarlier((value) => !value)}
+              aria-expanded={showEarlier}
+              className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronDown
+                aria-hidden
+                className={cn("size-4 transition-transform", showEarlier ? "rotate-180" : "")}
+              />
+              {showEarlier ? "Hide earlier history" : `Earlier history · ${earlierCount}`}
+            </button>
+          ) : null}
           {days.length === 0 ? (
             <p className="py-10 text-center text-[13px] text-muted-foreground">
               Nothing is on the record yet. Add an interaction that already happened, or prepare the
               first message below.
             </p>
           ) : (
-            days.map((day) => (
+            shownDays.map((day) => (
               <section key={day.key} className="space-y-3">
                 <div className="flex items-center gap-3">
                   <span className="h-px flex-1 bg-border" />
