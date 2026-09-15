@@ -11,7 +11,7 @@
  * never as a permanent tax on reading width.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, FileText } from "lucide-react";
 
 import {
@@ -54,6 +54,7 @@ const KIND_TONE: Record<EventShape["kind"], string> = {
 export function ConversationEvent({
   event,
   organizationId,
+  focused,
   onEdit,
   onRetract,
   onRestore,
@@ -62,6 +63,8 @@ export function ConversationEvent({
   event: EventShape;
   /** The workspace, the access handle for inline images in email bodies. */
   organizationId?: string;
+  /** This is the message a deep link named. Scrolled to and focused, once. */
+  focused?: boolean;
   onEdit?: (touchId: string) => void;
   onRetract?: (touchId: string) => void;
   onRestore?: (touchId: string) => void;
@@ -74,6 +77,15 @@ export function ConversationEvent({
   const isEmail =
     Boolean(event.messageId) && (event.kind === "we_emailed" || event.kind === "they_emailed");
   const chips = fileAttachments(event.attachments);
+  const box = useRef<HTMLDivElement | null>(null);
+
+  // Arriving from a Dashboard row lands on the exact message. This moves the
+  // view and the keyboard focus, and changes no record.
+  useEffect(() => {
+    if (!focused || !box.current) return;
+    box.current.scrollIntoView({ block: "center" });
+    box.current.focus({ preventScroll: true });
+  }, [focused]);
 
   return (
     <li
@@ -83,11 +95,15 @@ export function ConversationEvent({
       )}
     >
       <div
+        ref={box}
+        {...(focused ? { tabIndex: -1 } : {})}
+        {...(event.messageId ? { "data-message-id": event.messageId } : {})}
         className={cn(
           "rounded-2xl border px-3.5 py-2.5",
           side === "center" ? "w-full max-w-[92%] rounded-lg" : "max-w-[85%]",
           side === "us" ? "rounded-br-md" : side === "them" ? "rounded-bl-md" : "",
           KIND_TONE[event.kind],
+          focused ? "ring-2 ring-ring" : "",
           event.retracted ? "opacity-70" : "",
         )}
       >
@@ -198,6 +214,7 @@ export function ConversationRoom({
   days,
   health,
   organizationId,
+  focusMessageId,
   historyGaps,
   onRetryHistory,
   onBack,
@@ -216,6 +233,8 @@ export function ConversationRoom({
   health: ConversationHealth;
   /** The workspace, resolves inline images and attachment downloads. */
   organizationId?: string;
+  /** The stored message a deep link named. Opened on, never marked read. */
+  focusMessageId?: string;
   /** Reads that failed. The thread says so rather than looking quiet. */
   historyGaps?: HistoryGap[];
   onRetryHistory?: () => void;
@@ -246,7 +265,13 @@ export function ConversationRoom({
   const earlier = days.length > RECENT_DAYS ? days.slice(0, days.length - RECENT_DAYS) : [];
   const recent = earlier.length ? days.slice(days.length - RECENT_DAYS) : days;
   const earlierCount = earlier.reduce((total, day) => total + day.events.length, 0);
-  const shownDays = showEarlier ? days : recent;
+  // A deep link may name a message that sits in the older history. Opening it
+  // reveals the real records; nothing is summarised and nothing is written.
+  const focusInEarlier = Boolean(
+    focusMessageId &&
+      earlier.some((day) => day.events.some((event) => event.messageId === focusMessageId)),
+  );
+  const shownDays = showEarlier || focusInEarlier ? days : recent;
   const gaps = historyGaps ?? [];
 
   return (
@@ -401,6 +426,9 @@ export function ConversationRoom({
                       {...(onRestoreTouch ? { onRestore: onRestoreTouch } : {})}
                       {...(onDownloadAttachment
                         ? { onDownloadAttachment: onDownloadAttachment }
+                        : {})}
+                      {...(focusMessageId && event.messageId === focusMessageId
+                        ? { focused: true }
                         : {})}
                     />
                   ))}
