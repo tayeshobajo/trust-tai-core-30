@@ -903,8 +903,27 @@ export async function sendDraftViaGmail(input: {
     true,
   );
 
-  return { draftId: draft.id, state: "sent", providerMessageId, providerThreadId };
+  /* The receipt on the shared ledger: Gmail's own message id, written once
+     over the open claim and never rewritten. If it cannot be stored, the
+     message still went out, and the caller is told so plainly rather than
+     being invited to send again. */
+  const settled = await settleDelivery({
+    organizationId: input.organizationId,
+    deliveryId: attempt.id,
+    state: "sent",
+    channel: "email_gmail",
+    providerMessageId,
+  });
+
+  return {
+    draftId: draft.id,
+    state: "sent",
+    providerMessageId,
+    providerThreadId,
+    ...(settled.recorded ? {} : { note: settled.note }),
+  };
 }
+
 
 /* -------------------------------------------------- incoming attachments */
 
