@@ -2396,11 +2396,18 @@ export async function promoteLesson(
   return toLesson((data ?? {}) as Row);
 }
 
-/** Stop using a lesson. The record stays, with who revoked it and when. */
+/**
+ * Stop using a habit. The record stays, with who revoked it and when.
+ *
+ * Revoking twice is the same answer twice: the original record comes back
+ * unchanged, because the first revocation is the truth of when it stopped
+ * being used. A habit that is not here at all is a different answer, and says
+ * so rather than reporting a success that never happened.
+ */
 export async function revokeLesson(
   token: string,
   input: { organizationId: string; lessonId: string },
-): Promise<void> {
+): Promise<ReviewLesson> {
   const caller = await identify(token, input.organizationId);
   if (!canPromoteLesson(caller.role)) {
     throw new ReviewFailure(
@@ -2408,13 +2415,53 @@ export async function revokeLesson(
       "Only an owner or an admin can revoke a lesson for this workspace.",
     );
   }
-  const { error } = await writerClient()
+  const writer = writerClient();
+  const existing = await writer
+    .from("comms_review_lessons")
+    .select(LESSON_COLUMNS)
+    .eq("id", input.lessonId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+  if (existing.error) {
+    if (missingTable(existing.error)) throw new ReviewFailure("write_failed", LESSONS_UNAVAILABLE);
+    throw new ReviewFailure(
+      "write_failed",
+      "That habit could not be read just now, so nothing was changed. Try again in a moment.",
+    );
+  }
+  const current = (existing.data ?? null) as Row | null;
+  if (!current) {
+    throw new ReviewFailure("not_found", "That habit is not in this workspace, so nothing changed.");
+  }
+  if (nullableStr(current["revoked_at"])) return toLesson(current);
+
+  const { data, error } = await writer
     .from("comms_review_lessons")
     .update({ revoked_at: new Date().toISOString(), revoked_by: caller.userId })
     .eq("id", input.lessonId)
-    .eq("organization_id", input.organizationId);
+    .eq("organization_id", input.organizationId)
+    /* Only a habit still in use. A second revoke that races this one changes
+       nothing and reads the original back below. */
+    .is("revoked_at", null)
+    .select(LESSON_COLUMNS)
+    .maybeSingle();
   if (error) {
     if (missingTable(error)) throw new ReviewFailure("write_failed", LESSONS_UNAVAILABLE);
     fail("That lesson could not be revoked.");
   }
+  const updated = (data ?? null) as Row | null;
+  if (updated) return toLesson(updated);
+
+  const after = await writer
+    .from("comms_review_lessons")
+    .select(LESSON_COLUMNS)
+    .eq("id", input.lessonId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+  const row = (after.data ?? null) as Row | null;
+  if (after.error || !row) {
+    fail("That habit could not be confirmed as stopped, so treat it as still in use.");
+  }
+  return toLesson(row);
 }
+
