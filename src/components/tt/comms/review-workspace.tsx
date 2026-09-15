@@ -369,6 +369,13 @@ export function ReviewDetail({
   const structured = structure !== null && !asPlainText;
   const sections = editedSections ?? structure?.sections ?? null;
   const bodyText = edited ?? current?.body ?? "";
+  /* Pricing and scope problems are read from the sections, so they are named
+     while the sections still exist — including while the person is converting
+     to plain text, which is exactly when an unresolved blocker would otherwise
+     disappear behind a tidier paragraph. */
+  const proposalIssues = sections ? checkProposal(sections) : [];
+  const blockingIssues = proposalIssues.filter((issue) => issue.blocking);
+
   const dirty = structured
     ? sections !== null &&
       structure !== null &&
