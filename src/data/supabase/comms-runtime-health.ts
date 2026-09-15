@@ -13,8 +13,6 @@
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ID } from "@/domain/entities";
 
-import { assertOk } from "./comms-schema";
-
 export interface AiRuntimeAvailability {
   /** Whether a provider is configured at all, as the server reports it. */
   configured: boolean;
@@ -36,39 +34,76 @@ export async function aiRuntimeAvailability(): Promise<AiRuntimeAvailability> {
   };
 }
 
+/**
+ * What actually happened when this workspace asked for a review.
+ *
+ * Three independent reads, because each one can fail on its own and a failed
+ * read must never be reported as a fact:
+ *
+ *  - how many runs exist, as an exact count over the whole table, not a page;
+ *  - whether any run ever completed, as an existence query over the whole
+ *    table, so a success older than the most recent fifty is still found;
+ *  - what the most recent attempt did.
+ *
+ * A null means "not known", never zero and never "never succeeded".
+ */
 export interface ReviewRunHealth {
-  /** Runs recorded for this workspace, ever. Zero is a fact, not an error. */
-  total: number;
+  /** Exact all-time count for this workspace, or null when the read failed. */
+  total: number | null;
+  totalError: string | null;
+  /** True/false all-time, or null when the read failed. */
+  everSucceeded: boolean | null;
+  successError: string | null;
   lastStatus: string | null;
   lastErrorCode: string | null;
   lastAt: string | null;
-  /** True when at least one run finished successfully. */
-  everSucceeded: boolean;
+  lastError: string | null;
 }
 
-/**
- * What actually happened when this workspace asked for a review. This is the
- * only honest evidence that the AI works here: configuration is a promise,
- * a completed run is a result.
- */
-export async function reviewRunHealth(organizationId: ID): Promise<ReviewRunHealth> {
-  const { data, error } = await supabase
-    .from("comms_review_runs")
-    .select("status, error_code, started_at")
-    .eq("organization_id", organizationId)
-    .order("started_at", { ascending: false })
-    .limit(50);
-  assertOk(error);
+function messageOf(error: { message?: string } | null): string | null {
+  if (!error) return null;
+  return error.message?.trim() || "That read failed.";
+}
 
-  const rows = (data ?? []) as unknown as Record<string, unknown>[];
-  const first = rows[0];
+export async function reviewRunHealth(organizationId: ID): Promise<ReviewRunHealth> {
+  const [counted, succeeded, latest] = await Promise.all([
+    supabase
+      .from("comms_review_runs")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId),
+    supabase
+      .from("comms_review_runs")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("status", "complete")
+      .limit(1),
+    supabase
+      .from("comms_review_runs")
+      .select("status, error_code, started_at")
+      .eq("organization_id", organizationId)
+      .order("started_at", { ascending: false })
+      .limit(1),
+  ]);
+
+  const latestRow = (latest.data ?? [])[0] as Record<string, unknown> | undefined;
+
   return {
-    total: rows.length,
-    lastStatus: first && typeof first["status"] === "string" ? (first["status"] as string) : null,
+    total: counted.error ? null : (counted.count ?? 0),
+    totalError: messageOf(counted.error),
+    everSucceeded: succeeded.error ? null : (succeeded.data ?? []).length > 0,
+    successError: messageOf(succeeded.error),
+    lastStatus:
+      !latest.error && latestRow && typeof latestRow["status"] === "string"
+        ? (latestRow["status"] as string)
+        : null,
     lastErrorCode:
-      first && typeof first["error_code"] === "string" ? (first["error_code"] as string) : null,
+      !latest.error && latestRow && typeof latestRow["error_code"] === "string"
+        ? (latestRow["error_code"] as string)
+        : null,
     lastAt:
-      first && typeof first["started_at"] === "string" ? (first["started_at"] as string) : null,
-    everSucceeded: rows.some((row) => row["status"] === "complete"),
+      !latest.error && latestRow && typeof latestRow["started_at"] === "string"
+        ? (latestRow["started_at"] as string)
+        : null,
+    lastError: messageOf(latest.error),
   };
 }

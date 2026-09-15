@@ -15,6 +15,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { toast } from "sonner";
+
+import { setConversationClosed } from "@/data/comms-dashboard";
+import { isClosed } from "@/domain/comms-dashboard";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
@@ -361,6 +365,28 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: refresh,
   });
 
+  /**
+   * Closing a conversation is a human decision, recorded on the relationship.
+   * Nothing is archived automatically and nothing is ever sent from here. It
+   * lives in the room now that the room is the only conversation surface.
+   */
+  const closeConversation = useMutation({
+    mutationFn: (closed: boolean) =>
+      setConversationClosed({
+        relationship: selected!,
+        closed,
+        organizationId: identity.organizationId,
+        userId: identity.userId,
+      }),
+    onSuccess: (_row, closed) => {
+      toast.success(closed ? "Conversation closed" : "Conversation reopened", {
+        description: selected?.fullName ?? "",
+      });
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const remember = useMutation({
     mutationFn: (item: Omit<MemoryItem, "at">) => commsService.remember(selected!, item, context),
     onSuccess: refresh,
@@ -637,6 +663,16 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                   Add interaction
                 </TTButton>
               ) : null}
+              {selected ? (
+                <TTButton
+                  variant="quiet"
+                  disabled={closeConversation.isPending}
+                  onClick={() => closeConversation.mutate(!isClosed(selected))}
+                >
+                  {isClosed(selected) ? "Reopen conversation" : "Close conversation"}
+                </TTButton>
+              ) : null}
+
               <TTButton onClick={() => setCapturing((value) => !value)}>
                 {capturing ? "Close" : "Add relationship"}
               </TTButton>

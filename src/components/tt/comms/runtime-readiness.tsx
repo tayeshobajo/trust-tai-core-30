@@ -49,11 +49,7 @@ export function RuntimeReadiness({ organizationId }: { organizationId: string })
         {availability.isError ? (
           <p className="text-sm text-destructive">
             {(availability.error as Error).message}{" "}
-            <button
-              type="button"
-              className="underline"
-              onClick={() => void availability.refetch()}
-            >
+            <button type="button" className="underline" onClick={() => void availability.refetch()}>
               Try again
             </button>
           </p>
@@ -83,22 +79,37 @@ export function RuntimeReadiness({ organizationId }: { organizationId: string })
             </p>
           ) : health.isLoading ? (
             <p className="mt-2 text-sm text-muted-foreground">Reading review records…</p>
-          ) : health.data && health.data.total === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">
-              No review has ever been run in this workspace. Nothing here has been proven to work.
-            </p>
           ) : health.data ? (
-            <p className="mt-2 text-sm text-muted-foreground">
-              {health.data.everSucceeded
-                ? "At least one review has completed."
-                : "No review has ever completed."}{" "}
-              Last attempt {health.data.lastStatus ?? "unknown"}
-              {health.data.lastErrorCode ? ` (${health.data.lastErrorCode})` : ""}
-              {health.data.lastAt
-                ? ` on ${new Date(health.data.lastAt).toLocaleString()}`
-                : ""}
-              .
-            </p>
+            <div className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+              {/* Each fact is read on its own, so one failed read never
+                  becomes a claim about the others. */}
+              <p>
+                {health.data.total === null
+                  ? `How many reviews have run here could not be read. ${health.data.totalError ?? ""}`
+                  : health.data.total === 0
+                    ? "No review has ever been run in this workspace."
+                    : `${health.data.total} review${health.data.total === 1 ? "" : "s"} recorded here, all time.`}
+              </p>
+              <p>
+                {health.data.everSucceeded === null
+                  ? `Whether any review ever completed could not be read. ${health.data.successError ?? ""} It is not assumed either way.`
+                  : health.data.everSucceeded
+                    ? "At least one review has completed."
+                    : "No review has ever completed — checked across every run, not just the recent ones."}
+              </p>
+              <p>
+                {health.data.lastError
+                  ? `The most recent attempt could not be read. ${health.data.lastError}`
+                  : health.data.lastStatus
+                    ? `Last attempt ${health.data.lastStatus}${
+                        health.data.lastErrorCode ? ` (${health.data.lastErrorCode})` : ""
+                      }${health.data.lastAt ? ` on ${new Date(health.data.lastAt).toLocaleString()}` : ""}.`
+                    : "No attempt on record."}
+              </p>
+              {health.data.everSucceeded === false ? (
+                <p>Nothing here has been proven to work.</p>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </TTCard>

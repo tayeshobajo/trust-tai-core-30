@@ -221,7 +221,11 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
     [relationships.data, Math.floor(now.getTime() / 60_000)],
   );
   const board = useMemo(
-    () => buildWorkBoard(plans.flatMap((plan) => plan.items), now),
+    () =>
+      buildWorkBoard(
+        plans.flatMap((plan) => plan.items),
+        now,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [plans, Math.floor(now.getTime() / 60_000)],
   );

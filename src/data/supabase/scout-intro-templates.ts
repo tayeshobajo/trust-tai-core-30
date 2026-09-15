@@ -60,7 +60,9 @@ function assertOk(error: { message: string } | null): void {
 
 function toTemplate(row: Row): ScoutIntroTemplate {
   const window =
-    row["send_window"] && typeof row["send_window"] === "object" && !Array.isArray(row["send_window"])
+    row["send_window"] &&
+    typeof row["send_window"] === "object" &&
+    !Array.isArray(row["send_window"])
       ? (row["send_window"] as SendWindow)
       : {};
   return {

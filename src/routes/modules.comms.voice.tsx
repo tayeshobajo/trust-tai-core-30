@@ -19,8 +19,10 @@ import {
   getVoiceProfile,
   listVoiceSnapshots,
   saveVoiceProfile,
+  VoiceConflictError,
   type VoiceProfile,
 } from "@/data/supabase/comms-voice";
+
 import { checkVoice } from "@/data/voice-policy";
 import { DEFAULT_VOICE_DOCUMENT, VOICE_RULES } from "@/domain/voice";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -73,12 +75,13 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   const save = useMutation({
-    mutationFn: (current: VoiceProfile | null) =>
+    mutationFn: (vars: { current: VoiceProfile | null; reset?: boolean }) =>
       saveVoiceProfile({
         organizationId: identity.organizationId,
-        current,
+        current: vars.current,
         contentMarkdown: draft,
         userId: identity.userId,
+        ...(vars.reset ? { reset: true } : {}),
       }),
     onSuccess: async (next) => {
       queryClient.setQueryData(["comms", "voice", identity.organizationId], next);
@@ -157,9 +160,17 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
                     <TTButton
                       size="sm"
                       disabled={save.isPending}
-                      onClick={() => save.mutate(profile)}
+                      onClick={() => save.mutate({ current: profile })}
                     >
                       {save.isPending ? "Saving" : "Save"}
+                    </TTButton>
+                    <TTButton
+                      size="sm"
+                      variant="quiet"
+                      disabled={save.isPending}
+                      onClick={() => setDraft(DEFAULT_VOICE_DOCUMENT)}
+                    >
+                      Reset to starting document
                     </TTButton>
                     <TTButton size="sm" variant="quiet" onClick={() => setMode("preview")}>
                       Cancel
@@ -185,7 +196,34 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
           )}
 
           {save.isError ? (
-            <p className="mt-3 text-[13px] text-destructive">{(save.error as Error).message}</p>
+            <div className="mt-3 rounded-lg border border-destructive/40 p-3">
+              <p className="text-[13px] text-destructive">{(save.error as Error).message}</p>
+              {save.error instanceof VoiceConflictError && save.error.latest ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {/* Nothing the person wrote is thrown away: they choose. */}
+                  <TTButton
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      const latest = (save.error as VoiceConflictError).latest;
+                      if (latest) {
+                        queryClient.setQueryData(
+                          ["comms", "voice", identity.organizationId],
+                          latest,
+                        );
+                        save.reset();
+                      }
+                    }}
+                  >
+                    Keep my writing, compare with theirs
+                  </TTButton>
+                  <span className="text-[12px] text-muted-foreground">
+                    Their version {save.error.latest.version} is shown in preview once you switch
+                    back.
+                  </span>
+                </div>
+              ) : null}
+            </div>
           ) : null}
         </section>
 
@@ -237,41 +275,68 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
           </div>
 
           <div className="tt-surface p-5">
-            <p className="tt-eyebrow">Versions reviews were held against</p>
+            <p className="tt-eyebrow">Versions reviews were built from</p>
             {snapshotsQuery.isLoading ? (
               <p className="mt-3 text-[13px] text-muted-foreground">Reading review records…</p>
             ) : snapshotsQuery.isError ? (
               <p className="mt-3 text-[13px] text-destructive">
                 {(snapshotsQuery.error as Error).message} Nothing is shown rather than a guess.
               </p>
-            ) : (snapshotsQuery.data ?? []).length === 0 ? (
+            ) : (snapshotsQuery.data?.snapshots ?? []).length === 0 ? (
               <p className="mt-3 text-[13px] text-muted-foreground">
-                No review has been held against this document yet, so there is no snapshot to show.
-                There is no separate edit history: a version only leaves a record once a review was
-                actually measured against it.
+                No review has been built from this document yet, so there is no snapshot to show.
+                There is no separate edit history: a version only leaves a record once a review
+                actually captured it.
               </p>
             ) : (
-              <ul className="mt-3 space-y-3">
-                {(snapshotsQuery.data ?? []).map((snapshot) => (
-                  <li key={`${snapshot.version}-${snapshot.checksum}`}>
-                    <p className="text-[13px] text-foreground">
-                      {snapshot.version === null ? "Version not recorded" : `Version ${snapshot.version}`}
-                      {" · "}
-                      {snapshot.runCount} {snapshot.runCount === 1 ? "review" : "reviews"}
-                    </p>
-                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {snapshot.checksum ? `sha256 ${snapshot.checksum.slice(0, 12)}` : "no checksum"}
-                      {snapshot.textRetained ? " · exact text kept" : " · text not kept"}
-                    </p>
-                    {snapshot.lastUsedAt ? (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Last used {new Date(snapshot.lastUsedAt).toLocaleString()}
+              <>
+                <ul className="mt-3 space-y-3">
+                  {(snapshotsQuery.data?.snapshots ?? []).map((snapshot) => (
+                    <li key={`${snapshot.profileId}-${snapshot.version}-${snapshot.checksum}`}>
+                      <p className="text-[13px] text-foreground">
+                        {snapshot.version === null
+                          ? "Version not recorded"
+                          : `Version ${snapshot.version}`}
+                        {" · "}
+                        {snapshot.capturedRuns} captured ·{" "}
+                        {snapshot.completedRuns === 0
+                          ? "none evaluated"
+                          : `${snapshot.completedRuns} evaluated`}
                       </p>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+                      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                        {snapshot.checksum
+                          ? `sha256 ${snapshot.checksum.slice(0, 12)}`
+                          : "no checksum"}
+                        {snapshot.textRetained ? " · exact text kept" : " · text not kept"}
+                      </p>
+                      {snapshot.lastUsedAt ? (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          Last used {new Date(snapshot.lastUsedAt).toLocaleString()}
+                        </p>
+                      ) : null}
+                      {snapshot.rulesText ? (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-[11px] text-muted-foreground underline">
+                            Read the exact rules kept with these runs
+                          </summary>
+                          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border/60 bg-muted/30 p-2 text-[11px] text-foreground">
+                            {snapshot.rulesText}
+                          </pre>
+                        </details>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-[11px] text-muted-foreground">
+                  {snapshotsQuery.data?.bounded
+                    ? `This is the most recent ${snapshotsQuery.data.windowSize} runs, not the whole record. Older runs exist beyond this window.`
+                    : `Read from all ${snapshotsQuery.data?.runsRead ?? 0} runs on record.`}{" "}
+                  Captured means the rules were frozen with the run; evaluated means the review
+                  actually completed against them.
+                </p>
+              </>
             )}
+
             <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
               Reviews use this workspace&apos;s own rules only. No message written to another client
               is ever borrowed as an example: those carry other people&apos;s names, prices and
