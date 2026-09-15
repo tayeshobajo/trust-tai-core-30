@@ -42,14 +42,17 @@ import { outboundFingerprint, type DeliveryChannel } from "@/domain/comms-delive
 import {
   activeLessons,
   canPromoteLesson,
+  lessonCategory,
   lessonGuidance,
   lessonSetStamp,
   validateLessonCategory,
   validatePrivateNote,
+  LESSON_CATALOGUE_VERSION,
   LESSONS_UNREADABLE_REFUSAL,
   type LessonSetState,
   type ReviewLesson,
 } from "@/domain/comms-lessons";
+
 import {
   loadDraftForSend,
   outboundPayloadForDraft,
