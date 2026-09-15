@@ -45,7 +45,7 @@ marked passed.
 | P4.2 | Live(model) | Live(model) | **PASS-LIVE** | No invented date, price or promise across three passes; every finding quotes real writing | — |
 | P4.3 | Code | Live(model) | **PASS-LIVE** | goalRead returned as a reading offered for correction and editable in the surface | — |
 | P4.4 | Tai | None | **AWAITING-TAI** | Voice rules come from the stored workspace profile, deliberately not read or altered | Tai |
-| P4.5 | Code | Live(model)+Code | **PASS-CODE** | Opportunities private, never inserted, absent in complaint and apology, each with evidence, reading, worth and timing. RETENTION still missing - see the Codex row | Codex (retention) |
+| P4.5 | Code | Live(model)+Code | **PASS-CODE** | Opportunities private, never inserted, absent in complaint and apology, each with evidence, reading, worth and timing. Retention schema applied 2026-09-15; live persistence and reload still pending - see the Codex row | Codex (live retention check) |
 | P4.6 | Live(model) | Live(model) | **PASS-LIVE** | No humour in complaint or apology; benign case kept it | — |
 | P4.7 | Live(model) | Live(model) | **PASS-LIVE** | Planted instruction reported as a must-fix quoting the source, not obeyed, no other client named | — |
 | P4.8 | Code | Code | **PASS-CODE** | Coverage and limitations recorded per run; findings bound to the exact version | — |
@@ -78,7 +78,7 @@ marked passed.
 | P8.2 | Live | Code | **BLOCKED** | Fresh Message, Email and Proposal save -> reload -> edit -> new version -> review -> correction on real records cannot run without a session. Isolated no-send approval is proven against a database double only | Signed-in preview |
 | P8.3 | Live(model)+Tai | Live(model) | **AWAITING-TAI** | Model half passed live (P4.1-P4.7). Tai's voice and judgment acceptance not recorded. No review has completed in the workspace | Tai; signed-in preview |
 | P8.4 | Live(read-only) | Live(read-only) | **PASS-LIVE** | Read 2026-09-15 unchanged: run b7bee2e2… failed, provider_call_failed, prompt comms-review/2026-09-14, fingerprint 4aac34fe810ec56e, voice profile 6c675697…@v1#e69ea084ee545ebf; sessions 8d418c05… and 2419b89e… intact; 3 versions; deliveries 0 | — |
-| P8.5 | Live(read-only) | Live(read-only) | **PASS-CODE** | Applied schema matches the code for every required change. The single unapplied change is the optional private-notes column; confirmed absent today (comms_review_runs.opportunities does not exist) | Codex |
+| P8.5 | Live(read-only) | Live(read-only) | **PASS-CODE** | Applied schema matches the code for every required change. The private-notes column was applied by Codex on 2026-09-15 with Tai's explicit approval of Revision 2 (migration `comms_review_opportunities_nullable`, archived at docs/migrations/20260915120000_comms_review_opportunities.sql): nullable jsonb, array-shape constraint, historical NULL preserved, record digest unchanged, RLS intact. Live model persistence and reload against real records remain open | Codex |
 | P8.6 | Code | Code | **PASS-CODE** | On the candidate: types clean, 264 test files / 2,960 tests passing, build OK (2026-09-15). Targeted live workflows remain blocked | Signed-in preview (live workflows) |
 | P8.7 | Doc | Doc | **PASS-CODE** | Scope, monitoring and rollback below. Rollback overstatement corrected in the release candidate: only the candidate commit is an established rollback target | — |
 | P8.8 | Doc | Doc | **PASS-CODE** | Operator guide in docs/comms-release-candidate.md section 8 | — |
@@ -96,7 +96,7 @@ marked passed.
 | C06 | Live(model) | Live(model) | **PASS-LIVE** | A finding is discarded unless its quote is literally present; confirmed across 39 real case runs | — |
 | C07 | Code | Code | **PASS-CODE** | Versions immutable; run, findings and approval bound to one version, fingerprint and revision | — |
 | C08 | Code | Code | **PASS-CODE** | Author resolved from the immutable version, separately from reviewer and sender | — |
-| C09 | Code | Live(model)+Code | **PARTIAL-BLOCKED** | Private notes are produced and never inserted - but NOT RETAINED. Honest temporary display is not retention | Codex |
+| C09 | Code | Live(model)+Code | **PARTIAL-BLOCKED** | Private notes are produced and never inserted. RETENTION SCHEMA NOW EXISTS - applied 2026-09-15 (`comms_review_opportunities_nullable`, nullable jsonb; NULL not recorded / [] evaluated none). What is still unproven is a real completed run persisting and reloading notes in the authenticated workspace | Codex |
 | C10 | Live(model) | Live(model) | **PASS-LIVE** | Humour absent in complaint and apology, present in the benign case; warmth tied to the thread | — |
 | C11 | Code | Live(model)+Code | **PASS-CODE** | Contradictions and unsupported claims caught in the pricing-mismatch and unsupported-commitment cases; proposal arithmetic exact | — |
 | C12 | Live(model) | Live(model) | **PASS-LIVE** | Every ask accounted for with a status and a reason across 13 cases, twice | — |
@@ -175,11 +175,16 @@ Kept apart deliberately, because they are routinely confused:
 - Sessions `8d418c05-55b8-4dd9-8e83-1d0defbb7a8f` and
   `2419b89e-f1da-4f7b-95b3-21fd3e15493f` intact; 3 versions.
 - `comms_review_deliveries`: **0 rows**. Nothing has ever been dispatched.
-- `comms_review_runs.opportunities`: **does not exist**. Private review notes
-  are shown once and lost. The minimum secure proposal is
-  `docs/migrations/proposed/20260915120000_comms_review_opportunities.sql`,
-  unapplied, for Codex. A temporary display is not persistence and is not
-  counted as one.
+- `comms_review_runs.opportunities`: **applied 2026-09-15** by Codex under
+  Tai's explicit approval of Revision 2 (migration
+  `comms_review_opportunities_nullable`; archived at
+  `docs/migrations/20260915120000_comms_review_opportunities.sql`; do not
+  reapply). Verified after apply: nullable jsonb, default null, array-shape
+  constraint present, one historical run retains NULL, original-record digest
+  identical (`0773ed95b95a1259255afbd365cfb1f9`), RLS enabled, authenticated
+  UPDATE denied. This closes schema availability only: no real completed run
+  has yet persisted and reloaded private notes. A temporary display is not
+  persistence and is not counted as one.
 - No successful persisted run exists. No draft workflow has been completed
   against real records. The no-send approval boundary is proven against a
   database double only.
@@ -229,10 +234,12 @@ because live acceptance still has fixable and unfinished work in front of it.
 **Lovable (me)** — nothing is outstanding that can be done without a session.
 Every fixable defect found in this queue is fixed and covered by tests.
 
-**Codex** — review and apply
-`docs/migrations/proposed/20260915120000_comms_review_opportunities.sql` to give
-private review notes real retention (closes C09 / P4.5 retention); confirm
-applied schema against the candidate after it lands.
+**Codex** — the private-notes column is applied (2026-09-15,
+`comms_review_opportunities_nullable`, archived at
+`docs/migrations/20260915120000_comms_review_opportunities.sql`). Remaining:
+run a real completed review in the authenticated workspace and confirm the
+notes persist and reload (closes C09 / P4.5 retention); review the lessons
+proposal, which stays unapplied.
 
 **Tai** — record ratings in `docs/comms-review-examples-for-tai.md` (P4.4, P4.9,
 Tai half of P8.3); review C19 as built (lessons kept from decisions);

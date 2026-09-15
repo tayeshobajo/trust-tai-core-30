@@ -1,5 +1,6 @@
--- PROPOSED, NOT APPLIED. For Codex review. Revision 2.
+-- APPLIED 2026-09-15 by Codex with Tai's explicit approval of Revision 2 (migration name: comms_review_opportunities_nullable).
 --
+-- Verification after apply: opportunities jsonb nullable, default null; array-shape constraint present; one historical run retains NULL; original-record digest unchanged (0773ed95b95a1259255afbd365cfb1f9); RLS still enabled; authenticated UPDATE still denied. Do not reapply.
 -- One additive, nullable column. The reviewer already returns private notes
 -- about possible future work; without somewhere to put them they are shown
 -- once and lost on reload.

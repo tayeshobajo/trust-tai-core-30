@@ -50,12 +50,13 @@ Read-only, with the service key, on 2026-09-15.
 | `20260914170000_comms_review_delivery_hardened.sql`      | Yes                  | `comms_review_deliveries` with `idempotency_key`, `status`, `settled_at`                                   |
 | `20260914220000_comms_review_kind.sql`                   | Yes                  | `comms_review_sessions.kind`, `comms_review_versions.structured_source`                                    |
 | Voice provenance columns                                 | Yes                  | `voice_profile_id`, `voice_version`, `voice_snapshot_checksum`, `style_context_snapshot` all return values |
-| `proposed/20260915120000_comms_review_opportunities.sql` | **No, and optional** | `comms_review_runs.opportunities` returns 42703                                                            |
+| `20260915120000_comms_review_opportunities.sql` (Revision 2, applied 2026-09-15 as `comms_review_opportunities_nullable`) | Yes | nullable jsonb, array-shape constraint, historical NULL preserved, digest unchanged, RLS intact |
 
-The one unapplied change is genuinely optional and is not disguised: without
-it the reviewer's private notes are shown for that run and not kept, and the
-run says they were not kept rather than showing none. No insecure fallback
-depends on it. Every other required change is applied.
+Every required change is now applied. What remains unproven is live behaviour,
+not schema: no real completed run has yet persisted and reloaded the
+reviewer's private notes in the authenticated workspace. The lessons proposal
+(`proposed/20260916090000_comms_review_lessons.sql`) stays unapplied pending
+review and is not required for the pilot.
 
 The superseded proposals (`proposed/20260914170000_...`,
 `proposed/20260914220000_...`) are kept only as history; the applied files in
