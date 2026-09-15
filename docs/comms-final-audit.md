@@ -24,7 +24,7 @@ marked passed.
 | P1.2 | Live | Code | **BLOCKED** | Filters derive over the whole accessible set; deep link seeds selection. Component tests, candidate build | Signed-in preview |
 | P1.3 | Code | Code | **PASS-CODE** | conversation-room.test.tsx: failed read never renders as an empty thread | — |
 | P1.4 | Live | Code | **BLOCKED** | openReview -> /modules/comms/drafts?session=… resolves the exact record (drafts-workspace.test.tsx) | Signed-in preview |
-| P1.5 | Code | Code | **PASS-CODE** | Stay/Discard on tab, person, record, back; reload via beforeunload; failed prepare keeps text. Reply-text 'Save' is N/A with reason: text becomes a record only by preparing a draft; scope agreement on that N/A is Tai's | Tai (N/A agreement) |
+| P1.5 | Code | Code | **PASS-CODE** | Stay/Discard on tab, person, record, back; reload via beforeunload; failed prepare keeps text. **Correction (2026-09-16):** the earlier 'N/A' on saving raw reply text was wrong - F2.4 asked for it. Saving your own writing is now implemented through the existing draft service (`rawWritingDraft` + `commsService.saveDraft`), with Stay / Save as a draft / Discard on leaving, and text kept on screen when a save fails. Tested in `src/data/supabase/comms-raw-writing-save.test.ts` (bound to the right relationship, still there on reload, one draft store, failed save loses nothing) and `src/components/tt/comms/reply-record.test.tsx` | - |
 | P1.6 | Live | Code | **BLOCKED** | Close/reopen and follow-up reschedule write through existing mutations; every obligation writer swept in Task 3 | Signed-in preview |
 | P1.7 | Live | Code+Live(signed-out) | **BLOCKED** | Alternate panes under lg; 0px overflow at 375 on real routes (signed-out) Task 4 | Signed-in preview |
 | P2.1 | Live | None | **BLOCKED** | Preview 401s; published 302s to cmd.trusttai.com (older build). Served build identity unreadable from here | Signed-in preview |
@@ -65,11 +65,11 @@ marked passed.
 | P6.5 | Code | Code | **PASS-CODE** | Failed, incomplete, closed, stale reviews and standing must-fixes all refuse approval | — |
 | P6.6 | Code | Code | **PASS-CODE** | Racing sends produce one provider call; the loser never calls the provider | — |
 | P6.7 | Code | Code | **PASS-CODE** | An attempt that cannot be written down is not attempted. Task 3 fixed the Gmail ledger: every outcome now settles, unknown stays unknown and is never retried (6 simulated deliveries, no provider called) | — |
-| P6.8 | Live | Live(refusal) | **PASS-LIVE** | Deployed retired endpoint invoked safely: 401 unauthenticated, 410 with the publishable key, refusal body states nothing was sent and nothing changed. No active send path invoked | — |
+| P6.8 | Live | Live(refusal, unauthenticated only) | **PARTIAL-BLOCKED** | **Correction (2026-09-16):** the 410 was obtained with the public publishable key, which is not an authenticated member. It proves the endpoint refuses an anonymous caller; it does NOT prove refusal for a signed-in member of the workspace. Established: 401 with no key, 410 with the publishable key, refusal body states nothing was sent and nothing changed, no active send path invoked. The signed-in-member refusal is **not evaluated** | Signed-in preview |
 | P6.9 | Code | Code | **PASS-CODE** | A LinkedIn record is described as the user's own word, never provider confirmation | — |
 | P7.1 | Live(real screens) | Live(signed-out real screens)+Code | **BLOCKED** | Task 4: 0px overflow and 0 console errors on six real routes at 1440x900, 768x1024, 375x812. Populated screens (long proposal, selected annotation, mobile room) covered at component level only | Signed-in preview |
 | P7.2 | Live(real screens) | Live(signed-out real screens)+Code | **BLOCKED** | Every stop named, focus ring measured visible, no trap on the real screens; intake/editor/findings/drawers keyboard-tested at component level | Signed-in preview |
-| P7.3 | Live(real screens) | Live+Code | **PASS-LIVE** | axe-core wcag2a+wcag2aa: zero violations on every reachable real screen at all three sizes, and zero on the production Drafts component rendered populated, failed and empty. Statuses carry words, never colour alone | — |
+| P7.3 | Live(real screens) | Live(signed-out real screens)+Code | **PARTIAL-BLOCKED** | **Correction (2026-09-16):** 'every reachable real screen' meant every screen reachable **signed out**. Comms fails closed without a session, so contrast, labels and announcements inside the real Comms rooms are **not evaluated** on screen. Established: axe-core wcag2a+wcag2aa zero violations on the signed-out real screens at all three sizes, and zero on the production Drafts component rendered populated, failed and empty; statuses carry words, never colour alone | Signed-in preview |
 | P7.4 | Code | Code | **PASS-CODE** | Saving, running, failing, finishing announced as four real states; no fabricated progress | — |
 | P7.5 | Code | Code | **PASS-CODE** | Unsaved writing protected on tab, person, record, back and reload; failed save keeps the text; expired session says so; sign-out clears the cache and leaves nothing in browser storage | — |
 | P7.6 | Code | Code | **PARTIAL-BLOCKED** | Repeat-call half verified: reviews start only from a press, and the button disables while in flight. DURATION NOT MEASURED and no number invented; reproducible steps recorded | Signed-in preview |
@@ -106,7 +106,7 @@ marked passed.
 | C16 | Code | Code | **PASS-CODE** | Claim before the provider call; Task 3 fixed settlement so every outcome is written; unknown is never failed and never retried | — |
 | C17 | Live(model) | Live(model) | **PASS-LIVE** | No other client appeared in any answer, including under the planted instruction | — |
 | C18 | Live | Code | **BLOCKED** | Follow-ups persist through close, reopen and reschedule; every writer swept in Task 3; not walked live | Signed-in preview |
-| C19 | Code | Code | **N/A-SCOPE** | Decisions are stored with a verified decider; nothing reads them back. Learning from decisions was never built and is NOT relabelled done - it is open scope for Tai to schedule or drop | Tai (scope) |
+| C19 | Code | Code | **PASS-CODE (application) / BLOCKED (persistence)** | **Correction (2026-09-16):** C19 was agreed scope, not optional. Minimal human-approved reuse is now built: an owner or admin can keep one **decided** finding (with a verified decider) as a short lesson in their own words, scoped to their workspace; kept lessons are shown to later reviews as guidance about how to write, and can be stopped at any time. Nothing is kept automatically, no voice rule is edited, and a lesson carrying an email address, a link or a figure is refused so facts cannot cross clients. Domain and refusal behaviour tested in `src/domain/comms-lessons.test.ts`. Storage table proposed at `docs/migrations/proposed/20260916090000_comms_review_lessons.sql`, **not applied** - until Codex applies it the panel says lessons cannot be kept yet rather than pretending none exist | Codex (apply table), then signed-in preview |
 | C20 | Code | Code | **PASS-CODE** | Failures say what happened and what was not changed; a failure that cannot be recorded says so | — |
 | C21 | Live(real screens) | Live+Code | **PASS-LIVE** | axe-core zero WCAG A/AA violations on real screens at three sizes and on the populated production Drafts component | — |
 | C22 | Live | Code | **BLOCKED** | Provenance fields exist and are written by the code; only a persisted successful run can demonstrate them | Signed-in preview |
@@ -141,7 +141,7 @@ What those words mean here:
   retention).
 - **AWAITING-TAI** — Tai's judgment, not marked on his behalf.
 - **NOT-PERFORMED** — never attempted and never authorized (P8.9).
-- **N/A-SCOPE** — not built, openly named as not built (C19), awaiting a scope
+- **N/A-SCOPE** — none remaining. C19 was reclassified on 2026-09-16 and built; the former N/A wording awaited a scope
   decision. It is not relabelled done.
 
 **This is not 100%.** 100% is reached only when every applicable criterion meets
@@ -235,8 +235,8 @@ private review notes real retention (closes C09 / P4.5 retention); confirm
 applied schema against the candidate after it lands.
 
 **Tai** — record ratings in `docs/comms-review-examples-for-tai.md` (P4.4, P4.9,
-Tai half of P8.3); decide C19 scope (learning from decisions: schedule or drop);
-agree or reject the P1.5 N/A on saving raw reply text; provide a signed-in
+Tai half of P8.3); review C19 as built (lessons kept from decisions);
+provide a signed-in
 session or a QA account so the 27 blocked rows can be run; authorize deployment
 and the controlled test separately if and when he wants them.
 
