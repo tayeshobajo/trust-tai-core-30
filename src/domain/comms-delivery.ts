@@ -166,7 +166,9 @@ export interface SendDecisionInput {
   callerMaySend: boolean;
 }
 
-const MIGRATION = "docs/migrations/proposed/20260914170000_comms_review_delivery.sql";
+/* The applied file, not the superseded proposal. This only appears if the
+   delivery tables are missing, which would mean a workspace without it. */
+const MIGRATION = "docs/migrations/20260914170000_comms_review_delivery_hardened.sql";
 
 /**
  * The whole rule. Every refusal says what is wrong and what would fix it; no
