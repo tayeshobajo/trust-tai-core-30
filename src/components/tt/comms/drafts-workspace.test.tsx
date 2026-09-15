@@ -26,7 +26,7 @@ vi.mock("@/components/tt/comms/draft-queue", () => ({
 }));
 
 vi.mock("@/data/supabase/comms-review-client", () => ({
-  listReviews: (organizationId: string) => listReviews(organizationId),
+  listReviews: (organizationId: string, offset?: number) => listReviews(organizationId, offset),
 }));
 
 vi.mock("@/components/tt/comms/review-workspace", () => ({
