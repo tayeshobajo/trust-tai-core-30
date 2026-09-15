@@ -32,6 +32,7 @@ export function ReplyRecordBar({
   purposeHint,
   onPrepareDraft,
   onRecordInteraction,
+  onDirtyChange,
 }: {
   drafting: boolean;
   busy: boolean;
@@ -40,6 +41,8 @@ export function ReplyRecordBar({
   purposeHint?: string | null;
   onPrepareDraft: (register: VoiceRegister, purpose: string) => void;
   onRecordInteraction: () => void;
+  /** Unsaved writing here is protected by the room's navigation guard. */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [mode, setMode] = useState<ReplyMode>("reply");
   const [register, setRegister] = useState<VoiceRegister>("follow_up");
@@ -92,7 +95,10 @@ export function ReplyRecordBar({
 
           <textarea
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => {
+              setValue(event.target.value);
+              onDirtyChange?.(event.target.value.trim().length > 0);
+            }}
             rows={3}
             placeholder="Write it yourself, or leave this empty and Comms prepares the draft in your voice."
             className="mt-2.5 w-full rounded-lg border border-input bg-card px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -110,7 +116,10 @@ export function ReplyRecordBar({
                   variant="quiet"
                   size="sm"
                   type="button"
-                  onClick={() => setValue(purposeHint)}
+                  onClick={() => {
+                  setValue(purposeHint);
+                  onDirtyChange?.(purposeHint.trim().length > 0);
+                }}
                 >
                   Use this reason
                 </TTButton>
@@ -119,7 +128,10 @@ export function ReplyRecordBar({
                 size="sm"
                 type="button"
                 disabled={drafting || busy}
-                onClick={() => onPrepareDraft(register, value.trim())}
+                onClick={() => {
+                  onDirtyChange?.(false);
+                  onPrepareDraft(register, value.trim());
+                }}
               >
                 {drafting ? "Preparing…" : "Prepare draft"}
               </TTButton>
