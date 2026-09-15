@@ -265,7 +265,13 @@ export function ConversationRoom({
   const earlier = days.length > RECENT_DAYS ? days.slice(0, days.length - RECENT_DAYS) : [];
   const recent = earlier.length ? days.slice(days.length - RECENT_DAYS) : days;
   const earlierCount = earlier.reduce((total, day) => total + day.events.length, 0);
-  const shownDays = showEarlier ? days : recent;
+  // A deep link may name a message that sits in the older history. Opening it
+  // reveals the real records; nothing is summarised and nothing is written.
+  const focusInEarlier = Boolean(
+    focusMessageId &&
+      earlier.some((day) => day.events.some((event) => event.messageId === focusMessageId)),
+  );
+  const shownDays = showEarlier || focusInEarlier ? days : recent;
   const gaps = historyGaps ?? [];
 
   return (
@@ -420,6 +426,9 @@ export function ConversationRoom({
                       {...(onRestoreTouch ? { onRestore: onRestoreTouch } : {})}
                       {...(onDownloadAttachment
                         ? { onDownloadAttachment: onDownloadAttachment }
+                        : {})}
+                      {...(focusMessageId && event.messageId === focusMessageId
+                        ? { focused: true }
                         : {})}
                     />
                   ))}
