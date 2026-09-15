@@ -53,7 +53,7 @@ function (still 410).
 | ID | Outcome | Status |
 | --- | --- | --- |
 | T01 | Dashboard answers "what needs action and why" from real scoped records; each item opens the exact destination; no invented deadlines; silence alone is not risk | Implemented (code-tested); live-verified pending |
-| T02 | Conversations: real threads, goal, draft, review the same draft, person memory, Save to Scout, honest sources | Preserved from existing room; consolidation into one surface not yet done |
+| T02 | Conversations: real threads, goal, draft, review the same draft, person memory, Save to Scout, honest sources | Consolidated to one surface (the relationship room); code-tested, live-verified pending |
 | T03 | Drafts & Reviews: one page, real list, resume after reload, versions, findings, one role-checked approval; standalone intake for Message/Email/Proposal | Implemented in code — one list with a focused pane, structured proposal sections wired through storage and rehydrated on resume; the two columns they need are proposed, not applied, so kind and structure read as "not recorded" live |
 | T04 | Voice DNA: stored profile, authorized editing, version history, applied version shown in review, saved changes clear readiness | Implemented (code-tested); live-verified pending |
 | T05 | Connections: real account/channel/sending identity, separate facts for connection health, AI availability and send readiness; no secrets shown | Implemented (code-tested); live-verified pending |
@@ -251,5 +251,74 @@ offers a retry.
 - The reviewing-model card will currently read "no review has ever completed"
   for the QA workspace. That is accurate and is the open blocker, not a defect
   of this slice.
-- T02 Conversations remains unaudited; the relationship room is preserved as it
-  was. Four of five destinations are addressed, not five.
+- T02 Conversations was unaudited at the time of this slice; see Slice 4.
+
+
+## Slice 4 — Conversations consolidation and T04/T05 corrections
+
+Date: 2026-09-15. No publish, no client send, no schema applied, QA record
+untouched.
+
+### T02 Conversations — one surface
+
+- The relationship room (`/modules/comms/relationships`) is the single
+  conversation surface. It already carried the functional work: the thread, the
+  person, context and goal, the draft strip, the composer, the reply record,
+  Scout and Roadmap routes, follow-ups and attention.
+- `/modules/comms/conversations` was a second, thinner list of the same people.
+  It is now a redirect into the room, carrying any `relationship` in the link,
+  so old bookmarks and Scout handoffs still open the same conversation. No
+  destination was added; the Conversations tab already pointed at the room.
+- The one behaviour that lived only on the old list — closing and reopening a
+  conversation, a human decision recorded on the relationship — is now in the
+  room header (`setConversationClosed`, `isClosed`), with a toast on success
+  and the error shown as itself on failure. Nothing is archived automatically.
+- Unread counts came from `comms_messages`, which is not provisioned in this
+  backend and reads as empty; the room does not display an unread badge rather
+  than showing a fabricated zero.
+
+### T04 corrections
+
+- `saveVoiceProfile` now uses optimistic concurrency: the update is filtered on
+  `id`, `organization_id` **and** the exact `version` the edit started from. A
+  lost update is impossible. When no row matches, the row is read back: a moved
+  version raises `VoiceConflictError` carrying the newer profile, and the page
+  keeps the person's writing and offers to compare. Anything else is reported as
+  a refusal, and the document states that the database enforces owner/admin
+  editing, not the screen.
+- A blank save is no longer silently replaced with the Trust Tai starting
+  document. It is refused with an explanation, and "Reset to starting document"
+  is an explicit action.
+- `listVoiceSnapshots` groups by `voice_profile_id` + `version` + checksum, so
+  two profiles never merge into one row. "Captured" (rules frozen with a run)
+  and "evaluated" (a run that completed) are counted separately and labelled as
+  such. The window is bounded at 200 runs and the page says so when it is full.
+  Retained rules text is readable in place for an authorized member.
+
+### T05 corrections
+
+- `reviewRunHealth` no longer infers all-time facts from a page of 50. It runs
+  three independent reads: an exact `count` over the whole table, an existence
+  query for a completed run, and the latest attempt. Each failure is reported on
+  its own as "not known" — never as zero and never as "never succeeded".
+  Regression: `src/data/supabase/comms-runtime-health.test.ts` covers a success
+  older than the recent page and a failed count read.
+
+### Release readiness correction
+
+`docs/comms-release-readiness.md` previously said a deploy "cannot send
+anything" because legacy `comms-send` is a 410 refusal. That was false as a
+statement about the app: `/api/public/comms/send` is a separate governed route
+that dispatches on a valid current approval. The document now says deploying
+adds no *new* send path, that sending still requires a human approval bound to a
+completed review (none has completed), and that "no client send during QA" is a
+restraint in the test procedure. It also records a bounded preview-deploy path
+and a commit/diff manifest instead of a false all-or-nothing choice.
+
+### Still open
+
+- Nothing here is live-verified; this environment has no signed-in session.
+- The provider failure is unchanged and its cause is still unknown. Run
+  `b7bee2e2-4b13-476e-9f61-af008d374215` and session
+  `8d418c05-55b8-4dd9-8e83-1d0defbb7a8f` are untouched.
+- `openai/gpt-5-mini` remains configured and unverified.
