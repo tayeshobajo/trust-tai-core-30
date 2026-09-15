@@ -256,8 +256,8 @@ export function DraftsWorkspace({
   }, [selection.session, selection.draft, selection.new]);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <aside className="max-h-[78vh] space-y-3 overflow-auto rounded-xl border border-border p-3 lg:sticky lg:top-20">
+    <div className="grid items-start gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="comms-card max-h-[78vh] space-y-3 overflow-auto p-4 lg:sticky lg:top-20">
         <div className="flex flex-wrap items-center gap-1.5">
           {DRAFTS_FILTERS.map((option) => (
             <button
@@ -318,7 +318,7 @@ export function DraftsWorkspace({
                       )
                     }
                     className={cn(
-                      "w-full rounded-lg border px-3 py-2 text-left",
+                       "w-full rounded-lg border px-3 py-3 text-left",
                       active
                         ? "border-[var(--royal)] bg-secondary/50"
                         : "border-transparent hover:bg-secondary/40",
@@ -405,7 +405,7 @@ export function DraftsWorkspace({
             onSend={() => send.mutate(selection.draft ?? "")}
           />
         ) : (
-          <div className="rounded-xl border border-border p-8">
+          <div className="comms-card p-6 sm:p-8">
             <p className="text-[13px] text-muted-foreground">
               Choose something on the left, or start a new draft. Nothing is sent from this page
               without an approval of those exact words.
@@ -436,14 +436,14 @@ function DraftPane({
 }) {
   if (loading) {
     return (
-      <div className="rounded-xl border border-border p-8">
+      <div className="comms-card p-6 sm:p-8">
         <p className="text-[13px] text-muted-foreground">Reading this draft…</p>
       </div>
     );
   }
   if (error) {
     return (
-      <div className="rounded-xl border border-border p-8">
+      <div className="comms-card p-6 sm:p-8">
         <p className="text-[13px] text-destructive">
           This draft could not be read. It may belong to another workspace, or you may not have
           access to it.
@@ -453,7 +453,7 @@ function DraftPane({
   }
   if (!item) {
     return (
-      <div className="rounded-xl border border-border p-8">
+      <div className="comms-card p-6 sm:p-8">
         <p className="text-[13px] text-muted-foreground">
           No draft by that name in this workspace.
         </p>
@@ -463,14 +463,14 @@ function DraftPane({
 
   const email = item.relationship?.email ?? null;
   return (
-    <article className="space-y-4 rounded-xl border border-border p-5">
+    <article className="comms-card space-y-4 p-4 sm:p-6">
       <header className="space-y-1">
         <h2 className="text-[17px] text-foreground">{item.draft.subject ?? "(no subject)"}</h2>
         <p className="text-[12px] text-muted-foreground">
           To {item.relationship?.full_name ?? "unknown contact"} · {email ?? "no email set"}
         </p>
       </header>
-      <pre className="whitespace-pre-wrap rounded-lg bg-secondary/40 p-4 text-[13px] leading-relaxed text-foreground">
+      <pre className="whitespace-pre-wrap border-y border-border py-4 text-sm leading-relaxed text-foreground">
         {item.draft.body}
       </pre>
       <div className="flex flex-wrap items-center gap-2">

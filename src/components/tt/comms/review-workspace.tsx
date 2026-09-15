@@ -43,7 +43,7 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 
 const field =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function ReviewWorkspace({
   identity,
@@ -175,7 +175,7 @@ export function NewReview({
 
   return (
     <form
-      className="space-y-5 rounded-xl border border-border bg-card/60 p-6"
+      className="comms-card space-y-5 p-4 sm:p-6"
       onSubmit={(event) => {
         event.preventDefault();
         setError(null);
@@ -314,7 +314,7 @@ function RecentReviews({
             <button
               type="button"
               onClick={() => onOpen(session.id)}
-              className="w-full rounded-lg border border-border bg-card/60 px-3 py-2 text-left text-sm hover:border-[var(--cloud-line)]"
+              className="w-full rounded-lg border border-border bg-card px-3 py-3 text-left text-sm hover:border-royal/40"
             >
               <span className="block font-medium text-foreground">{session.title}</span>
               <span className="block text-xs text-muted-foreground">
@@ -502,8 +502,8 @@ export function ReviewDetail({
         </p>
       ) : null}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="space-y-4">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="comms-card space-y-4 p-4 sm:p-6">
           {structured && sections ? (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -553,7 +553,7 @@ export function ReviewDetail({
           ) : null}
           {proposalIssues.length > 0 ? (
             <div
-              className="rounded-lg border border-border bg-card/60 p-4"
+               className="border-t border-border pt-4"
               data-testid="proposal-issues"
             >
               <h4 className="text-sm font-medium text-foreground">
@@ -634,9 +634,9 @@ export function ReviewDetail({
           </div>
         </section>
 
-        <aside className="space-y-6">
+        <aside className="comms-card space-y-5 p-4 sm:p-5">
           {state.latestRun?.summary ? (
-            <div className="rounded-lg border border-border bg-card/60 p-4">
+            <div className="border-b border-border pb-4">
               <p className="text-sm text-foreground">{state.latestRun.summary}</p>
               {state.latestRun.goalRead ? (
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -654,7 +654,7 @@ export function ReviewDetail({
 
           {privateNotes.state !== "no_run" ? (
             <div
-              className="rounded-lg border border-border bg-card/60 p-4"
+               className="border-b border-border pb-4"
               data-testid="review-opportunities"
             >
               <h4 className="text-sm font-medium text-foreground">Kept back for you</h4>
@@ -708,7 +708,7 @@ export function ReviewDetail({
             evaluated={state.obligations.evaluated}
           />
 
-          <div className="rounded-lg border border-border bg-card/60 p-4">
+          <div className="border-t border-border pt-4">
             <h4 className="text-sm font-medium text-foreground">Approval</h4>
             <p className="mt-1 text-sm text-muted-foreground">{state.approval.note}</p>
             {state.readiness.blockers.length > 0 ? (
@@ -808,7 +808,7 @@ export function SendReadiness({
   const checkedAt = query.dataUpdatedAt ? new Date(query.dataUpdatedAt) : null;
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4">
+    <div className="border-t border-border pt-4">
       <h4 className="text-sm font-medium text-foreground">Sending</h4>
       <p className="mt-1 text-xs text-muted-foreground">
         This review governs one message in the queue
@@ -899,7 +899,7 @@ function FindingList({
           this is, and so the group is skippable. */}
       <ul className="space-y-3" aria-label={`${heading}: ${findings.length}`}>
         {findings.map((finding) => (
-          <li key={finding.id} className="rounded-lg border border-border bg-card/60 p-4">
+          <li key={finding.id} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
             {finding.excerpt ? (
               <p className="text-sm italic text-muted-foreground">
                 <span className="sr-only">Their words: </span>
@@ -958,7 +958,7 @@ function Coverage({
   evaluated: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4">
+    <div className="border-t border-border pt-4">
       <h4 className="text-sm font-medium text-foreground">
         What they asked{evaluated ? "" : " — not evaluated"}
       </h4>

@@ -14,8 +14,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { CommsTabs } from "@/components/tt/comms/comms-tabs";
-import { PageHeader, TTButton } from "@/components/tt/primitives";
+import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
+import { TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService } from "@/data/supabase/comms-service";
 import { listReviews } from "@/data/supabase/comms-review-client";
@@ -63,6 +63,8 @@ interface WaitingDraft {
   id: string;
   subject: string | null;
   createdAt: string;
+  recipient: string | null;
+  company: string | null;
 }
 
 /**
@@ -76,15 +78,41 @@ async function waitingDrafts(
 ): Promise<{ rows: WaitingDraft[]; total: number }> {
   const { data, error, count } = await supabase
     .from("comms_drafts")
-    .select("id, subject, created_at", { count: "exact" })
+    .select("id, subject, created_at, relationship_id", { count: "exact" })
     .eq("organization_id", organizationId)
     .in("review_state", ["needs_human_review"])
     .order("created_at", { ascending: false })
     .limit(SHOWN);
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as { id: string; subject: string | null; created_at: string }[];
+  const rows = (data ?? []) as {
+    id: string;
+    subject: string | null;
+    created_at: string;
+    relationship_id?: string | null;
+  }[];
+  const relationshipIds = rows.flatMap((row) => (row.relationship_id ? [row.relationship_id] : []));
+  const { data: relationships } = relationshipIds.length
+    ? await supabase
+        .from("comms_relationships")
+        .select("id, full_name, company_name")
+        .in("id", relationshipIds)
+    : { data: [] };
+  const names = new Map(
+    ((relationships ?? []) as { id: string; full_name: string; company_name: string | null }[]).map(
+      (relationship) => [relationship.id, relationship],
+    ),
+  );
   return {
-    rows: rows.map((row) => ({ id: row.id, subject: row.subject, createdAt: row.created_at })),
+    rows: rows.map((row) => {
+      const relationship = row.relationship_id ? names.get(row.relationship_id) : undefined;
+      return {
+        id: row.id,
+        subject: row.subject,
+        createdAt: row.created_at,
+        recipient: relationship?.full_name ?? null,
+        company: relationship?.company_name ?? null,
+      };
+    }),
     total: count ?? rows.length,
   };
 }
@@ -108,17 +136,19 @@ function Section({
 }) {
   const state = sectionState({ isError: query.isError, isPending: query.isPending, count });
   return (
-    <section className="rounded-xl border border-border p-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[15px] text-foreground">
-          {title}
-          {state === "error" || count === null ? null : (
-            <span className="text-muted-foreground"> · {count}</span>
-          )}
-        </h2>
-        <p className="text-[12px] text-muted-foreground">{note}</p>
+    <section className="comms-card break-inside-avoid p-4 sm:p-5">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="min-w-0">
+          <h2 className="tt-title-card text-lg">{title}</h2>
+          <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{note}</p>
+        </div>
+        {state === "error" || count === null ? null : (
+          <span className="min-w-8 rounded-full bg-secondary px-2.5 py-1 text-center font-mono text-xs text-foreground">
+            {count}
+          </span>
+        )}
       </header>
-      <div className="mt-3">
+      <div className="mt-4">
         {state === "error" ? (
           <div className="space-y-2">
             <p className="text-[13px] text-destructive">{readFailureMessage(query.error)}</p>
@@ -152,15 +182,15 @@ function PlanList({ bucket, now }: { bucket: Bucket; now: Date }) {
             <Link
               to="/modules/comms/relationships"
               search={{ relationship: item.relationshipId }}
-              className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg bg-secondary/40 px-3 py-2 hover:bg-secondary/70"
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 border-t border-border px-1 py-3 first:border-t-0 hover:text-royal"
             >
               <span className="text-[13px] text-foreground">
                 {item.personName}
                 {item.companyName ? (
                   <span className="text-muted-foreground"> · {item.companyName}</span>
                 ) : null}
-                <span className="block text-[12px] text-muted-foreground">
-                  {item.title} — {item.reason}
+                  <span className="block text-[13px] text-muted-foreground">
+                    {item.title}. {item.reason}
                 </span>
               </span>
               <span
@@ -270,16 +300,14 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Comms"
+    <div className="space-y-5">
+      <CommsPageHeader
         title="Dashboard"
         supporting="What needs action, and the record it rests on. Every line opens the place the work is done."
-        appId="comms"
       />
       <CommsTabs active="dashboard" />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="columns-1 gap-4 lg:columns-2 [&>section]:mb-4">
         <Section
           title="Replies owed"
           note="A reply was marked owed on the conversation."
@@ -292,7 +320,7 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
 
         <Section
           title="Drafts waiting on review"
-          note="Held at the human boundary."
+          note="Ready for review."
           count={drafts.data?.total ?? null}
           query={drafts}
           empty="No draft is waiting."
@@ -303,11 +331,12 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
                 <Link
                   to="/modules/comms/drafts"
                   search={draftSearch(draft.id)}
-                  className="block rounded-lg bg-secondary/40 px-3 py-2 text-[13px] text-foreground hover:bg-secondary/70"
+                  className="block border-t border-border px-1 py-3 text-sm text-foreground first:border-t-0 hover:text-royal"
                 >
                   {draft.subject ?? "(no subject)"}
-                  <span className="block text-[12px] text-muted-foreground">
-                    Drafted {new Date(draft.createdAt).toLocaleDateString()}
+                  <span className="block text-[13px] text-muted-foreground">
+                    {[draft.recipient, draft.company].filter(Boolean).join(" · ") || "Recipient not recorded"}
+                    {" · "}Drafted {new Date(draft.createdAt).toLocaleDateString()}
                   </span>
                 </Link>
               </li>
@@ -336,7 +365,7 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
                 <Link
                   to="/modules/comms/drafts"
                   search={{ session: session.id }}
-                  className="block rounded-lg bg-secondary/40 px-3 py-2 text-[13px] text-foreground hover:bg-secondary/70"
+                  className="block border-t border-border px-1 py-3 text-sm text-foreground first:border-t-0 hover:text-royal"
                 >
                   {session.title}
                   <span className="block text-[12px] text-muted-foreground">
