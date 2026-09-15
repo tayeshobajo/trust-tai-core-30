@@ -44,8 +44,10 @@ const VERSION = "version-1";
 /** The teammate who actually wrote the draft. The caller is only reviewing it. */
 const AUTHOR = "author-2";
 
-type Result = { data: unknown; error: unknown };
+type Result = { data: unknown; error: unknown; count?: number | null };
 const ok = (data: unknown = null): Result => ({ data, error: null });
+/** A read that also carries the exact number of matching rows. */
+const okCount = (data: unknown, count: number | null): Result => ({ data, error: null, count });
 const boom = (message: string): Result => ({ data: null, error: { message } });
 
 interface TableStub {
@@ -573,5 +575,54 @@ describe("listing the reviews", () => {
     const page = await listReviews("token", ORG);
     expect(page.rows).toHaveLength(1);
     expect(page.rows[0]?.id).toBe(SESSION);
+  });
+
+  it("reports the real total, so a page of fifty does not read as fifty reviews", async () => {
+    const rows = Array.from({ length: 50 }, (_unused, index) => ({
+      id: `session-${index}`,
+      organization_id: ORG,
+      status: "open",
+    }));
+    createClient.mockImplementation(() =>
+      fakeClient(
+        baseTables({ comms_review_sessions: { read: okCount(rows, 214) } }),
+        [],
+        USER,
+      ),
+    );
+    const page = await listReviews("token", ORG);
+    expect(page.rows).toHaveLength(50);
+    expect(page.total).toBe(214);
+    expect(page.capped).toBe(true);
+  });
+
+  it("does not call a page complete when the database gave no count", async () => {
+    createClient.mockImplementation(() =>
+      fakeClient(
+        baseTables({
+          comms_review_sessions: { read: okCount([{ id: SESSION, organization_id: ORG }], null) },
+        }),
+        [],
+        USER,
+      ),
+    );
+    const page = await listReviews("token", ORG);
+    expect(page.total).toBe(1);
+    expect(page.capped).toBe(true);
+  });
+
+  it("is not capped when everything fits in the page", async () => {
+    createClient.mockImplementation(() =>
+      fakeClient(
+        baseTables({
+          comms_review_sessions: { read: okCount([{ id: SESSION, organization_id: ORG }], 1) },
+        }),
+        [],
+        USER,
+      ),
+    );
+    const page = await listReviews("token", ORG);
+    expect(page.total).toBe(1);
+    expect(page.capped).toBe(false);
   });
 });
