@@ -196,8 +196,36 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
           )}
 
           {save.isError ? (
-            <p className="mt-3 text-[13px] text-destructive">{(save.error as Error).message}</p>
+            <div className="mt-3 rounded-lg border border-destructive/40 p-3">
+              <p className="text-[13px] text-destructive">{(save.error as Error).message}</p>
+              {save.error instanceof VoiceConflictError && save.error.latest ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {/* Nothing the person wrote is thrown away: they choose. */}
+                  <TTButton
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      const latest = (save.error as VoiceConflictError).latest;
+                      if (latest) {
+                        queryClient.setQueryData(
+                          ["comms", "voice", identity.organizationId],
+                          latest,
+                        );
+                        save.reset();
+                      }
+                    }}
+                  >
+                    Keep my writing, compare with theirs
+                  </TTButton>
+                  <span className="text-[12px] text-muted-foreground">
+                    Their version {save.error.latest.version} is shown in preview once you switch
+                    back.
+                  </span>
+                </div>
+              ) : null}
+            </div>
           ) : null}
+
         </section>
 
         <aside className="space-y-6">
