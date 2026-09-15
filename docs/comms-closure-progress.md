@@ -252,3 +252,25 @@ Queue completion still did not resolve acceptance: there is no signed-in
 session for this workspace, so no persisted run, no real-record walk-through
 and no delivery evidence exists. The verdict is unchanged — ready for an
 authorized pilot, not production.
+
+## Codex live evidence, 2026-09-15 — fresh message creation and type persistence
+
+Codex signed in to the preview as Tai (`tai@trust-tai.com`) and observed the
+real Dashboard (5 replies, 44 drafts, 2 reviews). It created a draft through
+the New draft → Message path, submitted it, and verified the record in the
+database itself. This evidence is Codex's; the record is under Codex's
+ownership and must not be duplicated, modified or cleaned up by anyone else.
+
+| Item | Codex finding |
+| --- | --- |
+| Record | Message "QA CLOSURE - two questions - do not send", session `9b329dbe-02ca-40d6-9f54-9ec728c64446` |
+| Database check | kind `message`, revision 2, one immutable version, zero review runs |
+| Interruption | The browser transport (CDP get-tabs) timed out **after the save, before Review was clicked** — a browser infrastructure failure, **not** an application save failure and **not** continued missing authentication. The sign-in succeeded and is recorded as succeeding |
+| Sends / approvals | None made |
+| Scope of what this closes | **Only** fresh message creation and draft-type persistence with a real signed-in user |
+| Scope it does **not** close | Reload persistence, AI review against a persisted record, provenance reconstruction, and current-build identity remain **Blocked** and unchanged in the audit; the earlier blocked rows stand |
+
+Record class: **Codex live evidence**. Earlier self-reported "signed-in
+blocked" rows are not overwritten by this; the sandbox environment still
+cannot sign in itself, and this evidence arrives from Codex's browser, not
+from this environment.
