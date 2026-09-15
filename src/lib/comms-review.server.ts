@@ -1062,6 +1062,10 @@ export async function runReview(
      not read contributes no obligations, and says so in limitations. */
   const obligations: Obligation[] = [];
   const packetSources: ReviewPacketSource[] = [];
+  /* Kept so that a finding about words in the SOURCE — an instruction hidden
+     in an upload, say — can be proved genuine even though those words are
+     not in the draft. Everything else must still quote the draft. */
+  const sourceTexts: string[] = [];
   for (const row of sourceRows) {
     const content = nullableStr(row["content"]);
     const label = str(row["label"]) || "Source";
