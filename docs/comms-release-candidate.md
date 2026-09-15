@@ -13,15 +13,15 @@ need a signed-in preview on this build; neither is a code defect known to us.
 
 ## 1. What is being released
 
-| Item | Value |
-| --- | --- |
-| Commit | `0dc6215e8bbcbea4e04c887c3effa7861dd1ad39` |
-| Branch | main line of `tayeshobajo/trust-tai-core-30` |
-| Preview URL | `https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app` (Lovable sign-in required; responds 401 until then) |
-| Published production | `https://trusttai-os-foundation.lovable.app` |
-| Custom domain | `https://cmd.trusttai.com` |
-| Backend | External Supabase `okydosoacqdnursmmenf`. No Lovable Cloud. |
-| Gates on this commit | 262 test files, 2949 tests passing; types clean; lint clean; build OK |
+| Item                 | Value                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Commit               | `0dc6215e8bbcbea4e04c887c3effa7861dd1ad39`                                                                                 |
+| Branch               | main line of `tayeshobajo/trust-tai-core-30`                                                                               |
+| Preview URL          | `https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app` (Lovable sign-in required; responds 401 until then) |
+| Published production | `https://trusttai-os-foundation.lovable.app`                                                                               |
+| Custom domain        | `https://cmd.trusttai.com`                                                                                                 |
+| Backend              | External Supabase `okydosoacqdnursmmenf`. No Lovable Cloud.                                                                |
+| Gates on this commit | 262 test files, 2949 tests passing; types clean; lint clean; build OK                                                      |
 
 **The hosted build is not known from here.** A git diff against the last
 commit is not a deployment diff: the deployed baseline was never recorded, so
@@ -43,14 +43,14 @@ under `/mockups/*` also ship; they read nothing and write nothing.
 
 Read-only, with the service key, on 2026-09-15.
 
-| Migration | Applied | Evidence |
-| --- | --- | --- |
-| `20260914150000_comms_review_runs.sql` | Yes | seven review tables answer |
-| `20260914160000_comms_review_hardening.sql` | Yes | member writes revoked, org-scoped SELECT |
-| `20260914170000_comms_review_delivery_hardened.sql` | Yes | `comms_review_deliveries` with `idempotency_key`, `status`, `settled_at` |
-| `20260914220000_comms_review_kind.sql` | Yes | `comms_review_sessions.kind`, `comms_review_versions.structured_source` |
-| Voice provenance columns | Yes | `voice_profile_id`, `voice_version`, `voice_snapshot_checksum`, `style_context_snapshot` all return values |
-| `proposed/20260915120000_comms_review_opportunities.sql` | **No, and optional** | `comms_review_runs.opportunities` returns 42703 |
+| Migration                                                | Applied              | Evidence                                                                                                   |
+| -------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `20260914150000_comms_review_runs.sql`                   | Yes                  | seven review tables answer                                                                                 |
+| `20260914160000_comms_review_hardening.sql`              | Yes                  | member writes revoked, org-scoped SELECT                                                                   |
+| `20260914170000_comms_review_delivery_hardened.sql`      | Yes                  | `comms_review_deliveries` with `idempotency_key`, `status`, `settled_at`                                   |
+| `20260914220000_comms_review_kind.sql`                   | Yes                  | `comms_review_sessions.kind`, `comms_review_versions.structured_source`                                    |
+| Voice provenance columns                                 | Yes                  | `voice_profile_id`, `voice_version`, `voice_snapshot_checksum`, `style_context_snapshot` all return values |
+| `proposed/20260915120000_comms_review_opportunities.sql` | **No, and optional** | `comms_review_runs.opportunities` returns 42703                                                            |
 
 The one unapplied change is genuinely optional and is not disguised: without
 it the reviewer's private notes are shown for that run and not kept, and the
@@ -71,24 +71,24 @@ Tai**, **Not performed**.
 
 ### The eight rounds
 
-| ID | State | Owner of what remains |
-| --- | --- | --- |
-| P1.1–P1.7 Conversations | Code-tested; P1.1, P1.2, P1.4, P1.6, P1.7 Blocked live. P1.5's "Save" is not applicable: there is no save for raw reply text, and the dialog says so | signed-in preview |
-| P2.1 Preview identity | Partly Live-verified (Codex signed in, real data seen); exact build behind that session unrecorded | Codex |
-| P2.2, P2.3 A real review completing and its provenance | **Blocked.** The request-format defect is fixed and proven against the real model outside the workspace; no run has been saved inside it | signed-in preview on this build |
-| P2.4–P2.6 | Code-tested | — |
-| P3.1, P3.2, P3.6, P3.8 save and reload | **Blocked live**; code-tested | signed-in preview |
-| P3.3–P3.5, P3.7 | Code-tested, including 125.50 × 2 + 249.00 − 50.00 = USD 450.00 | — |
-| P4.1–P4.3, P4.5–P4.8 | Code-tested on the fixed 13-case set, two consecutive full passes | — |
-| P4.4, P4.9 voice and ratings | **Awaiting Tai** — six examples in `docs/comms-review-examples-for-tai.md` | Tai |
-| P5.1–P5.8 five destinations | Code-tested; the live walk-throughs Blocked | signed-in preview |
-| P6.1–P6.7, P6.9 approval and delivery | Code-tested against a fake provider and database double | — |
-| P6.8 retired endpoint | Repository body refuses with 410; the **deployed** 410 has not been invoked | Codex, with an authorized invocation |
-| P7.1, P7.2 | Live-verified on the fixture workspace at 1440×900, 768×1024, 375×812 | signed-in preview for the real screens |
-| P7.3–P7.5, P7.7 | Implemented / Code-tested | — |
-| P7.6 | Code-tested; no measured review duration exists, and none is invented | signed-in preview |
-| P8.2 fresh Message, Email, Proposal end to end | **Blocked** | signed-in preview |
-| P8.9 production deploy, real delivery | **Not performed** — see section 7 | Tai |
+| ID                                                     | State                                                                                                                                                | Owner of what remains                  |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| P1.1–P1.7 Conversations                                | Code-tested; P1.1, P1.2, P1.4, P1.6, P1.7 Blocked live. P1.5's "Save" is not applicable: there is no save for raw reply text, and the dialog says so | signed-in preview                      |
+| P2.1 Preview identity                                  | Partly Live-verified (Codex signed in, real data seen); exact build behind that session unrecorded                                                   | Codex                                  |
+| P2.2, P2.3 A real review completing and its provenance | **Blocked.** The request-format defect is fixed and proven against the real model outside the workspace; no run has been saved inside it             | signed-in preview on this build        |
+| P2.4–P2.6                                              | Code-tested                                                                                                                                          | —                                      |
+| P3.1, P3.2, P3.6, P3.8 save and reload                 | **Blocked live**; code-tested                                                                                                                        | signed-in preview                      |
+| P3.3–P3.5, P3.7                                        | Code-tested, including 125.50 × 2 + 249.00 − 50.00 = USD 450.00                                                                                      | —                                      |
+| P4.1–P4.3, P4.5–P4.8                                   | Code-tested on the fixed 13-case set, two consecutive full passes                                                                                    | —                                      |
+| P4.4, P4.9 voice and ratings                           | **Awaiting Tai** — six examples in `docs/comms-review-examples-for-tai.md`                                                                           | Tai                                    |
+| P5.1–P5.8 five destinations                            | Code-tested; the live walk-throughs Blocked                                                                                                          | signed-in preview                      |
+| P6.1–P6.7, P6.9 approval and delivery                  | Code-tested against a fake provider and database double                                                                                              | —                                      |
+| P6.8 retired endpoint                                  | Repository body refuses with 410; the **deployed** 410 has not been invoked                                                                          | Codex, with an authorized invocation   |
+| P7.1, P7.2                                             | Live-verified on the fixture workspace at 1440×900, 768×1024, 375×812                                                                                | signed-in preview for the real screens |
+| P7.3–P7.5, P7.7                                        | Implemented / Code-tested                                                                                                                            | —                                      |
+| P7.6                                                   | Code-tested; no measured review duration exists, and none is invented                                                                                | signed-in preview                      |
+| P8.2 fresh Message, Email, Proposal end to end         | **Blocked**                                                                                                                                          | signed-in preview                      |
+| P8.9 production deploy, real delivery                  | **Not performed** — see section 7                                                                                                                    | Tai                                    |
 
 No ID was renamed, no failure was removed, and nothing mocked is labelled
 live. C01–C22 and T01–T05 keep their original definitions in
