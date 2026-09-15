@@ -219,10 +219,21 @@ export function lessonGuidance(lessons: ReviewLesson[]): string {
 export type LessonSetState = "available" | "unsupported" | "read_failed";
 
 /**
- * One stable string standing for the exact active lesson set. It goes into
- * the context fingerprint, so keeping or revoking a lesson makes every
- * earlier run and approval stale rather than leaving them looking current
- * against guidance that has since changed.
+ * The catalogue's own version. It changes whenever a category's wording
+ * changes, because the wording IS the guidance a review was held against:
+ * evidence recorded under the old sentence must not read as current under a
+ * new one.
+ */
+export const LESSON_CATALOGUE_VERSION = "lessons.v1";
+
+/**
+ * One stable string standing for the exact active lesson set — the actual
+ * lesson records, and the exact sentences they reuse.
+ *
+ * It goes into the context fingerprint, so keeping or revoking a lesson, or
+ * editing the wording of a category in this file, makes every earlier run and
+ * approval stale rather than leaving them looking current against guidance
+ * that has since changed.
  *
  * "unsupported" is its own value, not an empty set: a workspace that cannot
  * keep lessons yet is not the same as one that has kept none. A read failure
@@ -236,11 +247,18 @@ export function lessonSetStamp(input: {
   if (input.state === "read_failed") return null;
   if (input.state === "unsupported") return "lessons:unsupported";
   const live = activeLessons(input.lessons)
-    .map((lesson) => `${lesson.id}:${lesson.category}:${lesson.promotedAt}`)
+    /* The lesson itself, and the exact wording it will hand to a review. An
+       unknown category contributes its id and no wording rather than being
+       silently dropped. */
+    .map(
+      (lesson) =>
+        `${lesson.id}:${lesson.category}:${lesson.promotedAt}:${lessonCategory(lesson.category)?.guidance ?? ""}`,
+    )
     .sort();
   if (live.length === 0) return "lessons:none";
-  return `lessons:${sha256(live.join("\u0000"))}`;
+  return `lessons:${sha256([LESSON_CATALOGUE_VERSION, ...live].join("\u0000"))}`;
 }
+
 
 export const LESSONS_UNREADABLE_REFUSAL =
   "The writing habits kept here could not be read, so this review was not run. Running it without them would judge the draft against the wrong guidance. Try again in a moment.";
