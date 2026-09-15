@@ -569,3 +569,43 @@ was changed to accommodate a fix.
   one. Owner: whoever runs the signed-in preview.
 - No automated contrast audit on the signed-in screens. Owner: same.
 - No measured review duration until a review completes live. Owner: same.
+
+## Round 8 — Reconciliation and the release candidate
+
+Environment: Lovable sandbox, 2026-09-15, commit
+`0dc6215e8bbcbea4e04c887c3effa7861dd1ad39`. No build work this round. Nothing
+published, nothing sent, no schema applied. The database was read read-only
+to check what is actually applied.
+
+The candidate is `docs/comms-release-candidate.md`: pinned commit, preview
+and production URLs, migration state read from the live database, evidence
+per criterion with an owner, known issues, rollback, and a plain-language
+operator guide.
+
+### Decision
+
+**Ready for an authorized pilot, with two named limits:** no AI review has
+ever completed inside the workspace, and nothing has ever been delivered
+through the gate. Not ready for production deployment on that basis.
+
+### Acceptance
+
+| ID   | Evidence                                                                                                                                                                                                                                      |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P8.1 | **Implemented.** Every P1–P7 criterion, plus C01–C22 and T01–T05, maps to a row with a state and an owner. No ID renamed, no failure dropped, nothing mocked labelled live.                                                                   |
+| P8.2 | **Blocked.** Fresh Message, Email and Proposal save → reload → review → correction cannot be run without a session. The isolated no-send approval scenario is covered by the Round 6 boundary tests, which is code evidence, not a live pass. |
+| P8.3 | **Code-tested / Awaiting Tai.** The 13-case set passes its factual and coverage checks on two consecutive runs. Tai's voice and judgment review is prepared and unrecorded; it stays open.                                                    |
+| P8.4 | **Live-verified (read-only).** Provenance columns hold real values; the failed QA run, its two sessions and their versions are intact and unmodified; deliveries is empty. Sanitized diagnostics make a failure reconstructable.              |
+| P8.5 | **Live-verified (read-only).** Every required migration is applied. The single unapplied change is the optional private-notes column, which degrades honestly and hides no insecure fallback.                                                 |
+| P8.6 | **Code-tested.** 262 files, 2949 tests, types, lint and build clean on the pinned commit. Material risks are listed in section 5 of the candidate, not softened.                                                                              |
+| P8.7 | **Implemented.** Scope, monitoring and rollback are written down. Rollback reverts code only, preserves approvals and evidence, and explicitly forbids restoring the unsafe legacy endpoint.                                                  |
+| P8.8 | **Implemented.** The operator guide covers drafting, review, approval, reading stale and failed states, voice rules, connections and an unknown delivery, in plain language.                                                                  |
+| P8.9 | **Not performed.** Production deployment and real delivery are separate rows, both unauthorized and both unattempted.                                                                                                                         |
+
+### Handoff
+
+- Codex: verify the migration and database claims independently, and invoke
+  the deployed retired endpoint if an authorized invocation is available.
+- Tai: rate the six examples, and decide on the two authorizations.
+- Whoever holds a signed-in preview on this build: run one synthetic review
+  and read the saved run; then the three draft types end to end.
