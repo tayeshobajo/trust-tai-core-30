@@ -186,11 +186,21 @@ export function ConversationEvent({
   );
 }
 
+/** A part of the history that could not be read. Never rendered as empty. */
+export interface HistoryGap {
+  /** What could not be read, in the words of the room: "Email", "Interactions". */
+  source: string;
+  message: string;
+}
+
 export function ConversationRoom({
   relationship,
   days,
   health,
   organizationId,
+  historyGaps,
+  onRetryHistory,
+  onBack,
   onViewProfile,
   onOpenContext,
   onAddInteraction,
@@ -206,6 +216,11 @@ export function ConversationRoom({
   health: ConversationHealth;
   /** The workspace, resolves inline images and attachment downloads. */
   organizationId?: string;
+  /** Reads that failed. The thread says so rather than looking quiet. */
+  historyGaps?: HistoryGap[];
+  onRetryHistory?: () => void;
+  /** Mobile: the way back to the list of people. */
+  onBack?: () => void;
   onViewProfile: () => void;
   onOpenContext?: () => void;
   onAddInteraction?: () => void;
@@ -232,6 +247,7 @@ export function ConversationRoom({
   const recent = earlier.length ? days.slice(days.length - RECENT_DAYS) : days;
   const earlierCount = earlier.reduce((total, day) => total + day.events.length, 0);
   const shownDays = showEarlier ? days : recent;
+  const gaps = historyGaps ?? [];
 
   return (
     <div className="flex h-full min-h-0 flex-col">
