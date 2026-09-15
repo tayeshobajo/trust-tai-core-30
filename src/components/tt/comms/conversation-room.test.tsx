@@ -26,6 +26,7 @@ const relationship = {
   stage: "prospect",
   intent: "explore",
   nextAction: null,
+  metadata: {},
 } as unknown as Relationship;
 
 const health = { status: "healthy", because: "Replied recently." } as unknown as ConversationHealth;
