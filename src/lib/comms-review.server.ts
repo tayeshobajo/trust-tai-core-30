@@ -102,6 +102,7 @@ import {
   type FindingSeverity,
   type ReviewApproval,
   type ReviewFinding,
+  type ReviewOpportunity,
   type ReviewRun,
   type ReviewSession,
   type ReviewVersion,
@@ -1008,14 +1009,6 @@ async function loadVoicePacket(caller: Caller, organizationId: string): Promise<
        whether an old approval still stands. */
     stamp: `voice_profile:${profileId}@v${version}#${sha256(rules)}`,
   };
-}
-
-/** A private note about possible future work, never part of the message. */
-export interface ReviewOpportunity {
-  evidence: string;
-  reading: string;
-  worth: string;
-  timing: string;
 }
 
 export interface ReviewRunResult {

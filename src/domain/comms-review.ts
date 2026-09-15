@@ -99,6 +99,22 @@ export interface ReviewFinding {
   position: number;
 }
 
+/**
+ * A private note about possible future work. It belongs to the author, never
+ * to the message: nothing here is ever inserted into a draft, and it is
+ * withheld entirely when the client is unhappy.
+ */
+export interface ReviewOpportunity {
+  /** Exact words from the source material this rests on. */
+  evidence: string;
+  /** The reviewer's reading of it, for a person to accept or discard. */
+  reading: string;
+  /** What it could be worth, in the packet's own terms, or "unknown". */
+  worth: string;
+  /** When it would be right to raise it, or "not now". */
+  timing: string;
+}
+
 export interface ReviewRun {
   id: string;
   sessionId: string;
@@ -117,6 +133,8 @@ export interface ReviewRun {
   goalRead: string | null;
   coverage: Record<string, unknown>;
   limitations: string[];
+  /** Empty when none were raised, or when the run predates keeping them. */
+  opportunities: ReviewOpportunity[];
   startedAt: ISODateTime;
   completedAt: ISODateTime | null;
 }
