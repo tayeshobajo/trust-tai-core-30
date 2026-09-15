@@ -122,7 +122,7 @@ describe("what each row actually is", () => {
 describe("a list that could not be read", () => {
   it("says so, offers a retry, and states no counts", async () => {
     fetchQueue.mockRejectedValue(new Error("network down"));
-    listReviews.mockResolvedValue([]);
+    listReviews.mockResolvedValue({ rows: [], total: 0, capped: false });
     view({});
 
     await waitFor(() => expect(screen.getByText(/could not be read just now/i)).toBeTruthy());
@@ -135,7 +135,7 @@ describe("a list that could not be read", () => {
 describe("a link that names one record", () => {
   it("reads that exact draft rather than looking through the capped list", async () => {
     fetchQueue.mockResolvedValue([]);
-    listReviews.mockResolvedValue([]);
+    listReviews.mockResolvedValue({ rows: [], total: 0, capped: false });
     fetchDraftById.mockResolvedValue(draft("d-99"));
 
     view({ draft: "d-99" });
@@ -147,7 +147,7 @@ describe("a link that names one record", () => {
   it("moves a draft link onto the live review that governs it", async () => {
     const onSelect = vi.fn();
     fetchQueue.mockResolvedValue([draft("d-1")]);
-    listReviews.mockResolvedValue([session({ draftId: "d-1" })]);
+    listReviews.mockResolvedValue({ rows: [session({ draftId: "d-1" })], total: 1, capped: false });
 
     view({ draft: "d-1" }, onSelect);
 
