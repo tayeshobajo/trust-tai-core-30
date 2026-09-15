@@ -1076,6 +1076,7 @@ export async function runReview(
       ...(content ? { segments: segmentSource(content).map((segment) => segment.text) } : {}),
     });
     if (!content) continue;
+    sourceTexts.push(content);
     for (const obligation of obligationsFromSource({
       sourceId: str(row["id"]),
       text: content,
