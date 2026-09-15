@@ -298,11 +298,11 @@ function RecentReviews({
     <aside className="space-y-3">
       <h3 className="text-sm font-medium text-foreground">Recent reviews</h3>
       {query.isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
-      {query.data?.length === 0 ? (
+      {query.data?.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No reviews yet.</p>
       ) : null}
       <ul className="space-y-2">
-        {(query.data ?? []).map((session) => (
+        {(query.data?.rows ?? []).map((session: ReviewSession) => (
           <li key={session.id}>
             <button
               type="button"

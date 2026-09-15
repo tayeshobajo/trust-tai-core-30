@@ -233,7 +233,7 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
   /* "Not approved" is read from the record, not assumed from a status word:
      a session is unapproved when its status is not approved and it is not
      closed. Anything else would label approved work as outstanding. */
-  const awaitingApproval: ReviewSession[] = (reviews.data ?? []).filter(
+  const awaitingApproval: ReviewSession[] = (reviews.data?.rows ?? []).filter(
     (session) => session.status === "open",
   );
 
