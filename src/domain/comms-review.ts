@@ -224,9 +224,15 @@ export function contextFingerprint(context: ReviewContext): string {
     (context.senderUserId ?? "").trim(),
     (context.voiceVersion ?? "").trim(),
     [...context.sourceChecksums].sort().join(","),
-    /* Absent only for callers that predate kept habits; the review paths
-       always supply it, including "unsupported" and "none". */
-    ...(context.lessonSetStamp === undefined ? [] : [(context.lessonSetStamp ?? "").trim()]),
+    /* Only an actual set of kept habits enters the fingerprint. "None" and
+       "unsupported" are left out on purpose, so that runs recorded before any
+       habit was kept stay exactly as current as they were, and revoking the
+       last habit returns the fingerprint to that same value rather than
+       inventing a third state. */
+    ...(context.lessonSetStamp && !/^lessons:(none|unsupported)$/.test(context.lessonSetStamp)
+      ? [context.lessonSetStamp.trim()]
+      : []),
+
   ];
   return sourceChecksum(parts.join("\u0000"));
 }
