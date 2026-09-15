@@ -190,13 +190,16 @@ export async function gmailSendStatus(organizationId: string): Promise<GmailSend
 
 export interface GmailSendOutcome {
   draftId: string;
-  state: "sent" | "sending" | "failed" | "blocked";
+  /** `unknown`: the provider never answered. Not sent, not failed, not retried. */
+  state: "sent" | "sending" | "failed" | "blocked" | "unknown";
   replayed?: boolean;
   providerMessageId?: string;
   providerThreadId?: string;
   error?: string;
   requiredScope?: string;
+  note?: string;
 }
+
 
 /**
  * Send one draft through Gmail. Human-triggered only; idempotent per draft, * a double click or a retry replays the recorded outcome instead of sending
