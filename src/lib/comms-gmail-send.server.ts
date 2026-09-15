@@ -638,22 +638,23 @@ export async function sendDraftViaGmail(input: {
      refusal here means Gmail is never called at all, and the draft is left
      exactly as it was. The draft's own `review_state` is deliberately not
      trusted: any member can write it from a browser. */
+  const outbound = {
+    channel: "email_gmail" as const,
+    subject,
+    body: draft.body,
+    recipient,
+    senderIdentity: mailbox,
+    // Identified the way approval identifies them: by the immutable
+    // storage path of the bytes, so a replacement file of the same length
+    // is a different attachment and the old approval no longer covers it.
+    attachments: staged.map(attachmentIdentity),
+    cc,
+    bcc,
+  };
   const sendApproval = await requireSendApproval(input.token, {
     organizationId: input.organizationId,
     draftId: draft.id,
-    payload: {
-      channel: "email_gmail",
-      subject,
-      body: draft.body,
-      recipient,
-      senderIdentity: mailbox,
-      // Identified the way approval identifies them: by the immutable
-      // storage path of the bytes, so a replacement file of the same length
-      // is a different attachment and the old approval no longer covers it.
-      attachments: staged.map(attachmentIdentity),
-      cc,
-      bcc,
-    },
+    payload: outbound,
   });
   const attempt = await claimDelivery({
     organizationId: input.organizationId,
@@ -666,6 +667,17 @@ export async function sendDraftViaGmail(input: {
   if (!attempt.fresh) {
     return { draftId: draft.id, state: attempt.state === "sent" ? "sent" : "sending" };
   }
+  /* The gap between deciding and claiming is real: a writing habit kept or
+     stopped in it changes the context this approval covers. Asked again now,
+     before anything reaches a provider. */
+  await requireCurrentContextAfterClaim(sendApproval.caller, {
+    organizationId: input.organizationId,
+    draftId: draft.id,
+    payload: outbound,
+    deliveryId: attempt.id,
+    channel: "email_gmail",
+  });
+
 
   // The claim: only the first attempt may move a sendable draft to sending.
   // A claim that died mid-flight is reclaimable after the stale window.
