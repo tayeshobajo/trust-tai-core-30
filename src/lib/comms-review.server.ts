@@ -1214,7 +1214,6 @@ export async function runReview(
     .select("*")
     .maybeSingle();
   if (runAttempt.error && missingColumn(runAttempt.error, "kept_lessons_snapshot")) {
-    provenanceStored = "voice_only";
     runAttempt = await writer
       .from("comms_review_runs")
       .insert({ ...runBase, ...runProvenance } as never)
@@ -1229,10 +1228,8 @@ export async function runReview(
        runs; the stage string still names the voice and the habits, and the
        progress record says the column gate is unmet rather than pretending
        the provenance is stored. */
-    provenanceStored = "none";
     runAttempt = await writer.from("comms_review_runs").insert(runBase).select("*").maybeSingle();
   }
-  void provenanceStored;
 
   const { data: runRow, error: runError } = runAttempt;
   if (runError || !runRow) fail("That review could not be started. Nothing was recorded.");
