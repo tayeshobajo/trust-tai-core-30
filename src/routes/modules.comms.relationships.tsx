@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { setConversationClosed } from "@/data/comms-dashboard";
 import { isClosed } from "@/domain/comms-dashboard";
 
+import { cn } from "@/lib/utils";
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { openReview } from "@/components/tt/comms/draft-queue";
@@ -179,7 +180,41 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [replyDirty, setReplyDirty] = useState(false);
   /** The working goal, edited in place and written to the relationship. */
   const [goalDraft, setGoalDraft] = useState<string | null>(null);
+  /**
+   * On a narrow screen the list and the room are two screens, not a stack:
+   * choosing a person opens their conversation, and the room offers the way
+   * back. On desktop both are always visible and this is ignored.
+   */
+  const [mobilePane, setMobilePane] = useState<"list" | "room">("list");
+  /** A pending departure with unsaved writing: Stay or Discard, never silent. */
+  const [leaving, setLeaving] = useState<{ proceed: () => void; reset: () => void } | null>(null);
   const navigate = useNavigate();
+
+  /**
+   * Changing person is a departure too. Unsaved writing is asked about with
+   * the same words as leaving the page, and the switch only happens if the
+   * person chooses to discard.
+   */
+  function openRelationship(id: string) {
+    const go = () => {
+      setSelectedId(id);
+      setDraftError(null);
+      setProfileOpen(false);
+      setGoalDraft(null);
+      setMobilePane("room");
+    };
+    if (replyDirty) {
+      setLeaving({
+        proceed: () => {
+          setReplyDirty(false);
+          go();
+        },
+        reset: () => {},
+      });
+      return;
+    }
+    go();
+  }
 
   useEffect(() => {
     setAttentionState(loadAttentionState(identity.organizationId));
@@ -320,6 +355,35 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
   const selectedMessages = messagesQuery.data ?? [];
+
+  /**
+   * A read that failed is not an empty history. Each part of the thread says
+   * for itself whether it could be read, so a quiet room is never mistaken
+   * for a complete one.
+   */
+  const historyGaps = useMemo(() => {
+    const gaps: { source: string; message: string }[] = [];
+    if (touchesQuery.isError) {
+      gaps.push({
+        source: "Recorded interactions",
+        message: (touchesQuery.error as Error).message,
+      });
+    }
+    if (messagesQuery.isError) {
+      gaps.push({ source: "Email", message: (messagesQuery.error as Error).message });
+    }
+    if (draftsQuery.isError) {
+      gaps.push({ source: "Drafts", message: (draftsQuery.error as Error).message });
+    }
+    return gaps;
+  }, [
+    touchesQuery.isError,
+    touchesQuery.error,
+    messagesQuery.isError,
+    messagesQuery.error,
+    draftsQuery.isError,
+    draftsQuery.error,
+  ]);
   const health = selected ? deriveConversationHealth(selected, selectedTouches) : null;
   const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
   const days = useMemo(
@@ -581,12 +645,15 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     }
   }
 
-  useBlocker({
-    shouldBlockFn: () => {
-      if (!replyDirty) return false;
-      return !window.confirm("You have an unsent reply here. Leave without keeping it?");
-    },
+  /**
+   * Leaving with writing in the reply bar asks first, in the room's own
+   * words rather than a browser prompt: stay and keep writing, or leave and
+   * lose it. Browser back and reload are covered by the same state.
+   */
+  const leaveGuard = useBlocker({
+    shouldBlockFn: () => replyDirty,
     enableBeforeUnload: () => replyDirty,
+    withResolver: true,
   });
 
   /**
@@ -657,7 +724,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           }
           onMarkReviewed={(id) => decideAttention(markReviewed(attentionState, id))}
           onRestoreAttention={(id) => decideAttention(clearAttentionDecision(attentionState, id))}
-          onOpenRelationship={(id) => setSelectedId(id)}
+          onOpenRelationship={openRelationship}
         />
       }
     >
@@ -727,7 +794,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         {/* Inbox finds the person; conversation owns the room. Intelligence
           appears when called, context is an overlay drawer, never a column. */}
         <div className="mt-4 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="tt-surface max-h-[calc(100dvh-190px)] overflow-hidden p-0 lg:sticky lg:top-20">
+          <aside
+            className={cn(
+              "tt-surface max-h-[calc(100dvh-190px)] overflow-hidden p-0 lg:sticky lg:top-20 lg:block",
+              mobilePane === "room" ? "hidden" : "",
+            )}
+          >
             <CommsInbox
               view={view}
               page={pageView}
@@ -739,16 +811,17 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               health={healthFilter}
               onHealth={(status) => changeView({ health: status })}
               selectedId={selected?.id ?? null}
-              onSelect={(id) => {
-                setSelectedId(id);
-                setDraftError(null);
-                setProfileOpen(false);
-              }}
+              onSelect={openRelationship}
               empty={relationships.length === 0}
             />
           </aside>
 
-          <main className="tt-surface flex h-[calc(100dvh-190px)] min-h-[560px] flex-col overflow-hidden p-0">
+          <main
+            className={cn(
+              "tt-surface h-[calc(100dvh-190px)] min-h-[560px] flex-col overflow-hidden p-0 lg:flex",
+              mobilePane === "list" ? "hidden" : "flex",
+            )}
+          >
             {relationshipsQuery.isLoading ? (
               <p className="p-8 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                 Opening your conversations…
@@ -759,6 +832,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 days={days}
                 health={health}
                 organizationId={context.organizationId}
+                historyGaps={historyGaps}
+                onRetryHistory={() => {
+                  void touchesQuery.refetch();
+                  void messagesQuery.refetch();
+                  void draftsQuery.refetch();
+                }}
+                onBack={() => setMobilePane("list")}
                 onViewProfile={() => setProfileOpen((value) => !value)}
                 onOpenContext={() => setContextOpen(true)}
                 onAddInteraction={() => setInteracting(true)}
@@ -1079,6 +1159,53 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             onCancel={() => setInteracting(false)}
             onSave={(submission) => recordInteraction.mutate(submission)}
           />
+        ) : null}
+
+        {/* Writing in the reply bar is not saved anywhere until a draft is
+            prepared, so leaving asks in plain words rather than a browser
+            prompt. Staying is the safe default and keeps every character. */}
+        {leaveGuard.status === "blocked" || leaving ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Unsent reply"
+            className="fixed inset-0 z-50 grid place-items-center bg-foreground/25 p-4 backdrop-blur-sm"
+          >
+            <div className="tt-rise w-full max-w-[420px] rounded-xl border border-border bg-card p-5">
+              <p className="text-[15px] font-medium text-foreground">
+                You have an unsent reply here.
+              </p>
+              <p className="mt-2 text-[13px] text-muted-foreground">
+                It has not been saved as a draft yet. Stay and prepare the draft to keep it, or
+                leave and lose what you have written.
+              </p>
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <TTButton
+                  size="sm"
+                  autoFocus
+                  onClick={() => {
+                    if (leaving) leaving.reset();
+                    else leaveGuard.reset?.();
+                    setLeaving(null);
+                  }}
+                >
+                  Stay and keep writing
+                </TTButton>
+                <TTButton
+                  variant="quiet"
+                  size="sm"
+                  onClick={() => {
+                    setReplyDirty(false);
+                    if (leaving) leaving.proceed();
+                    else leaveGuard.proceed?.();
+                    setLeaving(null);
+                  }}
+                >
+                  Discard and leave
+                </TTButton>
+              </div>
+            </div>
+          </div>
         ) : null}
       </div>
     </AppShell>

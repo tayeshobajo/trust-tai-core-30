@@ -186,11 +186,21 @@ export function ConversationEvent({
   );
 }
 
+/** A part of the history that could not be read. Never rendered as empty. */
+export interface HistoryGap {
+  /** What could not be read, in the words of the room: "Email", "Interactions". */
+  source: string;
+  message: string;
+}
+
 export function ConversationRoom({
   relationship,
   days,
   health,
   organizationId,
+  historyGaps,
+  onRetryHistory,
+  onBack,
   onViewProfile,
   onOpenContext,
   onAddInteraction,
@@ -206,6 +216,11 @@ export function ConversationRoom({
   health: ConversationHealth;
   /** The workspace, resolves inline images and attachment downloads. */
   organizationId?: string;
+  /** Reads that failed. The thread says so rather than looking quiet. */
+  historyGaps?: HistoryGap[];
+  onRetryHistory?: () => void;
+  /** Mobile: the way back to the list of people. */
+  onBack?: () => void;
   onViewProfile: () => void;
   onOpenContext?: () => void;
   onAddInteraction?: () => void;
@@ -232,11 +247,21 @@ export function ConversationRoom({
   const recent = earlier.length ? days.slice(days.length - RECENT_DAYS) : days;
   const earlierCount = earlier.reduce((total, day) => total + day.events.length, 0);
   const shownDays = showEarlier ? days : recent;
+  const gaps = historyGaps ?? [];
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-4 py-2.5 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="shrink-0 rounded-md border border-border px-2 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+            >
+              ← All people
+            </button>
+          ) : null}
           <span
             aria-hidden
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary font-mono text-[12px] text-muted-foreground"
@@ -310,6 +335,32 @@ export function ConversationRoom({
         {/* The thread gets the room the third rail released, held to a
             readable column rather than stretched edge to edge. */}
         <div className="mx-auto w-full max-w-[880px] space-y-6">
+          {gaps.length ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2.5">
+              <p className="text-[13px] font-medium text-foreground">
+                Part of this history could not be read.
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {gaps.map((gap) => (
+                  <li key={gap.source} className="text-[12px] text-muted-foreground">
+                    <span className="text-foreground">{gap.source}:</span> {gap.message}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                What is missing is unknown, not nothing. Do not read this thread as complete.
+              </p>
+              {onRetryHistory ? (
+                <button
+                  type="button"
+                  onClick={onRetryHistory}
+                  className="mt-2 rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Try again
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           {earlier.length ? (
             <button
               type="button"
@@ -324,7 +375,7 @@ export function ConversationRoom({
               {showEarlier ? "Hide earlier history" : `Earlier history · ${earlierCount}`}
             </button>
           ) : null}
-          {days.length === 0 ? (
+          {days.length === 0 && gaps.length ? null : days.length === 0 ? (
             <p className="py-10 text-center text-[13px] text-muted-foreground">
               Nothing is on the record yet. Add an interaction that already happened, or prepare the
               first message below.
