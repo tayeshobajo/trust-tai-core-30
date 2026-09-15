@@ -1427,35 +1427,67 @@ export async function runReview(
     }
   }
 
-  const { error: completeError } = await writer
-    .from("comms_review_runs")
-    .update({
-      status: "complete",
-      provider,
-      model,
-      stages: [
-        RUN_STAGES.packet,
-        voice.stamp,
-        RUN_STAGES.call,
-        RUN_STAGES.verify,
-        RUN_STAGES.persist,
-      ],
-      summary: str(parsed["summary"]) || null,
-      goal_read: str(parsed["goalRead"]) || null,
-      coverage: {
-        answered: coverage.answered,
-        outstanding: coverage.outstanding,
-        uncertain: coverage.uncertain,
-        total: coverage.verdicts.length,
-        complete: coverage.complete,
-        note: coverage.note,
-      },
-      limitations,
-      completed_at: new Date().toISOString(),
-      latency_ms: Date.now() - started,
-    })
-    .eq("id", runId)
-    .eq("organization_id", input.organizationId);
+  /* Private notes about possible future work. They are never part of the
+     message, and an incomplete one is dropped rather than shown as a hunch
+     with nothing under it. */
+  const opportunities: ReviewOpportunity[] = (
+    Array.isArray(parsed["opportunities"]) ? (parsed["opportunities"] as Row[]) : []
+  )
+    .map((entry) => ({
+      evidence: str(entry["evidence"]).trim(),
+      reading: str(entry["reading"]).trim(),
+      worth: str(entry["worth"]).trim() || "unknown",
+      timing: str(entry["timing"]).trim() || "unknown",
+    }))
+    .filter((entry) => entry.evidence.length > 0 && entry.reading.length > 0);
+
+  const completion = {
+    status: "complete",
+    provider,
+    model,
+    stages: [
+      RUN_STAGES.packet,
+      voice.stamp,
+      RUN_STAGES.call,
+      RUN_STAGES.verify,
+      RUN_STAGES.persist,
+    ],
+    summary: str(parsed["summary"]) || null,
+    goal_read: str(parsed["goalRead"]) || null,
+    coverage: {
+      answered: coverage.answered,
+      outstanding: coverage.outstanding,
+      uncertain: coverage.uncertain,
+      total: coverage.verdicts.length,
+      complete: coverage.complete,
+      note: coverage.note,
+    },
+    limitations,
+    completed_at: new Date().toISOString(),
+    latency_ms: Date.now() - started,
+  };
+
+  let opportunitiesStored = true;
+  let completeError = (
+    await writer
+      .from("comms_review_runs")
+      .update({ ...completion, opportunities })
+      .eq("id", runId)
+      .eq("organization_id", input.organizationId)
+  ).error;
+  /* The column is proposed, not yet applied. Until it exists the notes are
+     shown for this run and not kept; the run says so rather than implying
+     the reviewer saw nothing worth noting. */
+  if (completeError && missingColumn(completeError, "opportunities")) {
+    opportunitiesStored = false;
+    completeError = (
+      await writer
+        .from("comms_review_runs")
+        .update(completion)
+        .eq("id", runId)
+        .eq("organization_id", input.organizationId)
+    ).error;
+  }
   if (completeError) {
     throw new ReviewFailure(
       "write_failed",
@@ -1477,6 +1509,8 @@ export async function runReview(
     findings: ((savedFindings ?? []) as Row[]).map(toFinding),
     obligations: coverage,
     limitations,
+    opportunities,
+    opportunitiesStored,
     provider,
     model,
   };
