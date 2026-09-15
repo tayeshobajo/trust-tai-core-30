@@ -210,3 +210,21 @@ or production Voice DNA touched.
 | F5.5 | **Implemented** (freshly generated from real runs) | `docs/comms-review-examples-for-tai.md`, regenerated this build | none | Six representative examples, each now carrying the whole chain: what the case tests, who the message goes out from, the recorded goal, the invented source context, the original draft, the reviewer's full answer (summary, goal read, findings with suggestions, every ask, private notes), and a **provenance line** naming provider, model, prompt version, voice-profile state and run date. Every example is explicitly invented; **no client material appears**. Ratings blanks for voice, usefulness and judgment sit under each. | Tai |
 | F5.6 | **Awaiting Tai** | — | — | **Not marked, and will not be marked here.** P4.9 requires Tai's own ratings at 4/5 or better on each of voice, usefulness and judgment with no critical factual error. The pack is prepared and waiting; the criterion stays open until Tai's numbers are written into it. | Tai |
 | P8.3 | Model half **Live-verified**; acceptance half **Awaiting Tai**; in-workspace half **Blocked** | As above | none | The evaluation set passes its critical factual and coverage checks against the real model. Tai's voice and judgment acceptance is not recorded. Separately and unchanged since Task 1: **no review has ever completed inside the workspace itself**, because nothing here can sign in — the exact dependency is recorded once above and the reproducible script is in Task 1. | Tai; holder of a signed-in preview |
+
+---
+
+## Task 6/6 — Final criterion-by-criterion audit and release handoff
+
+Build/environment: base commit `863cafbcc0e9a4771c0aeb2e27633724ffdd15c7` plus
+this queue's four fixes; local dev; external Supabase `okydosoacqdnursmmenf`;
+read-only database access; 2026-09-15.
+
+| Row | Evidence type | Result | Owner |
+| --- | --- | --- | --- |
+| F6.1 one row per criterion | Doc — `docs/comms-final-audit.md`, 90 rows (63 P + 22 C + 5 T), none grouped | **Met** | — |
+| F6.2 gates on the pinned candidate | Code — types clean, 264 files / 2,960 tests, build OK | **Met** | — |
+| F6.3 persisted runs, three workflows, no-send approval, records, migrations | Live (read-only) + Code — run `b7bee2e2…` still failed and untouched, sessions `8d418c05…` and `2419b89e…` intact, 3 versions, `comms_review_deliveries` 0 rows, `comms_review_runs.opportunities` absent | **Blocked** — no successful persisted run, no real-record workflow; retention pending | Signed-in preview; Codex (SQL) |
+| F6.4 evidence kinds kept apart | Doc — five separate classes, real screens vs fixtures vs real model vs DB read vs Tai | **Met** | — |
+| F6.5 overstatements corrected | Doc — release candidate section 6 rewritten; the blanket "older build is safe" claim withdrawn, only the candidate commit is an established rollback target, records and approvals preserved, legacy send stays retired | **Met** | — |
+| F6.6 exact counts | Doc — PASS-LIVE 13, PASS-CODE 43, BLOCKED 27, PARTIAL-BLOCKED 2, AWAITING-TAI 3, NOT-PERFORMED 1, N/A-SCOPE 1. No percentage given | **Met — not 100%** | — |
+| F6.7 release plan + proposed controlled test | Doc — scope, monitoring, rollback, and a Trust Tai-controlled no-client test message prepared. **Authorization not requested** | **Prepared, not requested** | Tai |
