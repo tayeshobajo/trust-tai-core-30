@@ -37,7 +37,7 @@ const draftRow = {
   relationship_id: "rel-1",
   subject: "Dates",
   body: "Wednesday works.",
-  review_state: "approved",
+  review_state: "draft",
   rationale: null,
   updated_at: "2026-01-01T00:00:00.000Z",
 };
