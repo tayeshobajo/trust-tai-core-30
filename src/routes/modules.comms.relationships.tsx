@@ -665,6 +665,16 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                   Add interaction
                 </TTButton>
               ) : null}
+              {selected ? (
+                <TTButton
+                  variant="quiet"
+                  disabled={closeConversation.isPending}
+                  onClick={() => closeConversation.mutate(!isClosed(selected))}
+                >
+                  {isClosed(selected) ? "Reopen conversation" : "Close conversation"}
+                </TTButton>
+              ) : null}
+
               <TTButton onClick={() => setCapturing((value) => !value)}>
                 {capturing ? "Close" : "Add relationship"}
               </TTButton>
