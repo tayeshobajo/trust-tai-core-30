@@ -302,7 +302,7 @@ function RecentReviews({
         <p className="text-sm text-muted-foreground">No reviews yet.</p>
       ) : null}
       <ul className="space-y-2">
-        {(query.data?.rows ?? []).map((session: ReviewSession) => (
+        {(query.data?.rows ?? []).map((session) => (
           <li key={session.id}>
             <button
               type="button"
