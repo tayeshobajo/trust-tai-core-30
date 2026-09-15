@@ -29,7 +29,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { attachmentIdentity } from "@/lib/comms-outbound-payload.server";
-import { claimDelivery, requireSendApproval } from "@/lib/comms-send-authority.server";
+import {
+  claimDelivery,
+  requireSendApproval,
+  settleDelivery,
+} from "@/lib/comms-send-authority.server";
+
 
 import { openSecret } from "@/lib/comms-crypto.server";
 import {
