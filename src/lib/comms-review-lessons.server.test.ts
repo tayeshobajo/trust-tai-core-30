@@ -32,7 +32,7 @@ import {
   lessonCategory,
   LESSON_CATALOGUE_VERSION,
 } from "@/domain/comms-lessons";
-import { promoteLesson, ReviewFailure, runReview } from "@/lib/comms-review.server";
+import { promoteLesson, revokeLesson, ReviewFailure, runReview } from "@/lib/comms-review.server";
 
 const ORG = "org-1";
 const USER = "user-1";
@@ -486,5 +486,48 @@ describe("the snapshot names the wording, not only the categories", () => {
         promotedAt: "2026-09-16T09:00:00.000Z",
       },
     ]);
+  });
+});
+
+/* ---------------------------------------------------- stopping a habit */
+
+describe("stopping a habit is said once and answered the same way twice", () => {
+  it("returns the original record when it was already stopped, and writes nothing", async () => {
+    const stopped = lessonRow({ revoked_at: "2026-09-16T11:00:00.000Z", revoked_by: USER });
+    const attempts = harness({
+      organization_memberships: { read: ok({ role: "owner", status: "active" }) },
+      comms_review_lessons: { read: ok(stopped) },
+    });
+    const lesson = await revokeLesson("token", { organizationId: ORG, lessonId: "lesson-1" });
+    expect(lesson.revokedAt).toBe("2026-09-16T11:00:00.000Z");
+    expect(attempts.filter((one) => one.op === "update")).toHaveLength(0);
+  });
+
+  it("says plainly when there is no such habit, rather than reporting success", async () => {
+    const attempts = harness({
+      organization_memberships: { read: ok({ role: "owner", status: "active" }) },
+      comms_review_lessons: { read: ok(null) },
+    });
+    const failure = await failureOf(
+      revokeLesson("token", { organizationId: ORG, lessonId: "lesson-1" }),
+    );
+    expect(failure.code).toBe("not_found");
+    expect(attempts.filter((one) => one.op === "update")).toHaveLength(0);
+  });
+
+  it("stops one still in use and hands back the record of it", async () => {
+    let seen = lessonRow();
+    const attempts = harness({
+      organization_memberships: { read: ok({ role: "owner", status: "active" }) },
+      comms_review_lessons: {
+        read: () => ok(seen),
+        update: ok(lessonRow({ revoked_at: "2026-09-16T12:00:00.000Z", revoked_by: USER })),
+      },
+    });
+    const lesson = await revokeLesson("token", { organizationId: ORG, lessonId: "lesson-1" });
+    void seen;
+    expect(lesson.revokedBy).toBe(USER);
+    const update = attempts.find((one) => one.table === "comms_review_lessons" && one.op === "update");
+    expect(update?.payload).toMatchObject({ revoked_by: USER });
   });
 });
