@@ -24,3 +24,33 @@ describe("json_object input framing", () => {
     expect(inputForJsonObjectFormat(packet)).toBe(packet);
   });
 });
+
+describe("what the provider actually receives", () => {
+  it("frames a real review-shaped packet, so json_object is not refused", async () => {
+    const original = globalThis.fetch;
+    let sent: Record<string, unknown> = {};
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      sent = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return new Response(
+        'data: {"type":"response.output_text.delta","delta":"{\\"ok\\":true}"}\n\n',
+        { status: 200, headers: { "Content-Type": "text/event-stream" } },
+      );
+    }) as unknown as typeof fetch;
+    process.env["OPENAI_API_KEY"] ||= "test-key-not-used";
+
+    try {
+      const { callRoadmapProvider } = await import("./roadmap-research.server");
+      // A packet like the review's: data only, no occurrence of the word.
+      const packet = JSON.stringify({
+        draft: "The training is on Tuesday.",
+        obligations: [{ id: "q2", question: "Who sends the handover guide?" }],
+      });
+      await callRoadmapProvider("Return strict JSON only.", packet, { webSearch: false });
+    } finally {
+      globalThis.fetch = original;
+    }
+
+    expect(sent["text"]).toEqual({ format: { type: "json_object" } });
+    expect(String(sent["input"]).toLowerCase()).toContain("json");
+  });
+});
