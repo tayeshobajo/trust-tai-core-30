@@ -133,8 +133,13 @@ export interface ReviewRun {
   goalRead: string | null;
   coverage: Record<string, unknown>;
   limitations: string[];
-  /** Empty when none were raised, or when the run predates keeping them. */
-  opportunities: ReviewOpportunity[];
+  /**
+   * Private notes about possible future work, and whether they were recorded
+   * at all. `null` means this run has no record of them: it predates the
+   * column, or the write did not land. An empty array means the run kept its
+   * notes and raised none. The two must never read the same.
+   */
+  opportunities: ReviewOpportunity[] | null;
   startedAt: ISODateTime;
   completedAt: ISODateTime | null;
 }
@@ -448,3 +453,44 @@ export function approvalReadiness(input: {
  */
 export const APPROVAL_SCOPE_NOTE =
   "Approving records that a person judged these exact words fit to send. It is not a send: no Comms send path reads this approval yet.";
+
+/* ------------------------------------------------- private notes, honestly */
+
+export type PrivateNotesState = "no_run" | "not_recorded" | "evaluated_none" | "notes";
+
+export interface PrivateNotesReading {
+  state: PrivateNotesState;
+  /** What the panel says, in the author's words. */
+  note: string;
+  notes: ReviewOpportunity[];
+}
+
+/**
+ * What a run can honestly say about its private notes.
+ *
+ * "No notes" has two very different meanings and they are kept apart: a run
+ * that recorded its notes and raised none, and a run that never had anywhere
+ * to record them. The second is not evidence of a quiet reviewer.
+ */
+export function privateNotesReading(run: ReviewRun | null | undefined): PrivateNotesReading {
+  if (!run) return { state: "no_run", note: "", notes: [] };
+  if (run.opportunities === null) {
+    return {
+      state: "not_recorded",
+      note: "This review did not record private notes, so there is nothing to show. That is not the same as the reviewer raising none.",
+      notes: [],
+    };
+  }
+  if (run.opportunities.length === 0) {
+    return {
+      state: "evaluated_none",
+      note: "This review kept its private notes and raised none.",
+      notes: [],
+    };
+  }
+  return {
+    state: "notes",
+    note: "Private notes. None of this is in the message, and none of it goes anywhere unless you put it there yourself.",
+    notes: run.opportunities,
+  };
+}

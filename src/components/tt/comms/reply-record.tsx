@@ -28,25 +28,42 @@ const INTENTS: { register: VoiceRegister; label: string }[] = [
 export function ReplyRecordBar({
   drafting,
   busy,
+  saving,
   error,
   purposeHint,
+  value,
+  onValueChange,
+  register,
+  onRegisterChange,
   onPrepareDraft,
+  onSaveWriting,
   onRecordInteraction,
   onDirtyChange,
 }: {
   drafting: boolean;
   busy: boolean;
+  /** A save of the person's own words is in flight. */
+  saving?: boolean;
   error?: string | null;
   /** The reason Comms already believes in, offered as a starting point. */
   purposeHint?: string | null;
+  /** The writing itself lives in the room, so a departure can still save it. */
+  value: string;
+  onValueChange: (next: string) => void;
+  /** The chosen intent, held by the room so a departure can still save. */
+  register: VoiceRegister;
+  onRegisterChange: (next: VoiceRegister) => void;
   onPrepareDraft: (register: VoiceRegister, purpose: string) => void;
+  /**
+   * Save exactly these words as a draft, with no model involved. Resolves
+   * false when the save failed, and the text stays on screen.
+   */
+  onSaveWriting: (register: VoiceRegister, text: string) => Promise<boolean>;
   onRecordInteraction: () => void;
   /** Unsaved writing here is protected by the room's navigation guard. */
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [mode, setMode] = useState<ReplyMode>("reply");
-  const [register, setRegister] = useState<VoiceRegister>("follow_up");
-  const [value, setValue] = useState("");
 
   return (
     <div className="border-t border-border bg-card px-4 pb-4 pt-0 sm:px-5">
@@ -80,7 +97,7 @@ export function ReplyRecordBar({
                 key={intent.register}
                 type="button"
                 aria-pressed={register === intent.register}
-                onClick={() => setRegister(intent.register)}
+                onClick={() => onRegisterChange(intent.register)}
                 className={cn(
                   "rounded-full border px-3 py-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   register === intent.register
@@ -95,8 +112,9 @@ export function ReplyRecordBar({
 
           <textarea
             value={value}
+            aria-label="Your reply"
             onChange={(event) => {
-              setValue(event.target.value);
+              onValueChange(event.target.value);
               onDirtyChange?.(event.target.value.trim().length > 0);
             }}
             rows={3}
@@ -117,13 +135,27 @@ export function ReplyRecordBar({
                   size="sm"
                   type="button"
                   onClick={() => {
-                    setValue(purposeHint);
+                    onValueChange(purposeHint);
                     onDirtyChange?.(purposeHint.trim().length > 0);
                   }}
                 >
                   Use this reason
                 </TTButton>
               ) : null}
+              {/* Your own words, kept as they are. No model is asked
+                  anything, and the text only leaves the box once the save
+                  has actually landed. */}
+              <TTButton
+                variant="quiet"
+                size="sm"
+                type="button"
+                disabled={saving || busy || value.trim().length === 0}
+                onClick={() => {
+                  void onSaveWriting(register, value.trim());
+                }}
+              >
+                {saving ? "Saving…" : "Save draft"}
+              </TTButton>
               <TTButton
                 size="sm"
                 type="button"

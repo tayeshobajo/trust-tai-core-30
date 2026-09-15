@@ -40,6 +40,12 @@ import { createClient } from "@supabase/supabase-js";
 
 import { outboundFingerprint, type DeliveryChannel } from "@/domain/comms-delivery";
 import {
+  canPromoteLesson,
+  lessonGuidance,
+  validateLesson,
+  type ReviewLesson,
+} from "@/domain/comms-lessons";
+import {
   loadDraftForSend,
   outboundPayloadForDraft,
   recipientForDraft,
@@ -122,6 +128,7 @@ export type ReviewFailureCode =
   | "stale_version"
   | "approval_forbidden"
   | "not_ready"
+  | "invalid"
   | "server_not_configured"
   | "write_failed";
 
@@ -253,7 +260,7 @@ function toVersion(row: Row): ReviewVersion {
   };
 }
 
-function toRun(row: Row): ReviewRun {
+export function toRun(row: Row): ReviewRun {
   return {
     id: str(row["id"]),
     sessionId: str(row["session_id"]),
@@ -271,8 +278,9 @@ function toRun(row: Row): ReviewRun {
     goalRead: nullableStr(row["goal_read"]),
     coverage: (row["coverage"] as Record<string, unknown>) ?? {},
     limitations: list(row["limitations"]),
-    /* Absent on runs written before the column exists. Absent means "not
-       kept", which reads the same as none here and is said so in the panel. */
+    /* Null, and absent, both mean "this run has no record of private notes":
+       it predates the column, or the write did not land. An empty array means
+       the run recorded them and raised none. The reader keeps them apart. */
     opportunities: Array.isArray(row["opportunities"])
       ? (row["opportunities"] as Record<string, unknown>[]).map((entry) => ({
           evidence: str(entry["evidence"]),
@@ -280,7 +288,7 @@ function toRun(row: Row): ReviewRun {
           worth: str(entry["worth"]) || "unknown",
           timing: str(entry["timing"]) || "unknown",
         }))
-      : [],
+      : null,
     startedAt: str(row["started_at"]),
     completedAt: nullableStr(row["completed_at"]),
   };
@@ -1221,6 +1229,12 @@ export async function runReview(
       ? "It is recorded as failed."
       : "It could not even be recorded as failed, so the record may still show it as running.";
 
+  /* Guidance kept from decisions people made here. Style only, never facts,
+     and absent entirely when nothing has been kept or the workspace cannot
+     keep lessons yet. */
+  const kept = await readLessons(caller, input.organizationId);
+  const keptGuidance = lessonGuidance(kept.lessons);
+
   const packet = {
     situation: session.situation,
     goal: session.goal,
@@ -1259,6 +1273,7 @@ export async function runReview(
       styleExamplesNote: voice.examplesNote,
       note: "These rules are read-only here, and they are style only: never take a fact, a name, a date or a price from them. Anything you would change about the voice itself is a suggestion for a person, not an edit.",
     },
+    ...(keptGuidance ? { keptLessons: keptGuidance } : {}),
   };
 
   let raw = "";
@@ -1748,6 +1763,8 @@ export interface ReviewState {
   coverageNote: string;
   /** What approving here does, and does not, mean. */
   approvalScopeNote: string;
+  /** Lessons kept from earlier human decisions, and whether they can be kept. */
+  lessons: LessonsView;
 }
 
 export async function loadReview(
@@ -1916,6 +1933,7 @@ export async function loadReview(
       })) as ClassifiedSource[],
     ),
     approvalScopeNote: APPROVAL_SCOPE_NOTE,
+    lessons: await readLessons(caller, input.organizationId),
   };
 }
 
@@ -2071,4 +2089,169 @@ export async function reviewForDraft(
         ? "Reviewed and ready for an owner or admin to approve."
         : state.readiness.blockers.join(" ") || "This review is not finished yet.",
   };
+}
+
+/* ------------------------------------------------------------- lessons */
+
+/**
+ * Lessons kept from human decisions (C19).
+ *
+ * Nothing here learns on its own. A person decides a finding, then chooses to
+ * keep that decision as a lesson; later reviews in the same workspace are
+ * shown the kept lessons as guidance about how to write. A lesson can be
+ * revoked, it never edits a voice rule or any stored judgment, and it may
+ * carry no facts, so nothing from one conversation can be reused as a claim
+ * in another.
+ *
+ * The table is proposed, not applied. Until it exists every read says so
+ * rather than reporting an empty list as "nothing has been learned".
+ */
+
+const LESSON_COLUMNS =
+  "id, organization_id, source_finding_id, source_session_id, lesson, source_note, promoted_by, promoted_by_role, promoted_at, revoked_at, revoked_by";
+
+/** Whether a call failed because the lessons table is not in this database. */
+function missingTable(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    /relation .* does not exist/i.test(error.message ?? "") ||
+    /could not find the table/i.test(error.message ?? "")
+  );
+}
+
+function toLesson(row: Row): ReviewLesson {
+  return {
+    id: str(row["id"]),
+    organizationId: str(row["organization_id"]),
+    sourceFindingId: str(row["source_finding_id"]),
+    sourceSessionId: str(row["source_session_id"]),
+    lesson: str(row["lesson"]),
+    sourceNote: str(row["source_note"]),
+    promotedBy: str(row["promoted_by"]),
+    promotedByRole: str(row["promoted_by_role"]),
+    promotedAt: str(row["promoted_at"]),
+    revokedAt: nullableStr(row["revoked_at"]),
+    revokedBy: nullableStr(row["revoked_by"]),
+  };
+}
+
+export interface LessonsView {
+  /** False when the workspace cannot keep lessons yet. */
+  available: boolean;
+  note: string;
+  lessons: ReviewLesson[];
+}
+
+const LESSONS_UNAVAILABLE =
+  "Lessons cannot be kept in this workspace yet, so none are shown. That is not the same as nothing having been learned.";
+
+async function readLessons(caller: Caller, organizationId: string): Promise<LessonsView> {
+  const { data, error } = await caller.client
+    .from("comms_review_lessons")
+    .select(LESSON_COLUMNS)
+    .eq("organization_id", organizationId)
+    .order("promoted_at", { ascending: false });
+  if (error) {
+    if (missingTable(error)) return { available: false, note: LESSONS_UNAVAILABLE, lessons: [] };
+    return {
+      available: false,
+      note: "Kept lessons could not be read just now, so none are shown.",
+      lessons: [],
+    };
+  }
+  return {
+    available: true,
+    note: "Kept from decisions a person made here. Guidance about how to write, never a fact about anyone.",
+    lessons: ((data ?? []) as Row[]).map(toLesson),
+  };
+}
+
+export async function listLessons(token: string, organizationId: string): Promise<LessonsView> {
+  const caller = await identify(token, organizationId);
+  return readLessons(caller, organizationId);
+}
+
+/** Keep one decided finding as a lesson. An owner or admin act, never automatic. */
+export async function promoteLesson(
+  token: string,
+  input: { organizationId: string; findingId: string; lesson: string },
+): Promise<ReviewLesson> {
+  const caller = await identify(token, input.organizationId);
+  if (!canPromoteLesson(caller.role)) {
+    throw new ReviewFailure(
+      "approval_forbidden",
+      "Only an owner or an admin can keep a lesson for this workspace.",
+    );
+  }
+  const refusal = validateLesson(input.lesson);
+  if (refusal) throw new ReviewFailure("invalid", refusal);
+
+  /* The decision has to exist, be this workspace's, and actually have been
+     decided by a person. An open finding has taught nothing. */
+  const { data: finding } = await caller.client
+    .from("comms_review_findings")
+    .select("id, state, decided_by, why, severity, run_id")
+    .eq("id", input.findingId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+  const row = (finding ?? null) as Row | null;
+  if (!row) throw new ReviewFailure("not_found", "That finding could not be found.");
+  const state = str(row["state"]);
+  if (state === "open" || !str(row["decided_by"])) {
+    throw new ReviewFailure(
+      "invalid",
+      "Decide this finding first. A lesson comes from a decision somebody made.",
+    );
+  }
+
+  const { data: run } = await caller.client
+    .from("comms_review_runs")
+    .select("session_id")
+    .eq("id", str(row["run_id"]))
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+
+  const { data, error } = await writerClient()
+    .from("comms_review_lessons")
+    .insert({
+      organization_id: input.organizationId,
+      source_finding_id: input.findingId,
+      source_session_id: str((run ?? {})["session_id"]),
+      lesson: input.lesson.trim(),
+      source_note: `${str(row["severity"]) === "must_fix" ? "Must fix" : "Worth considering"}: ${str(row["why"])} (${state})`,
+      promoted_by: caller.userId,
+      promoted_by_role: caller.role,
+    })
+    .select(LESSON_COLUMNS)
+    .single();
+  if (error) {
+    if (missingTable(error)) throw new ReviewFailure("write_failed", LESSONS_UNAVAILABLE);
+    fail("That lesson could not be kept.");
+  }
+  return toLesson((data ?? {}) as Row);
+}
+
+/** Stop using a lesson. The record stays, with who revoked it and when. */
+export async function revokeLesson(
+  token: string,
+  input: { organizationId: string; lessonId: string },
+): Promise<void> {
+  const caller = await identify(token, input.organizationId);
+  if (!canPromoteLesson(caller.role)) {
+    throw new ReviewFailure(
+      "approval_forbidden",
+      "Only an owner or an admin can revoke a lesson for this workspace.",
+    );
+  }
+  const { error } = await writerClient()
+    .from("comms_review_lessons")
+    .update({ revoked_at: new Date().toISOString(), revoked_by: caller.userId })
+    .eq("id", input.lessonId)
+    .eq("organization_id", input.organizationId);
+  if (error) {
+    if (missingTable(error)) throw new ReviewFailure("write_failed", LESSONS_UNAVAILABLE);
+    fail("That lesson could not be revoked.");
+  }
 }

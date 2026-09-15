@@ -12,6 +12,7 @@ import type { DraftKind } from "@/domain/comms-draft-kind";
 import type { ProposalSections } from "@/domain/comms-proposal";
 
 import type { ObligationCoverage } from "@/domain/comms-obligations";
+import type { ReviewLesson } from "@/domain/comms-lessons";
 import type {
   ApprovalReading,
   ReviewFinding,
@@ -36,6 +37,8 @@ export interface ReviewStateView {
   fingerprint: string;
   runIsCurrent: boolean;
   coverageNote: string;
+  /** Lessons kept from earlier human decisions in this workspace. */
+  lessons: { available: boolean; note: string; lessons: ReviewLesson[] };
 }
 
 async function token(): Promise<string> {
@@ -149,6 +152,20 @@ export function decideFinding(input: {
   state: "accepted" | "kept" | "edited" | "open";
 }) {
   return post<{ ok: true }>({ action: "finding", ...input });
+}
+
+/** Keep one decided finding as a lesson for this workspace. */
+export function keepLesson(input: {
+  organizationId: string;
+  findingId: string;
+  lesson: string;
+}) {
+  return post<ReviewLesson>({ action: "lesson.keep", ...input });
+}
+
+/** Stop using a kept lesson. The record of it stays. */
+export function revokeLesson(input: { organizationId: string; lessonId: string }) {
+  return post<{ ok: true }>({ action: "lesson.revoke", ...input });
 }
 
 export function approveReview(input: {

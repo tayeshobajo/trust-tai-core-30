@@ -25,6 +25,8 @@ import {
   reviewForDraft,
   reviseDraft,
   ReviewFailure,
+  promoteLesson,
+  revokeLesson,
   runReview,
   type ReviewFailureCode,
   type SourceInput,
@@ -46,6 +48,7 @@ const STATUS: Record<ReviewFailureCode, number> = {
   provider_call_failed: 502,
   review_unreadable: 502,
   not_ready: 409,
+  invalid: 400,
   server_not_configured: 503,
   write_failed: 500,
 };
@@ -234,6 +237,25 @@ export const Route = createFileRoute("/api/public/comms/review")({
                 organizationId,
                 findingId: textOf(body["findingId"]),
                 state: chosen,
+              });
+              return Response.json({ ok: true });
+            }
+            /* Keeping a decision as a lesson, and stopping using one. Both
+               are deliberate human acts by an owner or admin; nothing here
+               happens as a side effect of a review. */
+            case "lesson.keep": {
+              return Response.json(
+                await promoteLesson(token, {
+                  organizationId,
+                  findingId: textOf(body["findingId"]),
+                  lesson: textOf(body["lesson"]),
+                }),
+              );
+            }
+            case "lesson.revoke": {
+              await revokeLesson(token, {
+                organizationId,
+                lessonId: textOf(body["lessonId"]),
               });
               return Response.json({ ok: true });
             }
