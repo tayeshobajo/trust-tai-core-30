@@ -22,7 +22,7 @@ import { isClosed } from "@/domain/comms-dashboard";
 
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/components/tt/app-shell";
-import { CommsTabs } from "@/components/tt/comms/comms-tabs";
+import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { openReview } from "@/components/tt/comms/draft-queue";
 import { CaptureForm } from "@/components/tt/comms/capture-form";
 import { CommsInbox } from "@/components/tt/comms/comms-inbox";
@@ -718,9 +718,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   if (relationshipsQuery.isError) {
     return (
       <div className="mx-auto max-w-reading px-6 py-10">
-        <PageHeader
-          appId="comms"
-          eyebrow="Comms"
+        <CommsPageHeader
           title="Comms could not be read."
           supporting={(relationshipsQuery.error as Error).message}
         />
@@ -861,7 +859,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             />
           </aside>
 
-          <main
+          <section
+            aria-label="Selected conversation"
             className={cn(
               "comms-card h-[calc(100dvh-190px)] min-h-[560px] flex-col overflow-hidden p-0 lg:flex",
               mobilePane === "list" ? "hidden" : "flex",
@@ -1132,7 +1131,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 />
               </div>
             )}
-          </main>
+          </section>
         </div>
 
         {/*

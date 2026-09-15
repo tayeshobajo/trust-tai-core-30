@@ -620,7 +620,7 @@ export function ReviewDetail({
                     : ""}
           </p>
 
-          <div className="rounded-lg border border-border bg-card/60 p-4">
+          <div className="border-t border-border pt-4">
             <h4 className="text-sm font-medium text-foreground">What Comms read</h4>
             <p className="mt-1 text-sm text-muted-foreground">{state.coverageNote}</p>
             <ul className="mt-3 space-y-2 text-xs text-muted-foreground">
