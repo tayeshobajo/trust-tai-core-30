@@ -1926,23 +1926,36 @@ export interface ReviewPage {
   total: number;
   /** True when the page is a part of the truth, not all of it. */
   capped: boolean;
+  /** Where this page started, so the next one can continue from it. */
+  offset: number;
+  /** True when older reviews exist beyond this page. */
+  hasMore: boolean;
 }
+
+/** One page is fifty; older reviews are reached by asking for the next page. */
+export const REVIEW_PAGE_SIZE = 50;
 
 /**
  * The reviews in this workspace, newest first, with the exact total.
  *
  * The page is capped; the count is not. Without the count a capped page of
  * fifty reads as "fifty reviews", and a filter that says "showing 10 of 50"
- * would be wrong in a workspace with two hundred.
+ * would be wrong in a workspace with two hundred. `offset` walks back through
+ * older pages so a filter is not confined to the newest fifty records.
  */
-export async function listReviews(token: string, organizationId: string): Promise<ReviewPage> {
+export async function listReviews(
+  token: string,
+  organizationId: string,
+  options: { offset?: number } = {},
+): Promise<ReviewPage> {
   const caller = await identify(token, organizationId);
+  const offset = Math.max(0, Math.trunc(options.offset ?? 0));
   const { data, error, count } = await caller.client
     .from("comms_review_sessions")
     .select("*", { count: "exact" })
     .eq("organization_id", organizationId)
     .order("updated_at", { ascending: false })
-    .limit(50);
+    .range(offset, offset + REVIEW_PAGE_SIZE - 1);
   /* A read that failed is not a workspace with no reviews in it. Returning an
      empty list here would reach the queue as a confident "nothing waiting". */
   if (error) {
@@ -1954,9 +1967,14 @@ export async function listReviews(token: string, organizationId: string): Promis
   const rows = ((data ?? []) as Row[]).map(toSession);
   /* A null count means the database did not give one. Saying the page length
      is the total would be a guess, so the page is marked capped instead. */
-  const total = typeof count === "number" ? count : rows.length;
-  return { rows, total, capped: rows.length < total || count === null };
+  const total = typeof count === "number" ? count : offset + rows.length;
+  const seen = offset + rows.length;
+  /* Without a count, a full page may or may not have more behind it; treating
+     that as "this is everything" would hide records. */
+  const hasMore = count === null ? rows.length === REVIEW_PAGE_SIZE : seen < total;
+  return { rows, total, capped: seen < total || count === null, offset, hasMore };
 }
+
 
 /* ------------------------------------------------- one record, one answer */
 
