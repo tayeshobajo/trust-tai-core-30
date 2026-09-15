@@ -196,3 +196,43 @@ beyond the sanitized status and error code.
 Sign in on the preview, run one synthetic QA review on this build, and read the
 persisted run: provider, model, prompt version, voice profile and version,
 rules snapshot and checksum. That closes P2.1–P2.3 or names the next fault.
+
+### Round 2 addendum — independent browser evidence (15:27 UTC, 2026-09-15)
+
+Correction to the round 2 table above: **a signed-in browser session does
+exist.** The earlier "no signed-in session" wording describes this sandbox
+only, which has no browser transport to the workspace. Codex signed in to the
+preview as Tai independently.
+
+What Codex observed there (independent evidence, not reproduced here):
+
+- Dashboard loaded real scoped work: 5 replies owed, 44 waiting drafts, one
+  historical QA review.
+- A **new** synthetic intake was started through the New draft menu:
+  title "QA ROUND 2 - two questions - do not send", recipient QA Sample Client
+  `qa-comms@example.invalid`, source asking the training day and the handover
+  owner (confirmed: Tuesday; Tai), draft answering Tuesday only.
+- "Open message review" was clicked once. No model button was clicked, no
+  approval, no send.
+- The browser's CDP get/refresh then timed out twice; browser transport is
+  currently unavailable. Database persistence of the intake is being checked by
+  Codex.
+
+Consequences to hold onto:
+
+1. **Do not create this intake again.** One QA ROUND 2 record may already
+   exist; a second would be a duplicate, not evidence.
+2. **That preview build predates this round's correction.** The
+   `json_object` framing fix is in the working tree at this commit and was not
+   in the build Codex used, so a review run started there would still be
+   refused with the same 400. P2.2 and P2.3 close only on a build that carries
+   the fix.
+3. P2.1 is therefore **partly live-verified**: authentication against the
+   authorized workspace works and the preview serves real scoped data. The
+   exact build identity behind that session is still unrecorded, so P2.1 is not
+   yet fully closed.
+
+Revised next action: deploy or refresh the preview onto a build containing the
+`inputForJsonObjectFormat` correction, then run the model on the **existing**
+QA ROUND 2 record and read the persisted run's provider, model, prompt version,
+voice profile/version, rules snapshot and checksum. No send, no approval.
