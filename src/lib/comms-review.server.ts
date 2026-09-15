@@ -655,7 +655,9 @@ export async function createReviewSession(
     );
     // A duplicate checksum is the same material offered twice; that is fine.
     if (error && !/duplicate key/i.test(error.message)) {
-      fail("The source material could not be saved, so this review has no material to read.");
+      fail(
+        `The source material could not be saved. Your draft was recorded (${session.id}) but the review holds nothing to read against it; open it and add the material again.`,
+      );
     }
   }
 
