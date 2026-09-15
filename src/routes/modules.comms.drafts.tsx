@@ -9,14 +9,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { CommsTabs } from "@/components/tt/comms/comms-tabs";
+import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
 import {
   DraftsWorkspace,
   DRAFTS_FILTERS,
   type DraftsFilter,
   type DraftsSelection,
 } from "@/components/tt/comms/drafts-workspace";
-import { PageHeader } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { DRAFT_KINDS, type DraftKind } from "@/domain/comms-draft-kind";
 
@@ -63,11 +62,9 @@ function DraftsRoute() {
       {(identity) => (
         <AppShell identity={identity}>
           <div className="space-y-5">
-            <PageHeader
-              eyebrow="Comms"
+            <CommsPageHeader
               title="Drafts & Reviews"
               supporting="Writing that has not gone anywhere yet, and the one review each piece has to clear."
-              appId="comms"
             />
             <CommsTabs active="drafts" />
             <DraftsWorkspace

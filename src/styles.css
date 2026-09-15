@@ -323,6 +323,16 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Comms follows the sign-in letter: opaque paper, a fine rule, and no
+   decorative wash or shadow. Kept room-specific so other OS surfaces do not
+   change with this cleanup. */
+@utility comms-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  box-shadow: none;
+}
+
 @utility tt-rise {
   animation: tt-rise-in var(--duration-base) var(--ease-tt) both;
 }

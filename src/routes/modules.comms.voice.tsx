@@ -11,7 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { CommsTabs } from "@/components/tt/comms/comms-tabs";
+import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { Markdown } from "@/components/tt/markdown";
 import { MetaPill, PageHeader, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -121,9 +121,7 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
 
   return (
     <div className="mx-auto w-full max-w-canvas px-4 py-8 lg:px-8">
-      <PageHeader
-        appId="comms"
-        eyebrow="Comms"
+      <CommsPageHeader
         title="How Tai sounds."
         supporting="Every draft is written under this document and checked against the rules below before a person can approve it."
       />
@@ -132,8 +130,8 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
         <CommsTabs active="voice" />
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="tt-surface p-6">
+      <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="comms-card p-4 sm:p-6">
           <SectionHeading
             eyebrow={profile ? `Version ${profile.version}` : "Not saved yet"}
             title="Voice DNA"
@@ -227,8 +225,8 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
           ) : null}
         </section>
 
-        <aside className="space-y-6">
-          <div className="tt-surface p-5">
+        <aside className="space-y-5">
+          <div className="comms-card p-4 sm:p-5">
             <p className="tt-eyebrow">Rules the policy enforces</p>
             <ul className="mt-3 space-y-2.5">
               {Object.values(VOICE_RULES).map((rule) => (
@@ -242,7 +240,7 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
             </ul>
           </div>
 
-          <div className="tt-surface p-5">
+          <div className="comms-card p-4 sm:p-5">
             <p className="tt-eyebrow">Check a passage</p>
             <textarea
               value={sample}
@@ -274,7 +272,7 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
             ) : null}
           </div>
 
-          <div className="tt-surface p-5">
+          <div className="comms-card p-4 sm:p-5">
             <p className="tt-eyebrow">Versions reviews were built from</p>
             {snapshotsQuery.isLoading ? (
               <p className="mt-3 text-[13px] text-muted-foreground">Reading review records…</p>
