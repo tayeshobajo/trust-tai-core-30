@@ -354,6 +354,35 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
   const selectedMessages = messagesQuery.data ?? [];
+
+  /**
+   * A read that failed is not an empty history. Each part of the thread says
+   * for itself whether it could be read, so a quiet room is never mistaken
+   * for a complete one.
+   */
+  const historyGaps = useMemo(() => {
+    const gaps: { source: string; message: string }[] = [];
+    if (touchesQuery.isError) {
+      gaps.push({
+        source: "Recorded interactions",
+        message: (touchesQuery.error as Error).message,
+      });
+    }
+    if (messagesQuery.isError) {
+      gaps.push({ source: "Email", message: (messagesQuery.error as Error).message });
+    }
+    if (draftsQuery.isError) {
+      gaps.push({ source: "Drafts", message: (draftsQuery.error as Error).message });
+    }
+    return gaps;
+  }, [
+    touchesQuery.isError,
+    touchesQuery.error,
+    messagesQuery.isError,
+    messagesQuery.error,
+    draftsQuery.isError,
+    draftsQuery.error,
+  ]);
   const health = selected ? deriveConversationHealth(selected, selectedTouches) : null;
   const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
   const days = useMemo(
