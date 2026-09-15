@@ -886,6 +886,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 days={days}
                 health={health}
                 organizationId={context.organizationId}
+                {...(deepLink.message ? { focusMessageId: deepLink.message } : {})}
                 historyGaps={historyGaps}
                 onRetryHistory={() => {
                   void touchesQuery.refetch();
