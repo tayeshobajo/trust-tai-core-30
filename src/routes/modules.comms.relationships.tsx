@@ -933,6 +933,50 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                         </div>
                       </div>
                     ) : null}
+                    {/* The working goal, visible with the reply rather than
+                        buried in the context drawer. It is the relationship's
+                        own next action, edited in place and written back. */}
+                    <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-2 sm:px-5">
+                      <span className="tt-eyebrow shrink-0">Goal</span>
+                      {goalDraft !== null ? (
+                        <>
+                          <input
+                            autoFocus
+                            value={goalDraft}
+                            onChange={(event) => setGoalDraft(event.target.value)}
+                            aria-label="What should this conversation achieve?"
+                            className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-card px-2.5 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          />
+                          <TTButton
+                            size="sm"
+                            type="button"
+                            disabled={update.isPending}
+                            onClick={() => {
+                              update.mutate({ nextAction: goalDraft.trim() || null });
+                              setGoalDraft(null);
+                            }}
+                          >
+                            Save goal
+                          </TTButton>
+                          <TTButton
+                            variant="quiet"
+                            size="sm"
+                            type="button"
+                            onClick={() => setGoalDraft(null)}
+                          >
+                            Cancel
+                          </TTButton>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setGoalDraft(selected.nextAction ?? "")}
+                          className="text-left text-[13px] text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {selected.nextAction?.trim() || "No goal set for this conversation yet."}
+                        </button>
+                      )}
+                    </div>
                     <ReplyRecordBar
                       drafting={drafting}
                       busy={recordInteraction.isPending || saveDraft.isPending}
