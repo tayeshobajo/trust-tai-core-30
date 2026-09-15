@@ -40,9 +40,14 @@ import { createClient } from "@supabase/supabase-js";
 
 import { outboundFingerprint, type DeliveryChannel } from "@/domain/comms-delivery";
 import {
+  activeLessons,
   canPromoteLesson,
   lessonGuidance,
-  validateLesson,
+  lessonSetStamp,
+  validateLessonCategory,
+  validatePrivateNote,
+  LESSONS_UNREADABLE_REFUSAL,
+  type LessonSetState,
   type ReviewLesson,
 } from "@/domain/comms-lessons";
 import {
@@ -1111,6 +1116,16 @@ export async function runReview(
   const { author, reviewer, sameperson } = await authorAndReviewer(caller, version.authorUserId);
   const voice = await loadVoicePacket(caller, input.organizationId);
 
+  /* The writing habits kept here, read before anything is judged. A read
+     failure refuses the review outright: running without them would judge the
+     draft against guidance that is not the guidance in force, and reporting
+     an empty set would be a lie. */
+  const kept = await readLessons(caller, input.organizationId);
+  const keptStamp = lessonSetStamp({ state: kept.state, lessons: kept.lessons });
+  if (keptStamp === null) throw new ReviewFailure("review_unreadable", LESSONS_UNREADABLE_REFUSAL);
+  const keptGuidance = lessonGuidance(kept.lessons);
+  const keptCategories = [...new Set(activeLessons(kept.lessons).map((one) => one.category))].sort();
+
   const fingerprint = contextFingerprint({
     versionId: version.id,
     subject: version.subject,
@@ -1123,6 +1138,7 @@ export async function runReview(
     senderName: author.name,
     senderUserId: author.id,
     voiceVersion: voice.stamp,
+    lessonSetStamp: keptStamp,
   });
 
   const runBase = {
@@ -1132,7 +1148,7 @@ export async function runReview(
     status: "running",
     prompt_version: REVIEW_PROMPT_VERSION,
     context_fingerprint: fingerprint,
-    stages: [RUN_STAGES.packet, voice.stamp],
+    stages: [RUN_STAGES.packet, voice.stamp, keptStamp],
     started_at: new Date().toISOString(),
     created_by: caller.userId,
   };
@@ -1159,6 +1175,15 @@ export async function runReview(
       exampleCount: voice.examples.length,
       examplesNote: voice.examplesNote,
       status: voice.status,
+    },
+    /* The exact kept habits this review was held against: the stamp that is
+       in the fingerprint, and the catalogue ids behind it. Style ids only, so
+       nothing from another conversation is stored here either. */
+    kept_lessons_snapshot: {
+      stamp: keptStamp,
+      state: kept.state,
+      categories: keptCategories,
+      algorithm: "sha256",
     },
   };
 
@@ -1205,6 +1230,31 @@ export async function runReview(
     );
   }
 
+  /* The same race, for kept habits: somebody may have kept or revoked one
+     between the read above and this run being recorded. The run would then
+     carry a fingerprint for guidance that is no longer in force, so it is
+     abandoned rather than kept as evidence. */
+  const keptNow = await readLessons(caller, input.organizationId);
+  const keptStampNow = lessonSetStamp({ state: keptNow.state, lessons: keptNow.lessons });
+  if (keptStampNow !== keptStamp) {
+    const recorded = await writer
+      .from("comms_review_runs")
+      .update({
+        status: "failed",
+        error_code: "context_changed",
+        completed_at: new Date().toISOString(),
+        latency_ms: Date.now() - started,
+      })
+      .eq("id", runId)
+      .eq("organization_id", input.organizationId);
+    throw new ReviewFailure(
+      "stale_version",
+      recorded.error
+        ? "The writing habits kept here changed while this review was starting, so it was abandoned. Nothing was judged. Run the review again."
+        : "The writing habits kept here changed while this review was starting, so nothing was judged. Run the review again.",
+    );
+  }
+
   /** Close a run honestly when it could not finish. */
   const markFailed = async (code: string, stages: string[], provider?: string, model?: string) => {
     const { error } = await writer
@@ -1228,12 +1278,6 @@ export async function runReview(
     recorded
       ? "It is recorded as failed."
       : "It could not even be recorded as failed, so the record may still show it as running.";
-
-  /* Guidance kept from decisions people made here. Style only, never facts,
-     and absent entirely when nothing has been kept or the workspace cannot
-     keep lessons yet. */
-  const kept = await readLessons(caller, input.organizationId);
-  const keptGuidance = lessonGuidance(kept.lessons);
 
   const packet = {
     situation: session.situation,
@@ -1826,11 +1870,17 @@ export async function loadReview(
      goal, situation, the verified sender and the exact stored voice rules.
      An approval must go stale for a changed goal or a changed voice, not
      only for changed words. */
-  const [{ author }, voice] = await Promise.all([
+  const [{ author }, voice, keptView] = await Promise.all([
     authorAndReviewer(caller, currentVersion?.authorUserId ?? null),
     loadVoicePacket(caller, input.organizationId),
+    readLessons(caller, input.organizationId),
   ]);
-  const fingerprint = currentVersion
+  /* The kept writing habits belong in the fingerprint too, so keeping or
+     revoking one makes an earlier run and an earlier approval stale. When
+     they cannot be read there is no honest stamp: readiness says so and
+     nothing is treated as approvable against guidance nobody could read. */
+  const keptStamp = lessonSetStamp({ state: keptView.state, lessons: keptView.lessons });
+  const fingerprint = currentVersion && keptStamp !== null
     ? contextFingerprint({
         versionId: currentVersion.id,
         subject: currentVersion.subject,
@@ -1843,6 +1893,7 @@ export async function loadReview(
         senderName: author.name,
         senderUserId: author.id,
         voiceVersion: voice.stamp,
+        lessonSetStamp: keptStamp,
       })
     : "";
 
@@ -1933,7 +1984,7 @@ export async function loadReview(
       })) as ClassifiedSource[],
     ),
     approvalScopeNote: APPROVAL_SCOPE_NOTE,
-    lessons: await readLessons(caller, input.organizationId),
+    lessons: keptView,
   };
 }
 
@@ -2108,7 +2159,7 @@ export async function reviewForDraft(
  */
 
 const LESSON_COLUMNS =
-  "id, organization_id, source_finding_id, source_session_id, lesson, source_note, promoted_by, promoted_by_role, promoted_at, revoked_at, revoked_by";
+  "id, organization_id, source_finding_id, source_run_id, source_session_id, category, source_note, decided_by, decided_at, private_note, promoted_by, promoted_by_role, promoted_at, revoked_at, revoked_by";
 
 /** Whether a call failed because the lessons table is not in this database. */
 function missingTable(error: { code?: string; message?: string } | null | undefined): boolean {
@@ -2126,9 +2177,13 @@ function toLesson(row: Row): ReviewLesson {
     id: str(row["id"]),
     organizationId: str(row["organization_id"]),
     sourceFindingId: str(row["source_finding_id"]),
+    sourceRunId: str(row["source_run_id"]),
     sourceSessionId: str(row["source_session_id"]),
-    lesson: str(row["lesson"]),
+    category: str(row["category"]) as ReviewLesson["category"],
     sourceNote: str(row["source_note"]),
+    decidedBy: str(row["decided_by"]),
+    decidedAt: nullableStr(row["decided_at"]),
+    privateNote: str(row["private_note"]),
     promotedBy: str(row["promoted_by"]),
     promotedByRole: str(row["promoted_by_role"]),
     promotedAt: str(row["promoted_at"]),
@@ -2138,14 +2193,22 @@ function toLesson(row: Row): ReviewLesson {
 }
 
 export interface LessonsView {
-  /** False when the workspace cannot keep lessons yet. */
+  /** False when the workspace cannot keep lessons yet, or could not be read. */
   available: boolean;
+  /**
+   * Which of those two it is. A read failure is never presented as "none
+   * kept", and it stops a review from running at all.
+   */
+  state: LessonSetState;
   note: string;
   lessons: ReviewLesson[];
 }
 
 const LESSONS_UNAVAILABLE =
   "Lessons cannot be kept in this workspace yet, so none are shown. That is not the same as nothing having been learned.";
+
+const LESSONS_UNREADABLE =
+  "The writing habits kept here could not be read just now. None are shown, and that is a read failure, not an empty list.";
 
 async function readLessons(caller: Caller, organizationId: string): Promise<LessonsView> {
   const { data, error } = await caller.client
@@ -2154,15 +2217,14 @@ async function readLessons(caller: Caller, organizationId: string): Promise<Less
     .eq("organization_id", organizationId)
     .order("promoted_at", { ascending: false });
   if (error) {
-    if (missingTable(error)) return { available: false, note: LESSONS_UNAVAILABLE, lessons: [] };
-    return {
-      available: false,
-      note: "Kept lessons could not be read just now, so none are shown.",
-      lessons: [],
-    };
+    if (missingTable(error)) {
+      return { available: false, state: "unsupported", note: LESSONS_UNAVAILABLE, lessons: [] };
+    }
+    return { available: false, state: "read_failed", note: LESSONS_UNREADABLE, lessons: [] };
   }
   return {
     available: true,
+    state: "available",
     note: "Kept from decisions a person made here. Guidance about how to write, never a fact about anyone.",
     lessons: ((data ?? []) as Row[]).map(toLesson),
   };
@@ -2176,7 +2238,13 @@ export async function listLessons(token: string, organizationId: string): Promis
 /** Keep one decided finding as a lesson. An owner or admin act, never automatic. */
 export async function promoteLesson(
   token: string,
-  input: { organizationId: string; findingId: string; lesson: string },
+  input: {
+    organizationId: string;
+    findingId: string;
+    category: string;
+    sessionId?: string;
+    privateNote?: string;
+  },
 ): Promise<ReviewLesson> {
   const caller = await identify(token, input.organizationId);
   if (!canPromoteLesson(caller.role)) {
@@ -2185,42 +2253,92 @@ export async function promoteLesson(
       "Only an owner or an admin can keep a lesson for this workspace.",
     );
   }
-  const refusal = validateLesson(input.lesson);
+  const refusal = validateLessonCategory(input.category);
   if (refusal) throw new ReviewFailure("invalid", refusal);
+  const noteRefusal = validatePrivateNote(input.privateNote ?? "");
+  if (noteRefusal) throw new ReviewFailure("invalid", noteRefusal);
 
   /* The decision has to exist, be this workspace's, and actually have been
-     decided by a person. An open finding has taught nothing. */
-  const { data: finding } = await caller.client
+     decided by a person. An open finding has taught nothing. A read that
+     fails is a refusal, never a silent skip. */
+  const { data: finding, error: findingError } = await caller.client
     .from("comms_review_findings")
-    .select("id, state, decided_by, why, severity, run_id")
+    .select("id, state, decided_by, decided_at, why, severity, run_id")
     .eq("id", input.findingId)
     .eq("organization_id", input.organizationId)
     .maybeSingle();
+  if (findingError) {
+    throw new ReviewFailure(
+      "write_failed",
+      "That decision could not be read just now, so nothing was kept. Try again in a moment.",
+    );
+  }
   const row = (finding ?? null) as Row | null;
   if (!row) throw new ReviewFailure("not_found", "That finding could not be found.");
   const state = str(row["state"]);
-  if (state === "open" || !str(row["decided_by"])) {
+  const decidedBy = str(row["decided_by"]);
+  if (state === "open" || !decidedBy) {
     throw new ReviewFailure(
       "invalid",
       "Decide this finding first. A lesson comes from a decision somebody made.",
     );
   }
 
-  const { data: run } = await caller.client
+  /* The run underneath, read in this workspace. Its session is the lesson's
+     session: a session supplied by the caller is only ever checked against
+     it, never trusted. */
+  const runId = str(row["run_id"]);
+  const { data: run, error: runError } = await caller.client
     .from("comms_review_runs")
-    .select("session_id")
-    .eq("id", str(row["run_id"]))
+    .select("id, session_id, status")
+    .eq("id", runId)
     .eq("organization_id", input.organizationId)
     .maybeSingle();
+  if (runError) {
+    throw new ReviewFailure(
+      "write_failed",
+      "The review behind that decision could not be read just now, so nothing was kept. Try again in a moment.",
+    );
+  }
+  const runRow = (run ?? null) as Row | null;
+  if (!runRow) {
+    throw new ReviewFailure(
+      "not_found",
+      "The review behind that decision is not in this workspace, so nothing was kept.",
+    );
+  }
+  if (str(runRow["status"]) === "failed") {
+    throw new ReviewFailure(
+      "invalid",
+      "That review failed, so its findings taught nothing. Nothing was kept.",
+    );
+  }
+  const sessionId = str(runRow["session_id"]);
+  if (!sessionId) {
+    throw new ReviewFailure(
+      "invalid",
+      "That review is not bound to a draft, so nothing was kept.",
+    );
+  }
+  if (input.sessionId && input.sessionId !== sessionId) {
+    throw new ReviewFailure(
+      "invalid",
+      "That decision belongs to a different draft than the one on screen, so nothing was kept.",
+    );
+  }
 
   const { data, error } = await writerClient()
     .from("comms_review_lessons")
     .insert({
       organization_id: input.organizationId,
       source_finding_id: input.findingId,
-      source_session_id: str((run ?? {})["session_id"]),
-      lesson: input.lesson.trim(),
+      source_run_id: runId,
+      source_session_id: sessionId,
+      category: input.category,
       source_note: `${str(row["severity"]) === "must_fix" ? "Must fix" : "Worth considering"}: ${str(row["why"])} (${state})`,
+      decided_by: decidedBy,
+      decided_at: nullableStr(row["decided_at"]),
+      private_note: (input.privateNote ?? "").trim(),
       promoted_by: caller.userId,
       promoted_by_role: caller.role,
     })
