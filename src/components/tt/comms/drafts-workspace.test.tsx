@@ -132,6 +132,19 @@ describe("a list that could not be read", () => {
   });
 });
 
+describe("a list that is only part of the truth", () => {
+  it("names the real total instead of letting a page read as everything", async () => {
+    fetchQueue.mockResolvedValue([]);
+    listReviews.mockResolvedValue({ rows: [session({})], total: 214, capped: true });
+
+    view({});
+
+    await waitFor(() =>
+      expect(screen.getByText(/out of 214 reviews in this workspace/i)).toBeTruthy(),
+    );
+  });
+});
+
 describe("a link that names one record", () => {
   it("reads that exact draft rather than looking through the capped list", async () => {
     fetchQueue.mockResolvedValue([]);

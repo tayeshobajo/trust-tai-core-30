@@ -319,7 +319,11 @@ export function DraftsWorkspace({
         )}
         {!failed && !loading && capped ? (
           <p className="text-[12px] text-muted-foreground">
-            The most recent records only — there may be older ones not shown here.
+            The most recent records only
+            {typeof reviews.data?.total === "number"
+              ? `, out of ${reviews.data.total} reviews in this workspace`
+              : ""}
+            . Older ones are not shown here, and the filter counts only what is shown.
           </p>
         ) : null}
       </aside>
