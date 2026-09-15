@@ -75,7 +75,13 @@ export function factualReuseRefusal(text: string): string | null {
   if (/[\w.+-]+@[\w-]+\.[\w.]+/.test(text)) {
     return "A lesson cannot contain an email address. Say what to do differently, not who said it.";
   }
-  if (/\b(?:\$|€|£|USD|EUR|GBP)\s?\d/.test(text) || /\b\d{4,}\b/.test(text)) {
+  /* Currency marks are not word characters, so no \b before them. Grouped
+     thousands and long runs of digits are treated as quoted figures too. */
+  if (
+    /(?:\$|€|£|\b(?:USD|EUR|GBP))\s?\d/i.test(text) ||
+    /\b\d{1,3}(?:,\d{3})+\b/.test(text) ||
+    /\b\d{4,}\b/.test(text)
+  ) {
     return "A lesson cannot carry figures from one conversation. Say what to do differently, not what was quoted.";
   }
   if (/\bhttps?:\/\//i.test(text)) {
