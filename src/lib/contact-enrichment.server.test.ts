@@ -63,7 +63,44 @@ describe("configuration", () => {
       searchPeople({ companyName: "Northwind", roleFamilies: [], limit: 4 }, {}, fetch),
     ).rejects.toBeInstanceOf(EnrichmentNotConfigured);
   });
+
+  it("keeps the first name and says the surname is hidden", async () => {
+    const result = await searchPeople(
+      { companyName: "Northwind", domain: "northwind.com", roleFamilies: [], limit: 4 },
+      CONFIGURED,
+      (async () =>
+        jsonResponse({
+          people: [
+            {
+              id: "apollo-2",
+              first_name: "Keith",
+              last_name_obfuscated: "Xxxxx",
+              title: "Founder & COO",
+              organization: { name: "Northwind" },
+            },
+          ],
+        })) as unknown as typeof fetch,
+    );
+    expect(result.people[0]?.fullName).toBe("Keith");
+    expect(result.people[0]?.evidence).toContain("Surname stays hidden");
+  });
+
+  it("asks again for the company when the role filter finds nobody", async () => {
+    const impl = vi.fn(async (input: unknown) =>
+      String(input).includes("person_titles")
+        ? jsonResponse({ people: [] })
+        : jsonResponse({ people: [{ id: "a", name: "Dana Reid", title: "COO" }] }),
+    );
+    const result = await searchPeople(
+      { companyName: "Northwind", roleFamilies: ["Operations"], limit: 4 },
+      CONFIGURED,
+      impl as unknown as typeof fetch,
+    );
+    expect(impl).toHaveBeenCalledTimes(2);
+    expect(result.people).toHaveLength(1);
+  });
 });
+
 
 describe("Apollo search", () => {
   it("returns people without claiming an address", async () => {

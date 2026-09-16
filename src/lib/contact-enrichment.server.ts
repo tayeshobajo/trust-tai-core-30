@@ -183,37 +183,67 @@ export function apolloProvider(env: Env, fetchImpl: FetchLike): ContactEnrichmen
 
     async searchPeople(input) {
       if (!configured) throw new EnrichmentNotConfigured();
-      const url = new URL(apolloUrl(env, "/api/v1/mixed_people/api_search"));
-      const params = new URLSearchParams({
-        per_page: String(Math.min(Math.max(input.limit, 1), 25)),
-        page: "1",
-      });
-      if (input.domain) params.append("q_organization_domains_list[]", input.domain);
-      else params.append("q_organization_name", input.companyName);
-      for (const title of apolloTitles(input.roleFamilies)) {
-        params.append("person_titles[]", title);
-      }
-      for (const seniority of input.seniorities ?? []) {
-        params.append("person_seniorities[]", seniority);
-      }
-      url.search = params.toString();
 
-      let response: Response;
-      try {
-        response = await fetchImpl(url, { method: "POST", headers: apolloHeaders(env) });
-      } catch (error) {
-        throw new ProviderFailure("apollo", 0, error instanceof Error ? error.message : "no answer");
-      }
+      const ask = async (withTitles: boolean): Promise<Record<string, unknown>> => {
+        const url = new URL(apolloUrl(env, "/api/v1/mixed_people/api_search"));
+        const params = new URLSearchParams({
+          per_page: String(Math.min(Math.max(input.limit, 1), 25)),
+          page: "1",
+        });
+        if (input.domain) params.append("q_organization_domains_list[]", input.domain);
+        else params.append("q_organization_name", input.companyName);
+        if (withTitles) {
+          for (const title of apolloTitles(input.roleFamilies)) {
+            params.append("person_titles[]", title);
+          }
+          for (const seniority of input.seniorities ?? []) {
+            params.append("person_seniorities[]", seniority);
+          }
+        }
+        url.search = params.toString();
 
-      const body = await readOrThrow("apollo", response);
-      const people = Array.isArray(body["people"]) ? (body["people"] as unknown[]) : [];
+        let response: Response;
+        try {
+          response = await fetchImpl(url, { method: "POST", headers: apolloHeaders(env) });
+        } catch (error) {
+          throw new ProviderFailure(
+            "apollo",
+            0,
+            error instanceof Error ? error.message : "no answer",
+          );
+        }
+        return readOrThrow("apollo", response);
+      };
+
+      const asked = apolloTitles(input.roleFamilies).length > 0 || (input.seniorities ?? []).length > 0;
+      let body = await ask(asked);
+      let people = Array.isArray(body["people"]) ? (body["people"] as unknown[]) : [];
+      if (people.length === 0 && asked) {
+        // The role filter was too narrow for this company. Ask once more for
+        // the company alone rather than reporting nobody works there. Search
+        // is free, so this costs nothing.
+        body = await ask(false);
+        people = Array.isArray(body["people"]) ? (body["people"] as unknown[]) : [];
+      }
 
       return people.flatMap((entry) => {
         if (!entry || typeof entry !== "object") return [];
         const row = entry as Record<string, Record<string, unknown> | unknown>;
-        const fullName = text(row["name"]);
+        const first = text(row["first_name"]);
+        const last = text(row["last_name"]);
+        // Apollo's search result hides the surname until a person is enriched.
+        // We show the first name and say so, rather than showing a scrambled
+        // surname as if it were real.
+        const surnameHidden = !last && Boolean(text(row["last_name_obfuscated"]));
+        const fullName = text(row["name"]) ?? (first && last ? `${first} ${last}` : first);
         if (!fullName) return [];
         const organization = (row["organization"] ?? {}) as Record<string, unknown>;
+        const headline = text(row["headline"]);
+        const evidence = surnameHidden
+          ? [headline, "Surname stays hidden until this person is looked up."]
+              .filter(Boolean)
+              .join(" ")
+          : headline;
         const person: ProviderPerson = {
           fullName,
           companyName: text(organization["name"]) ?? input.companyName,
@@ -225,11 +255,12 @@ export function apolloProvider(env: Env, fetchImpl: FetchLike): ContactEnrichmen
             : {}),
           // Apollo search does not return an address. Anything that looks like
           // one here is masked, so it is deliberately ignored.
-          ...(text(row["headline"]) ? { evidence: text(row["headline"])! } : {}),
+          ...(evidence ? { evidence } : {}),
         };
         return [person];
       });
     },
+
 
     async enrichEmail(input) {
       if (!configured) throw new EnrichmentNotConfigured();
