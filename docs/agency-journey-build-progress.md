@@ -462,3 +462,85 @@ send. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
 - Live authenticated verification remains unavailable here. Owner: Codex.
 - Round 6 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged) and
   implies no completion. Queue progress is not a completion claim.
+
+---
+
+## Round 7 of 10 — Deliver with capacity and acceptance evidence
+
+**Exact submitted prompt**
+
+> TRUST TAI AI AGENCY JOURNEY BUILD. Tai authorizes this ordered queue. Goal: eight-person team can source, diagnose, propose, onboard, deliver, support and grow clients using AI for repeatable preparation. Read current architecture canon, app registry, prior round output and existing services before changing code. Preserve unfinished Comms acceptance work and security fixes; do not overwrite concurrent work. No new parallel CRM, approval queue or business-data store. Apps own state; core identity; event history; Steward interpretation; Pulse visibility; Conductor routes actions. Preserve white cards/pale-blue OS styling, plain words, existing routes and client links. Do not introduce a new top-level app without demonstrated need.
+>
+> Product interpretation of Hit Makers: familiar surprise and MAYA. Familiar inbox/list/client workspace, consistent verbs and repeatable layout; intelligence prepares useful next work with evidence. Progressive disclosure, primary next action, clear owner, undo/correction where feasible. No agent jargon or orchestration diagrams in daily user flows. This is an application of the book, not a guaranteed popularity formula.
+>
+> Autonomy: implement and verify useful low-risk internal preparation (summaries, research packets, draft plans, reminders/tasks) via scoped server-side workers using existing services. Human authority governs commitments, pricing, scope/date approval and external action. Nothing in this build queue authorizes actual outreach, publication, payment, production deployment, live mailbox scope expansion or production schedule activation. Configure new automation disabled or preview-only until its policy/configuration is explicitly enabled by an authorized user; synthetic sandbox execution allowed. No real team assignment guesses, credentials or customer data in fixtures. SQL proposals to Codex; do not apply or reapply migrations. Never bypass auth for live evidence.
+>
+> Each round must write exact submitted prompt and numbered acceptance rows to docs/agency-journey-build-progress.md, with dependencies, changes, evidence/build, pass/blocked, owner and next step. Preserve C01-C22/T01-T05/P1-P8. Code, synthetic model evaluation, real persisted execution, production deployment and team acceptance are distinct. Do independent useful work when dependencies blocked, but do not mark dependent checks passed. No 100% from queue completion.
+>
+> QUEUED ROUND 7/10: 7. Deliver with capacity and acceptance evidence
+> Projects owns execution. Prepare work from accepted scope using existing milestones/tasks.
+> A7.1 AI decomposes milestone into proposed tasks/tests/dependencies; designated lead accepts owners and dates using recorded availability, no assignment guessing.
+> A7.2 Over-allocation/conflicts visible before dates committed; partial capacity data labelled.
+> A7.3 Task complete≠milestone accepted≠client outcome achieved. Milestones carry evidence/test results and explicit acceptance decision.
+> A7.4 Scope changes propose cost/time impact and route back to commercial decision, never silently expand commitments.
+> A7.5 Milestone events prepare Comms status updates automatically in test policy; risks include reason, owner and next action.
+> A7.6 Synthetic journey completes one milestone with real persisted evidence and records Ops handoff; retries don't duplicate tasks or updates.
+
+**Dependencies read before changing code**
+
+- `src/domain/project-delivery.ts`, `src/domain/delivery-projection.ts` — existing Projects
+  work items, blockers, decisions, files. Reused, not replaced. No new store added.
+- `src/domain/preparation-jobs.ts` — the `milestone_status_draft` job already exists from
+  Round 2, off by default, writes only `preparation_output`. Reused as-is; no new job added.
+- `src/lib/preparation-runner.server.ts`, `src/lib/conversation-brief.server.ts` — the
+  trigger pattern the status job follows.
+- Rounds 5 and 6 output — the frozen roadmap version, derived proposal and accepted scope
+  this round decomposes from.
+
+**Changes**
+
+- `src/domain/milestone-delivery.ts` (new): `decomposeMilestone` (proposed tasks, one check
+  per scope line, dependency edges, no owner and no date); `acceptTask` (named lead, named
+  owner, refuses a date with no recorded availability for that person in that week);
+  `capacityRead` (committed against available per person per week, conflicts named, missing
+  availability labelled a partial reading rather than assumed free); `milestoneReading`
+  (tasks finished, ready for acceptance, accepted, client outcome confirmed, kept as four
+  separate readings); `decideMilestone` (explicit named decision, refused while checks are
+  missing or failing or evidence is absent); `scopeChangeImpact` (time and cost impact,
+  unknown stated as unknown, routed to a commercial decision, commitments unchanged);
+  `recordOpsHandoff` (one per milestone, retry returns the first); `recordRisk` (refuses a
+  risk without a reason, an owner and a next action).
+- `src/lib/milestone-status.server.ts` (new): trigger side of `milestone_status_draft`.
+  Revision moves only when the milestone actually moves; counts and state checks computed
+  in code; evidence and risks travel as quoted material; a failed check sets
+  `needsDecisionBecause`; a milestone with nothing recorded refuses to prepare. Returns
+  null while the job is off, which is every workspace by default.
+- Tests: `src/domain/milestone-delivery.test.ts` (16), `src/lib/milestone-status.server.test.ts` (7).
+
+**Evidence and build**
+
+- `bunx vitest run` — 3,188 tests across 287 files pass (23 new this round).
+- `bunx tsgo --noEmit` — clean.
+- Evidence kind: **code plus synthetic sandbox execution**. No real model call, no persisted
+  record, no deployment, no team acceptance, no external action.
+
+**Acceptance rows**
+
+| Row | Criterion | Dependencies | Evidence | Result | Owner | Next step |
+| --- | --- | --- | --- | --- | --- | --- |
+| A7.1 | Milestone decomposed into proposed tasks, checks and dependencies; lead accepts owners and dates from recorded availability, no guessing | Round 6 accepted scope | `decomposeMilestone`, `acceptTask`; tests "proposes tasks with checks and dependencies, owning nothing", "refuses a date with no recorded availability rather than guessing", "refuses an unnamed lead", "records the lead, the owner and the date when availability exists" | PASS-CODE | Agent | Surface the accept affordance in the Projects room in a later round |
+| A7.2 | Over-allocation and conflicts visible before dates are committed; partial capacity labelled | A7.1 | `capacityRead`; tests "shows over-allocation before dates are committed", "labels a reading as partial when availability is missing" | PASS-CODE | Agent | Real availability data depends on a recorded source; fixtures only here |
+| A7.3 | Task complete ≠ milestone accepted ≠ client outcome; milestones carry evidence, test results and an explicit decision | A7.1 | `milestoneReading`, `decideMilestone`; tests "keeps finished tasks, acceptance and the client outcome apart", "refuses acceptance while a check has not passed", "refuses acceptance with no evidence recorded", "records who accepted it and when", "refuses a decision with nobody's name on it" | PASS-CODE | Agent | Render the three readings distinctly in the Projects room |
+| A7.4 | Scope changes propose cost and time impact and route to a commercial decision, never expand commitments silently | Round 6 commercial states | `scopeChangeImpact`; tests "routes to a commercial decision and leaves the commitment alone", "says unknown rather than nought when nothing has been estimated" | PASS-CODE | Agent | Wire the handoff key into the Clients commercial view in a later round |
+| A7.5 | Milestone events prepare Comms status updates under test policy; risks carry reason, owner and next action | Round 2 job spec | `prepareStatusOnMilestoneChange` (off by default), `statusDeterministicRead`, `recordRisk`; tests "prepares nothing while the job is off", "counts in code, keeps the three readings apart and quotes material as data", "asks for a person when a check did not pass", "refuses a risk with no reason, owner or next action" | PASS-CODE + synthetic | Agent | The job stays disabled in every workspace until an authorised person enables it; no send exists |
+| A7.6 | Synthetic journey completes one milestone with persisted evidence and records an Ops handoff; retries do not duplicate | A7.1–A7.5, Round 2 SQL | Suite "synthetic journey: one milestone, retried" — one stored record across two events, one Ops handoff across two attempts | PARTIAL-BLOCKED | Agent / Codex | Idempotency and handoff proven in the synthetic sandbox; **real persisted evidence remains BLOCKED** on the unapplied `20260916130000_preparation_outputs.sql` |
+
+**Open and blocked**
+
+- Persisted tasks, capacity readings, acceptance decisions and Ops handoffs remain
+  **blocked** on the unapplied `20260916130000_preparation_outputs.sql`. Owner: Codex.
+  No migration was applied or reapplied this round; no new SQL was proposed.
+- No real model has written a status update; wording quality is **unproven**.
+- Live authenticated verification remains unavailable here. Owner: Codex.
+- Round 7 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged), touches no
+  Comms code, and implies no completion. Queue progress is not a completion claim.
