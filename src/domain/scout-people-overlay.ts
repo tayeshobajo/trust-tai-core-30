@@ -29,6 +29,9 @@ export interface PendingEnrichment {
   emailVerifiedAt?: string | undefined;
   /** The provider's own words about the answer. Never a failure message. */
   providerNote?: string | undefined;
+  /** Details the match knew and the search had withheld. */
+  title?: string | undefined;
+  providerPersonId?: string | undefined;
   /** The server receipt that lets this exact answer be stored again for free. */
   receiptId?: string | undefined;
   receiptExpiresAt?: string | undefined;
