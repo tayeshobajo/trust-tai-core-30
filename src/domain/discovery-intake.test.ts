@@ -92,7 +92,10 @@ describe("roadmap handoff", () => {
 
   it("opens nothing before a person approves the discovery", () => {
     const handoff = roadmapHandoffFor({
-      record: record({ state: "ready_for_review", approvedBy: undefined }),
+      record: (() => {
+        const { approvedBy: _approvedBy, ...rest } = record({ state: "ready_for_review" });
+        return rest;
+      })(),
       by: { userId: "fixture-user-2" },
       at: "2026-02-03T10:00:00.000Z",
     });
