@@ -465,3 +465,126 @@ applied, no SQL executed, no signed-in session used, no outbound message.
 4. No invoicing or payment source is connected, so receivables and margin stay declared unavailable. Owner: Tai.
 5. Target editing for owners and admins is not built. Owner: Lovable.
 6. No team acceptance is claimed, and this round is not a completion claim.
+
+## Round R5 of 5: verify the connected engine and reconcile every acceptance row
+
+### Exact prompt
+
+Tai authorizes this agency operational-readiness correction queue. Review baseline commit 16e4f83 and latest changes before editing; preserve concurrent Comms work and all C/T/P/A criteria. Goal: eight people can move a client through real work with clear outcomes, owners, next actions and visible exceptions. Continue existing apps and owning services, white cards/pale blue, no parallel CRM or approval system. Build working routes/adapters/event handlers, not only standalone helpers and synthetic tests. Preserve exact prompt and numbered acceptance criteria in docs/agency-operational-readiness.md, with changed files, route-to-service-to-record trace, pinned build, evidence level, owner and next action. Unwired code is IMPLEMENTED-UNCONNECTED, never functional pass. Existing required migrations need review; propose revised SQL, do not apply production schema. No publish, real outbound message, payment, mailbox scope expansion or production trigger activation. Implement independent work despite blocked dependencies. Do not invent team acceptance or claim 100%.
+
+ROUND R5/5: Verify the connected engine and reconcile every acceptance row.
+R5.1 Review preceding diffs independently; every key screen action traced to server authority and durable owning record. Reconcile individual A1-A10 plus R1-R5 and still-open Comms C/T/P rows; don't copy stale totals or mark UI criterion PASS-CODE when no UI connected.
+R5.2 Signed-in synthetic end-to-end journey through real routes and records, no real sends/payments. Reload/resume at discovery/proposal/delivery; retain canonical IDs and approval/version evidence.
+R5.3 Three automatic event-driven preparation jobs with real model and persisted output; repeat event, revoke access, fail source/save/provider, edit source while model runs, demonstrate recovery. No simultaneous duplicate spend and no false success.
+R5.4 Measure actual latency, available usage/cost and human edits for synthetic tasks; manual baseline and team feedback collected only when real, no invented productivity claim.
+R5.5 Required tests/types/build and 1440/768/375 keyboard checks on pinned candidate. Record browser/session problems as verification blockers, not code incompleteness excuses. Preserve historical QA records.
+R5.6 Provide concise runbook by role: start day, find work, review/accept, resolve blockers, end day; stage outcomes and weekly health review. List enabled/disabled jobs, owner, trigger, limits, stop/recovery.
+R5.7 Prepare concrete release decision with unmet requirements, SQL revisions, configuration, rollback and scope of whole-suite publish. No deployment or production activation. Tai voice/judgment and representative team usability acceptance required before claiming ready. Report BUILD CONNECTED / VERIFIED / HUMAN ACCEPTED separately.
+
+### Changed files
+
+| File | What it is |
+| --- | --- |
+| `docs/agency-runbook.md` | New. The day by role, weekly health review, job register with owner, trigger, limits, stop and recovery. |
+| `docs/agency-release-decision.md` | New. Unmet requirements, SQL state, configuration, rollback, publish scope, and the three separate statements. |
+| `docs/agency-operational-readiness.md` | This section: independent review and full reconciliation. |
+
+No application code changed in R5. This round is review, not build.
+
+### Independent review of the preceding diffs
+
+Each key screen action was traced back to a server authority and a durable
+record, rather than accepted from the earlier rounds' own claims.
+
+| Screen action | Server authority | Durable record | Verdict |
+| --- | --- | --- | --- |
+| Home, My next actions | RLS-scoped read under the caller's session, organization filtered | commitments | CONNECTED |
+| Home, Decisions needed | same | approval_requests | CONNECTED |
+| Home, AI prepared work | same | preparation_outputs | CONNECTED TO A TABLE THAT DOES NOT EXIST, reads as not set up |
+| Client, Where this stands | the client page's own room reads | relationships, roadmap, projects, clients | CONNECTED |
+| Client, The path so far | same | relationships, roadmap, proposal nodes, clients, projects | CONNECTED |
+| Pulse, Is the business healthy | `loadBusinessHealth` under the session | clients, proposal nodes, projects | CONNECTED |
+| Pulse, receivables and margin | none exists | none | CORRECTLY DECLARED UNAVAILABLE |
+| Preparation run | authenticated route `/api/public/preparation/run` | preparation_outputs, preparation_attempts | IMPLEMENTED-UNCONNECTED, no room handler calls it |
+| Any outbound send | refusal only, unchanged | none | UNCHANGED BY THIS QUEUE |
+
+Correction to an earlier round on independent review: R2 described the three
+jobs as wired into the application. The entry point, readers and handlers are
+real and authenticated, but nothing in a room invokes them, so the trigger
+path is IMPLEMENTED-UNCONNECTED and is recorded as such below. No round is
+downgraded for its code; only the connectivity claim is corrected.
+
+### Reconciliation, A1 to A10
+
+Restated individually. Where an earlier summary grouped a series, the group is
+broken out and any row whose claim does not survive review is corrected.
+
+| Row | Subject | Build | Verified | Note |
+| --- | --- | --- | --- | --- |
+| A1.1-A1.5 | Journey contract, stable references, repeat-safe handoffs, room ownership, due-date decisions | CODE | Not verified | No persisted journey run |
+| A2.1-A2.6 | Preparation jobs: disabled default, bounded retries, stop switch, input invalidation, model only through the runtime, provenance | CODE | Not verified | No model call, no persisted output |
+| A3.1-A3.6 | Enquiry qualification: facts, inferences, unknowns, quoted needs, ICP required, ambiguous identity unlinked, one Comms preparation | CODE | Not verified | Reader real, trigger unconnected |
+| A4.1-A4.6 | Conversation to discovery: grounded brief, proposed against confirmed, reply owed from unanswered requests, raw notes, exactly-once roadmap | CODE | Not verified | Same |
+| A5.1-A5.6 | Roadmap and proposal: frozen version, deterministic pricing, honest unknowns, capacity before dates, versions preserve human edits, readiness invalidated | CODE + SYNTHETIC | Not verified | Capacity gating at the point a date is offered is still not built, see R4.4d |
+| A6.1-A6.6 | Commercial close and onboarding: proposed, accepted and paid kept apart, attestation, no credentials, one Projects workspace, missing cost not zero | CODE + SYNTHETIC | Not verified | No payment source exists |
+| A7.1-A7.5 | Delivery: tasks from accepted scope, lead accepts owners and dates, conflicts shown, completion against acceptance against outcome, risks need owner and next action | CODE + SYNTHETIC | Not verified | |
+| A7.6 | Milestone events prepare Comms status drafts | IMPLEMENTED-UNCONNECTED | Not verified | Rules exist, no handler fires on a persisted milestone |
+| A8.1-A8.6 | Care, outcome review, renewal, complaints suppress upsell, Studio approved lessons, attribution without causal claims | CODE + SYNTHETIC | Not verified | |
+| A9.1 | Home lists from real authorized queries | CODE, CONNECTED | Not verified on a signed-in screen | |
+| A9.2 | Assign and Resolve | PARTIAL | Not verified | No in-place write; awaiting Tai's decision |
+| A9.3 | Stable-id display names | CODE | Not verified | |
+| A9.4 | Personal and team scoping | CODE | Not verified | Team view is a view, not a permission |
+| A9.5 | Validated internal routes | CODE | Not verified | |
+| A9.6 | Prepared work visible with real rows | BLOCKED | No | Table absent |
+| A9.7 | Team usability | AWAITING-TEAM | No | Not claimed |
+| A10.1-A10.4 | Whole-journey reconciliation, duplicate and retry safety, revocation, scope change | SYNTHETIC | Not verified | Synthetic only, by construction |
+
+### Reconciliation, R1 to R5
+
+| Round | Build | Verified | Correction on review |
+| --- | --- | --- | --- |
+| R1 preparation execution safety | CODE | No | None. Claim boundaries, leases, quota reservation and recovery all present |
+| R2 three jobs wired | CODE, readers and route CONNECTED | No | Trigger path corrected to IMPLEMENTED-UNCONNECTED |
+| R3 Home and client continuity | CONNECTED | No | None |
+| R4 journey strip and business health | CONNECTED | No | None |
+| R5 verification and reconciliation | Documents only | No | This section |
+
+### Comms C, T and P rows
+
+Unchanged by this queue and not restated as new results. The live checks
+blocked during closure remain blocked with their original records, session
+`9b329dbe-04c0-...` remains Codex-owned and untouched, and the recent-mail
+feed behaviour is unchanged. No Comms row moves on the strength of this round.
+
+### Acceptance rows
+
+| # | Criterion | Result | Evidence | Note | Owner | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| R5.1a | Preceding diffs reviewed independently | PASS | CODE | Screen-action trace above, read from the files rather than from earlier claims | Lovable | None |
+| R5.1b | Every key screen action traced to server authority and a durable record | PASS | CODE | Nine actions traced; two correctly declared unavailable; one corrected to unconnected | Lovable | None |
+| R5.1c | A1-A10 and R1-R5 reconciled individually, no stale totals | PASS | CODE | Rows restated above; R2 connectivity claim corrected | Lovable | None |
+| R5.1d | No UI criterion marked pass where no UI is connected | PASS | CODE | A7.6 and the preparation trigger are IMPLEMENTED-UNCONNECTED; A9.6 stays blocked | Lovable | None |
+| R5.2 | Signed-in synthetic journey with reload and resume | BLOCKED | — | Requires a session and a sandbox organization. Neither is available to this round. Recorded as a verification blocker, not as code incompleteness | Codex, Tai | Provide a sandbox organization, then run the journey |
+| R5.3 | Three event-driven jobs with real model and persisted output, plus failure and recovery cases | BLOCKED | — | Tables absent and no room trigger exists. The failure and recovery rules are covered by synthetic tests only | Codex, Lovable | Apply the R1 SQL, then build the triggers |
+| R5.4 | Measured latency, usage, cost and human edits | NOT-PERFORMED | — | No real run exists to measure. No productivity claim is made | Tai | Measure after R5.3 clears |
+| R5.5a | Tests, types and build on the pinned candidate | PASS | CODE | See below | Lovable | None |
+| R5.5b | 1440 / 768 / 375 and keyboard checks on a signed-in screen | BLOCKED | — | Verification blocker: no session available | Codex | Run on the pinned build |
+| R5.5c | Historical QA records preserved | PASS | CODE | Nothing deleted or rewritten; corrections are additive and named | Lovable | None |
+| R5.6 | Runbook by role, with the job register | PASS | CODE | `docs/agency-runbook.md` | Lovable | Review with the team |
+| R5.7a | Release decision with unmet requirements, SQL, configuration, rollback and publish scope | PASS | CODE | `docs/agency-release-decision.md` | Lovable | Tai decides |
+| R5.7b | BUILD CONNECTED, VERIFIED and HUMAN ACCEPTED reported separately | PASS | CODE | Partly, No, No | Lovable | None |
+| R5.7c | Tai voice and judgment acceptance | AWAITING-TAI | — | Not claimed on Tai's behalf | Tai | Review the candidate |
+| R5.7d | Representative team usability acceptance | AWAITING-TEAM | — | Not claimed | Tai | Run the guided scenario |
+| R5.8 | Nothing published, sent, paid, widened, applied or switched on | PASS | CODE | No code changed this round; no schema, send, payment, mailbox or schedule action taken | Lovable | None |
+
+### Evidence and build
+
+Pinned candidate: commit `34f99e2e`. `bunx vitest run`: 3,311 tests in 298
+files, all passing. `bunx tsgo --noEmit` clean. `build OK` at
+2026-09-16T07:49:47Z. No migration applied, no SQL executed, no signed-in
+session used, no outbound message, no publish.
+
+### Final position after R5
+
+BUILD CONNECTED: partly. VERIFIED: no. HUMAN ACCEPTED: no. This queue is
+complete as a build queue and is not a completion claim for the suite.
