@@ -157,3 +157,141 @@ POST /api/public/preparation/run          src/routes/api/public/preparation.run.
 Comms work, and the C01 to C22, T01 to T05, P1 to P8 and A criteria records,
 are untouched by this round. No Comms file was edited. Nothing previously
 blocked has been advanced or waived.
+
+---
+
+## Round R2 of 5: wire the three repeatable jobs into the application
+
+### Exact prompt submitted
+
+> TRUST TAI AI AGENCY OPERATIONAL READINESS. Tai authorizes this agency
+> operational-readiness correction queue. Review baseline commit 16e4f83 and
+> latest changes before editing; preserve concurrent Comms work and all C/T/P/A
+> criteria. Goal: eight people can move a client through real work with clear
+> outcomes, owners, next actions and visible exceptions. Continue existing apps
+> and owning services, white cards/pale blue, no parallel CRM or approval
+> system. Build working routes/adapters/event handlers, not only standalone
+> helpers and synthetic tests. Preserve exact prompt and numbered acceptance
+> criteria in docs/agency-operational-readiness.md, with changed files,
+> route-to-service-to-record trace, pinned build, evidence level, owner and next
+> action. Unwired code is IMPLEMENTED-UNCONNECTED, never functional pass.
+> Existing required migrations need review; propose revised SQL, do not apply
+> production schema. No publish, real outbound message, payment, mailbox scope
+> expansion or production trigger activation. Implement independent work despite
+> blocked dependencies. Do not invent team acceptance or claim100%.
+>
+> ROUND R2/5: Wire the three repeatable jobs into the existing application.
+> R2.1 Trace actual enquiry-created, new conversation-message, milestone-changed
+> handlers through scoped server jobs to real persistence. No production callers
+> currently found for new wrappers. Add actual authenticated event entry points/
+> adapters; derive actor/org/source/owner from trusted records, never browser
+> policy or guessed identity.
+> R2.2 From signed-in preview, creating a clearly synthetic enquiry under test
+> policy automatically prepares one qualification packet. Same for conversation
+> brief and milestone status draft. No manual calling isolated helper accepted as
+> event evidence.
+> R2.3 Each output reaches its owning Scout/Comms/Projects room, opens original
+> source, shows owner, timestamp, prepared vs accepted, and survives reload;
+> accepting uses existing authority and creates/handoffs once.
+> R2.4 Keep production jobs disabled. Provide scoped preview/synthetic execution
+> that cannot enable production or contact customers; actual model only via
+> existing approved runtime. Three genuine model runs + persisted outputs required
+> for MODEL/PERSISTED pass; missing schema/config stays blocked.
+> R2.5 Show queued/running/prepared/failed/stale and actionable recovery; visible
+> error on source/save failure, no empty success.
+> R2.6 Prove two events/retry create one current result, inactive member refusal
+> and source edits invalidate result. Preserve voice/actual author/privacy and
+> Comms send gates. Include real route→handler→adapter→table map. Do not
+> attribute all missing business persistence to preparation_outputs: inventory
+> existing owning tables and actual missing adapters.
+
+### Changed files
+
+| File | What it is now |
+| --- | --- |
+| `src/lib/preparation-readers.server.ts` (new) | Three real adapters: enquiry, conversation, milestone. Caller's token, RLS, organization filter, revision computed from what the room stores. |
+| `src/lib/preparation-readers.server.test.ts` (new) | 9 tests over the reading rules against a fake workspace. |
+| `src/lib/preparation-wiring.server.ts` (new) | The single place the three jobs are joined to the three rooms. |
+| `src/lib/preparation-events.server.ts` (new) | The authenticated event entry points: `onEnquiryReceived`, `onConversationMessage`, `onMilestoneChanged`. |
+| `src/lib/preparation-events.server.test.ts` (new) | 4 tests over the whole path: duplicate event, job off, inactive member, source edited. |
+| `src/routes/api/public/preparation.run.ts` | Now delegates to the event path; distinguishes not connected, not turned on, unreadable source and unavailable store. |
+| `src/data/preparation-outputs.ts` (new) | The browser read, under RLS. An unreadable table is unavailable, never an empty result. |
+| `src/components/tt/preparation-panel.tsx` (new) | Prepared work where the work is: state, reason, owner, time, prepared vs accepted, source link, recovery wording. |
+| `src/components/tt/projects/detail/workroom.tsx` | The delivery room shows prepared work for its milestone. |
+
+### Real route to handler to adapter to table map
+
+```text
+POST /api/public/preparation/run        routes/api/public/preparation.run.ts
+  -> prepareForEvent(jobId, event)       lib/preparation-events.server.ts
+       -> configuredKeys()               reads icp_profiles + runtime provider status
+       -> loadPreparationPolicy()        table preparation_policy        [MISSING]
+       -> reader.currentRevision()       lib/preparation-readers.server.ts
+       -> runPreparation()               lib/preparation-runner.server.ts
+            -> reader.belongsToWorkspace()
+            -> reader.read()
+            -> preparationStore()        tables preparation_outputs, preparation_attempts [MISSING]
+            -> runtimeModelCaller()      lib/intelligence-runtime.server.ts
+
+enquiry_qualification_packet  -> website_intake_submissions (+ icp_profiles, prospects by ref)
+conversation_summary          -> comms_relationships, comms_messages
+milestone_status_draft        -> roadmap_milestones, roadmap_milestone_criteria
+
+Browser read:
+  components/tt/projects/detail/workroom.tsx
+    -> components/tt/preparation-panel.tsx
+    -> data/preparation-outputs.ts -> table preparation_outputs (SELECT, RLS) [MISSING]
+```
+
+### Owning tables inventory, and what is genuinely missing
+
+The rooms already own their business records. Nothing in this round created a
+second home for any of them.
+
+| Room | Tables it already owns | Adapter state |
+| --- | --- | --- |
+| Website / Scout | `website_intake_submissions`, `prospects`, `contacts`, `icp_profiles`, `activities` | Reader written and tested. Enquiry intake itself is an unauthenticated signed webhook, so preparation cannot run inside it; the authenticated entry point runs on a member's session. |
+| Comms | `comms_relationships`, `comms_messages`, `comms_threads`, `comms_drafts`, `comms_review_*`, `comms_voice_profiles` | Reader written and tested. Reads only; no draft, review, voice or send code was touched. |
+| Roadmap / Projects | `roadmap_milestones`, `roadmap_milestone_criteria`, `roadmaps`, `projects`, `commitments` | Reader written and tested. |
+| Preparation | `preparation_outputs`, `preparation_attempts`, `preparation_policy` | The only genuinely missing tables. Everything else above exists. |
+
+So the missing persistence is not "all business data": it is exactly the three
+preparation tables, plus the two per-room writes R3 will need (accepting a
+suggestion, and the handoff record each room already has a home for).
+
+### Acceptance rows
+
+| # | Criterion | Result | Evidence level | Evidence | Owner | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| R2.1a | Real adapters for enquiry, conversation and milestone over existing tables | PASS | CODE | `preparation-readers.server.ts`, 9 tests. Each reads with the caller's token under RLS with an explicit organization filter. | Lovable | Confirm column names against the live schema |
+| R2.1b | Authenticated event entry points exist and are reachable | PASS (route), PARTIAL (in-room callers) | CODE + IMPLEMENTED-UNCONNECTED | The route and the three entry points are wired to the real store and policy. No existing room handler calls them yet: intake is an unauthenticated webhook and Gmail sync runs without a member session, so those callers need a session-carrying path. | Lovable | R3: call the entry points from the room paths that do hold a session |
+| R2.1c | Actor, workspace, source and owner derived from trusted records | PASS | CODE | Nothing from the request body is trusted beyond the bearer token and the subject id: workspace membership is proved by RLS and `requireRuntimeAccess`, the owner label comes off the relationship or milestone row, the source refs come off the records. | Lovable | None |
+| R2.2 | Signed-in preview: a synthetic enquiry, conversation and milestone each prepare automatically | BLOCKED | — | Cannot be attempted honestly: the three preparation tables do not exist, so a run cannot be claimed or saved, and no signed-in session is available in this environment. Not simulated and not claimed. | Codex | Apply the R1 SQL, then run this in signed-in preview |
+| R2.3a | Output reaches the owning room, opens the source, shows owner, time and prepared vs accepted | PASS (rendering), BLOCKED (with real data) | CODE | `PreparationPanel` in the Projects delivery room shows state, reason, owner, time, prepared-not-accepted and a link to the milestone in Roadmap. With the table missing it renders the unavailable state, which is the correct behaviour, not a pass for showing prepared work. | Lovable | Scout and Comms panels in R3; verify with real rows after the SQL lands |
+| R2.3b | Survives reload | PASS by construction, unverified | CODE | The panel reads from the database on every mount; there is no local draft state. Cannot be observed without rows. | Codex | Verify after the SQL lands |
+| R2.3c | Accepting uses existing authority and hands off once | NOT IMPLEMENTED | — | No accept action was added this round. Suggestions are shown; nothing can be accepted from the panel. | Lovable | R3 |
+| R2.4a | Production jobs stay disabled | PASS | CODE | `prepareForEvent` returns null unless the workspace's own policy row names the job. An absent policy row means everything off. | Lovable | None |
+| R2.4b | Model only through the approved runtime | PASS | CODE | The runner resolves `runtimeModelCaller`; no adapter or reader touches a provider. | Lovable | None |
+| R2.4c | Three genuine model runs with persisted outputs | BLOCKED | — | No schema, so no persisted run. No model run has happened through this path. | Codex, then Lovable | After the SQL lands |
+| R2.5 | Queued, running, prepared, failed and stale each read plainly, with recovery, and no empty success | PASS | CODE | The panel distinguishes reading, unavailable (with a Read again action), nothing prepared, prepared, out of date with the reason, and the two unfinished states with what to do. A failed read is never drawn as nothing prepared. | Lovable | Observe on a real screen after the SQL lands |
+| R2.6a | Two copies of one event, and a retry, leave one current result | PASS | CODE | Event-path test: the model is called once, both calls return the same key and summary. | Lovable | Repeat against the real database |
+| R2.6b | An inactive member is refused and nothing is written | PASS | CODE | Event-path test: access refused, model never called, store empty. | Lovable | None |
+| R2.6c | A source edit invalidates the result | PASS | CODE | Event-path test: a new message moves the revision, so the old record is not reused and a new one is prepared. | Lovable | None |
+| R2.6d | Voice, actual author, privacy and Comms send gates preserved | PASS | CODE | No Comms file was edited. The conversation reader only reads `comms_relationships` and `comms_messages`; it never touches drafts, voice profiles, review runs or any send path. | Lovable | None |
+| R2.6e | Real route to handler to adapter to table map, and an honest inventory of what is missing | PASS | DOC | See the two sections above. | Lovable | None |
+| R2.7 | Nothing published, sent, paid, widened or switched on | PASS | CODE | No send, publish, payment, mailbox scope or schedule code touched. | Lovable | None |
+
+### Evidence and build
+
+`bunx vitest run`: 3,280 tests in 295 files, all passing. `bunx tsgo --noEmit`
+clean. `build OK` at 2026-09-16T07:27:56Z. No migration applied, no SQL
+executed anywhere, no signed-in session used.
+
+### Remaining blockers after R2
+
+1. The three preparation tables are still missing, which blocks every
+   PERSISTED, MODEL and LIVE row in this round. Owner: Codex.
+2. No room handler that holds a member session calls the entry points yet.
+   Owner: Lovable, R3.
+3. No accept action, and no Scout or Comms panel. Owner: Lovable, R3.
+4. No team acceptance is claimed, and this round is not a completion claim.

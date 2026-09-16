@@ -2,29 +2,29 @@
  * Ask for one piece of work to be prepared (server route).
  *
  * This is the connectable edge of the preparation contract. It is a route, not
- * a helper: an event handler in a room, or a person's own request, arrives
- * here with a bearer token, and everything that follows is the runner's normal
- * sequence with the real database behind it.
+ * a helper: a room's own event handler, or a person's own request, arrives
+ * here with a bearer token and everything that follows is the normal sequence
+ * with the real database behind it.
  *
- * It sits under /api/public so a room's own worker can reach it without the
- * site session, and it therefore proves the caller itself: no bearer token, no
- * run. Every job is off until an authorised person switches it on, so a
- * correctly authenticated call to a workspace that has decided nothing still
- * prepares nothing, and says so.
+ * It sits under /api/public so a room's worker can reach it without the site
+ * session, and it therefore proves the caller itself: no bearer token, no run.
+ * Nothing about the caller's claim is trusted beyond the token: the workspace,
+ * the owner and the source are all read back off the record.
  *
- * Nothing here sends, publishes, prices or approves anything.
+ * Every job is off until an authorised person switches it on, so a correctly
+ * authenticated call in a workspace that has decided nothing prepares nothing
+ * and says so. Nothing here sends, publishes, prices or approves anything.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { jobSpec, type PreparationJobId, type PreparationRequest } from "@/domain/preparation-jobs";
-import { loadPreparationPolicy } from "@/lib/preparation-policy.server";
-import { preparationStore, PreparationStoreUnavailable } from "@/lib/preparation-store.server";
-import {
-  PreparationAccessDenied,
-  runPreparation,
-} from "@/lib/preparation-runner.server";
+import { jobSpec, type PreparationJobId } from "@/domain/preparation-jobs";
+import { prepareForEvent } from "@/lib/preparation-events.server";
+import { SubjectUnreadable } from "@/lib/preparation-readers.server";
+import { PreparationAccessDenied } from "@/lib/preparation-runner.server";
+import { PreparationStoreUnavailable } from "@/lib/preparation-store.server";
 import { subjectReader } from "@/lib/preparation-subjects.server";
+import { registerPreparationReaders } from "@/lib/preparation-wiring.server";
 
 const JOB_IDS = new Set<string>([
   "enquiry_qualification_packet",
@@ -41,6 +41,8 @@ export const Route = createFileRoute("/api/public/preparation/run")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        registerPreparationReaders();
+
         const token = bearer(request);
         if (!token) {
           return Response.json(
@@ -71,8 +73,7 @@ export const Route = createFileRoute("/api/public/preparation/run")({
           );
         }
 
-        const reader = subjectReader(jobId as PreparationJobId);
-        if (!reader) {
+        if (!subjectReader(jobId as PreparationJobId)) {
           return Response.json(
             {
               status: "could_not_finish",
@@ -84,37 +85,22 @@ export const Route = createFileRoute("/api/public/preparation/run")({
         }
 
         try {
-          const partial = {
+          const output = await prepareForEvent(jobId as PreparationJobId, {
+            token,
             organizationId,
-            jobId: jobId as PreparationJobId,
             subjectRef,
             ...(typeof body.triggerEventId === "string"
               ? { triggerEventId: body.triggerEventId }
               : {}),
-          };
-          const revision = await reader.currentRevision(
-            { ...partial, inputRevision: "" } as PreparationRequest,
-            token,
-          );
-          const prepRequest: PreparationRequest = { ...partial, inputRevision: revision };
-
-          const policy = await loadPreparationPolicy({
-            organizationId,
-            configuredKeys: ["reasoning_provider"],
           });
 
-          const output = await runPreparation({
-            request: prepRequest,
-            policy,
-            store: preparationStore(),
-            token,
-            currentInputRevision: revision,
-            verifySubject: (req) => reader.belongsToWorkspace(req, token),
-            deterministic: () => reader.read(prepRequest, token),
-            reloadPolicy: () =>
-              loadPreparationPolicy({ organizationId, configuredKeys: ["reasoning_provider"] }),
-            reloadRevision: () => reader.currentRevision(prepRequest, token),
-          });
+          if (!output) {
+            return Response.json({
+              status: "not_enabled",
+              because: `${jobSpec(jobId as PreparationJobId).label} is not turned on in this workspace, so nothing was prepared.`,
+              persisted: false,
+            });
+          }
 
           return Response.json({
             key: output.key,
@@ -131,6 +117,9 @@ export const Route = createFileRoute("/api/public/preparation/run")({
         } catch (error) {
           if (error instanceof PreparationAccessDenied) {
             return Response.json({ error: error.message }, { status: 403 });
+          }
+          if (error instanceof SubjectUnreadable) {
+            return Response.json({ error: error.message, persisted: false }, { status: 502 });
           }
           if (error instanceof PreparationStoreUnavailable) {
             return Response.json({ error: error.message, persisted: false }, { status: 503 });
