@@ -375,10 +375,10 @@ function CompanyDetail({
         (orgContacts.data ?? []).map((contact) => ({
           fullName: contact.fullName,
           roleTitle: contact.roleTitle,
-          companyName: prospect.data?.companyName,
+          companyName: candidate?.prospect.name,
         })),
       ),
-    [persistedPeople.data, researched, pendingEmails, orgContacts.data, prospect.data?.companyName],
+    [persistedPeople.data, researched, pendingEmails, orgContacts.data, candidate?.prospect.name],
   );
 
   const storageUnavailable = persistedPeople.isError
