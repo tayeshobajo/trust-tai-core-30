@@ -275,7 +275,7 @@ send. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
 
 **Evidence and build**
 
-- `bunx vitest run` — 3,157 tests across 281 files pass (30 new this round).
+- `bunx vitest run` — 3,127 tests across 281 files pass (30 new this round).
 - `bunx tsgo --noEmit` — clean. Preview build: OK.
 - Evidence kind: **code plus synthetic sandbox execution**. No real model call, no
   persisted output, no live conversation, no deployment, no team acceptance.
