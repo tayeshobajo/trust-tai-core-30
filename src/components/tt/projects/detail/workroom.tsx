@@ -19,6 +19,8 @@ import { toast } from "sonner";
 
 import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { LaunchOpsButton } from "@/components/tt/ops/launch-ops";
+import { PreparationPanel } from "@/components/tt/preparation-panel";
+
 import { RouteWork } from "@/components/tt/projects/route-work";
 import {
   CONTEXTUAL_PANELS,
@@ -959,6 +961,20 @@ export function ProjectWorkroom({
                     />
                   ) : null}
                 </div>
+
+                {/* Work prepared after this milestone moved. A draft for a
+                    person to own: nothing here is accepted or sent. */}
+                {row.lineage.milestoneId ? (
+                  <PreparationPanel
+                    organizationId={org}
+                    jobId="milestone_status_draft"
+                    subjectRef={row.lineage.milestoneId}
+                    sourceHref="/modules/roadmap"
+                    sourceLabel="Open the milestone in Roadmap"
+                  />
+                ) : null}
+
+
 
                 <BlockersTab
                   items={items}
