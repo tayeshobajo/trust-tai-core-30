@@ -2,25 +2,43 @@
  * The one runner for repeatable preparation (server only).
  *
  * It does not reason and it does not own state. It sequences the rules the
- * contract in `@/domain/preparation-jobs` already defines: access, policy,
- * idempotency, deterministic figures first, model synthesis second, honest
- * status last. Synthesis goes through the single reasoning boundary; nothing
- * here touches a provider directly.
+ * contract in `@/domain/preparation-jobs` already defines: access, claim,
+ * policy, deterministic figures first, model synthesis second, honest status
+ * last. Synthesis goes through the single reasoning boundary; nothing here
+ * touches a provider directly.
  *
- * It writes one kind of record, through an injected store, so the owning room
- * keeps its state and no parallel business-data store appears.
+ * The order matters, and it is deliberate:
+ *
+ *  1. access is proved before anything is read, returned or written, so an
+ *     outsider cannot see a cached answer and cannot leave a mark on someone
+ *     else's run,
+ *  2. the record is claimed atomically for one attempt, with a bounded lease,
+ *     so two copies of the same event call the model at most once and a
+ *     crashed worker leaves something recoverable rather than a row that says
+ *     "Preparing" for ever,
+ *  3. limits are checked before the claim and again after it, so two different
+ *     jobs starting together cannot take the workspace past its daily limit,
+ *  4. access, policy and the subject's revision are read again at the finish,
+ *     so work prepared from something that has since moved, or in a workspace
+ *     that has since switched off, never becomes current prepared work,
+ *  5. a record that could not be written is never called persisted.
  */
 
+import {
+  claimDecision,
+  leaseUntil as leaseUntilIso,
+  PREPARATION_LEASE_MS,
+} from "@/domain/preparation-claim";
 import {
   boundedInstructions,
   configGaps,
   jobSpec,
   materialBlock,
   mayRun,
-  outputIsCurrent,
   preparationKey,
   retryDecision,
   type ModelUse,
+  type PreparationJobSpec,
   type PreparationOutput,
   type PreparationPolicy,
   type PreparationRequest,
@@ -34,10 +52,43 @@ import {
   type RuntimeModelCaller,
 } from "@/lib/intelligence-runtime.server";
 
+/** Raised instead of writing anything when the caller has no business here. */
+export class PreparationAccessDenied extends Error {
+  constructor(message = "You do not have access to this workspace.") {
+    super(message);
+    this.name = "PreparationAccessDenied";
+  }
+}
+
+export interface ClaimInput {
+  key: string;
+  request: PreparationRequest;
+  attemptId: string;
+  nowIso: string;
+  leaseUntil: string;
+  maxAttempts: number;
+  ownerLabel: string;
+}
+
+export interface ClaimResult {
+  claimed: boolean;
+  /** The record as it stands, claimed or not. Null only when nothing exists. */
+  output: PreparationOutput | null;
+  because: string;
+}
+
 /** One record kind. The owning room keeps its own truth elsewhere. */
 export interface PreparationStore {
-  load(key: string): Promise<PreparationOutput | null>;
-  save(output: PreparationOutput): Promise<PreparationOutput>;
+  /** Always scoped to the request's workspace by the implementation. */
+  load(key: string, organizationId: string): Promise<PreparationOutput | null>;
+  /**
+   * Take the next attempt, atomically. An implementation that cannot do this
+   * in one step is not a valid store: two events arriving together must not
+   * both be told they claimed it.
+   */
+  claim(input: ClaimInput): Promise<ClaimResult>;
+  /** Write the finished record for a claim this attempt still holds. */
+  complete(output: PreparationOutput, attemptId: string): Promise<PreparationOutput>;
   /** Runs recorded today, for the limits. */
   countToday(organizationId: string, jobId?: string): Promise<number>;
 }
@@ -48,6 +99,8 @@ export interface DeterministicRead {
   figures: Record<string, number>;
   evidenceRefs: string[];
   ownerLabel: string;
+  /** The verified membership behind that label, when the room knows it. */
+  ownerMembershipId?: string;
   /** The material the model may see, each piece by reference. */
   material: { ref: string; text: string }[];
   /** Set when code alone already knows a person must decide something. */
@@ -69,9 +122,17 @@ export interface PreparationRunInput {
   signal?: AbortSignal;
   /** Override the spec timeout. Used by the synthetic sandbox only. */
   timeoutMs?: number;
+  /** Override the claim lease. Used by tests only. */
+  leaseMs?: number;
   /** Injected in the synthetic sandbox; production resolves the real boundary. */
   verifyAccess?: (token: string, organizationId: string) => Promise<boolean>;
+  /** Proves the subject belongs to this workspace. Refusal is fatal, silently safe. */
+  verifySubject?: (request: PreparationRequest) => Promise<boolean>;
   callModel?: RuntimeModelCaller;
+  /** Read again at the finish. Absent means the policy passed in still holds. */
+  reloadPolicy?: () => Promise<PreparationPolicy>;
+  /** Read again at the finish. Absent means the revision passed in still holds. */
+  reloadRevision?: () => Promise<string>;
   /** Usage/cost when the caller can report it. Absent stays absent. */
   usage?: () => Partial<Pick<ModelUse, "inputTokens" | "outputTokens" | "costCredits">>;
 }
@@ -80,18 +141,33 @@ function iso(now: () => Date): string {
   return now().toISOString();
 }
 
-function finish(
-  base: PreparationOutput,
-  status: PreparationStatus,
-  because: string,
-  now: () => Date,
-): PreparationOutput {
+/** A record the person is shown but nobody claimed, so nobody wrote it down. */
+function transient(input: {
+  key: string;
+  request: PreparationRequest;
+  spec: PreparationJobSpec;
+  status: PreparationStatus;
+  because: string;
+  existing: PreparationOutput | null;
+  now: () => Date;
+}): PreparationOutput {
+  const base: PreparationOutput = input.existing ?? {
+    key: input.key,
+    request: input.request,
+    status: "queued",
+    summary: "",
+    suggestions: [],
+    evidenceRefs: [],
+    figures: {},
+    ownerLabel: input.spec.decisionOwner,
+    attempts: 0,
+  };
   return {
     ...base,
-    status,
-    because,
-    finishedAt: iso(now),
-    ...(status === "prepared" ? {} : { summary: base.summary }),
+    status: input.status,
+    because: input.because,
+    persisted: false,
+    finishedAt: iso(input.now),
   };
 }
 
@@ -104,7 +180,9 @@ function readSynthesis(raw: string): { summary: string; suggestions: string[] } 
     const summary = typeof record.summary === "string" ? record.summary.trim() : "";
     if (!summary) return null;
     const suggestions = Array.isArray(record.suggestions)
-      ? record.suggestions.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      ? record.suggestions.filter(
+          (item): item is string => typeof item === "string" && item.trim().length > 0,
+        )
       : [];
     return { summary, suggestions };
   } catch {
@@ -112,49 +190,97 @@ function readSynthesis(raw: string): { summary: string; suggestions: string[] } 
   }
 }
 
+/** A stable fingerprint of the exact instructions, so wording drift is visible. */
+async function instructionsHash(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 /**
- * Run one preparation job. Returns the stored record in every case, including
- * refusal: the person always gets a state and a reason, never silence.
+ * Call the model with a timeout and an abort, and leave nothing running behind
+ * on any outcome: the timer is cleared and the abort listener removed whether
+ * the answer arrived, failed, timed out or was stopped.
+ */
+async function callWithDeadline(
+  caller: RuntimeModelCaller,
+  args: { instructions: string; input: string },
+  timeoutMs: number,
+  signal: AbortSignal | undefined,
+) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+  try {
+    return await Promise.race([
+      caller(args),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+        if (signal) {
+          onAbort = () => reject(new Error("cancelled"));
+          signal.addEventListener("abort", onAbort, { once: true });
+        }
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    if (signal && onAbort) signal.removeEventListener("abort", onAbort);
+  }
+}
+
+/**
+ * Run one preparation job. Returns a record in every case, including refusal:
+ * the person always gets a state and a reason, never silence. Only a record
+ * carrying `persisted: true` was written down.
  */
 export async function runPreparation(input: PreparationRunInput): Promise<PreparationOutput> {
   const now = input.now ?? (() => new Date());
   const spec = jobSpec(input.request.jobId);
   const key = preparationKey(input.request);
+  const refuse = (
+    status: PreparationStatus,
+    because: string,
+    existing: PreparationOutput | null,
+  ) => transient({ key, request: input.request, spec, status, because, existing, now });
 
-  const existing = await input.store.load(key);
-  const base: PreparationOutput = existing ?? {
-    key,
-    request: input.request,
-    status: "queued",
-    summary: "",
-    suggestions: [],
-    evidenceRefs: [],
-    figures: {},
-    ownerLabel: spec.decisionOwner,
-    attempts: 0,
-  };
-
-  // A duplicate event for a revision already prepared does the work zero times.
-  if (existing && (existing.status === "prepared" || existing.status === "needs_decision")) {
-    const current = outputIsCurrent(existing, input.currentInputRevision);
-    if (current.current) return existing;
-  }
-  if (existing && existing.status === "running") {
-    return existing;
-  }
-  if (existing && existing.status === "uncertain") {
-    return existing;
-  }
-
-  // Access is checked here, at execution, not only when the trigger was armed.
+  /* 1. Access first. Nothing is read, returned or written before this, so an
+        unauthorised attempt cannot see a cached answer and cannot mark another
+        person's run with a refusal of its own. */
   const verify = input.verifyAccess ?? requireRuntimeAccess;
-  const allowed = await verify(input.token, input.request.organizationId);
-  if (!allowed) {
-    return input.store.save(
-      finish(base, "could_not_finish", "You do not have access to this workspace.", now),
+  if (!(await verify(input.token, input.request.organizationId))) {
+    throw new PreparationAccessDenied();
+  }
+  if (input.verifySubject && !(await input.verifySubject(input.request))) {
+    throw new PreparationAccessDenied("That subject does not belong to this workspace.");
+  }
+
+  const existing = await input.store.load(key, input.request.organizationId);
+
+  // The revision that armed the trigger may already be out of date.
+  if (input.request.inputRevision !== input.currentInputRevision) {
+    return refuse(
+      "could_not_finish",
+      "The subject changed before this started. It will be prepared from the current version.",
+      existing,
     );
   }
 
+  const nowIso = iso(now);
+  const decision = claimDecision({
+    existing: existing
+      ? {
+          status: existing.status,
+          attempts: existing.attempts,
+          leaseUntil: existing.leaseUntil ?? null,
+          attemptId: existing.attemptId ?? null,
+          supersededBecause: existing.supersededBecause ?? null,
+        }
+      : null,
+    nowIso,
+    maxAttempts: spec.maxAttempts,
+  });
+  if (decision.act === "return_existing" && existing) return existing;
+  if (decision.act === "refuse") return refuse(decision.status, decision.because, existing);
+
+  // 2. Limits before the claim.
   const [runsForJob, runsForWorkspace] = await Promise.all([
     input.store.countToday(input.request.organizationId, spec.id),
     input.store.countToday(input.request.organizationId),
@@ -167,52 +293,92 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
   });
   if (!permission.allowed) {
     const gaps = configGaps(spec, input.policy);
-    return input.store.save(
-      finish(
-        base,
-        "could_not_finish",
-        gaps.length > 0 ? `${permission.because} Missing: ${gaps.join(", ")}.` : permission.because,
-        now,
-      ),
-    );
-  }
-
-  // The revision that armed the trigger may already be out of date.
-  if (input.request.inputRevision !== input.currentInputRevision) {
-    return input.store.save(
-      finish(
-        base,
-        "could_not_finish",
-        "The subject changed before this started. It will be prepared from the current version.",
-        now,
-      ),
+    return refuse(
+      "could_not_finish",
+      gaps.length > 0 ? `${permission.because} Missing: ${gaps.join(", ")}.` : permission.because,
+      existing,
     );
   }
 
   if (input.signal?.aborted) {
-    return input.store.save(finish(base, "cancelled", "Someone stopped this run.", now));
+    return refuse("cancelled", "Someone stopped this run.", existing);
   }
 
-  const running = await input.store.save({
-    ...base,
-    status: "running",
-    attempts: base.attempts + 1,
-    startedAt: iso(now),
+  // 3. One claim, one attempt identity, one bounded lease.
+  const attemptId = crypto.randomUUID();
+  const claim = await input.store.claim({
+    key,
+    request: input.request,
+    attemptId,
+    nowIso,
+    leaseUntil: leaseUntilIso(nowIso, input.leaseMs ?? PREPARATION_LEASE_MS),
+    maxAttempts: spec.maxAttempts,
     ownerLabel: spec.decisionOwner,
   });
+  if (!claim.claimed) {
+    if (
+      claim.output &&
+      (claim.output.status === "prepared" || claim.output.status === "needs_decision")
+    ) {
+      return claim.output;
+    }
+    return refuse("running", claim.because, claim.output);
+  }
+  const running: PreparationOutput = claim.output ?? {
+    key,
+    request: input.request,
+    status: "running",
+    summary: "",
+    suggestions: [],
+    evidenceRefs: [],
+    figures: {},
+    ownerLabel: spec.decisionOwner,
+    attempts: decision.attempts,
+    attemptId,
+    startedAt: nowIso,
+    persisted: true,
+  };
+
+  /* Write the finished record for the claim this attempt holds. A save that
+     fails is reported as a save that failed, never as prepared work. */
+  const settle = async (output: PreparationOutput): Promise<PreparationOutput> => {
+    const finished: PreparationOutput = { ...output, finishedAt: iso(now), attemptId };
+    try {
+      return { ...(await input.store.complete(finished, attemptId)), persisted: true };
+    } catch (error) {
+      return {
+        ...finished,
+        persisted: false,
+        because: `${finished.because ?? ""} This could not be saved, so it is not recorded: ${(error as Error).message}`.trim(),
+      };
+    }
+  };
+
+  // 4. Limits again, now that this attempt is counted. Concurrency cannot overrun.
+  const [afterJob, afterWorkspace] = await Promise.all([
+    input.store.countToday(input.request.organizationId, spec.id),
+    input.store.countToday(input.request.organizationId),
+  ]);
+  if (
+    afterWorkspace > input.policy.workspaceDailyLimit ||
+    afterJob > input.policy.perJobDailyLimit
+  ) {
+    return settle({
+      ...running,
+      status: "could_not_finish",
+      because: "This workspace reached its preparation limit while this was starting.",
+    });
+  }
 
   let read: DeterministicRead;
   try {
     read = await input.deterministic();
   } catch (error) {
-    return input.store.save(
-      finish(
-        running,
-        "could_not_finish",
-        `We could not read what this needs: ${(error as Error).message}`,
-        now,
-      ),
-    );
+    return settle({
+      ...running,
+      status: "could_not_finish",
+      because: `We could not read what this needs: ${(error as Error).message}`,
+    });
   }
 
   const withFigures: PreparationOutput = {
@@ -220,17 +386,22 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
     figures: read.figures,
     evidenceRefs: read.evidenceRefs,
     ownerLabel: read.ownerLabel || spec.decisionOwner,
+    ...(read.ownerMembershipId ? { ownerMembershipId: read.ownerMembershipId } : {}),
   };
 
   if (read.cannotPrepareBecause) {
-    return input.store.save(
-      finish(withFigures, "could_not_finish", read.cannotPrepareBecause, now),
-    );
+    return settle({
+      ...withFigures,
+      status: "could_not_finish",
+      because: read.cannotPrepareBecause,
+    });
   }
   if (read.material.length === 0) {
-    return input.store.save(
-      finish(withFigures, "could_not_finish", "There is nothing recorded to prepare from.", now),
-    );
+    return settle({
+      ...withFigures,
+      status: "could_not_finish",
+      because: "There is nothing recorded to prepare from.",
+    });
   }
 
   let caller = input.callModel;
@@ -243,9 +414,11 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
         purpose: "research",
       });
     } catch {
-      return input.store.save(
-        finish(withFigures, "could_not_finish", "The reasoning service is not available.", now),
-      );
+      return settle({
+        ...withFigures,
+        status: "could_not_finish",
+        because: "The reasoning service is not available.",
+      });
     }
   }
 
@@ -256,51 +429,48 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
   let provider: string;
   let model: string;
   try {
-    const answer = await Promise.race([
-      caller({ instructions, input: material }),
-      new Promise<never>((_resolve, reject) => {
-        const timer = setTimeout(
-          () => reject(new Error("timeout")),
-          input.timeoutMs ?? spec.timeoutMs,
-        );
-        input.signal?.addEventListener("abort", () => {
-          clearTimeout(timer);
-          reject(new Error("cancelled"));
-        });
-      }),
-    ]);
+    const answer = await callWithDeadline(
+      caller,
+      { instructions, input: material },
+      input.timeoutMs ?? spec.timeoutMs,
+      input.signal,
+    );
     raw = answer.raw;
     provider = answer.provider;
     model = answer.model;
   } catch (error) {
     const message = (error as Error).message;
     if (message === "cancelled") {
-      return input.store.save(finish(withFigures, "cancelled", "Someone stopped this run.", now));
+      return settle({ ...withFigures, status: "cancelled", because: "Someone stopped this run." });
     }
     if (message === "timeout") {
       // We cannot tell whether the provider finished. Never retried by code.
-      return input.store.save(
-        finish(
-          withFigures,
-          "uncertain",
+      return settle({
+        ...withFigures,
+        status: "uncertain",
+        because:
           "This took too long and we cannot tell whether it finished. Check before running it again.",
-          now,
-        ),
-      );
+      });
     }
     if (error instanceof ProviderNotConfiguredError) {
-      return input.store.save(
-        finish(withFigures, "could_not_finish", "The reasoning service is not set up.", now),
-      );
+      return settle({
+        ...withFigures,
+        status: "could_not_finish",
+        because: "The reasoning service is not set up.",
+      });
     }
     if (error instanceof ProviderCallFailedError) {
-      return input.store.save(
-        finish(withFigures, "could_not_finish", "The reasoning service did not answer.", now),
-      );
+      return settle({
+        ...withFigures,
+        status: "could_not_finish",
+        because: "The reasoning service did not answer.",
+      });
     }
-    return input.store.save(
-      finish(withFigures, "could_not_finish", `It could not finish: ${message}`, now),
-    );
+    return settle({
+      ...withFigures,
+      status: "could_not_finish",
+      because: `It could not finish: ${message}`,
+    });
   }
 
   const synthesis = readSynthesis(raw);
@@ -309,6 +479,8 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
     provider,
     model,
     instructionsRef: `preparation:${spec.id}`,
+    instructionsHash: await instructionsHash(instructions),
+    inputRevision: input.request.inputRevision,
     inputRefs: read.material.map((entry) => entry.ref),
     ...(usage.inputTokens === undefined ? {} : { inputTokens: usage.inputTokens }),
     ...(usage.outputTokens === undefined ? {} : { outputTokens: usage.outputTokens }),
@@ -316,18 +488,48 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
   };
 
   if (!synthesis) {
-    return input.store.save(
-      finish(
-        { ...withFigures, modelUse },
-        "could_not_finish",
-        "The answer came back in a shape we could not read.",
-        now,
-      ),
-    );
+    return settle({
+      ...withFigures,
+      modelUse,
+      status: "could_not_finish",
+      because: "The answer came back in a shape we could not read.",
+    });
+  }
+
+  /* 5. The finish boundary. Access, policy and the subject are read again:
+        what was true when this started may not be true now, and stale work
+        must not become current prepared work. */
+  if (!(await verify(input.token, input.request.organizationId))) {
+    return settle({
+      ...withFigures,
+      modelUse,
+      status: "could_not_finish",
+      because: "Access to this workspace ended while this was being prepared.",
+    });
+  }
+  const finalPolicy = input.reloadPolicy ? await input.reloadPolicy() : input.policy;
+  if (finalPolicy.stopSwitch || !finalPolicy.enabledJobs.includes(spec.id)) {
+    return settle({
+      ...withFigures,
+      modelUse,
+      status: "cancelled",
+      because: "Preparation was switched off while this was running.",
+    });
+  }
+  const finalRevision = input.reloadRevision
+    ? await input.reloadRevision()
+    : input.currentInputRevision;
+  if (finalRevision !== input.request.inputRevision) {
+    return settle({
+      ...withFigures,
+      modelUse,
+      status: "could_not_finish",
+      because: "The subject changed while this was being prepared, so this was not kept.",
+    });
   }
 
   const status: PreparationStatus = read.needsDecisionBecause ? "needs_decision" : "prepared";
-  return input.store.save({
+  return settle({
     ...withFigures,
     modelUse,
     status,
@@ -336,7 +538,6 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
     because:
       read.needsDecisionBecause ??
       "Prepared for you to check. Nothing has been sent, changed or agreed.",
-    finishedAt: iso(now),
   });
 }
 
@@ -344,13 +545,13 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
 export function recoveryDecision(
   output: PreparationOutput,
   policy: PreparationPolicy,
-  transient: boolean,
+  transientFailure: boolean,
 ) {
   return retryDecision({
     spec: jobSpec(output.request.jobId),
     status: output.status,
     attempts: output.attempts,
-    transient,
+    transient: transientFailure,
     stopSwitch: policy.stopSwitch,
   });
 }
