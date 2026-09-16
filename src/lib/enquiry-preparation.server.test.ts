@@ -101,7 +101,7 @@ describe("preparing on intake, without a button", () => {
       intake,
       submission: SUBMISSION,
       icp: ICP,
-      policy: { ...PREPARATION_POLICY_DEFAULT, enabledJobs: ["enquiry_qualification_packet"] },
+      policy: { ...PREPARATION_POLICY_DEFAULT, enabledJobs: ["enquiry_qualification_packet"], configuredKeys: ["icp_profile", "reasoning_provider"] },
       runner: {
         store: db,
         token: "synthetic-token",
@@ -132,7 +132,7 @@ describe("preparing on intake, without a button", () => {
         intake,
         submission: SUBMISSION,
         icp: ICP,
-        policy: { ...PREPARATION_POLICY_DEFAULT, enabledJobs: ["enquiry_qualification_packet"] },
+        policy: { ...PREPARATION_POLICY_DEFAULT, enabledJobs: ["enquiry_qualification_packet"], configuredKeys: ["icp_profile", "reasoning_provider"] },
         runner: {
           store: db,
           token: "synthetic-token",
