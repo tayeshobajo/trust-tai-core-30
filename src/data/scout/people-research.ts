@@ -144,15 +144,27 @@ export async function discoverPeople(input: DiscoverInput): Promise<ScoutPerson[
 export interface EnrichInput {
   organizationId: string;
   person: ScoutPerson;
+  /** Present once the person is saved, so the answer is written to their row. */
+  prospectId?: string | undefined;
+}
+
+export interface EnrichResult {
+  person: ScoutPerson;
+  /** True only when the answer was written to the durable record. */
+  persisted: boolean;
+  /** Why it was not written, when it was not. */
+  because?: string;
 }
 
 /** One paid lookup for one person, asked for by the person who clicked. */
-export async function findWorkEmail(input: EnrichInput): Promise<ScoutPerson> {
+export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
   const payload = await post({
     action: "enrich",
     organizationId: input.organizationId,
     companyName: input.person.companyName,
     fullName: input.person.fullName,
+    ...(input.prospectId ? { prospectId: input.prospectId } : {}),
+    ...(input.person.persistedId ? { personId: input.person.persistedId } : {}),
     ...(input.person.companyDomain ? { domain: input.person.companyDomain } : {}),
     ...(input.person.providerPersonId
       ? { providerPersonId: input.person.providerPersonId }
@@ -160,20 +172,157 @@ export async function findWorkEmail(input: EnrichInput): Promise<ScoutPerson> {
     ...(input.person.profileUrl ? { profileUrl: input.person.profileUrl } : {}),
   });
 
+  const stored = payload["person"];
+  if (stored && typeof stored === "object") {
+    return { person: fromStored(stored as Record<string, unknown>), persisted: true };
+  }
+
   const email = typeof payload["email"] === "string" ? payload["email"] : null;
   const verified = payload["verified"] === true;
   const at = typeof payload["at"] === "string" ? payload["at"] : new Date().toISOString();
   const provider = (payload["provider"] as EnrichmentProviderId) ?? input.person.provider;
+  const because = typeof payload["because"] === "string" ? payload["because"] : undefined;
 
-  if (!email) {
-    return { ...input.person, emailStatus: "not_found", provider, emailFetchedAt: at };
-  }
+  const person: ScoutPerson = email
+    ? {
+        ...input.person,
+        workEmail: email,
+        emailStatus: verified ? "verified" : "found_unverified",
+        provider,
+        emailFetchedAt: at,
+        ...(verified ? { emailVerifiedAt: at } : {}),
+      }
+    : { ...input.person, emailStatus: "not_found", provider, emailFetchedAt: at };
+
+  return { person, persisted: false, ...(because ? { because } : {}) };
+}
+
+/* ------------------------------------------------------- durable rows */
+
+function text(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+/** A saved row, read back as the person the card already knows how to show. */
+export function fromStored(row: Record<string, unknown>): ScoutPerson {
+  const leadership = text(row["thoughtLeadershipSummary"]);
+  const provider = (text(row["provider"]) || "other") as EnrichmentProviderId;
+  const discoveredAt = text(row["discoveredAt"]) || new Date().toISOString();
   return {
-    ...input.person,
-    workEmail: email,
-    emailStatus: verified ? "verified" : "found_unverified",
+    key: text(row["id"]),
+    persistedId: text(row["id"]),
+    fullName: text(row["fullName"]),
+    ...(text(row["title"]) ? { title: text(row["title"]) } : {}),
+    companyName: text(row["companyName"]),
+    ...(text(row["companyDomain"]) ? { companyDomain: text(row["companyDomain"]) } : {}),
+    ...(text(row["profileUrl"]) ? { profileUrl: text(row["profileUrl"]) } : {}),
+    buyingRole: (text(row["buyingRole"]) || "unknown") as ScoutPerson["buyingRole"],
+    ...(text(row["buyingRoleEvidence"])
+      ? { buyingRoleEvidence: text(row["buyingRoleEvidence"]) }
+      : {}),
+    whyThisPerson: text(row["whyThisPerson"]),
+    ...(text(row["workEmail"]) ? { workEmail: text(row["workEmail"]) } : {}),
+    emailStatus: (text(row["emailStatus"]) || "not_checked") as ScoutPerson["emailStatus"],
     provider,
-    emailFetchedAt: at,
-    ...(verified ? { emailVerifiedAt: at } : {}),
+    ...(text(row["providerPersonId"])
+      ? { providerPersonId: text(row["providerPersonId"]) }
+      : {}),
+    discoveredAt,
+    ...(text(row["emailFetchedAt"]) ? { emailFetchedAt: text(row["emailFetchedAt"]) } : {}),
+    ...(text(row["emailVerifiedAt"]) ? { emailVerifiedAt: text(row["emailVerifiedAt"]) } : {}),
+    thoughtLeadership: leadership
+      ? {
+          summary: leadership,
+          ...(text(row["thoughtLeadershipSource"])
+            ? { sourceUrl: text(row["thoughtLeadershipSource"]) }
+            : {}),
+          provider,
+          observedAt: discoveredAt,
+        }
+      : null,
+    selectedForOutreach: row["selectedForOutreach"] === true,
+    ...(text(row["handoffRelationshipId"])
+      ? { handoffRelationshipId: text(row["handoffRelationshipId"]) }
+      : {}),
+    support: 20,
   };
+}
+
+export class ScoutPeopleNotStored extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ScoutPeopleNotStored";
+  }
+}
+
+async function durable(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  try {
+    return await post(body);
+  } catch (error) {
+    throw error instanceof Error ? new ScoutPeopleNotStored(error.message) : error;
+  }
+}
+
+/** Everyone already saved for this company. No provider call, no spend. */
+export async function listPersistedPeople(input: {
+  organizationId: string;
+  prospectId: string;
+}): Promise<ScoutPerson[]> {
+  const payload = await durable({
+    action: "list",
+    organizationId: input.organizationId,
+    prospectId: input.prospectId,
+  });
+  const rows = Array.isArray(payload["people"])
+    ? (payload["people"] as Record<string, unknown>[])
+    : [];
+  return rows.map(fromStored);
+}
+
+/** Save selected research. No address is sent: the server owns that state. */
+export async function savePeople(input: {
+  organizationId: string;
+  prospectId: string;
+  people: ScoutPerson[];
+}): Promise<ScoutPerson[]> {
+  const payload = await durable({
+    action: "save",
+    organizationId: input.organizationId,
+    prospectId: input.prospectId,
+    people: input.people.map((person) => ({
+      fullName: person.fullName,
+      title: person.title,
+      companyName: person.companyName,
+      companyDomain: person.companyDomain,
+      profileUrl: person.profileUrl,
+      buyingRole: person.buyingRole,
+      buyingRoleEvidence: person.buyingRoleEvidence,
+      whyThisPerson: person.whyThisPerson,
+      provider: person.provider,
+      providerPersonId: person.providerPersonId,
+      discoveredAt: person.discoveredAt,
+      thoughtLeadership: person.thoughtLeadership,
+    })),
+  });
+  const rows = Array.isArray(payload["people"])
+    ? (payload["people"] as Record<string, unknown>[])
+    : [];
+  return rows.map(fromStored);
+}
+
+/** Record which Comms conversation this saved person moved into. */
+export async function recordPersonHandoff(input: {
+  organizationId: string;
+  personId: string;
+  relationshipId: string;
+  contactId?: string | undefined;
+}): Promise<ScoutPerson> {
+  const payload = await durable({
+    action: "handoff",
+    organizationId: input.organizationId,
+    personId: input.personId,
+    relationshipId: input.relationshipId,
+    ...(input.contactId ? { contactId: input.contactId } : {}),
+  });
+  return fromStored((payload["person"] ?? {}) as Record<string, unknown>);
 }

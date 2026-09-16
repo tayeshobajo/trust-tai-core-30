@@ -55,6 +55,10 @@ export function PeopleSection({
   onFindEmail,
   onPrepareOutreach,
   searching,
+  storageUnavailable,
+  saveProblem,
+  onRetrySave,
+  saving,
 }: {
   people: ScoutPerson[];
   config: ProviderConfigRead;
@@ -66,6 +70,12 @@ export function PeopleSection({
   onFindEmail: (person: ScoutPerson) => void;
   onPrepareOutreach: (person: ScoutPerson) => void;
   searching: boolean;
+  /** Why saved people cannot be kept yet, when they cannot. */
+  storageUnavailable?: string | null;
+  /** Why the last save did not land. The rows stay on screen regardless. */
+  saveProblem?: string | null;
+  onRetrySave?: () => void;
+  saving?: boolean;
 }) {
   const connected = planBulkEnrichment(1, config).provider !== null;
   const { recommended, others } = recommendPeople(people.map(forDisplay));
@@ -75,6 +85,36 @@ export function PeopleSection({
       title="People"
       meta={recommended.length > 0 ? `${recommended.length} recommended` : "not researched"}
     >
+      {storageUnavailable ? (
+        <div className="mb-3 rounded-lg border border-border bg-secondary/40 p-4">
+          <p className="text-[13px] text-foreground">{storageUnavailable}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            People found now stay on this page for this visit only, and will not be here after a
+            reload.
+          </p>
+        </div>
+      ) : null}
+
+      {saveProblem ? (
+        <div role="alert" className="mb-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
+          <p className="text-[13px] text-foreground">{saveProblem}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Nothing was lost. Saving again costs nothing and looks nobody up.
+          </p>
+          {onRetrySave ? (
+            <TTButton
+              size="sm"
+              variant="secondary"
+              className="mt-3"
+              disabled={saving === true}
+              onClick={onRetrySave}
+            >
+              {saving ? "Saving…" : "Try saving again"}
+            </TTButton>
+          ) : null}
+        </div>
+      ) : null}
+
       {!connected ? (
         <div className="rounded-lg border border-border bg-secondary/40 p-4">
           <p className="text-[13px] text-foreground">{NOT_CONNECTED_MESSAGE}</p>
@@ -153,6 +193,7 @@ export function PeopleSection({
                     : person.emailFetchedAt
                       ? `fetched ${when(person.emailFetchedAt)}`
                       : `found ${when(person.discoveredAt)}`}
+                  {person.persistedId ? " · saved" : " · not saved yet"}
                 </p>
 
                 {state === "stale" ? (

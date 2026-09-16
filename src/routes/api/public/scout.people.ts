@@ -1,24 +1,31 @@
 /**
  * Scout, people research for one qualified account (server route).
  *
- * Three things happen here and nothing else:
+ * What happens here and nothing else:
  *   GET               tell the browser whether contact enrichment is connected
  *                     in THIS app runtime. Never a key, never part of one.
  *   POST discover     search the configured provider for people who could own
  *                     or influence the problem. Search only. No paid lookup.
+ *   POST list         read the people already saved for this company.
+ *   POST save         save selected research durably. No provider call.
  *   POST enrich       one paid work-email lookup for one named person, asked
- *                     for by a person who clicked.
+ *                     for by a person who clicked, written durably here.
+ *   POST handoff      record which Comms relationship this person moved into.
  *
  * The path is public so it can be reached without the site session, so the
- * handler proves the caller itself: a valid Trust Tai token and an active
- * membership in the workspace it claims, or nothing runs.
+ * handler proves the caller itself: a valid Trust Tai token, an active
+ * membership in the workspace it claims, and, for anything that writes, a role
+ * allowed to write. Membership alone never grants a write.
  *
- * Nothing here writes a record, sends a message, or enriches in bulk.
+ * Two boundaries are absolute. The browser never states an address or a
+ * verification: those are derived from the provider's own answer inside the
+ * store. And every reference a request supplies is checked against the
+ * workspace the caller proved, never trusted because it was sent.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { bearerToken, clientForToken, requireMember } from "@/lib/context-packet.server";
+import { bearerToken, clientForToken, requireActiveMember } from "@/lib/context-packet.server";
 import {
   EnrichmentNotConfigured,
   ProviderFailure,
@@ -26,10 +33,38 @@ import {
   enrichmentStatus,
   searchPeople,
 } from "@/lib/contact-enrichment.server";
-import { NOT_CONNECTED_MESSAGE, RECOMMENDED_LIMIT } from "@/domain/scout-people";
+import {
+  ScoutPeopleSchemaUnavailable,
+  ScoutPeopleStoreError,
+  scoutPeopleStore,
+  type StoredScoutPerson,
+} from "@/lib/scout-people-store.server";
+import { savableResearch } from "@/domain/scout-people-persistence";
+import { NOT_CONNECTED_MESSAGE, RECOMMENDED_LIMIT, type ScoutPerson } from "@/domain/scout-people";
 
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+}
+
+function str(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+const WRITE_ACTIONS = new Set(["save", "enrich", "handoff"]);
+const KNOWN_ACTIONS = new Set(["discover", "list", "save", "enrich", "handoff"]);
+
+function storeFailure(error: unknown): Response | null {
+  if (error instanceof ScoutPeopleSchemaUnavailable) {
+    return Response.json({ error: error.message, schemaUnavailable: true }, { status: 503 });
+  }
+  if (error instanceof ScoutPeopleStoreError) {
+    return Response.json({ error: error.message, saved: false }, { status: 502 });
+  }
+  return null;
+}
+
+function forClient(person: StoredScoutPerson) {
+  return person;
 }
 
 export const Route = createFileRoute("/api/public/scout/people")({
@@ -50,26 +85,96 @@ export const Route = createFileRoute("/api/public/scout/people")({
           return Response.json({ error: "That request could not be read." }, { status: 400 });
         }
 
-        const organizationId =
-          typeof body["organizationId"] === "string" ? body["organizationId"] : "";
-        const action = typeof body["action"] === "string" ? body["action"] : "";
-        const companyName = typeof body["companyName"] === "string" ? body["companyName"] : "";
-        const domain = typeof body["domain"] === "string" ? body["domain"] : undefined;
+        const organizationId = str(body["organizationId"]);
+        const action = str(body["action"]);
+        const prospectId = str(body["prospectId"]);
 
-        if (!organizationId || !companyName || (action !== "discover" && action !== "enrich")) {
+        if (!organizationId || !KNOWN_ACTIONS.has(action)) {
           return Response.json(
-            { error: "A workspace, a company and a known action are all needed." },
+            { error: "A workspace and a known action are both needed." },
             { status: 400 },
           );
         }
 
-        const caller = await requireMember(clientForToken(token), token, organizationId);
+        const caller = await requireActiveMember(clientForToken(token), token, organizationId);
         if (!caller) {
           return Response.json(
             { error: "You are not an active member of this workspace." },
             { status: 403 },
           );
         }
+        if (WRITE_ACTIONS.has(action) && !caller.canWrite) {
+          return Response.json(
+            { error: "Your role in this workspace can view research but not change it." },
+            { status: 403 },
+          );
+        }
+
+        /* ------------------------------------------------ durable reads */
+
+        if (action === "list" || action === "save" || action === "handoff") {
+          if (!prospectId && action !== "handoff") {
+            return Response.json({ error: "A company is needed." }, { status: 400 });
+          }
+          try {
+            const store = scoutPeopleStore();
+
+            if (action === "list") {
+              const people = await store.list({ organizationId, prospectId });
+              return Response.json({ people: people.map(forClient), persisted: true });
+            }
+
+            if (action === "save") {
+              const incoming = Array.isArray(body["people"])
+                ? (body["people"] as Partial<ScoutPerson>[])
+                : [];
+              const savable = incoming
+                .map((person) => savableResearch(person))
+                .filter((person): person is NonNullable<typeof person> => person !== null);
+              if (savable.length === 0) {
+                return Response.json({ error: "There was nobody to save." }, { status: 400 });
+              }
+              const saved = await store.saveResearch({
+                organizationId,
+                prospectId,
+                createdBy: caller.userId,
+                people: savable,
+              });
+              return Response.json({ people: saved.map(forClient), persisted: true });
+            }
+
+            const personId = str(body["personId"]);
+            const relationshipId = str(body["relationshipId"]);
+            if (!personId || !relationshipId) {
+              return Response.json(
+                { error: "A saved person and a conversation are both needed." },
+                { status: 400 },
+              );
+            }
+            const person = await store.recordHandoff({
+              organizationId,
+              personId,
+              relationshipId,
+              ...(str(body["contactId"]) ? { contactId: str(body["contactId"]) } : {}),
+            });
+            return Response.json({ person: forClient(person), persisted: true });
+          } catch (error) {
+            const response = storeFailure(error);
+            if (response) return response;
+            return Response.json(
+              { error: "That could not be saved. Nothing was changed." },
+              { status: 500 },
+            );
+          }
+        }
+
+        /* --------------------------------------------- provider actions */
+
+        const companyName = str(body["companyName"]);
+        if (!companyName) {
+          return Response.json({ error: "A company is needed." }, { status: 400 });
+        }
+        const domain = str(body["domain"]) || undefined;
 
         const status = enrichmentStatus();
         if (!status.connected) {
@@ -93,7 +198,7 @@ export const Route = createFileRoute("/api/public/scout/people")({
             });
           }
 
-          const fullName = typeof body["fullName"] === "string" ? body["fullName"] : "";
+          const fullName = str(body["fullName"]);
           if (!fullName) {
             return Response.json({ error: "A person's name is needed." }, { status: 400 });
           }
@@ -101,12 +206,49 @@ export const Route = createFileRoute("/api/public/scout/people")({
             fullName,
             companyName,
             ...(domain ? { domain } : {}),
-            ...(typeof body["providerPersonId"] === "string"
-              ? { providerPersonId: body["providerPersonId"] }
+            ...(str(body["providerPersonId"])
+              ? { providerPersonId: str(body["providerPersonId"]) }
               : {}),
-            ...(typeof body["profileUrl"] === "string" ? { profileUrl: body["profileUrl"] } : {}),
+            ...(str(body["profileUrl"]) ? { profileUrl: str(body["profileUrl"]) } : {}),
           });
-          return Response.json(result);
+
+          // A saved person gets the answer written to their row, derived from
+          // what the provider said and nothing the browser sent.
+          const personId = str(body["personId"]);
+          if (personId && prospectId) {
+            try {
+              const person = await scoutPeopleStore().recordEmail({
+                organizationId,
+                prospectId,
+                personId,
+                answer: {
+                  email: result.email ?? null,
+                  verified: result.verified === true,
+                  provider: result.provider,
+                  at: result.at,
+                },
+              });
+              return Response.json({ ...result, person: forClient(person), persisted: true });
+            } catch (error) {
+              if (error instanceof ScoutPeopleSchemaUnavailable) {
+                return Response.json({
+                  ...result,
+                  persisted: false,
+                  schemaUnavailable: true,
+                  because: error.message,
+                });
+              }
+              return Response.json({
+                ...result,
+                persisted: false,
+                because:
+                  error instanceof Error
+                    ? error.message
+                    : "The lookup finished but could not be saved.",
+              });
+            }
+          }
+          return Response.json({ ...result, persisted: false });
         } catch (error) {
           if (error instanceof EnrichmentNotConfigured) {
             return Response.json({ error: error.message, connected: false }, { status: 501 });

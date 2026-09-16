@@ -85,6 +85,48 @@ export async function requireMember(
   return active ? { userId: user.id, organizationId } : null;
 }
 
+/** Roles allowed to change workspace research. View-only members are not here. */
+export const WRITING_ROLES = ["owner", "admin", "member"] as const;
+
+export interface MemberAuthority extends CallerIdentity {
+  role: string;
+  /** True only for a role that may change records, never for membership alone. */
+  canWrite: boolean;
+}
+
+/**
+ * Stricter than `requireMember`: the membership row must literally say
+ * `active`, so a missing, blank, invited or suspended status is refused, and
+ * the role is reported so a view-only member cannot write by virtue of being
+ * a member.
+ */
+export async function requireActiveMember(
+  supabase: SupabaseClient,
+  token: string,
+  organizationId: string,
+): Promise<MemberAuthority | null> {
+  if (!organizationId) return null;
+  const { data: userData } = await supabase.auth.getUser(token);
+  const user = userData?.user;
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from("organization_memberships")
+    .select("organization_id, status, role")
+    .eq("organization_id", organizationId)
+    .eq("user_id", user.id)
+    .limit(1);
+  if (error) return null;
+  const row = (data ?? []).find((entry) => (entry as Row)["status"] === "active") as Row | undefined;
+  if (!row) return null;
+  const role = typeof row["role"] === "string" ? row["role"] : "";
+  return {
+    userId: user.id,
+    organizationId,
+    role,
+    canWrite: (WRITING_ROLES as readonly string[]).includes(role),
+  };
+}
+
 /* ------------------------------------------------------------- mapping */
 
 export function toProjectRow(row: Row): ExecutionProject {
