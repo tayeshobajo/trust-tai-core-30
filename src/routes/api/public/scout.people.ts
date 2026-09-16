@@ -294,61 +294,84 @@ export const Route = createFileRoute("/api/public/scout/people")({
             verified: answer.verified,
             at: result.at,
             ...(result.because ? { providerNote: result.because } : {}),
+            // The match often names a title the masked search result withheld.
+            ...(result.title ? { title: result.title } : {}),
+            ...(result.providerPersonId ? { providerPersonId: result.providerPersonId } : {}),
           };
 
-          // A saved person gets the answer written to their row, derived from
-          // what the provider said and nothing the browser sent.
+          /* Writing the answer down is part of the lookup, not a second task
+             for the person who clicked. A person already on record gets the
+             answer written to their row; a person found in this visit is put
+             on record first, with the provider's own title and id, and then
+             gets the answer. Only a storage failure leaves it unsaved. */
+          const incoming = (body["person"] ?? {}) as Partial<ScoutPerson>;
           const personId = str(body["personId"]);
-          if (personId && prospectId) {
+          if (prospectId) {
             try {
-              const person = await scoutPeopleStore().recordEmail({
+              const store = scoutPeopleStore();
+              let rowId = personId;
+              if (!rowId) {
+                const savable = savableResearch({
+                  ...incoming,
+                  fullName: incoming.fullName ?? fullName,
+                  companyName: incoming.companyName ?? companyName,
+                  ...(incoming.title ?? result.title
+                    ? { title: incoming.title ?? result.title }
+                    : {}),
+                  ...(incoming.providerPersonId ?? result.providerPersonId
+                    ? {
+                        providerPersonId:
+                          incoming.providerPersonId ?? result.providerPersonId,
+                      }
+                    : {}),
+                  provider: result.provider,
+                });
+                if (!savable) {
+                  return Response.json(
+                    { error: "That person could not be recorded, so nothing was looked up." },
+                    { status: 400 },
+                  );
+                }
+                const [saved] = await store.saveResearch({
+                  organizationId,
+                  prospectId,
+                  createdBy: caller.userId,
+                  people: [savable],
+                });
+                rowId = saved?.id ?? "";
+              }
+              if (!rowId) throw new ScoutPeopleStoreError("That person could not be recorded.");
+              const person = await store.recordEmail({
                 organizationId,
                 prospectId,
-                personId,
+                personId: rowId,
                 answer,
               });
               return Response.json({ ...found, person: forClient(person), persisted: true });
             } catch (error) {
-              const receipt = prospectId
-                ? issueReceipt({
-                    organizationId,
-                    prospectId,
-                    identity: str(body["identity"]),
-                    answer,
-                  })
-                : null;
-              return Response.json({
-                ...found,
-                persisted: false,
-                schemaUnavailable: error instanceof ScoutPeopleSchemaUnavailable,
-                saveError:
-                  error instanceof Error
-                    ? error.message
-                    : "The lookup finished but could not be saved.",
-                ...(receipt
-                  ? { receiptId: receipt.id, receiptExpiresAt: receipt.expiresAt }
-                  : {}),
-              });
-            }
-          }
-
-          /* Nobody to write to yet. The answer is still real, so it is handed
-             back with a receipt that can store it later for nothing. */
-          const receipt = prospectId
-            ? issueReceipt({
+              /* The answer is real and already paid for, so it is handed back
+                 with a receipt that stores it later without another lookup. */
+              const receipt = issueReceipt({
                 organizationId,
                 prospectId,
                 identity: str(body["identity"]),
                 answer,
-              })
-            : null;
+              });
+              return Response.json({
+                ...found,
+                persisted: false,
+                schemaUnavailable: error instanceof ScoutPeopleSchemaUnavailable,
+                saveError: "Email found, but Scout could not save it yet.",
+                receiptId: receipt.id,
+                receiptExpiresAt: receipt.expiresAt,
+              });
+            }
+          }
+
           return Response.json({
             ...found,
             persisted: false,
-            saveError: prospectId
-              ? "This person is not on record yet, so the address is only on this page."
-              : "There is no company record to save this address to.",
-            ...(receipt ? { receiptId: receipt.id, receiptExpiresAt: receipt.expiresAt } : {}),
+            saveError: "Email found, but Scout could not save it yet.",
           });
         } catch (error) {
           if (error instanceof EnrichmentNotConfigured) {
