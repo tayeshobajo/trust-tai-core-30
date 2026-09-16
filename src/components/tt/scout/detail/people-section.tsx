@@ -58,6 +58,8 @@ export function PeopleSection({
   storageUnavailable,
   saveProblem,
   onRetrySave,
+  onSaveEmail,
+  savingEmailKey,
   saving,
 }: {
   people: ScoutPerson[];
@@ -72,13 +74,18 @@ export function PeopleSection({
   searching: boolean;
   /** Why saved people cannot be kept yet, when they cannot. */
   storageUnavailable?: string | null;
-  /** Why the last save did not land. The rows stay on screen regardless. */
+  /** Why the last save of the research list did not land. Rows stay on screen. */
   saveProblem?: string | null;
   onRetrySave?: () => void;
   saving?: boolean;
+  /** Store an address already paid for, using the server receipt. No spend. */
+  onSaveEmail?: (person: ScoutPerson) => void;
+  /** The person whose address is being stored right now, if any. */
+  savingEmailKey?: string | null;
 }) {
   const connected = planBulkEnrichment(1, config).provider !== null;
   const { recommended, others } = recommendPeople(people.map(forDisplay));
+  const storable = storageUnavailable === null || storageUnavailable === undefined;
 
   return (
     <DetailSection
@@ -89,8 +96,8 @@ export function PeopleSection({
         <div className="mb-3 rounded-lg border border-border bg-secondary/40 p-4">
           <p className="text-[13px] text-foreground">{storageUnavailable}</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            People found now stay on this page for this visit only, and will not be here after a
-            reload.
+            Anything found now, addresses included, lives on this page only. Leaving or reloading
+            loses it.
           </p>
         </div>
       ) : null}
@@ -99,7 +106,8 @@ export function PeopleSection({
         <div role="alert" className="mb-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
           <p className="text-[13px] text-foreground">{saveProblem}</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Nothing was lost. Saving again costs nothing and looks nobody up.
+            These people are still on this page. Saving again looks nobody up and costs nothing,
+            but until it succeeds nothing here survives a reload.
           </p>
           {onRetrySave ? (
             <TTButton
@@ -193,8 +201,51 @@ export function PeopleSection({
                     : person.emailFetchedAt
                       ? `fetched ${when(person.emailFetchedAt)}`
                       : `found ${when(person.discoveredAt)}`}
-                  {person.persistedId ? " · saved" : " · not saved yet"}
+                  {person.pendingSave
+                    ? " · this address not saved yet"
+                    : person.persistedId
+                      ? " · saved"
+                      : " · not saved yet"}
                 </p>
+
+                {person.pendingSave ? (
+                  <div className="mt-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
+                    <p className="text-[13px] text-foreground">
+                      {person.workEmail
+                        ? "Address found. Not saved yet."
+                        : "Checked. No professional address was returned. Not saved yet."}
+                    </p>
+                    {person.pendingNote ? (
+                      <p className="mt-1 text-[13px] text-muted-foreground">{person.pendingNote}</p>
+                    ) : null}
+                    {person.saveError ? (
+                      <p className="mt-1 text-[13px] text-muted-foreground">{person.saveError}</p>
+                    ) : null}
+                    {person.receiptId && storable && onSaveEmail ? (
+                      <>
+                        <TTButton
+                          size="sm"
+                          variant="secondary"
+                          className="mt-2"
+                          disabled={savingEmailKey === person.key}
+                          onClick={() => onSaveEmail(person)}
+                        >
+                          {savingEmailKey === person.key ? "Saving…" : "Save this result"}
+                        </TTButton>
+                        <p className="mt-1 text-[12px] text-muted-foreground">
+                          Saving stores what the provider already told us. It looks nobody up and
+                          costs nothing. The held result expires after 30 minutes and does not
+                          survive a server restart.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-1 text-[12px] text-muted-foreground">
+                        There is nowhere to store this yet, so it cannot be kept. It stays on this
+                        page until you leave.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
 
                 {state === "stale" ? (
                   <p className="mt-2 text-[13px] text-warning">
