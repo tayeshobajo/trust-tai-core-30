@@ -177,7 +177,7 @@ describe("measures", () => {
     });
     expect(result.shown).toBe(true);
     if (result.shown) {
-      expect(result.denominatorNote).toContain("out of 10 proposals sent");
+      expect(result.denominatorNote).toContain("Out of 10 proposals sent");
       expect(result.freshnessNote).toContain("out of date");
     }
   });
