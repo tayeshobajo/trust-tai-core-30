@@ -75,7 +75,7 @@ export function openCarePlan(input: {
   milestoneAccepted: boolean;
   by: ID;
   at: ISODateTime;
-  recorded?: Partial<Record<CareChecklistItemKey, string>>;
+  recorded?: Partial<Record<CareChecklistItemKey, string>> | undefined;
   existing?: CarePlan[];
 }): CarePlanOutcome {
   const key = `${input.clientRef}::care::${input.milestoneId}`;
