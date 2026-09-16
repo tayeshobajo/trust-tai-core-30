@@ -74,6 +74,11 @@ function apply(person: ScoutPerson, pending: PendingEnrichment): ScoutPerson {
   const { workEmail: _old, emailVerifiedAt: _oldVerified, ...rest } = person;
   return {
     ...rest,
+    // Only fills a gap: what the person already has is never overwritten.
+    ...(person.title ?? pending.title ? { title: person.title ?? pending.title } : {}),
+    ...(person.providerPersonId ?? pending.providerPersonId
+      ? { providerPersonId: person.providerPersonId ?? pending.providerPersonId }
+      : {}),
     ...(pending.workEmail ? { workEmail: pending.workEmail } : {}),
     emailStatus: pending.emailStatus,
     provider: pending.provider,
