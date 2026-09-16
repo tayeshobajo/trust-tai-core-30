@@ -109,7 +109,7 @@ describe("preparing on intake, without a button", () => {
         callModel: async (request: { instructions: string; input: string }) => {
           sawMaterial = `${request.instructions}\n${request.input}`;
           return {
-            text: JSON.stringify({
+            raw: JSON.stringify({
               summary: "They lose people during a three week onboarding.",
               suggestions: ["Ask what happens in week one today."],
             }),
@@ -138,7 +138,7 @@ describe("preparing on intake, without a button", () => {
           token: "synthetic-token",
           verifyAccess: async () => true,
           callModel: async () => ({
-            text: JSON.stringify({ summary: "Prepared once.", suggestions: [] }),
+            raw: JSON.stringify({ summary: "Prepared once.", suggestions: [] }),
             provider: "synthetic",
             model: "synthetic-model",
           }),
