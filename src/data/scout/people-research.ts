@@ -13,6 +13,7 @@ import {
   type OpportunityContext,
   type ScoutPerson,
 } from "@/domain/scout-people";
+import { personIdentity, type PendingEnrichment } from "@/domain/scout-people-overlay";
 
 const ENDPOINT = "/api/public/scout/people";
 
@@ -157,22 +158,25 @@ export interface EnrichInput {
 
 
 export interface EnrichResult {
+  /** The person as the card should now show them, answer included. */
   person: ScoutPerson;
+  /** The answer, kept separate from whether it was stored. */
+  pending: PendingEnrichment;
   /** True only when the answer was written to the durable record. */
   persisted: boolean;
-  /** Why it was not written, when it was not. */
-  because?: string;
 }
 
 /** One paid lookup for one person, asked for by the person who clicked. */
 export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
   const companyName = (input.person.companyName || input.companyName || "").trim();
   const domain = (input.person.companyDomain || input.domain || "").trim();
+  const identity = personIdentity(input.person);
   const payload = await post({
     action: "enrich",
     organizationId: input.organizationId,
     companyName,
     fullName: input.person.fullName,
+    identity,
     ...(input.prospectId ? { prospectId: input.prospectId } : {}),
     ...(input.person.persistedId ? { personId: input.person.persistedId } : {}),
     ...(domain ? { domain } : {}),
@@ -182,17 +186,38 @@ export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
     ...(input.person.profileUrl ? { profileUrl: input.person.profileUrl } : {}),
   });
 
-
-  const stored = payload["person"];
-  if (stored && typeof stored === "object") {
-    return { person: fromStored(stored as Record<string, unknown>), persisted: true };
-  }
-
   const email = typeof payload["email"] === "string" ? payload["email"] : null;
   const verified = payload["verified"] === true;
   const at = typeof payload["at"] === "string" ? payload["at"] : new Date().toISOString();
   const provider = (payload["provider"] as EnrichmentProviderId) ?? input.person.provider;
-  const because = typeof payload["because"] === "string" ? payload["because"] : undefined;
+  const providerNote =
+    typeof payload["providerNote"] === "string" ? payload["providerNote"] : undefined;
+  const saveError = typeof payload["saveError"] === "string" ? payload["saveError"] : undefined;
+  const persisted = payload["persisted"] === true;
+
+  const pending: PendingEnrichment = {
+    identity,
+    ...(email ? { workEmail: email } : {}),
+    emailStatus: email ? (verified ? "verified" : "found_unverified") : "not_found",
+    provider,
+    emailFetchedAt: at,
+    ...(email && verified ? { emailVerifiedAt: at } : {}),
+    ...(providerNote ? { providerNote } : {}),
+    ...(typeof payload["receiptId"] === "string" ? { receiptId: payload["receiptId"] } : {}),
+    ...(typeof payload["receiptExpiresAt"] === "string"
+      ? { receiptExpiresAt: payload["receiptExpiresAt"] }
+      : {}),
+    ...(persisted ? {} : { saveError: saveError ?? "That address is not saved yet." }),
+  };
+
+  const stored = payload["person"];
+  if (persisted && stored && typeof stored === "object") {
+    return {
+      person: fromStored(stored as Record<string, unknown>),
+      pending,
+      persisted: true,
+    };
+  }
 
   const person: ScoutPerson = email
     ? {
@@ -205,7 +230,7 @@ export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
       }
     : { ...input.person, emailStatus: "not_found", provider, emailFetchedAt: at };
 
-  return { person, persisted: false, ...(because ? { because } : {}) };
+  return { person, pending, persisted: false };
 }
 
 /* ------------------------------------------------------- durable rows */
@@ -334,6 +359,40 @@ export async function recordPersonHandoff(input: {
     personId: input.personId,
     relationshipId: input.relationshipId,
     ...(input.contactId ? { contactId: input.contactId } : {}),
+  });
+  return fromStored((payload["person"] ?? {}) as Record<string, unknown>);
+}
+
+/**
+ * Store an answer the server already paid for, using the receipt it issued.
+ * No provider is called, so this costs nothing. The address and verification
+ * come from the server's own record of what the provider said.
+ */
+export async function saveEnrichedEmail(input: {
+  organizationId: string;
+  prospectId: string;
+  receiptId: string;
+  person: ScoutPerson;
+}): Promise<ScoutPerson> {
+  const payload = await durable({
+    action: "save-email",
+    organizationId: input.organizationId,
+    prospectId: input.prospectId,
+    receiptId: input.receiptId,
+    person: {
+      fullName: input.person.fullName,
+      title: input.person.title,
+      companyName: input.person.companyName,
+      companyDomain: input.person.companyDomain,
+      profileUrl: input.person.profileUrl,
+      buyingRole: input.person.buyingRole,
+      buyingRoleEvidence: input.person.buyingRoleEvidence,
+      whyThisPerson: input.person.whyThisPerson,
+      provider: input.person.provider,
+      providerPersonId: input.person.providerPersonId,
+      discoveredAt: input.person.discoveredAt,
+      thoughtLeadership: input.person.thoughtLeadership,
+    },
   });
   return fromStored((payload["person"] ?? {}) as Record<string, unknown>);
 }

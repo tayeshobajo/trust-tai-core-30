@@ -94,6 +94,16 @@ export interface ScoutPerson {
   selectedForOutreach?: boolean;
   /** Another person on this account who could be the same human. */
   ambiguousWith?: string[];
+  /* --- a provider answer that exists on screen but is not stored yet --- */
+  /** True while the shown address came from a lookup that is not saved. */
+  pendingSave?: boolean;
+  /** The provider's own words about that answer. Never a failure message. */
+  pendingNote?: string;
+  /** Why the answer is not stored. Separate from the answer itself. */
+  saveError?: string;
+  /** The server receipt that stores this exact answer again without paying. */
+  receiptId?: string;
+  receiptExpiresAt?: string;
   /** How much evidence stands behind this recommendation, 0 to 100. */
   support: number;
 }

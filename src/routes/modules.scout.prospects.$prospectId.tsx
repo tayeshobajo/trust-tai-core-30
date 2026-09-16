@@ -65,9 +65,15 @@ import {
   listPersistedPeople,
   readEnrichmentStatus,
   recordPersonHandoff,
+  saveEnrichedEmail,
   savePeople,
 } from "@/data/scout/people-research";
 import { workEmailState, type ScoutPerson } from "@/domain/scout-people";
+import {
+  mergePeople,
+  personIdentity,
+  type PendingEnrichment,
+} from "@/domain/scout-people-overlay";
 import { ConversationTab } from "@/components/tt/scout/detail/conversation";
 import { listProspectConversations } from "@/data/scout/conversation";
 import {
@@ -336,6 +342,9 @@ function CompanyDetail({
   const [peopleError, setPeopleError] = useState<string | null>(null);
   const [lookingUpKey, setLookingUpKey] = useState<string | null>(null);
   const [saveProblem, setSaveProblem] = useState<string | null>(null);
+  /* Provider answers that exist but are not stored yet, one per person. They
+     stay on screen and overlay an older saved version of the same person. */
+  const [pendingEmails, setPendingEmails] = useState<Record<string, PendingEnrichment>>({});
 
   const enrichment = useQuery({
     queryKey: ["scout", "enrichment-status"],
@@ -349,18 +358,18 @@ function CompanyDetail({
     retry: false,
   });
 
-  /* The card shows saved rows first, then anything found in this visit that
-     has not been saved yet. A saved row is never replaced by a session row. */
-  const peopleForCard = useMemo(() => {
-    const saved = persistedPeople.data ?? [];
-    const seen = new Set(
-      saved.map((person) => person.providerPersonId ?? person.fullName.toLowerCase()),
-    );
-    const unsaved = researched.filter(
-      (person) => !seen.has(person.providerPersonId ?? person.fullName.toLowerCase()),
-    );
-    return [...saved, ...unsaved];
-  }, [persistedPeople.data, researched]);
+  /* Saved rows, then this visit's finds, then any answer that has not been
+     stored yet laid over its own person. Matching is on the provider identity
+     or a stable key, never on a name. */
+  const peopleForCard = useMemo(
+    () =>
+      mergePeople({
+        saved: persistedPeople.data ?? [],
+        session: researched,
+        pending: pendingEmails,
+      }),
+    [persistedPeople.data, researched, pendingEmails],
+  );
 
   const storageUnavailable = persistedPeople.isError
     ? persistedPeople.error instanceof Error
@@ -431,22 +440,69 @@ function CompanyDetail({
       setLookingUpKey(person.key);
     },
     onSuccess: (result, person) => {
+      /* The answer is shown whatever happened to storage, and it reaches a
+         person who only exists in the database as readily as one found in
+         this visit. */
       setResearched((rows) =>
         rows.map((row) => (row.key === person.key ? result.person : row)),
       );
+      const identity = result.pending.identity;
       if (result.persisted) {
+        setPendingEmails((current) => {
+          const { [identity]: _stored, ...rest } = current;
+          return rest;
+        });
         void persistedPeople.refetch();
-        setSaveProblem(null);
       } else {
-        setSaveProblem(
-          result.because ??
-            "That address was found but has not been saved, so it will not survive a reload.",
-        );
+        setPendingEmails((current) => ({ ...current, [identity]: result.pending }));
       }
     },
     onError: (error) =>
       setPeopleError(error instanceof Error ? error.message : "That lookup could not be finished."),
     onSettled: () => setLookingUpKey(null),
+  });
+
+  /* Store an answer we already paid for, using the server's own receipt. No
+     provider is called, so this can never cost a second credit. */
+  const saveEmail = useMutation({
+    mutationFn: (person: ScoutPerson) => {
+      if (!person.receiptId) {
+        throw new Error("That lookup result is no longer held by the server.");
+      }
+      return saveEnrichedEmail({
+        organizationId,
+        prospectId,
+        receiptId: person.receiptId,
+        person,
+      });
+    },
+    onMutate: (person) => {
+      const identity = personIdentity(person);
+      setPendingEmails((current) => {
+        const entry = current[identity];
+        if (!entry) return current;
+        const { saveError: _clearing, ...rest } = entry;
+        return { ...current, [identity]: rest };
+      });
+      return { identity };
+    },
+    onSuccess: (_saved, person) => {
+      const identity = personIdentity(person);
+      setPendingEmails((current) => {
+        const { [identity]: _done, ...rest } = current;
+        return rest;
+      });
+      void persistedPeople.refetch();
+    },
+    onError: (error, person) => {
+      const identity = personIdentity(person);
+      const message =
+        error instanceof Error ? error.message : "That address could not be saved yet.";
+      setPendingEmails((current) => {
+        const entry = current[identity];
+        return entry ? { ...current, [identity]: { ...entry, saveError: message } } : current;
+      });
+    },
   });
 
   // Handing a researched person into Comms goes through the existing flow:
@@ -1191,6 +1247,8 @@ function CompanyDetail({
                   saveProblem={saveProblem}
                   saving={saveResearch.isPending}
                   onRetrySave={() => saveResearch.mutate(researched)}
+                  onSaveEmail={(person) => saveEmail.mutate(person)}
+                  savingEmailKey={saveEmail.isPending ? (saveEmail.variables?.key ?? null) : null}
                 />
                 <ProspectPersonCard
                   people={peopleRows}
