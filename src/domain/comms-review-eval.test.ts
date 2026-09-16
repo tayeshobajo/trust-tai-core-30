@@ -28,6 +28,12 @@ describe("the fixed evaluation set", () => {
       "opportunity_to_defer",
       "benign_humour",
       "injected_instruction",
+      /* The strategic judgment gate. */
+      "relationship_handoff",
+      "invited_public_sector_default_rate",
+      "public_sector_acknowledgement_only",
+      "routine_repeat_work",
+      "unapproved_concession",
     ];
     for (const id of required) {
       expect(EVAL_CASES.some((entry) => entry.id === id)).toBe(true);
