@@ -127,7 +127,7 @@ describe("commercial judgment", () => {
 
     expect(finding?.kind).toBe("commercial");
     expect(finding?.excerpt).toContain("15% discount");
-    expect(finding?.why).toContain("not show as already approved");
+    expect(finding?.why).toContain("nothing in the packet shows as already approved");
   });
 
   it("allows a concession the packet records as approved", () => {
