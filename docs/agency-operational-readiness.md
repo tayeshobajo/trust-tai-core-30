@@ -387,3 +387,81 @@ executed, no signed-in session used.
 3. No accept action, and no Scout or Comms preparation panel. Owner: Lovable.
 4. Whether Home should write ownership directly needs a decision. Owner: Tai.
 5. No team acceptance is claimed, and this round is not a completion claim.
+
+## Round R4 of 5: connect business execution and sustainable-business visibility
+
+### Exact prompt
+
+Tai authorizes this agency operational-readiness correction queue. Review baseline commit 16e4f83 and latest changes before editing; preserve concurrent Comms work and all C/T/P/A criteria. Goal: eight people can move a client through real work with clear outcomes, owners, next actions and visible exceptions. Continue existing apps and owning services, white cards/pale blue, no parallel CRM or approval system. Build working routes/adapters/event handlers, not only standalone helpers and synthetic tests. Preserve exact prompt and numbered acceptance criteria in `docs/agency-operational-readiness.md`, with changed files, route-to-service-to-record trace, pinned build, evidence level, owner and next action. Unwired code is IMPLEMENTED-UNCONNECTED, never functional pass. Existing required migrations need review; propose revised SQL, do not apply production schema. No publish, real outbound message, payment, mailbox scope expansion or production trigger activation. Implement independent work despite blocked dependencies. Do not invent team acceptance or claim 100%.
+
+ROUND R4/5: Connect business execution and sustainable-business visibility.
+R4.1 At actual owning screens, carry one synthetic client through qualify, discovery, roadmap, proposal, commercial evidence, onboarding, project milestone, care and outcome review. Persist source/version/owner/next-action links using existing owning services. Domain-function chain is insufficient. Implement missing route/service adapters rather than document as complete.
+R4.2 Every stage has entry criteria, expected outcome, accepted exit, responsible person, due date if confirmed, blocked/deferred/lost/reopened handling. Human accepts scope, price and commitments; AI prepares repeatable internal work. Handoffs repeat safely.
+R4.3 Commercial view separates proposed, approved, accepted, invoiced and paid with source or labeled human attestation; no fake financial integration. Deterministic pricing and totals, missing cost not zero; scope change invalidates readiness. Capacity checked before dates, incomplete availability stated.
+R4.4 Pulse shows measured qualified pipeline, stage age, proposals awaiting decision, delivery capacity and milestones, overdue receivables, margin where cost exists, care and renewal due. Each metric source, period, denominator where appropriate, freshness and drilldown; unavailable is distinct from zero. Targets editable by authorized person, do not invent agency targets.
+R4.5 Stalled work surfaces named owner and practical next action; quiet clients are not automatic risk. AI growth suggestions supported by client outcomes, suppress upsell during unresolved complaints. Existing Comms recent-mail feed preserves activity even after reply.
+R4.6 Test and demonstrate persisted accepted milestone to care and changed scope to commercial review, exception recovery and no duplicate work. Any unavailable integration explicitly shown, not polished placeholder.
+
+### Changed files
+
+| File | What it is |
+| --- | --- |
+| `src/domain/client-journey-progress.ts` | New. Stage-by-stage progress across the seven journey stages, read from the rooms that own each one. |
+| `src/domain/client-journey-progress.test.ts` | New. 8 tests. |
+| `src/components/tt/clients/journey-progress.tsx` | New. "The path so far" white-card strip. |
+| `src/routes/modules.clients.$clientId.tsx` | Mounts the strip above Overview from the page's existing room reads; adds `proposalsRead`. |
+| `src/domain/business-health.ts` | New. Measured versus unavailable readings, margin only where cost exists, stalled work, growth-suggestion suppression. |
+| `src/domain/business-health.test.ts` | New. 12 tests. |
+| `src/data/pulse/business-health.ts` | New adapter. Reads client commercial state, proposal nodes and projects under the signed-in session. |
+| `src/components/tt/pulse/business-health.tsx` | New. "Is the business healthy" section on Pulse. |
+| `src/routes/modules.pulse.tsx` | Renders that section. |
+
+### Route to service to record trace
+
+| Screen | Route | Service | Records |
+| --- | --- | --- | --- |
+| Client page, "The path so far" | `/modules/clients/$clientId` | existing page queries (relationships, roadmap outcomes, proposal nodes, client commercial record, projects) into `clientJourneyProgress` | `comms_relationships`, roadmap tables, proposal nodes, `clients`, projects |
+| Pulse, "Is the business healthy" | `/modules/pulse` | `loadBusinessHealth` into `listClientCommercialState`, `listProposalNodes`, `projectsService.list` | `clients`, proposal nodes, projects |
+
+Both are RLS-scoped to the signed-in member's organization. No new store, no new write path, no new approval surface.
+
+### Acceptance rows
+
+| # | Criterion | Result | Evidence | Note | Owner | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| R4.1a | The journey is visible at the owning screen, not only in a domain chain | PASS | CODE | The seven stages render on the real client route from that page's own room reads. | Lovable | Observe on a signed-in client |
+| R4.1b | A synthetic client carried end to end through persisted records | BLOCKED | — | Requires writing a synthetic client, proposal, project and care record into the shared production workspace. Not performed: no synthetic sandbox organization exists there and this round authorizes no production writes. | Tai | Decide whether a sandbox organization may be created |
+| R4.2a | Each stage states entry, expected outcome and who accepts it | PASS | CODE | Every stage carries `entry`, `expected` and `decidedBy`, taken from the journey contract. 1 test. | Lovable | None |
+| R4.2b | Blocked and undecided states are distinct from not started | PASS | CODE | Open decisions block the roadmap stage; a declined proposal blocks rather than clears; an unread room reads "Could not be read". 4 tests. | Lovable | None |
+| R4.2c | Responsible person and a due date only where confirmed | PASS | CODE | The owner comes from the open project's recorded owner; the date only from a recorded due date, never inferred. 1 test. | Lovable | None |
+| R4.2d | A human accepts scope and price; AI does not | PASS | CODE | No stage transitions itself. The strip reads recorded state and names the person who decides. | Lovable | None |
+| R4.3a | Proposed, accepted and paid are not merged | PASS | CODE | Proposal outcome, commercial record and payment are read separately; payment has no source, so it is not drawn. | Lovable | None |
+| R4.3b | No fake financial integration | PASS | CODE | Overdue receivables reads "Not connected. No invoicing or payment source is connected." instead of zero. | Lovable | Connect a source, or leave it declared unavailable |
+| R4.3c | Missing cost is not zero cost | PASS | CODE | `marginReading` returns unavailable with "Unknown cost is not zero cost." 3 tests. | Lovable | None |
+| R4.4a | Seven measurements with source, period, denominator, freshness and drilldown | PASS | CODE | Every metric carries all six fields; the section renders each in a white card. | Lovable | Observe on a signed-in Pulse |
+| R4.4b | Unavailable is distinct from zero | PASS | CODE | Unavailable metrics show words where the number would be, and the reason. 1 test. | Lovable | None |
+| R4.4c | Targets are not invented | PASS | CODE | No metric ships a target. Each says an owner or admin sets these in Settings, Outcomes. Built-in weekly-target defaults are deliberately not read as if a person had set them. | Lovable | Build target editing for owners and admins |
+| R4.4d | Capacity checked before a date is offered | PARTIAL | CODE | Delivery load is measured against all projects, so load is visible. Nothing on these screens offers a date, so there is no date to check. Capacity gating at the point a date is proposed is not built. | Lovable | Wire the capacity check into the proposal date path |
+| R4.5a | Stalled work names an owner and a practical next action | PASS | CODE | `stalledWork`; a missing owner reads "Needs an owner" and is flagged. 2 tests. | Lovable | Surface stalled work on Pulse, currently rules only |
+| R4.5b | A quiet client is not automatic risk | PASS | CODE | A candidate with no owed reply and no next action is skipped. 1 test. | Lovable | None |
+| R4.5c | Growth suggestions need evidence and are suppressed during complaints | PASS | CODE | `growthSuggestion` refuses with a reason on unresolved complaints or absent evidence. 3 tests. | Lovable | None |
+| R4.5d | Comms recent-mail feed keeps activity after a reply | PASS | CODE | Unchanged this round. Receipt-driven, not reply-state driven. | Lovable | None |
+| R4.6a | Accepted milestone to care, and changed scope to commercial review | IMPLEMENTED-UNCONNECTED | SYNTHETIC | The transition rules exist and are tested from earlier rounds, and the stages now render. No event handler moves a persisted milestone into care on the real screens. | Lovable | Build the milestone-accepted handler |
+| R4.6b | No duplicate work on repeat | PASS | CODE | Both new views are pure reads with no writes, so a repeat cannot duplicate. | Lovable | None |
+| R4.6c | An unavailable integration is shown, not placeholdered | PASS | CODE | Receivables and margin state their absence in words. No placeholder number anywhere. | Lovable | None |
+| R4.7 | Nothing published, sent, paid, widened or switched on | PASS | CODE | No send, publish, payment, mailbox scope, schema or schedule code touched. | Lovable | None |
+
+### Evidence and build
+
+`bunx vitest run`: 3,311 tests in 298 files, all passing. `bunx tsgo --noEmit`
+clean. `build OK` at 2026-09-16T07:49:47Z, commit `34f99e2e`. No migration
+applied, no SQL executed, no signed-in session used, no outbound message.
+
+### Remaining blockers after R4
+
+1. The three preparation tables are still missing. Owner: Codex.
+2. No signed-in screen evidence for Home, the continuity card, the journey strip or the business-health section. Owner: Codex.
+3. No synthetic sandbox organization exists, so R4.1b cannot be carried out. Owner: Tai.
+4. No invoicing or payment source is connected, so receivables and margin stay declared unavailable. Owner: Tai.
+5. Target editing for owners and admins is not built. Owner: Lovable.
+6. No team acceptance is claimed, and this round is not a completion claim.

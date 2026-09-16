@@ -19,6 +19,7 @@ import { CommercialPanel } from "@/components/tt/clients/commercial-panel";
 import { ProposalPanel } from "@/components/tt/clients/proposal-panel";
 import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
 import { ClientContinuity } from "@/components/tt/clients/continuity";
+import { ClientJourneyProgress } from "@/components/tt/clients/journey-progress";
 import { OverviewTab } from "@/components/tt/clients/overview";
 import { CommercialTab } from "@/components/tt/clients/commercial-tab";
 import {
@@ -685,6 +686,7 @@ function ClientShell({
             ),
           )
         : roadmapRead;
+  const proposalsRead = readOf(proposalsQuery);
   const projectsRead = readOf(projectsQuery);
   const projectsForTab: RoomRead<typeof projects> | null =
     projectsRead === null ? null : projectsRead.available ? answered(projects) : projectsRead;
@@ -786,6 +788,53 @@ function ClientShell({
                       ? answered(roadmapOutcomes.value[0] ?? null)
                       : roadmapOutcomes
                 }
+                projects={projectsForTab}
+              />
+            </div>
+            <div className="mb-6">
+              <ClientJourneyProgress
+                clientId={clientId}
+                relationship={
+                  relationshipRead === null
+                    ? null
+                    : relationshipRead.available
+                      ? answered({
+                          peopleCount: relationshipRead.value.people.length,
+                          lastExchangeAt: relationshipRead.value.lastTouchAt ?? null,
+                        })
+                      : relationshipRead
+                }
+                roadmap={
+                  roadmapOutcomes === null
+                    ? null
+                    : roadmapOutcomes.available
+                      ? answered(roadmapOutcomes.value[0] ?? null)
+                      : roadmapOutcomes
+                }
+                proposals={
+                  proposalsRead === null
+                    ? null
+                    : proposalsRead.available
+                      ? answered(
+                          proposalsRead.value
+                            .filter((proposal) => proposal.clientId === clientId)
+                            .map((proposal) => ({
+                              id: proposal.id,
+                              title: proposal.title,
+                              sentAt: proposal.proposalSentAt,
+                              outcome: proposal.proposalOutcome,
+                              amountCents: proposal.proposalAmountCents,
+                            })),
+                        )
+                      : proposalsRead
+                }
+                commercial={answered({
+                  tier: record.tier,
+                  mrrCents: record.mrrCents,
+                  nextReviewAt: record.nextReviewAt,
+                  renewalAt: record.renewalAt,
+                  recordedAt: record.commercialUpdatedAt,
+                })}
                 projects={projectsForTab}
               />
             </div>
