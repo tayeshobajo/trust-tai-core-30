@@ -113,7 +113,10 @@ describe("roadmap handoff", () => {
 
   it("opens nothing without an owner", () => {
     const handoff = roadmapHandoffFor({
-      record: record({ ownerUserId: undefined }),
+      record: (() => {
+        const { ownerUserId: _ownerUserId, ...rest } = record();
+        return rest;
+      })(),
       by: { userId: "fixture-user-2" },
       at: "2026-02-03T10:00:00.000Z",
     });
