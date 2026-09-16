@@ -200,7 +200,7 @@ function commercialFinding(packet: StrategicPacket): StrategicFinding | null {
       kind: "commercial",
       severity: "must_fix",
       excerpt: concession,
-      why: "This offers a concession on price or payment terms that nothing in the packet shows as already approved.",
+      why: "This offers a concession on price or payment terms that nothing in the packet shows as already approved. A human commercial review is required before approval.",
       suggestion: `Have the person accountable for pricing confirm this concession before approval, or record in the packet what it is being traded for. Consider ${CONSIDERATIONS}. No replacement figure is proposed here.`,
     };
   }
