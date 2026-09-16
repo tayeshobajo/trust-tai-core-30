@@ -10,12 +10,8 @@
  * data so nothing inside it can give orders.
  */
 
-import type { ID, ISODateTime } from "@/domain/entities";
-import type {
-  DeliveryRisk,
-  DeliveryTask,
-  MilestoneRecord,
-} from "@/domain/milestone-delivery";
+import type { ID } from "@/domain/entities";
+import type { DeliveryRisk, DeliveryTask, MilestoneRecord } from "@/domain/milestone-delivery";
 import { milestoneReading } from "@/domain/milestone-delivery";
 import type { PreparationPolicy, PreparationRequest } from "@/domain/preparation-jobs";
 import {
@@ -55,47 +51,73 @@ export function statusDeterministicRead(input: {
   milestone: MilestoneRecord;
   tasks: DeliveryTask[];
   risks: DeliveryRisk[];
+  ownerLabel?: string;
 }): DeterministicRead {
   const reading = milestoneReading({ milestone: input.milestone, tasks: input.tasks });
   const complete = input.tasks.filter((task) => task.state === "complete").length;
+  const failed = input.milestone.testResults.filter((result) => !result.passed).length;
+  const ownerLabel = input.ownerLabel ?? "Unassigned";
+
+  const figures = {
+    tasksTotal: input.tasks.length,
+    tasksComplete: complete,
+    checksRecorded: input.milestone.testResults.length,
+    checksFailed: failed,
+    evidenceRecorded: input.milestone.evidence.length,
+    risksOpen: input.risks.length,
+  };
+
+  if (input.milestone.evidence.length === 0 && input.milestone.testResults.length === 0) {
+    return {
+      figures,
+      evidenceRefs: [],
+      ownerLabel,
+      material: [],
+      cannotPrepareBecause:
+        "Nothing has been recorded against this milestone yet, so there is nothing to report.",
+    };
+  }
+
+  // Three separate readings, never collapsed into one.
+  const material = [
+    {
+      ref: `${input.milestone.milestoneId}::state`,
+      text: [
+        `Tasks finished: ${complete} of ${input.tasks.length}.`,
+        reading.accepted
+          ? `Accepted by ${input.milestone.decidedBy ?? "someone"}.`
+          : reading.readyForAcceptance
+            ? "Ready for a person to accept or reject. Not accepted yet."
+            : `Not ready for acceptance: ${reading.missing.join(" ")}`,
+        reading.clientOutcomeConfirmed
+          ? "The client outcome behind this milestone has been confirmed."
+          : "Whether the client got the outcome they wanted has not been confirmed.",
+      ].join("\n"),
+    },
+    ...input.milestone.evidence.map((entry) => ({
+      ref: entry.ref,
+      text: `${entry.label} (recorded ${entry.recordedAt})`,
+    })),
+    ...input.risks.map((risk) => ({
+      ref: risk.id,
+      text: `Risk: ${risk.what}. Why: ${risk.because}. Held by ${risk.ownerId}. Next: ${risk.nextAction}.`,
+    })),
+  ];
 
   return {
-    figures: {
-      tasksTotal: input.tasks.length,
-      tasksComplete: complete,
-      checksRecorded: input.milestone.testResults.length,
-      checksFailed: input.milestone.testResults.filter((result) => !result.passed).length,
-      evidenceRecorded: input.milestone.evidence.length,
-      risksOpen: input.risks.length,
-    },
-    statements: [
-      `Tasks finished: ${complete} of ${input.tasks.length}.`,
-      reading.accepted
-        ? `Accepted by ${input.milestone.decidedBy ?? "someone"}.`
-        : reading.readyForAcceptance
-          ? "Ready for a person to accept or reject."
-          : `Not ready for acceptance: ${reading.missing.join(" ")}`,
-      reading.clientOutcomeConfirmed
-        ? "The client outcome behind this milestone has been confirmed."
-        : "Whether the client got the outcome they wanted has not been confirmed.",
-      ...input.risks.map(
-        (risk) => `Risk: ${risk.what}. Why: ${risk.because}. Held by ${risk.ownerId}. Next: ${risk.nextAction}.`,
-      ),
-    ],
+    figures,
+    evidenceRefs: material.map((entry) => entry.ref),
+    ownerLabel,
+    material,
+    ...(failed > 0
+      ? { needsDecisionBecause: `${failed} check(s) did not pass, so a person should read this before it goes anywhere.` }
+      : {}),
   };
 }
 
-export interface PreparedStatusUpdate {
-  milestoneId: string;
-  /** A draft. Nothing here is sent, and nothing here is a commitment. */
-  draft: string;
-  preparedAt: ISODateTime;
-  basis: string[];
-}
-
 /**
- * Prepare a status update when a milestone moves. Returns null while the job
- * is off, which is the default for every workspace.
+ * Called when a milestone moves, not by a button. Returns null when the job is
+ * off in this workspace, which is the default, so nothing is prepared.
  */
 export async function prepareStatusOnMilestoneChange(input: {
   organizationId: ID;
@@ -104,41 +126,27 @@ export async function prepareStatusOnMilestoneChange(input: {
   risks: DeliveryRisk[];
   triggerEventId: string;
   policy: PreparationPolicy;
-  at: ISODateTime;
-  run?: (runInput: PreparationRunInput) => Promise<{ text: string }>;
-}): Promise<PreparedStatusUpdate | null> {
-  if (!input.policy.enabledJobs.includes(MILESTONE_STATUS_JOB)) return null;
-  if (!input.run) throw new Error("No preparation runner was provided.");
-
-  const request = statusPreparationRequest({
-    organizationId: input.organizationId,
-    milestone: input.milestone,
-    tasks: input.tasks,
-    triggerEventId: input.triggerEventId,
-  });
-  const read = statusDeterministicRead({
-    milestone: input.milestone,
-    tasks: input.tasks,
-    risks: input.risks,
-  });
-
-  const result = await runPreparation({
+  ownerLabel?: string;
+  runner?: Omit<PreparationRunInput, "request" | "policy" | "currentInputRevision" | "deterministic">;
+}) {
+  if (!input.policy.enabledJobs.includes(MILESTONE_STATUS_JOB)) {
+    return null;
+  }
+  if (!input.runner) {
+    throw new Error("A store and token are required to prepare a status update.");
+  }
+  const request = statusPreparationRequest(input);
+  return runPreparation({
+    ...input.runner,
     request,
     policy: input.policy,
-    read,
-    material: input.milestone.evidence.map((entry) => ({
-      ref: entry.ref,
-      text: entry.label,
-    })),
-    run: input.run,
+    currentInputRevision: request.inputRevision,
+    deterministic: () =>
+      statusDeterministicRead({
+        milestone: input.milestone,
+        tasks: input.tasks,
+        risks: input.risks,
+        ...(input.ownerLabel ? { ownerLabel: input.ownerLabel } : {}),
+      }),
   });
-
-  if (!result) return null;
-
-  return {
-    milestoneId: input.milestone.milestoneId,
-    draft: result.text,
-    preparedAt: input.at,
-    basis: read.statements,
-  };
 }
