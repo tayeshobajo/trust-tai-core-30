@@ -80,7 +80,7 @@ function fakeDb(plan: Plan) {
 
   const db = {
     from: (table: string) => ({
-      select: () => builder(table, "select").select(),
+      select: () => builder(table, "select"),
       insert: (payload: unknown) => builder(table, "insert", payload),
       upsert: (payload: unknown) => builder(table, "upsert", payload),
       update: (payload: unknown) => builder(table, "update", payload),
