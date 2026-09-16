@@ -5,7 +5,9 @@ import {
   statusDeterministicRead,
   statusPreparationRequest,
 } from "./milestone-status.server";
+import { sandboxStore } from "@/data/fixtures/preparation-sandbox";
 import type { PreparationOutput } from "@/domain/preparation-jobs";
+
 import { PREPARATION_POLICY_DEFAULT } from "@/domain/preparation-jobs";
 import {
   decideMilestone,
@@ -59,28 +61,27 @@ const risks: DeliveryRisk[] = [
 ];
 
 function memoryStore() {
-  const rows = new Map<string, PreparationOutput>();
+  const inner = sandboxStore();
   let saves = 0;
   return {
-    rows,
+    get rows() {
+      return new Map(inner.all().map((row) => [row.key, row]));
+    },
     get saves() {
       return saves;
     },
     store: {
-      async load(key: string) {
-        return rows.get(key) ?? null;
-      },
-      async save(output: PreparationOutput) {
+      load: inner.load,
+      claim: inner.claim,
+      async complete(output: PreparationOutput, attemptId: string) {
         saves += 1;
-        rows.set(output.key, output);
-        return output;
+        return inner.complete(output, attemptId);
       },
-      async countToday() {
-        return 0;
-      },
+      countToday: inner.countToday,
     },
   };
 }
+
 
 describe("status preparation request", () => {
   it("names the status job and moves only when the milestone moves", () => {

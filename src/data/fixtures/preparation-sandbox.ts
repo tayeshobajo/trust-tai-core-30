@@ -9,7 +9,9 @@
  * It builds on the one synthetic client fixture shared by every round.
  */
 
+import { claimDecision } from "@/domain/preparation-claim";
 import {
+
   FIXTURE_LABEL,
   FIXTURE_ORGANIZATION_ID,
   FIXTURE_PERSON,
@@ -25,21 +27,69 @@ import {
 import type { DeterministicRead, PreparationStore } from "@/lib/preparation-runner.server";
 import type { RuntimeModelCaller } from "@/lib/intelligence-runtime.server";
 
-/** An in-memory stand-in for the output record. Nothing leaves the process. */
+/**
+ * An in-memory stand-in for the output record. Nothing leaves the process.
+ *
+ * It implements the same claim rule as the real adapter, so the sandbox and
+ * the database agree about who holds an attempt and when a crashed one becomes
+ * recoverable. The map stands in for the unique key on the real table.
+ */
 export function sandboxStore(): PreparationStore & { all(): PreparationOutput[] } {
   const rows = new Map<string, PreparationOutput>();
   const runDays: { organizationId: string; jobId: string }[] = [];
   return {
-    async load(key) {
-      return rows.get(key) ?? null;
+    async load(key, organizationId) {
+      const row = rows.get(key);
+      if (!row || row.request.organizationId !== organizationId) return null;
+      return row;
     },
-    async save(output) {
-      const previous = rows.get(output.key);
-      if (output.status === "running" && previous?.status !== "running") {
-        runDays.push({ organizationId: output.request.organizationId, jobId: output.request.jobId });
+    async claim(input) {
+      const existing = rows.get(input.key) ?? null;
+      const decision = claimDecision({
+        existing: existing
+          ? {
+              status: existing.status,
+              attempts: existing.attempts,
+              leaseUntil: existing.leaseUntil ?? null,
+              attemptId: existing.attemptId ?? null,
+              supersededBecause: existing.supersededBecause ?? null,
+            }
+          : null,
+        nowIso: input.nowIso,
+        maxAttempts: input.maxAttempts,
+      });
+      if (decision.act !== "claim") {
+        return { claimed: false, output: existing, because: decision.because };
       }
-      rows.set(output.key, output);
-      return output;
+      const claimed: PreparationOutput = {
+        key: input.key,
+        request: input.request,
+        status: "running",
+        summary: "",
+        suggestions: [],
+        evidenceRefs: [],
+        figures: {},
+        ...(existing ?? {}),
+        ownerLabel: input.ownerLabel,
+        attempts: decision.attempts,
+        attemptId: input.attemptId,
+        leaseUntil: input.leaseUntil,
+        startedAt: input.nowIso,
+        persisted: true,
+      };
+      claimed.status = "running";
+      rows.set(input.key, claimed);
+      runDays.push({ organizationId: input.request.organizationId, jobId: input.request.jobId });
+      return { claimed: true, output: claimed, because: decision.because };
+    },
+    async complete(output, attemptId) {
+      const current = rows.get(output.key);
+      if (current && current.attemptId && current.attemptId !== attemptId) {
+        throw new Error("Another attempt holds this record.");
+      }
+      const saved: PreparationOutput = { ...output, persisted: true };
+      rows.set(output.key, saved);
+      return saved;
     },
     async countToday(organizationId, jobId) {
       return runDays.filter(
@@ -52,6 +102,7 @@ export function sandboxStore(): PreparationStore & { all(): PreparationOutput[] 
     },
   };
 }
+
 
 /** A fake model caller. Answers in the shape the runner reads, nothing more. */
 export function sandboxModel(
