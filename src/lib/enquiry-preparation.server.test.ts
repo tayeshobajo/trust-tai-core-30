@@ -45,17 +45,19 @@ const CANDIDATES = [
 const ICP = { version: 3, title: "Service businesses, 10 to 60 people", criteria: ["Team of 10 to 60"] };
 
 function store() {
-  const rows = new Map<string, PreparationOutput>();
+  const inner = sandboxStore();
   return {
-    rows,
-    load: async (key: string) => rows.get(key) ?? null,
-    save: async (output: PreparationOutput) => {
-      rows.set(output.key, output);
-      return output;
+    get rows() {
+      return new Map(inner.all().map((row) => [row.key, row]));
     },
-    countToday: async () => rows.size,
+    load: inner.load,
+    claim: inner.claim,
+    complete: inner.complete,
+    countToday: inner.countToday,
+    all: inner.all,
   };
 }
+
 
 const intake = receiveEnquiry({ submission: SUBMISSION, candidates: CANDIDATES });
 
