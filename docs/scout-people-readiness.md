@@ -94,3 +94,39 @@ Database integration checks prepared for Codex, to run after the migration:
   not exist.
 - Tai's signed-in acceptance of the People card, saving, reload, handoff and
   cross-organization privacy remains PENDING-TAI.
+
+## SP7 Enrichment result and persistence are separate (2026-09-16)
+
+The card previously contradicted itself: a person could read "Apollo reported
+verified" above "NOT FOUND, not saved yet". The cause was three separate
+mistakes, all corrected here.
+
+| # | Row | Evidence | Result |
+| - | --- | -------- | ------ |
+| SP7.1 | One person-scoped lookup updates the shown address, provider state and timestamp immediately, whether the person is saved, session-only, or both | CODE — `mergePeople` in `src/domain/scout-people-overlay.ts`; tests "shows a new answer on a person who exists only in storage" and "lays a newer lookup over a stale saved version" | PASS |
+| SP7.2 | A newer unsaved answer overlays an older saved one; an older answer never hides a newer saved one | CODE — overlay compares the checked time; test "never lets an older answer hide a newer saved one" | PASS |
+| SP7.3 | Identity is workspace, company, provider person id, address or profile, or a stable manual key, never a name | CODE — `personIdentity` over `identityKey`; test "does not merge two different people who share a name" | PASS |
+| SP7.4 | Provider success and storage failure are separate in the response and on screen: "Address found. Not saved yet." plus the real save error | CODE — `EnrichResult { person, pending, persisted }`; the provider sentence is shown as `pendingNote`, never as the failure | PASS |
+| SP7.5 | "Verified" comes only from the server-trusted provider answer; "not found" only from a genuine provider no-result | CODE — `storedEmailFacts` on the server; the browser sends no address or status | PASS |
+| SP7.6 | Retrying the save stores the exact trusted answer with zero Apollo or Clay calls | CODE — server-held receipt (`src/lib/scout-enrichment-receipts.server.ts`) and the `save-email` action, which calls no provider; receipt tests, 4 | PASS |
+| SP7.7 | The held answer expires honestly: 30 minutes, in memory, lost on a server restart, and the button is replaced by an explanation when no receipt is available | CODE — `RECEIPT_TTL_MINUTES`, `receiptUsable`, 410 `receiptExpired` from the route, and the card copy | PASS |
+| SP7.8 | The address stays visible after a failed save, and a result already obtained does not offer a paid lookup again | CODE — the overlay survives the failure; the row's next action becomes outreach once an address is present | PASS |
+| SP7.9 | No claim of "nothing was lost" while the result is volatile; session-only is stated plainly | CODE — the card now says the result lives on this page only and a reload loses it | PASS |
+| SP7.10 | `public.scout_people` is still absent, so saving fails explicitly rather than looping | CODE + CODEX — confirmed absent at fd0b7f9; storage-unavailable state hides the save button and explains why | PASS |
+| SP7.11 | Signed-in browser proof of the corrected card | BLOCKED — no authenticated session available in this runtime | BLOCKED |
+
+Files changed: `src/domain/scout-people-overlay.ts` (new),
+`src/domain/scout-people.ts`, `src/lib/scout-enrichment-receipts.server.ts`
+(new), `src/routes/api/public/scout.people.ts`,
+`src/data/scout/people-research.ts`,
+`src/routes/modules.scout.prospects.$prospectId.tsx`,
+`src/components/tt/scout/detail/people-section.tsx`, plus
+`src/domain/scout-people-overlay.test.ts` and
+`src/lib/scout-enrichment-receipts.server.test.ts`.
+
+Proof this round: 11 new tests; full suite 306 files, 3,409 tests passed; types
+clean; preview build OK. No Apollo or Clay call was made, no credit was spent,
+no message was sent, and no schema was applied. The remaining database
+dependency is unchanged: Codex must apply the revised
+`docs/migrations/proposed/20260916180000_scout_people.sql` before reload
+persistence, cross-organization refusal and durable save can be demonstrated.
