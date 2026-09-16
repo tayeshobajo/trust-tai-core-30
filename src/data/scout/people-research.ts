@@ -211,6 +211,11 @@ export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
     typeof payload["providerNote"] === "string" ? payload["providerNote"] : undefined;
   const saveError = typeof payload["saveError"] === "string" ? payload["saveError"] : undefined;
   const persisted = payload["persisted"] === true;
+  /* The provider's match often knows a title the masked search hid, so it is
+     carried through the lookup instead of being dropped. */
+  const title = typeof payload["title"] === "string" ? payload["title"] : undefined;
+  const providerPersonId =
+    typeof payload["providerPersonId"] === "string" ? payload["providerPersonId"] : undefined;
 
   const pending: PendingEnrichment = {
     identity,
@@ -220,11 +225,15 @@ export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
     emailFetchedAt: at,
     ...(email && verified ? { emailVerifiedAt: at } : {}),
     ...(providerNote ? { providerNote } : {}),
+    ...(title ? { title } : {}),
+    ...(providerPersonId ? { providerPersonId } : {}),
     ...(typeof payload["receiptId"] === "string" ? { receiptId: payload["receiptId"] } : {}),
     ...(typeof payload["receiptExpiresAt"] === "string"
       ? { receiptExpiresAt: payload["receiptExpiresAt"] }
       : {}),
-    ...(persisted ? {} : { saveError: saveError ?? "That address is not saved yet." }),
+    ...(persisted
+      ? {}
+      : { saveError: saveError ?? "Email found, but Scout could not save it yet." }),
   };
 
   const stored = payload["person"];
@@ -236,16 +245,24 @@ export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
     };
   }
 
+  const identified: ScoutPerson = {
+    ...input.person,
+    ...(input.person.title ?? title ? { title: input.person.title ?? title } : {}),
+    ...(input.person.providerPersonId ?? providerPersonId
+      ? { providerPersonId: input.person.providerPersonId ?? providerPersonId }
+      : {}),
+  };
+
   const person: ScoutPerson = email
     ? {
-        ...input.person,
+        ...identified,
         workEmail: email,
         emailStatus: verified ? "verified" : "found_unverified",
         provider,
         emailFetchedAt: at,
         ...(verified ? { emailVerifiedAt: at } : {}),
       }
-    : { ...input.person, emailStatus: "not_found", provider, emailFetchedAt: at };
+    : { ...identified, emailStatus: "not_found", provider, emailFetchedAt: at };
 
   return { person, pending, persisted: false };
 }
