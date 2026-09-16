@@ -182,6 +182,28 @@ describe("Apollo enrichment", () => {
     expect(unverified.because).toContain("without a verification state");
   });
 
+  it("keeps the title and person id the match states", async () => {
+    const found = await enrichWorkEmail(
+      { fullName: "Robin Shah", companyName: "Thyme Care" },
+      CONFIGURED,
+      (async () =>
+        jsonResponse({
+          matches: [
+            {
+              id: "p-1",
+              name: "Robin Shah",
+              title: "Head of Partnerships",
+              email: "robin@thymecare.com",
+              email_status: "verified",
+            },
+          ],
+        })) as unknown as typeof fetch,
+    );
+    expect(found.title).toBe("Head of Partnerships");
+    expect(found.providerPersonId).toBe("p-1");
+    expect(found.fullName).toBe("Robin Shah");
+  });
+
   it("never asks for a phone number", async () => {
     const impl = vi.fn(async () => jsonResponse({ matches: [] }));
     await enrichWorkEmail(

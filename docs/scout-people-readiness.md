@@ -130,3 +130,26 @@ no message was sent, and no schema was applied. The remaining database
 dependency is unchanged: Codex must apply the revised
 `docs/migrations/proposed/20260916180000_scout_people.sql` before reload
 persistence, cross-organization refusal and durable save can be demonstrated.
+
+## SP8 Automatic save after a lookup (Robin Shah / Thyme Care report)
+
+Root cause of the reported state: the enrichment route only wrote the answer to
+a person who already had a durable row. A person found in this visit fell to a
+held-result path, so a successful Apollo lookup rendered as an unsaved result
+with a second Save button and implementation language (TTL, server restart).
+The missing title was a second, separate defect: Apollo's `bulk_match` response
+carries `title`/`id`, and the adapter discarded both.
+
+| # | Evidence | Result |
+|---|---|---|
+| SP8.1 | `enrichWorkEmail` returns `title`, `fullName`, `providerPersonId` from the match | PASS-CODE (`src/lib/contact-enrichment.server.ts`, test "keeps the title and person id the match states") |
+| SP8.2 | Enrich route records the person then the answer when only `prospectId` is known, so the normal path needs no second click | PASS-CODE (`src/routes/api/public/scout.people.ts`) |
+| SP8.3 | Save failure states "Email found, but Scout could not save it yet." with a free retry; no TTL or restart wording anywhere in the UI | PASS-CODE (`src/components/tt/scout/detail/people-section.tsx`) |
+| SP8.4 | Retry still spends nothing: it posts `save-email` with the server-held receipt, never the provider | PASS-CODE (unchanged receipt path) |
+| SP8.5 | Overlay fills a missing title/provider id from the match and never overwrites a known one | PASS-CODE (`src/domain/scout-people-overlay.test.ts`) |
+| SP8.6 | Missing title reads "Title unavailable" | PASS-CODE |
+| SP8.7 | Full suite 3,411 passed, types clean, build OK | PASS-CODE |
+| SP8.8 | Automatic save proven against a real row | BLOCKED - `public.scout_people` still absent; Codex must apply `docs/migrations/proposed/20260916180000_scout_people.sql` |
+| SP8.9 | Signed-in Thyme Care / Robin Shah screen acceptance | PENDING - user |
+
+No Apollo call, no credit, no send, no schema application in this round.

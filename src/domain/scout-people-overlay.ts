@@ -29,6 +29,9 @@ export interface PendingEnrichment {
   emailVerifiedAt?: string | undefined;
   /** The provider's own words about the answer. Never a failure message. */
   providerNote?: string | undefined;
+  /** Details the match knew and the search had withheld. */
+  title?: string | undefined;
+  providerPersonId?: string | undefined;
   /** The server receipt that lets this exact answer be stored again for free. */
   receiptId?: string | undefined;
   receiptExpiresAt?: string | undefined;
@@ -69,8 +72,13 @@ function apply(person: ScoutPerson, pending: PendingEnrichment): ScoutPerson {
   // An older saved answer never hides a newer lookup.
   if (pendingTime(pending) < checkedAt(person)) return person;
   const { workEmail: _old, emailVerifiedAt: _oldVerified, ...rest } = person;
+  // Only fills a gap: what the person already has is never overwritten.
+  const title = person.title ?? pending.title;
+  const providerPersonId = person.providerPersonId ?? pending.providerPersonId;
   return {
     ...rest,
+    ...(title ? { title } : {}),
+    ...(providerPersonId ? { providerPersonId } : {}),
     ...(pending.workEmail ? { workEmail: pending.workEmail } : {}),
     emailStatus: pending.emailStatus,
     provider: pending.provider,

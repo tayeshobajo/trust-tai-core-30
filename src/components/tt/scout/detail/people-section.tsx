@@ -151,7 +151,7 @@ export function PeopleSection({
                   <div className="min-w-0">
                     <p className="text-[14px] font-medium text-foreground">{person.fullName}</p>
                     <p className="text-[13px] text-muted-foreground">
-                      {person.title ?? "Title not recorded"}
+                      {person.title ?? "Title unavailable"}
                     </p>
                   </div>
                   <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -212,14 +212,11 @@ export function PeopleSection({
                   <div className="mt-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
                     <p className="text-[13px] text-foreground">
                       {person.workEmail
-                        ? "Address found. Not saved yet."
-                        : "Checked. No professional address was returned. Not saved yet."}
+                        ? "Email found, but Scout could not save it yet."
+                        : "Checked, no professional address was returned. Scout could not save that yet."}
                     </p>
                     {person.pendingNote ? (
                       <p className="mt-1 text-[13px] text-muted-foreground">{person.pendingNote}</p>
-                    ) : null}
-                    {person.saveError ? (
-                      <p className="mt-1 text-[13px] text-muted-foreground">{person.saveError}</p>
                     ) : null}
                     {person.receiptId && storable && onSaveEmail ? (
                       <>
@@ -230,18 +227,16 @@ export function PeopleSection({
                           disabled={savingEmailKey === person.key}
                           onClick={() => onSaveEmail(person)}
                         >
-                          {savingEmailKey === person.key ? "Saving…" : "Save this result"}
+                          {savingEmailKey === person.key ? "Saving…" : "Try saving again"}
                         </TTButton>
                         <p className="mt-1 text-[12px] text-muted-foreground">
-                          Saving stores what the provider already told us. It looks nobody up and
-                          costs nothing. The held result expires after 30 minutes and does not
-                          survive a server restart.
+                          Saving keeps what has already been found. It looks nobody up and costs
+                          nothing.
                         </p>
                       </>
                     ) : (
                       <p className="mt-1 text-[12px] text-muted-foreground">
-                        There is nowhere to store this yet, so it cannot be kept. It stays on this
-                        page until you leave.
+                        This stays on the page while you are here, and is not kept afterwards.
                       </p>
                     )}
                   </div>

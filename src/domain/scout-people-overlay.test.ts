@@ -123,3 +123,35 @@ describe("receiptUsable", () => {
     expect(receiptUsable(answer, "2026-09-16T10:10:00Z")).toBe(false);
   });
 });
+
+describe("details recovered by a lookup", () => {
+  it("fills a missing title from the match without overwriting a known one", () => {
+    const withoutTitle = person({ key: "row-1", fullName: "Robin Shah", providerPersonId: "abc" });
+    const [filled] = mergePeople({
+      saved: [withoutTitle],
+      session: [],
+      pending: {
+        [personIdentity(withoutTitle)]: {
+          ...answer,
+          identity: personIdentity(withoutTitle),
+          title: "Head of Partnerships",
+        },
+      },
+    });
+    expect(filled?.title).toBe("Head of Partnerships");
+
+    const known = person({ key: "row-2", fullName: "Robin Shah", title: "COO", providerPersonId: "xyz" });
+    const [kept] = mergePeople({
+      saved: [known],
+      session: [],
+      pending: {
+        [personIdentity(known)]: {
+          ...answer,
+          identity: personIdentity(known),
+          title: "Head of Partnerships",
+        },
+      },
+    });
+    expect(kept?.title).toBe("COO");
+  });
+});

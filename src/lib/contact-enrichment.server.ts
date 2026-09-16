@@ -66,6 +66,11 @@ export interface EmailEnrichment {
   /** When the provider answered. Stored as fetched/verified time. */
   at: string;
   because?: string;
+  /** The matched person's own details, when the provider states them. A match
+      often knows the title a masked search result withheld. */
+  title?: string;
+  fullName?: string;
+  providerPersonId?: string;
 }
 
 export interface ContactEnrichmentProvider {
@@ -298,6 +303,10 @@ export function apolloProvider(env: Env, fetchImpl: FetchLike): ContactEnrichmen
         verified: status === "verified",
         provider: "apollo",
         at,
+        // A match names the person, so a title the search hid is recovered here.
+        ...(text(match["title"]) ? { title: text(match["title"])! } : {}),
+        ...(text(match["name"]) ? { fullName: text(match["name"])! } : {}),
+        ...(text(match["id"]) ? { providerPersonId: text(match["id"])! } : {}),
         ...(email
           ? status
             ? { because: `Apollo reported this address as ${status}.` }
