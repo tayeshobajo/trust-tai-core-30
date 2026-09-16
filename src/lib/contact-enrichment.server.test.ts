@@ -89,10 +89,35 @@ describe("Apollo search", () => {
     expect(result.provider).toBe("apollo");
     expect(result.people[0]?.fullName).toBe("Dana Reid");
     expect(result.people[0]?.email).toBeUndefined();
-    const [url] = impl.mock.calls[0] as unknown as [URL, RequestInit];
-    expect(String(url)).toContain("mixed_people/api_search");
+    const [url, init] = impl.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(String(url)).toContain("https://api.apollo.io/api/v1/mixed_people/api_search");
     expect(String(url)).toContain("person_titles");
+    const sent = init.headers as Record<string, string>;
+    // Apollo's own scheme, and the key is never a query parameter.
+    expect(sent["X-Api-Key"]).toBe("apo");
+    expect(String(url)).not.toContain("apo");
   });
+
+  it("passes seniority bands when the opportunity implies them", async () => {
+    const impl = vi.fn(async () => jsonResponse({ people: [] }));
+    await searchPeople(
+      { companyName: "Northwind", roleFamilies: ["Operations"], seniorities: ["owner"], limit: 4 },
+      { APOLLO_API_KEY: "apo" },
+      impl as unknown as typeof fetch,
+    );
+    expect(String(impl.mock.calls[0]?.[0])).toContain("person_seniorities");
+  });
+
+  it("routes through the gateway only when the workspace says so", async () => {
+    const impl = vi.fn(async () => jsonResponse({ people: [] }));
+    await searchPeople(
+      { companyName: "Northwind", roleFamilies: [], limit: 4 },
+      { ...CONFIGURED, APOLLO_VIA_CONNECTOR_GATEWAY: "true" },
+      impl as unknown as typeof fetch,
+    );
+    expect(String(impl.mock.calls[0]?.[0])).toContain("connector-gateway.lovable.dev/apollo");
+  });
+
 });
 
 describe("Apollo enrichment", () => {
@@ -136,7 +161,7 @@ describe("failure policy", () => {
     const impl = vi.fn(async (input: unknown) => {
       const url = String(input);
       calls.push(url);
-      if (url.includes("/apollo/")) return jsonResponse({ error: "upstream" }, 503);
+      if (url.includes("apollo.io")) return jsonResponse({ error: "upstream" }, 503);
       return jsonResponse({ results: [{ outputs: { email: "dana@northwind.com" } }] });
     });
     const result = await enrichWorkEmail(
