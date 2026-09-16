@@ -128,7 +128,7 @@ function headers(env: Env, keyName: string): Record<string, string> {
 const APOLLO_DIRECT = "https://api.apollo.io";
 
 function apolloViaGateway(env: Env): boolean {
-  return env["APOLLO_VIA_CONNECTOR_GATEWAY"] === "true" && Boolean(env["LOVABLE_API_KEY"]?.trim());
+  return env["APOLLO_VIA_CONNECTOR_GATEWAY"] === "true";
 }
 
 function apolloUrl(env: Env, path: string): string {

@@ -9,7 +9,7 @@ import {
   searchPeople,
 } from "./contact-enrichment.server";
 
-const CONFIGURED = { LOVABLE_API_KEY: "lov", APOLLO_API_KEY: "apo", CLAY_API_KEY: "clay" };
+const CONFIGURED = { LOVABLE_API_KEY: "lov", APOLLO_API_KEY: "secret-apollo-value", CLAY_API_KEY: "clay" };
 
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -29,7 +29,7 @@ describe("configuration", () => {
   });
 
   it("counts Apollo as configured on its own key alone", () => {
-    const status = enrichmentStatus({ APOLLO_API_KEY: "apo" });
+    const status = enrichmentStatus({ APOLLO_API_KEY: "secret-apollo-value" });
     expect(status.apolloConfigured).toBe(true);
     expect(status.connected).toBe(true);
     expect(status.order).toEqual(["apollo"]);
@@ -37,7 +37,7 @@ describe("configuration", () => {
 
   it("still needs a Lovable key when Apollo is routed through the gateway", () => {
     const status = enrichmentStatus({
-      APOLLO_API_KEY: "apo",
+      APOLLO_API_KEY: "secret-apollo-value",
       APOLLO_VIA_CONNECTOR_GATEWAY: "true",
     });
     expect(status.apolloConfigured).toBe(false);
@@ -94,15 +94,15 @@ describe("Apollo search", () => {
     expect(String(url)).toContain("person_titles");
     const sent = init.headers as Record<string, string>;
     // Apollo's own scheme, and the key is never a query parameter.
-    expect(sent["X-Api-Key"]).toBe("apo");
-    expect(String(url)).not.toContain("apo");
+    expect(sent["X-Api-Key"]).toBe("secret-apollo-value");
+    expect(String(url)).not.toContain("secret-apollo-value");
   });
 
   it("passes seniority bands when the opportunity implies them", async () => {
     const impl = vi.fn(async () => jsonResponse({ people: [] }));
     await searchPeople(
       { companyName: "Northwind", roleFamilies: ["Operations"], seniorities: ["owner"], limit: 4 },
-      { APOLLO_API_KEY: "apo" },
+      { APOLLO_API_KEY: "secret-apollo-value" },
       impl as unknown as typeof fetch,
     );
     expect(String(impl.mock.calls[0]?.[0])).toContain("person_seniorities");
