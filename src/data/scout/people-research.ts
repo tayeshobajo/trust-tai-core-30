@@ -245,12 +245,12 @@ export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
     };
   }
 
+  const knownTitle = input.person.title ?? title;
+  const knownProviderId = input.person.providerPersonId ?? providerPersonId;
   const identified: ScoutPerson = {
     ...input.person,
-    ...(input.person.title ?? title ? { title: input.person.title ?? title } : {}),
-    ...(input.person.providerPersonId ?? providerPersonId
-      ? { providerPersonId: input.person.providerPersonId ?? providerPersonId }
-      : {}),
+    ...(knownTitle ? { title: knownTitle } : {}),
+    ...(knownProviderId ? { providerPersonId: knownProviderId } : {}),
   };
 
   const person: ScoutPerson = email

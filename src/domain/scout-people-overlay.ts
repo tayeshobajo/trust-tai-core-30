@@ -72,13 +72,13 @@ function apply(person: ScoutPerson, pending: PendingEnrichment): ScoutPerson {
   // An older saved answer never hides a newer lookup.
   if (pendingTime(pending) < checkedAt(person)) return person;
   const { workEmail: _old, emailVerifiedAt: _oldVerified, ...rest } = person;
+  // Only fills a gap: what the person already has is never overwritten.
+  const title = person.title ?? pending.title;
+  const providerPersonId = person.providerPersonId ?? pending.providerPersonId;
   return {
     ...rest,
-    // Only fills a gap: what the person already has is never overwritten.
-    ...(person.title ?? pending.title ? { title: person.title ?? pending.title } : {}),
-    ...(person.providerPersonId ?? pending.providerPersonId
-      ? { providerPersonId: person.providerPersonId ?? pending.providerPersonId }
-      : {}),
+    ...(title ? { title } : {}),
+    ...(providerPersonId ? { providerPersonId } : {}),
     ...(pending.workEmail ? { workEmail: pending.workEmail } : {}),
     emailStatus: pending.emailStatus,
     provider: pending.provider,
