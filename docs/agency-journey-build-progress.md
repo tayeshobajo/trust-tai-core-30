@@ -635,3 +635,90 @@ send. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
 - Live authenticated verification remains unavailable here. Owner: Codex.
 - Round 8 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged), touches no
   Comms code, and implies no completion. Queue progress is not a completion claim.
+
+---
+
+## Round 9 of 10 — Give the eight-person team a simple daily workspace
+
+**Exact submitted prompt**
+
+> TRUST TAI AI AGENCY JOURNEY BUILD. Tai authorizes this ordered queue. Goal: eight-person team can source, diagnose, propose, onboard, deliver, support and grow clients using AI for repeatable preparation. Read current architecture canon, app registry, prior round output and existing services before changing code. Preserve unfinished Comms acceptance work and security fixes; do not overwrite concurrent work. No new parallel CRM, approval queue or business-data store. Apps own state; core identity; event history; Steward interpretation; Pulse visibility; Conductor routes actions. Preserve white cards/pale-blue OS styling, plain words, existing routes and client links. Do not introduce a new top-level app without demonstrated need.
+>
+> Product interpretation of Hit Makers: familiar surprise and MAYA. Familiar inbox/list/client workspace, consistent verbs and repeatable layout; intelligence prepares useful next work with evidence. Progressive disclosure, primary next action, clear owner, undo/correction where feasible. No agent jargon or orchestration diagrams in daily user flows. This is an application of the book, not a guaranteed popularity formula.
+>
+> Autonomy: implement and verify useful low-risk internal preparation (summaries, research packets, draft plans, reminders/tasks) via scoped server-side workers using existing services. Human authority governs commitments, pricing, scope/date approval and external action. Nothing in this build queue authorizes actual outreach, publication, payment, production deployment, live mailbox scope expansion or production schedule activation. Configure new automation disabled or preview-only until its policy/configuration is explicitly enabled by an authorized user; synthetic sandbox execution allowed. No real team assignment guesses, credentials or customer data in fixtures. SQL proposals to Codex; do not apply or reapply migrations. Never bypass auth for live evidence.
+>
+> Each round must write exact submitted prompt and numbered acceptance rows to docs/agency-journey-build-progress.md, with dependencies, changes, evidence/build, pass/blocked, owner and next step. Preserve C01-C22/T01-T05/P1-P8. Code, synthetic model evaluation, real persisted execution, production deployment and team acceptance are distinct. Do independent useful work when dependencies blocked, but do not mark dependent checks passed. No 100% from queue completion.
+>
+> QUEUED ROUND 9/10: 9. Give the eight-person team a simple daily workspace
+> Use Home as personal work entry, client workspace as continuity, Conductor as optional command surface; no mandatory tour through every app.
+> A9.1 Home shows My next actions, AI-prepared work and Decisions needed, each with reason/owner/one clear next action. Roles configured from real existing access, no invented staff.
+> A9.2 Familiar consistent verbs Open/Review/Edit/Approve/Assign/Done; AI details collapsed; white cards and legible density. Empty states help start task.
+> A9.3 Steward links recommendations to evidence and current owner; Pulse shows pipeline/cycle time/delivery/collections/margin only where measured, freshness and denominators explicit.
+> A9.4 Conductor answers with source links and prepares bounded actions through owning services; no direct cross-domain writes or prompt-granted authority.
+> A9.5 Approvals route only within existing verified policy. Team leads may handle already-authorized routine decisions; no automatic expansion of permissions or Comms owner/admin rule. Prepare any delegation policy for later explicit admin enablement.
+> A9.6 On1440/768/375 and keyboard, user can find next task and act without knowing architecture. Progressive disclosure and same layout repeated across work types.
+> A9.7 Prepare 5-minute guided scenario and usability scorecard. Target >=4/5 representative teammates identify next task within30seconds and complete core handoff without coaching; real team evidence required, AI cannot self-award this.
+
+**Dependencies**
+
+- Existing rooms and routes (`PRIMARY_NAVIGATION`, `src/routes/modules.*`), existing
+  `organization_memberships` role model, Rounds 1–8 preparation output. No new top-level app,
+  CRM, approval queue or business-data store was introduced, and no existing route, styling
+  token or Comms code was changed.
+
+**Changes**
+
+- `src/domain/daily-workspace.ts` (new): `peopleFromMemberships` (colleagues come only from
+  active memberships in this organization, so no staff can be invented and a lapsed member is
+  not a person); `WORKSPACE_VERBS` fixed to Open, Review, Edit, Approve, Assign, Done;
+  `WORK_GROUP_ORDER` / `WORK_GROUP_LABEL` / `WORK_GROUP_EMPTY_STATE` (the same three lists in
+  the same order every day, each empty state naming a way to start); `admitWorkItem` and
+  `buildWorkspace` (a row is refused unless it carries a reason, an active named owner whose
+  name matches the membership, a known verb and a route into the owning room; dated work sorts
+  ahead of undated, then newest movement first; a colleague's action is not shown as mine,
+  while prepared work is visible with its owner named); `preparedDetail` carried separately so
+  preparation stays collapsed; `stewardDisplay` (a recommendation without evidence, or without
+  a current owner, is not shown); `MeasureReading` / `measureDisplay` (an unmeasured figure is
+  never rendered as nought, a share with no base is withheld, and every shown figure carries
+  its base and when it was measured, marked out of date past the freshness window);
+  `conductorReply` (no sources means no answer; a prepared action outside the asking person's
+  existing rooms is dropped; every prepared action is handed to its owning room and marked
+  `needsPersonToCarryOut`); `routeApproval` (routes only to roles an existing recorded policy
+  already permits, and nowhere at all without one); `prepareDelegationPolicy` (always
+  `enabled: false` for an admin to consider later, and refuses outright to prepare any
+  delegation of a Comms approval).
+- `docs/agency-journey-daily-workspace.md` (new): the five minute guided scenario script and
+  the U1–U10 usability scorecard, with the explicit rule that only the person running the
+  session may record a result.
+- Tests: `src/domain/daily-workspace.test.ts` (22).
+
+**Evidence and build**
+
+- `bunx vitest run` — full suite pass, 3,236 tests across 290 files (22 new this round).
+- `bunx tsgo --noEmit` — clean. Preview build — clean.
+- Evidence kind: **code**. No UI was changed this round, no real model call, no persisted
+  record, no deployment, no team acceptance, no external action.
+
+**Acceptance rows**
+
+| Row | Criterion | Dependencies | Evidence | Result | Owner | Next step |
+| --- | --- | --- | --- | --- | --- | --- |
+| A9.1 | Home shows My next actions, prepared work and Decisions needed, each with reason, owner and one next action; roles from real access, no invented staff | Existing memberships | `peopleFromMemberships`, `admitWorkItem`, `buildWorkspace`; tests "comes only from active memberships in this workspace", "refuses an item with no reason", "refuses an owner who is not an active member", "refuses an item that opens nowhere", "shows another person's actions to them, not to me", "shows prepared work even when somebody else owns it" | PASS-CODE | Agent | Render the three lists on Home in a later round; rules are code-only today |
+| A9.2 | Familiar verbs, collapsed preparation detail, white cards and legible density, helpful empty states | Existing styling tokens | `WORKSPACE_VERBS`, `WORK_GROUP_EMPTY_STATE`, separate `preparedDetail`; tests "uses only the familiar verbs", "keeps the same three lists in the same order" | PARTIAL-BLOCKED | Agent | Vocabulary, ordering and empty-state copy are fixed in code; **the card rendering itself is not built this round**, so the visual half is not claimed |
+| A9.3 | Steward ties recommendations to evidence and current owner; measures shown only where measured, with freshness and denominators | Rounds 5–8 measures | `stewardDisplay`, `measureDisplay`; tests "does not show a recommendation with no evidence", "does not show a recommendation with no current owner", "shows evidence and the current owner together", "does not show a figure that was never measured", "does not show a share with no base", "shows the base and the freshness" | PASS-CODE | Agent | Real pipeline, cycle time, delivery, collections and margin readings depend on persisted data; none are wired |
+| A9.4 | Conductor answers with sources and prepares bounded actions through owning services; no cross-domain writes, no prompt-granted authority | Existing rooms | `conductorReply`; tests "gives no answer without a source", "hands prepared work to the owning room and keeps people in charge" | PASS-CODE | Agent | Bind to the live Conductor surface in a later round |
+| A9.5 | Approvals route only within existing verified policy; leads handle already-authorized routine decisions; no permission expansion; delegation prepared for later admin enablement | Existing approval policy | `routeApproval`, `prepareDelegationPolicy`; tests "routes nowhere without a recorded policy", "routes only to roles already permitted", "recognises an existing routine allowance for leads", "prepares a delegation that stays switched off", "never prepares a delegation of a Comms approval" | PASS-CODE | Agent / Admin | Any delegation stays disabled until an authorised admin enables it explicitly; the Comms owner and admin rule is untouched |
+| A9.6 | At 1440, 768 and 375, and by keyboard, a person finds the next task and acts without knowing the architecture | A9.1, A9.2 | None — no screen was built or measured this round | BLOCKED | Agent | Depends on A9.2's rendering; must be verified on a real signed-in screen, not asserted in code |
+| A9.7 | Five minute guided scenario and usability scorecard; at least 4 of 5 teammates find the next task within 30 seconds and complete the core handoff unaided | A9.6 | `docs/agency-journey-daily-workspace.md` — script and U1–U10 scorecard prepared | AWAITING-TEAM | Tai / the team | **Preparation only.** The result requires real teammates in front of a real screen; it cannot be self-awarded and is not claimed here |
+
+**Open and blocked**
+
+- The Home rendering itself is **not built**: A9.2 is partial and A9.6 is blocked on it.
+- Persisted work items, measures and approval policy rows remain **blocked** on the unapplied
+  `20260916130000_preparation_outputs.sql`. Owner: Codex. No migration was applied or
+  reapplied this round; no new SQL was proposed.
+- Live authenticated verification remains unavailable here. Owner: Codex.
+- A9.7 is **awaiting real team evidence** and is not a pass.
+- Round 9 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged), touches no
+  Comms code, and implies no completion. Queue progress is not a completion claim.
