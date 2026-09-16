@@ -35,6 +35,11 @@ function IntegrationSettings() {
     queryKey: ["settings", "integrations", identity.organizationId],
     queryFn: () => readIntegrations(identity.organizationId),
   });
+  const enrichment = useQuery({
+    queryKey: ["settings", "contact-enrichment"],
+    queryFn: readEnrichmentStatus,
+  });
+
 
   return (
     <div className="tt-surface p-6">
