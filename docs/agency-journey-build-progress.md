@@ -722,3 +722,73 @@ send. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
 - A9.7 is **awaiting real team evidence** and is not a pass.
 - Round 9 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged), touches no
   Comms code, and implies no completion. Queue progress is not a completion claim.
+
+---
+
+## Round 10/10: Prove the complete agency journey and release readiness
+
+### Exact submitted prompt
+
+> TRUST TAI AI AGENCY JOURNEY BUILD. Tai authorizes this ordered queue. Goal: eight-person team can source, diagnose, propose, onboard, deliver, support and grow clients using AI for repeatable preparation. Read current architecture canon, app registry, prior round output and existing services before changing code. Preserve unfinished Comms acceptance work and security fixes; do not overwrite concurrent work. No new parallel CRM, approval queue or business-data store. Apps own state; core identity; event history; Steward interpretation; Pulse visibility; Conductor routes actions. Preserve white cards/pale-blue OS styling, plain words, existing routes and client links. Do not introduce a new top-level app without demonstrated need.
+>
+> Product interpretation of Hit Makers: familiar surprise and MAYA. Familiar inbox/list/client workspace, consistent verbs and repeatable layout; intelligence prepares useful next work with evidence. Progressive disclosure, primary next action, clear owner, undo/correction where feasible. No agent jargon or orchestration diagrams in daily user flows. This is an application of the book, not a guaranteed popularity formula.
+>
+> Autonomy: implement and verify useful low-risk internal preparation (summaries, research packets, draft plans, reminders/tasks) via scoped server-side workers using existing services. Human authority governs commitments, pricing, scope/date approval and external action. Nothing in this build queue authorizes actual outreach, publication, payment, production deployment, live mailbox scope expansion or production schedule activation. Configure new automation disabled or preview-only until its policy/configuration is explicitly enabled by an authorized user; synthetic sandbox execution allowed. No real team assignment guesses, credentials or customer data in fixtures. SQL proposals to Codex; do not apply or reapply migrations. Never bypass auth for live evidence.
+>
+> Each round must write exact submitted prompt and numbered acceptance rows to docs/agency-journey-build-progress.md, with dependencies, changes, evidence/build, pass/blocked, owner and next step. Preserve C01-C22/T01-T05/P1-P8. Code, synthetic model evaluation, real persisted execution, production deployment and team acceptance are distinct. Do independent useful work when dependencies blocked, but do not mark dependent checks passed. No 100% from queue completion.
+>
+> QUEUED ROUND 10/10: 10. Prove the complete agency journey and release readiness
+> Independent reconciliation, not more cosmetic building.
+> A10.1 Fresh synthetic company completes source→qualification→discovery→approved roadmap→reviewed proposal→simulated agreement/payment evidence→onboarding→accepted milestone→care→outcome review with IDs/context intact.
+> A10.2 Repeat key events, fail one provider/save, revoke access and change scope; no duplicate records/lost writing/unauthorized transitions, recovery proven.
+> A10.3 At least3 repeatable preparation jobs execute from test triggers, outputs persist and reach owner. Measure manual effort baseline and assisted flow, edits/errors, cost and latency; no invented savings.
+> A10.4 Reconcile every A criterion and original open Comms criteria with exact evidence/build and owner; persisted/live/model/simulation/team acceptance separate. Required SQL still proposed means blocked.
+> A10.5 Complete required automated gates and real-screen UX checks on pinned candidate; list dependency/config gaps and unrelated suite deployment scope.
+> A10.6 Prepare actual operating guide, rollout by role, disabled/enabled automation inventory, monitoring/stop/recovery/rollback preserving data and safeguards.
+> A10.7 Tai accepts voice/judgment, representative team accepts usability. Missing human feedback stays Awaiting acceptance.
+> A10.8 No production deploy/outreach/publication/payments in queue. Prepare concrete separately reviewable rollout; no '100%' unless all applicable criteria at required evidence level pass. Record final blockers clearly.
+
+### Dependencies
+
+- `20260916130000_preparation_outputs.sql` proposed, **not applied** (Codex). Blocks every persisted row.
+- Lessons SQL proposal **not applied** (Codex).
+- No authenticated session in this environment (`LOVABLE_BROWSER_AUTH_STATUS=no_supabase`). Blocks every live row.
+- Round 9 Home rendering not built. Blocks the real-screen UX checks.
+
+### Changes
+
+- `src/domain/agency-journey-e2e.test.ts` (new, 9 tests): one synthetic company, `fixture-client-e2e-01` in `org-fixture-0000-0000-0000-000000000001`, walks discovery, approved and frozen roadmap, derived proposal, simulated agreement and payment evidence, onboarding, project opening, milestone decomposition/acceptance, Ops handoff, care plan and outcome review, asserting version ids, stamps and source refs survive each step. Repeat, refusal, scope-change and unauthorised-transition cases in the same file.
+- `docs/agency-journey-release-readiness.md` (new): evidence-level table, per-round reconciliation, Comms audit restated unchanged, preparation-job inventory, dependency and configuration gaps, final blockers.
+- `docs/agency-journey-operating-guide.md` (new): journey in plain words, rollout by role, automation inventory (all three jobs disabled), monitoring, stop, recovery and rollback that removes no decision and no safeguard.
+- No production code changed this round. No Comms code touched.
+
+### Evidence and build
+
+- `bunx vitest run`: 3,245 tests / 291 files pass (was 3,236 / 290).
+- `bunx tsgo --noEmit`: clean.
+- Preview build: OK.
+- No schema applied. No send, publication, payment or deployment. No mailbox scope change. No schedule change.
+
+### Acceptance rows
+
+| Row | Criterion | Evidence | Result | Owner | Next step |
+| --- | --- | --- | --- | --- | --- |
+| A10.1 | Whole journey on one fresh synthetic company, ids and context intact | CODE + SYNTHETIC — `agency-journey-e2e.test.ts`, 3,245-test run | **PASS-SYNTHETIC** (not persisted, not live) | Agent | Re-run against real records once the SQL is applied |
+| A10.2 | Repeats, failed read, unauthorised transition, scope change, recovery | CODE + SYNTHETIC — duplicate handoff/project/Ops/care cases, `paymentView` failed read, preparation refused on agreement and money, `rederiveAgainst` withdraws readiness while frozen version stays frozen | **PASS-SYNTHETIC** | Agent | Same |
+| A10.3 | Three preparation jobs run from triggers, outputs persist and reach owner; effort, edits, errors, cost and latency measured | Jobs exist and run in the synthetic sandbox only; **no persistence, no real model run, no baseline, no cost or latency measurement** | **BLOCKED** | Codex (SQL), then Tai (baseline) | Apply the proposal, then run a measured baseline and assisted pass. No saving may be claimed until then |
+| A10.4 | Every A criterion and open Comms criteria reconciled, evidence levels separated | Doc — `docs/agency-journey-release-readiness.md`; Comms audit restated exactly: 90 rows, PASS-LIVE 13, PASS-CODE 43, BLOCKED 27, PARTIAL-BLOCKED 2, AWAITING-TAI 3, NOT-PERFORMED 1, N/A-SCOPE 1, none advanced or waived | **PASS-DOC** | Agent | Codex reconciles the persisted and live columns |
+| A10.5 | Automated gates and real-screen UX checks on a pinned candidate | Gates: tests, typecheck and build all pass. Real-screen UX checks **not run** — Home rendering not built and no signed-in session here. Suite scope is this project only; nothing deployed | **PARTIAL-BLOCKED** | Codex (screens) | Build Home, then run the screen checks signed in |
+| A10.6 | Operating guide, rollout by role, automation inventory, monitoring, stop, recovery, rollback | Doc — `docs/agency-journey-operating-guide.md`; all three jobs listed disabled; rollback removes no decision, no frozen version and no safeguard | **PASS-DOC** | Agent | Tai reviews before anything is enabled |
+| A10.7 | Tai accepts voice and judgement; representative team accepts usability | No human feedback recorded. Agent cannot self-award | **AWAITING ACCEPTANCE** | Tai and team | Run the scenario in `docs/agency-journey-daily-workspace.md` |
+| A10.8 | No production deploy, outreach, publication or payment; rollout prepared separately; no unqualified 100% | Nothing deployed, sent, published or paid. Rollout prepared as two review documents. Final blockers recorded below | **PASS** | Agent | — |
+
+### Final blockers
+
+1. Two SQL proposals unapplied — everything persisted is blocked (Codex).
+2. No authenticated session here — everything live is blocked (Codex).
+3. No real model run — wording quality unproven, cost and latency unmeasured.
+4. No manual baseline — no efficiency saving may be claimed.
+5. Home rendering not built — Round 9 UX and responsive checks cannot run.
+6. Tai acceptance and team usability acceptance outstanding.
+
+**Queue complete does not mean done. This is not 100%.**
