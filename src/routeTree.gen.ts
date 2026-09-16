@@ -97,6 +97,7 @@ import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/
 import { Route as ApiPublicRoutingNotifyRouteImport } from './routes/api/public/routing.notify'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
 import { Route as ApiPublicScoutImportRouteImport } from './routes/api/public/scout.import'
+import { Route as ApiPublicScoutPeopleRouteImport } from './routes/api/public/scout.people'
 import { Route as ApiPublicScoutSweepRouteImport } from './routes/api/public/scout.sweep'
 import { Route as ApiPublicSettingsAdminPasswordRouteImport } from './routes/api/public/settings.admin-password'
 import { Route as ApiPublicSettingsInviteAcceptRouteImport } from './routes/api/public/settings.invite-accept'
@@ -574,6 +575,11 @@ const ApiPublicScoutImportRoute = ApiPublicScoutImportRouteImport.update({
   path: '/api/public/scout/import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicScoutPeopleRoute = ApiPublicScoutPeopleRouteImport.update({
+  id: '/api/public/scout/people',
+  path: '/api/public/scout/people',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicScoutSweepRoute = ApiPublicScoutSweepRouteImport.update({
   id: '/api/public/scout/sweep',
   path: '/api/public/scout/sweep',
@@ -812,6 +818,7 @@ export interface FileRoutesByFullPath {
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/scout/import': typeof ApiPublicScoutImportRoute
+  '/api/public/scout/people': typeof ApiPublicScoutPeopleRoute
   '/api/public/scout/sweep': typeof ApiPublicScoutSweepRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
   '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
@@ -919,6 +926,7 @@ export interface FileRoutesByTo {
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/scout/import': typeof ApiPublicScoutImportRoute
+  '/api/public/scout/people': typeof ApiPublicScoutPeopleRoute
   '/api/public/scout/sweep': typeof ApiPublicScoutSweepRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
   '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
@@ -1036,6 +1044,7 @@ export interface FileRoutesById {
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/scout/import': typeof ApiPublicScoutImportRoute
+  '/api/public/scout/people': typeof ApiPublicScoutPeopleRoute
   '/api/public/scout/sweep': typeof ApiPublicScoutSweepRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
   '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
@@ -1154,6 +1163,7 @@ export interface FileRouteTypes {
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
     | '/api/public/scout/import'
+    | '/api/public/scout/people'
     | '/api/public/scout/sweep'
     | '/api/public/settings/admin-password'
     | '/api/public/settings/invite-accept'
@@ -1261,6 +1271,7 @@ export interface FileRouteTypes {
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
     | '/api/public/scout/import'
+    | '/api/public/scout/people'
     | '/api/public/scout/sweep'
     | '/api/public/settings/admin-password'
     | '/api/public/settings/invite-accept'
@@ -1377,6 +1388,7 @@ export interface FileRouteTypes {
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
     | '/api/public/scout/import'
+    | '/api/public/scout/people'
     | '/api/public/scout/sweep'
     | '/api/public/settings/admin-password'
     | '/api/public/settings/invite-accept'
@@ -1453,6 +1465,7 @@ export interface RootRouteChildren {
   ApiPublicRoutingNotifyRoute: typeof ApiPublicRoutingNotifyRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
   ApiPublicScoutImportRoute: typeof ApiPublicScoutImportRoute
+  ApiPublicScoutPeopleRoute: typeof ApiPublicScoutPeopleRoute
   ApiPublicScoutSweepRoute: typeof ApiPublicScoutSweepRoute
   ApiPublicSettingsAdminPasswordRoute: typeof ApiPublicSettingsAdminPasswordRoute
   ApiPublicSettingsInviteAcceptRoute: typeof ApiPublicSettingsInviteAcceptRoute
@@ -2096,6 +2109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicScoutImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/scout/people': {
+      id: '/api/public/scout/people'
+      path: '/api/public/scout/people'
+      fullPath: '/api/public/scout/people'
+      preLoaderRoute: typeof ApiPublicScoutPeopleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/scout/sweep': {
       id: '/api/public/scout/sweep'
       path: '/api/public/scout/sweep'
@@ -2518,6 +2538,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoutingNotifyRoute: ApiPublicRoutingNotifyRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
   ApiPublicScoutImportRoute: ApiPublicScoutImportRoute,
+  ApiPublicScoutPeopleRoute: ApiPublicScoutPeopleRoute,
   ApiPublicScoutSweepRoute: ApiPublicScoutSweepRoute,
   ApiPublicSettingsAdminPasswordRoute: ApiPublicSettingsAdminPasswordRoute,
   ApiPublicSettingsInviteAcceptRoute: ApiPublicSettingsInviteAcceptRoute,
