@@ -127,11 +127,8 @@ describe("handoff validation", () => {
   });
 
   it("refuses a handoff with no evidence and no company", () => {
-    const read = validateHandoff({
-      ...ready(),
-      evidence: [],
-      subject: { ...ready().subject, prospectId: undefined, clientId: undefined },
-    });
+    const { prospectId: _p, clientId: _c, ...subject } = ready().subject;
+    const read = validateHandoff({ ...ready(), evidence: [], subject });
     expect(read.blocking).toContain("The handoff carries no company id.");
     expect(read.blocking).toContain("Nothing on record supports this handoff yet.");
   });
@@ -168,7 +165,8 @@ describe("active items", () => {
   });
 
   it("flags an item with neither next action nor blocking reason", () => {
-    const read = itemReadiness({ ...FIXTURE_ITEM, nextAction: undefined });
+    const { nextAction: _n, ...item } = FIXTURE_ITEM;
+    const read = itemReadiness(item);
     expect(read.contractBreaks).toContain("No next action and no blocking reason.");
     expect(read.nextAction).toBe("No next action recorded");
   });
@@ -188,9 +186,9 @@ describe("active items", () => {
   });
 
   it("keeps a blocked item honest", () => {
+    const { nextAction: _next, ...open } = FIXTURE_ITEM;
     const read = itemReadiness({
-      ...FIXTURE_ITEM,
-      nextAction: undefined,
+      ...open,
       blockedBecause: "Waiting on the synthetic contact to confirm scope.",
       evidence: [fixtureEvidence("Synthetic note")],
     });
