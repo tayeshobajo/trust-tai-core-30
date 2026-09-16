@@ -76,3 +76,12 @@ Two further distinctions are never collapsed:
    never rounded up to answered.
 4. A bounded read is stated as bounded.
 5. Simulated prototype behaviour is never described as working behaviour.
+
+## Extension: the strategic judgment gate (S01-S07)
+
+Added 16 September 2026. Nothing above is changed, renamed or retired. The
+reviewer gained two further capabilities, recorded as separate versioned
+criteria in `docs/comms-strategic-judgment.md`: relationship continuity
+(S01-S03) and commercial opportunity sensitivity (S04-S05), with their
+separation from private future opportunities (S06) and the unchanged approval
+gate (S07). C01-C22 keep their original meanings and their original statuses.
