@@ -37,7 +37,8 @@ export async function configuredKeys(input: {
 }): Promise<string[]> {
   const keys: string[] = [];
   const provider = runtimeProviderStatus();
-  if (provider.ready) keys.push("reasoning_provider");
+  if (provider.configured) keys.push("reasoning_provider");
+
 
   const icp = await callerClient(input.token)
     .from("icp_profiles")
