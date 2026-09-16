@@ -133,7 +133,9 @@ export const Route = createFileRoute("/api/public/scout/people")({
           if (!receipt) {
             return Response.json(
               {
-                error: `That lookup result is no longer held by the server. Receipts last ${RECEIPT_TTL_MINUTES} minutes and do not survive a restart, so it cannot be saved without looking the person up again.`,
+                // Deliberately plain: how long the answer is held is ours to
+                // know, not something to explain to the person who clicked.
+                error: "That result is no longer available to save. Look this person up again.",
                 receiptExpired: true,
               },
               { status: 410 },
