@@ -376,3 +376,89 @@ send. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
 - Live authenticated verification remains unavailable here. Owner: Codex.
 - Round 5 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged) and
   implies no completion. Queue progress is not a completion claim.
+
+---
+
+## Round 6 of 10 — Close work and onboard with commercial clarity
+
+**Exact submitted prompt**
+
+> TRUST TAI AI AGENCY JOURNEY BUILD. Tai authorizes this ordered queue. Goal: eight-person team can source, diagnose, propose, onboard, deliver, support and grow clients using AI for repeatable preparation. Read current architecture canon, app registry, prior round output and existing services before changing code. Preserve unfinished Comms acceptance work and security fixes; do not overwrite concurrent work. No new parallel CRM, approval queue or business-data store. Apps own state; core identity; event history; Steward interpretation; Pulse visibility; Conductor routes actions. Preserve white cards/pale-blue OS styling, plain words, existing routes and client links. Do not introduce a new top-level app without demonstrated need.
+>
+> Product interpretation of Hit Makers: familiar surprise and MAYA. Familiar inbox/list/client workspace, consistent verbs and repeatable layout; intelligence prepares useful next work with evidence. Progressive disclosure, primary next action, clear owner, undo/correction where feasible. No agent jargon or orchestration diagrams in daily user flows. This is an application of the book, not a guaranteed popularity formula.
+>
+> Autonomy: implement and verify useful low-risk internal preparation (summaries, research packets, draft plans, reminders/tasks) via scoped server-side workers using existing services. Human authority governs commitments, pricing, scope/date approval and external action. Nothing in this build queue authorizes actual outreach, publication, payment, production deployment, live mailbox scope expansion or production schedule activation. Configure new automation disabled or preview-only until its policy/configuration is explicitly enabled by an authorized user; synthetic sandbox execution allowed. No real team assignment guesses, credentials or customer data in fixtures. SQL proposals to Codex; do not apply or reapply migrations. Never bypass auth for live evidence.
+>
+> Each round must write exact submitted prompt and numbered acceptance rows to docs/agency-journey-build-progress.md, with dependencies, changes, evidence/build, pass/blocked, owner and next step. Preserve C01-C22/T01-T05/P1-P8. Code, synthetic model evaluation, real persisted execution, production deployment and team acceptance are distinct. Do independent useful work when dependencies blocked, but do not mark dependent checks passed. No 100% from queue completion.
+>
+> QUEUED ROUND 6/10: 6. Close work and onboard with commercial clarity
+> Clients is account-facing commercial view. Inspect existing finance/contract integrations and reuse authoritative systems, no new accounting platform.
+> A6.1 Separate proposed/approved/sent/client-accepted agreement and unpaid/invoiced/paid; AI never marks signed or paid.
+> A6.2 Evidence-backed agreement/payment reference or explicitly human-attested state with author/time; external status unavailable cannot look paid.
+> A6.3 Onboarding checklist includes confirmed scope, commercial prerequisites, access needs, responsible people, kickoff and first milestone; secure references not credentials in chat.
+> A6.4 Approved readiness creates linked Projects workspace exactly once; missing prerequisites visibly block or require authorized documented exception.
+> A6.5 Track estimate vs agreed value, cost basis and margin when data exists; unknown effort/cost not zero/profit.
+> A6.6 Synthetic accepted/declined/payment-missing/change-scope cases prove truthful handoffs. No financial transaction, contract submission or external invitations.
+
+**Inspection before coding**
+
+- Existing commercial state (`src/domain/commercial.ts`, `client-commercial-form.ts`,
+  `proposal-form.ts`) and the existing deterministic money helpers in
+  `comms-proposal.ts` were read and left unchanged. No accounting platform, finance
+  integration or invoicing client was added; this round records what an authoritative
+  system said, or what a named person attested, and nothing else.
+
+**Changes**
+
+- `src/domain/agreement-state.ts` (new): `AgreementStage` proposed / approved / sent /
+  client_accepted / declined kept separate from `PaymentStage` unpaid / invoiced / paid /
+  unknown; `setAgreementStage` and `setPaymentStage` refuse a non-person actor for every
+  stage past preparation, require a named author and a time, and require either a system
+  reference or a human attestation before sent, accepted, declined, invoiced or paid;
+  `paymentView` renders a failed external read as "Payment status unavailable" with the
+  reason, never as paid and never as quietly unpaid; `marginRead` reports variance and
+  margin only when the figures exist and names each missing figure instead of treating it
+  as nought or as profit.
+- `src/domain/onboarding-readiness.ts` (new): fixed checklist of confirmed scope,
+  commercial prerequisites, access needs, responsible people, kickoff and first milestone;
+  `recordAccessNeed` stores a pointer to where a credential is kept and refuses anything
+  shaped like a credential; `commercialPrerequisites` blocks on a client who has not
+  accepted, on an unreadable payment status and on nothing invoiced; `onboardingReadiness`
+  lists blocking items in plain words and only passes an unmet item on an owner or admin
+  exception with a written reason, which it names; `openProjectsWorkspace` opens exactly
+  one workspace per client (`clientRef::project`), returns the first one on a repeat, and
+  opens nothing while anything blocks.
+- Tests: `src/domain/agreement-state.test.ts` (9), `src/domain/onboarding-readiness.test.ts` (13).
+- No route, styling, navigation, Comms, auth, schema or send code touched. No new app,
+  store, approval queue or accounting platform. No financial transaction, contract
+  submission or external invitation exists in this code.
+
+**Evidence and build**
+
+- `bunx vitest run` — 3,165 tests across 285 files pass (22 new this round).
+- `bunx tsgo --noEmit` — clean.
+- Evidence kind: **code plus synthetic sandbox execution**. No real model call, no
+  persisted record, no finance or contract system contacted, no deployment, no team
+  acceptance.
+
+**Acceptance rows**
+
+| Row | Criterion | Dependencies | Evidence | Result | Owner | Next step |
+| --- | --- | --- | --- | --- | --- | --- |
+| A6.1 | Agreement and payment tracked separately; AI never marks signed or paid | Existing `commercial.ts` | `AgreementStage`/`PaymentStage`, `PERSON_ONLY`; tests "keeps the agreement and the money as separate readings", "refuses to let preparation mark an agreement accepted", "refuses to let preparation mark money paid" | PASS-CODE | Agent | Surface both readings in the Clients account view in a later round |
+| A6.2 | Reference-backed or human-attested with author and time; unavailable never looks paid | A6.1 | `StateEvidence`, `paymentView`; tests "will not mark sent or accepted without evidence", "accepts a human attestation with an author and a time", "shows an unreadable finance system as unavailable, never as paid", "says where a payment reading came from" | PASS-CODE | Agent | Real finance-system references depend on an authoritative integration, not added here |
+| A6.3 | Checklist covers scope, commercials, access, people, kickoff, first milestone; secure references not credentials | Round 1 contract | `CHECKLIST_ORDER`, `recordAccessNeed`; tests "covers scope, commercials, access, people, kickoff and the first milestone", "records where a credential is kept, and refuses the credential itself" | PASS-CODE | Agent | Render the checklist in the client workspace in a later round |
+| A6.4 | Approved readiness opens one Projects workspace; missing prerequisites block or need an authorised documented exception | A6.3 | `onboardingReadiness`, `openProjectsWorkspace`; tests "opens exactly one workspace and returns the first one after that", "opens nothing while a prerequisite is in the way", "lets an owner pass an item with a written exception, and names it", "refuses an exception from someone who is not an owner or admin" | PASS-CODE | Agent | Persisted handoff BLOCKED on the unapplied Round 2 SQL proposal |
+| A6.5 | Estimate vs agreed value, cost basis and margin when data exists; unknown effort or cost is not zero or profit | Round 5 estimates | `marginRead`; tests "leaves margin unknown rather than counting a missing cost as profit", "works out margin exactly when every figure exists" | PASS-CODE | Agent | Real cost basis depends on an authoritative finance source; none connected |
+| A6.6 | Synthetic accepted / declined / payment-missing / scope-change cases prove truthful handoffs; no transaction, submission or invitation | A6.1–A6.5 | Suite "synthetic cases: accepted, declined, payment missing, scope change" (4 tests) | PASS-CODE + synthetic | Agent | Real persisted cases BLOCKED on the SQL proposal; no external action performed or enabled |
+
+**Open and blocked**
+
+- Persisted agreement states, payment readings, checklists and Projects handoffs remain
+  **blocked** on the unapplied `20260916130000_preparation_outputs.sql`. Owner: Codex.
+  No migration was applied or reapplied this round; no new SQL was proposed.
+- No authoritative finance or contract integration exists, so every reference-backed
+  state is **unverified against a real system** and stays human-attested by design.
+- Live authenticated verification remains unavailable here. Owner: Codex.
+- Round 6 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged) and
+  implies no completion. Queue progress is not a completion claim.
