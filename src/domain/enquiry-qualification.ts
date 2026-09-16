@@ -76,7 +76,7 @@ export function enquiryContext(submission: WebsiteSubmission): EnquiryContext {
       source: submission.attribution.utm?.source ?? null,
       medium: submission.attribution.utm?.medium ?? null,
       campaign: submission.attribution.utm?.campaign ?? null,
-      referrer: submission.attribution.referrer ?? null,
+      referrer: submission.attribution.entryReferrer ?? null,
     },
   };
 }

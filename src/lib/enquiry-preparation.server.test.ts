@@ -62,8 +62,8 @@ const intake = receiveEnquiry({ submission: SUBMISSION, candidates: CANDIDATES }
 describe("what code computes before any model", () => {
   it("counts and names gaps itself", () => {
     const read = enquiryDeterministicRead({ intake, submission: SUBMISSION, icp: ICP });
-    expect(read.figures.answersGiven).toBe(1);
-    expect(read.figures.icpCriteria).toBe(1);
+    expect(read.figures['answersGiven']).toBe(1);
+    expect(read.figures['icpCriteria']).toBe(1);
     expect(read.evidenceRefs).toContain(`website_submission:ws-001`);
   });
 
