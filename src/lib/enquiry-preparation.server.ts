@@ -52,7 +52,8 @@ export function enquiryDeterministicRead(input: {
 }): DeterministicRead {
   const { intake, submission, icp } = input;
   const spoken = submission.verbatim
-    .map((answer) => (answer.text ?? "").trim())
+    .filter((answer) => !answer.skipped)
+    .map((answer) => (answer.answerText ?? "").trim())
     .filter((text) => text.length > 0);
 
   const unknowns: string[] = [];
