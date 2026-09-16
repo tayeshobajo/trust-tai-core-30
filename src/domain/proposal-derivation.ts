@@ -171,9 +171,7 @@ export function deriveProposal(input: {
     line(`Not included until confirmed: ${unknown}`, versionId, null),
   );
   const deliverables = ordered.flatMap((phase) =>
-    phase.options
-      .filter((option) => phase.dependsOn.length === 0 || true)
-      .map((option) => line(`${phase.title}: ${option.label}`, versionId, phase.id)),
+    phase.options.map((option) => line(`${phase.title}: ${option.label}`, versionId, phase.id)),
   );
   const acceptanceCriteria = ordered.map((phase) =>
     line(`${phase.title} is done when ${phase.intent} is in place and agreed.`, versionId, phase.id),
