@@ -277,7 +277,12 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
     nowIso,
     maxAttempts: spec.maxAttempts,
   });
-  if (decision.act === "return_existing" && existing) return existing;
+  if (decision.act === "return_existing") {
+    // The rule only says this when a record exists, but say so rather than assume.
+    if (existing) return existing;
+    return refuse("could_not_finish", "That record moved while it was being read.", null);
+  }
+
   if (decision.act === "refuse") return refuse(decision.status, decision.because, existing);
 
   // 2. Limits before the claim.
