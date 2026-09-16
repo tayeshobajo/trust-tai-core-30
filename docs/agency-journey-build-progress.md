@@ -300,3 +300,79 @@ send. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
 - Live authenticated verification remains unavailable here. Owner: Codex.
 - Round 4 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged) and
   implies no completion.
+
+---
+
+## Round 5 of 10 — Build roadmaps and proposals that can be delivered
+
+**Exact submitted prompt**
+
+> TRUST TAI AI AGENCY JOURNEY BUILD. Tai authorizes this ordered queue. Goal: eight-person team can source, diagnose, propose, onboard, deliver, support and grow clients using AI for repeatable preparation. Read current architecture canon, app registry, prior round output and existing services before changing code. Preserve unfinished Comms acceptance work and security fixes; do not overwrite concurrent work. No new parallel CRM, approval queue or business-data store. Apps own state; core identity; event history; Steward interpretation; Pulse visibility; Conductor routes actions. Preserve white cards/pale-blue OS styling, plain words, existing routes and client links. Do not introduce a new top-level app without demonstrated need.
+>
+> Product interpretation of Hit Makers: familiar surprise and MAYA. Familiar inbox/list/client workspace, consistent verbs and repeatable layout; intelligence prepares useful next work with evidence. Progressive disclosure, primary next action, clear owner, undo/correction where feasible. No agent jargon or orchestration diagrams in daily user flows. This is an application of the book, not a guaranteed popularity formula.
+>
+> Autonomy: implement and verify useful low-risk internal preparation (summaries, research packets, draft plans, reminders/tasks) via scoped server-side workers using existing services. Human authority governs commitments, pricing, scope/date approval and external action. Nothing in this build queue authorizes actual outreach, publication, payment, production deployment, live mailbox scope expansion or production schedule activation. Configure new automation disabled or preview-only until its policy/configuration is explicitly enabled by an authorized user; synthetic sandbox execution allowed. No real team assignment guesses, credentials or customer data in fixtures. SQL proposals to Codex; do not apply or reapply migrations. Never bypass auth for live evidence.
+>
+> Each round must write exact submitted prompt and numbered acceptance rows to docs/agency-journey-build-progress.md, with dependencies, changes, evidence/build, pass/blocked, owner and next step. Preserve C01-C22/T01-T05/P1-P8. Code, synthetic model evaluation, real persisted execution, production deployment and team acceptance are distinct. Do independent useful work when dependencies blocked, but do not mark dependent checks passed. No 100% from queue completion.
+>
+> QUEUED ROUND 5/10: 5. Build roadmaps and proposals that can be delivered
+> Roadmap owns strategy; Comms owns reviewed expression; reuse approved evidence.
+> A5.1 AI prepares Point A→Point B, phased recommendations, options, dependencies and first move with evidence and unknowns.
+> A5.2 Human approves destination/priorities; inferred schedules, capacity and budget remain provisional.
+> A5.3 Proposal derives from approved roadmap version: scope, exclusions, deliverables, acceptance criteria, assumptions, responsibilities, pricing and next steps.
+> A5.4 Deterministic arithmetic; mixed/unknown amounts explicit; estimate and capacity check required before approved dates/prices. No invented availability.
+> A5.5 Changes invalidate dependent proposal/review readiness and clearly show what changed without overwriting human edits.
+> A5.6 Save/reload one synthetic approved roadmap and linked proposal; verify immutable versions and exact traceability; no client send.
+
+**Changes**
+
+- `src/domain/roadmap-preparation.ts` (new): Point A notes with tier and evidence,
+  destination, phases with options and dependencies, first move, named unknowns;
+  `provisionalItems`/`provisionalNote` keep schedule, capacity and budget provisional
+  until a named person decides; `approveDestination` and `approvePriorities` require a
+  named person and known phases; `roadmapStamp` and `freezeRoadmapVersion` produce an
+  immutable, deep-cloned, content-stamped version and return the existing version for
+  identical content; `roadmapChanges` names what moved between two versions.
+- `src/domain/proposal-derivation.ts` (new): `deriveProposal` builds scope, exclusions,
+  deliverables, acceptance criteria, assumptions, responsibilities, pricing and next
+  steps from exactly one frozen version, each line carrying `fromVersionId` and
+  `fromPhaseId`; pricing reuses the existing deterministic `priceProposal`; mixed
+  currencies are named and never added; missing amounts are listed as unknown, never
+  zero; `quoteReadiness` requires a recorded estimate and a recorded capacity check per
+  phase, so availability is never invented; `editLine` marks a human edit;
+  `rederiveAgainst` rebuilds derived lines, carries every human edit across untouched and
+  returns the change list; `proposalReviewReadiness` withdraws readiness while the
+  proposal is behind the current version, the stamp differs, changes are unread, or
+  currencies are mixed.
+- Tests: `src/domain/roadmap-preparation.test.ts` (8), `src/domain/proposal-derivation.test.ts` (8).
+- No Comms code, review gate, save path, auth, schema or send path touched. No route,
+  styling or navigation change. No new app, store or approval queue.
+
+**Evidence and build**
+
+- `bunx vitest run` — 3,143 tests across 283 files pass (16 new this round).
+- `bunx tsgo --noEmit` — clean.
+- Evidence kind: **code plus synthetic sandbox execution**. No real model call, no
+  persisted record, no client send, no deployment, no team acceptance.
+
+**Acceptance rows**
+
+| Row | Criterion | Dependencies | Evidence | Result | Owner | Next step |
+| --- | --- | --- | --- | --- | --- | --- |
+| A5.1 | Point A→B, phases, options, dependencies, first move, evidence, unknowns | Round 1 contract | `PreparedRoadmap`, `PreparedPhase.options`/`dependsOn`, `unknowns`; tests in `roadmap-preparation.test.ts` | PASS-CODE + synthetic | Agent | Wording quality unproven until an authorised provider call runs |
+| A5.2 | Human approves destination and priorities; schedule, capacity, budget stay provisional | A5.1 | `approveDestination`, `approvePriorities`, `provisionalNote`; tests "refuses a destination approval with nobody named", "refuses an order that names a phase that is not on the roadmap", "keeps schedules, capacity and budget provisional" | PASS-CODE | Agent | Surface the approval affordance in the Roadmap room in a later round |
+| A5.3 | Proposal derives from an approved roadmap version with all eight sections | A5.2 | `deriveProposal`; test "derives every section from exactly one roadmap version" | PASS-CODE | Agent | Persisted proposals BLOCKED on the unapplied Round 2 SQL proposal |
+| A5.4 | Deterministic arithmetic; mixed and unknown amounts explicit; estimate plus capacity check before approved dates or prices | A5.3, existing `comms-proposal` | `buildPricing`, `quoteReadiness`; tests "adds up prices deterministically", "names an unknown amount instead of counting it as nothing", "refuses to add up amounts in different currencies", "requires an estimate and a capacity check" | PASS-CODE | Agent | Real estimates and capacity records depend on persistence (Codex) |
+| A5.5 | Changes withdraw dependent readiness and show what changed without overwriting human edits | A5.3 | `rederiveAgainst`, `proposalReviewReadiness`, `roadmapChanges`; tests "keeps a human edit when the roadmap moves, and says what changed", "withdraws review readiness while the proposal is behind the roadmap" | PASS-CODE | Agent | Wire the change notice into the Roadmap and Comms rooms in a later round |
+| A5.6 | Save/reload one synthetic approved roadmap and linked proposal; immutable versions and exact traceability; no client send | A5.3 | Test "reloads the same version, the same stamp and the same traceability" (serialise/deserialise round trip); test "does not let a later edit change a frozen version" | PASS-CODE + synthetic | Agent | Real database save/reload BLOCKED on the unapplied SQL proposal; no client send performed or enabled |
+
+**Open and blocked**
+
+- Persisted roadmap versions, estimates, capacity checks and derived proposals remain
+  **blocked** on the unapplied `20260916130000_preparation_outputs.sql`. Owner: Codex.
+  No migration was applied or reapplied this round; no new SQL was proposed.
+- No real provider call this round, so prepared roadmap wording quality and usage or
+  cost stay **unverified**.
+- Live authenticated verification remains unavailable here. Owner: Codex.
+- Round 5 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged) and
+  implies no completion. Queue progress is not a completion claim.
