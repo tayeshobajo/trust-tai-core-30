@@ -363,12 +363,21 @@ function CompanyDetail({
      or a stable key, never on a name. */
   const peopleForCard = useMemo(
     () =>
-      mergePeople({
-        saved: persistedPeople.data ?? [],
-        session: researched,
-        pending: pendingEmails,
-      }),
-    [persistedPeople.data, researched, pendingEmails],
+      // A title this workspace already holds for the same person fills a gap
+      // the provider left, so nothing known is shown as unavailable.
+      fillKnownTitles(
+        mergePeople({
+          saved: persistedPeople.data ?? [],
+          session: researched,
+          pending: pendingEmails,
+        }),
+        (orgContacts.data ?? []).map((contact) => ({
+          fullName: contact.fullName,
+          roleTitle: contact.roleTitle,
+          companyName: prospect.data?.companyName,
+        })),
+      ),
+    [persistedPeople.data, researched, pendingEmails, orgContacts.data, prospect.data?.companyName],
   );
 
   const storageUnavailable = persistedPeople.isError
