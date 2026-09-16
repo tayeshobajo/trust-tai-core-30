@@ -112,3 +112,34 @@ export function mergePeople(input: {
     return answer ? apply(person, answer) : person;
   });
 }
+
+/**
+ * A title this workspace already recorded for the same person is not lost just
+ * because the provider withheld one. Matched on the person's own name within
+ * the same company, and only ever used to fill a gap.
+ */
+export interface KnownTitle {
+  fullName: string;
+  roleTitle?: string | undefined;
+  companyName?: string | undefined;
+}
+
+const plain = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, " ");
+
+export function fillKnownTitles(people: ScoutPerson[], known: KnownTitle[]): ScoutPerson[] {
+  const titles = new Map<string, string>();
+  for (const entry of known) {
+    if (!entry.roleTitle) continue;
+    const name = plain(entry.fullName);
+    if (!name) continue;
+    if (entry.companyName) titles.set(`${plain(entry.companyName)}|${name}`, entry.roleTitle);
+    // A name-only key is a last resort and never merges the people themselves.
+    if (!titles.has(name)) titles.set(name, entry.roleTitle);
+  }
+  return people.map((person) => {
+    if (person.title) return person;
+    const name = plain(person.fullName);
+    const title = titles.get(`${plain(person.companyName)}|${name}`) ?? titles.get(name);
+    return title ? { ...person, title } : person;
+  });
+}

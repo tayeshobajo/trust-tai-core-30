@@ -70,6 +70,7 @@ import {
 } from "@/data/scout/people-research";
 import { workEmailState, type ScoutPerson } from "@/domain/scout-people";
 import {
+  fillKnownTitles,
   mergePeople,
   personIdentity,
   type PendingEnrichment,
@@ -363,12 +364,21 @@ function CompanyDetail({
      or a stable key, never on a name. */
   const peopleForCard = useMemo(
     () =>
-      mergePeople({
-        saved: persistedPeople.data ?? [],
-        session: researched,
-        pending: pendingEmails,
-      }),
-    [persistedPeople.data, researched, pendingEmails],
+      // A title this workspace already holds for the same person fills a gap
+      // the provider left, so nothing known is shown as unavailable.
+      fillKnownTitles(
+        mergePeople({
+          saved: persistedPeople.data ?? [],
+          session: researched,
+          pending: pendingEmails,
+        }),
+        (orgContacts.data ?? []).map((contact) => ({
+          fullName: contact.fullName,
+          roleTitle: contact.roleTitle,
+          companyName: candidate?.prospect.name,
+        })),
+      ),
+    [persistedPeople.data, researched, pendingEmails, orgContacts.data, candidate?.prospect.name],
   );
 
   const storageUnavailable = persistedPeople.isError
@@ -463,11 +473,15 @@ function CompanyDetail({
   });
 
   /* Store an answer we already paid for, using the server's own receipt. No
-     provider is called, so this can never cost a second credit. */
+     provider is called, so this can never cost a second credit. How the answer
+     is held is ours to know: the person only ever hears whether it can still
+     be saved. */
   const saveEmail = useMutation({
     mutationFn: (person: ScoutPerson) => {
       if (!person.receiptId) {
-        throw new Error("That lookup result is no longer held by the server.");
+        throw new Error(
+          "This result can't be saved anymore. Refresh the email when you're ready.",
+        );
       }
       return saveEnrichedEmail({
         organizationId,
