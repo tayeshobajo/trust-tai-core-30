@@ -11,6 +11,7 @@ import {
 
 const CONFIGURED = { LOVABLE_API_KEY: "lov", APOLLO_API_KEY: "apo", CLAY_API_KEY: "clay" };
 
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -26,6 +27,22 @@ describe("configuration", () => {
     expect(status.clayConfigured).toBe(false);
     expect(status.order).toEqual([]);
   });
+
+  it("counts Apollo as configured on its own key alone", () => {
+    const status = enrichmentStatus({ APOLLO_API_KEY: "apo" });
+    expect(status.apolloConfigured).toBe(true);
+    expect(status.connected).toBe(true);
+    expect(status.order).toEqual(["apollo"]);
+  });
+
+  it("still needs a Lovable key when Apollo is routed through the gateway", () => {
+    const status = enrichmentStatus({
+      APOLLO_API_KEY: "apo",
+      APOLLO_VIA_CONNECTOR_GATEWAY: "true",
+    });
+    expect(status.apolloConfigured).toBe(false);
+  });
+
 
   it("prefers Apollo, then Clay, and keeps automatic enrichment off by default", () => {
     const status = enrichmentStatus(CONFIGURED);
