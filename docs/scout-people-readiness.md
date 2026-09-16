@@ -153,3 +153,15 @@ carries `title`/`id`, and the adapter discarded both.
 | SP8.9 | Signed-in Thyme Care / Robin Shah screen acceptance | PENDING - user |
 
 No Apollo call, no credit, no send, no schema application in this round.
+
+## SP9 Copy and title correction
+
+| # | Evidence | Result |
+|---|---|---|
+| SP9.1 | No holding-mechanism language on the People card: no restart, no minutes, no receipt, no cache. Guarded by a copy test so it cannot regress | PASS-CODE (`src/components/tt/scout/detail/people-copy.test.ts`) |
+| SP9.2 | Save failure reads "Email found, but Scout could not save it yet." with "Try saving again" | PASS-CODE |
+| SP9.3 | When the result can no longer be saved: "This result can't be saved anymore. Refresh the email when you're ready." Same wording in the page's own error path | PASS-CODE (`src/routes/modules.scout.prospects.$prospectId.tsx`) |
+| SP9.4 | Upstream title confirmed dropped: `contacts` row e8379882 holds Robin Shah, title "Co-founder (publicly profiled)". Discovery only read provider rows | FIXED (`fillKnownTitles` in `src/domain/scout-people-overlay.ts`, wired into the card list) |
+| SP9.5 | A recorded title fills a provider gap, never overwrites a provider title, matched on name within the same company and never merging people | PASS-CODE (3 tests) |
+| SP9.6 | Live re-check of `public.scout_people`: still absent (PGRST205). Honest persistence-blocked state retained | BLOCKED - Codex must apply `docs/migrations/proposed/20260916180000_scout_people.sql` |
+| SP9.7 | No Apollo call and no credit spent in this round | PASS |
