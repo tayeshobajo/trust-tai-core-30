@@ -147,7 +147,8 @@ describe("A10.1 the whole journey on one synthetic company", () => {
 
     const handoff = roadmapHandoffFor({ record, by: { userId: LEAD }, at: AT });
     if (!handoff.opened) throw new Error(handoff.because);
-    expect(handoff.opening.sourceRefs).toContain("fixture:note/1");
+    expect(handoff.opening.sourceRefs.map((source) => source.sourceId)).toContain("fixture:note/1");
+    expect(handoff.opening.unansweredQuestions.length).toBe(2);
 
     const destination = approveDestination({ roadmap: roadmap(), by: LEAD, at: AT });
     if (!destination.approved) throw new Error(destination.because);
