@@ -8,6 +8,7 @@ import {
   suggestionIsPermitted,
   triageFromEvents,
   type CarePlan,
+  type CareChecklistItemKey,
   type HealthEvent,
   type MeasurePoint,
 } from "./client-care";
@@ -16,7 +17,7 @@ const ORG = "org-fixture-0000-0000-0000-000000000001";
 const CLIENT = "fixture-client-northwind";
 const AT = "2026-04-01T09:00:00.000Z";
 
-function plan(recorded?: Record<string, string>): CarePlan {
+function plan(recorded?: Partial<Record<CareChecklistItemKey, string>>): CarePlan {
   const result = openCarePlan({
     organizationId: ORG,
     clientRef: CLIENT,
