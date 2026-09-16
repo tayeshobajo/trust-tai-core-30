@@ -233,9 +233,10 @@ export function apolloProvider(env: Env, fetchImpl: FetchLike): ContactEnrichmen
       const at = new Date().toISOString();
       let response: Response;
       try {
-        response = await fetchImpl(`${GATEWAY}/apollo/api/v1/people/bulk_match`, {
+        response = await fetchImpl(apolloUrl(env, "/api/v1/people/bulk_match"), {
           method: "POST",
-          headers: headers(env, "APOLLO_API_KEY"),
+          headers: apolloHeaders(env),
+
           body: JSON.stringify({
             details: [
               {
