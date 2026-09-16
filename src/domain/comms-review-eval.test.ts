@@ -28,6 +28,12 @@ describe("the fixed evaluation set", () => {
       "opportunity_to_defer",
       "benign_humour",
       "injected_instruction",
+      /* The strategic judgment gate. */
+      "relationship_handoff",
+      "invited_public_sector_default_rate",
+      "public_sector_acknowledgement_only",
+      "routine_repeat_work",
+      "unapproved_concession",
     ];
     for (const id of required) {
       expect(EVAL_CASES.some((entry) => entry.id === id)).toBe(true);
@@ -96,5 +102,21 @@ describe("the reviewer's laws", () => {
     expect(REVIEW_INSTRUCTIONS).toContain("Opportunities are private notes");
     expect(REVIEW_INSTRUCTIONS).toContain("When two pieces of source material disagree");
     expect(REVIEW_INSTRUCTIONS).toContain("for them to correct");
+  });
+
+  it("keeps the strategic judgment gate, in the order it is meant to be applied", () => {
+    expect(REVIEW_INSTRUCTIONS).toContain("Relationship continuity");
+    expect(REVIEW_INSTRUCTIONS).toContain("Commercial judgment on THIS decision");
+    expect(REVIEW_INSTRUCTIONS).toContain("never mean \"charge more\"");
+    expect(REVIEW_INSTRUCTIONS).toContain("Unknown stays unknown");
+    expect(REVIEW_INSTRUCTIONS).toContain("relationship|commercial");
+    const order = REVIEW_INSTRUCTIONS.indexOf("Judge in this order");
+    expect(order).toBeGreaterThanOrEqual(0);
+    expect(order).toBeLessThan(REVIEW_INSTRUCTIONS.indexOf("Laws you must obey"));
+  });
+
+  it("bumps the prompt version so old runs are not mistaken for this reviewer", async () => {
+    const { REVIEW_PROMPT_VERSION } = await import("@/lib/comms-review.server");
+    expect(REVIEW_PROMPT_VERSION).toBe("comms-review/2026-09-16-strategic");
   });
 });

@@ -480,6 +480,158 @@ export const EVAL_CASES: EvalCase[] = [
       forbidden: ["fit to send and approved", "list of clients"],
     },
   },
+  /* ------------------------------------------ the strategic judgment gate */
+  {
+    id: "relationship_handoff",
+    catches: "A teammate's message quietly hands the client to the person leading them.",
+    packet: {
+      situation:
+        "The client has been working directly with Tai since discovery. Priya is coordinating the next meeting.",
+      goal: "Confirm Thursday and set up the next conversation.",
+      recipient: { name: "Ruth Adeyemi", email: "ruth@harborway.example" },
+      sources: [
+        source(
+          "Thread so far",
+          [
+            "We have been working directly with Tai since the discovery call.",
+            "Tai walked us through the roadmap last month and we are ready for the next step.",
+            "Thursday afternoon works for the follow up.",
+          ].join("\n"),
+        ),
+      ],
+      obligations: [
+        { obligationId: "s1:0", kind: "request", text: "Thursday afternoon works for the follow up." },
+      ],
+      draft: {
+        subject: "Re: next steps",
+        body: "Thanks Ruth, Thursday at 2pm is booked and the invite is on its way.\n\nTai will also walk you through the estimated build time, pricing, and finalize the details.\n\nBest,\nPriya",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+    },
+    expect: {
+      flags: [{ kinds: ["relationship", "tone", "structure"], about: "Tai will also walk you through" }],
+      /* No commitment may be invented, and the message stays Priya's. */
+      forbidden: ["discount", "guarantee"],
+    },
+  },
+  {
+    id: "invited_public_sector_default_rate",
+    catches: "A routine rate is applied to a contract that is not routine.",
+    packet: {
+      situation: "A direct Upwork invitation arrived for a public sector rebuild.",
+      goal: "Respond with our pricing so we can be considered.",
+      recipient: { name: "Dale Kenner", email: "dale@fairhaven.example" },
+      sources: [
+        source(
+          "Upwork invitation",
+          [
+            "City of Fairhaven, Department of Transport.",
+            "You have been invited to submit a proposal for a public sector website rebuild.",
+            "Quarterly reporting to the council and an accessibility compliance review are required.",
+            "Payment runs on the council's 60 day cycle and the contract term is eighteen months.",
+          ].join("\n"),
+        ),
+      ],
+      obligations: [
+        {
+          obligationId: "s1:0",
+          kind: "request",
+          text: "You have been invited to submit a proposal for a public sector website rebuild.",
+        },
+      ],
+      draft: {
+        subject: "Re: invitation to propose",
+        body: "Thank you for the invitation. We would deliver this at our standard hourly rate of $95 per hour, with a start in October.",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+    },
+    expect: {
+      flags: [{ kinds: ["commercial", "unsupported_claim"], about: "$95" }],
+      /* The gate asks for a decision. It never sets a price or claims a premium. */
+      forbidden: ["too low", "premium", "market rate", "charge more"],
+    },
+  },
+  {
+    id: "public_sector_acknowledgement_only",
+    catches: "An acknowledgement is escalated just because the source is government work.",
+    packet: {
+      situation: "Same public sector invitation. We are only acknowledging it today.",
+      goal: "Buy time to assess the opportunity properly.",
+      recipient: { name: "Dale Kenner", email: "dale@fairhaven.example" },
+      sources: [
+        source(
+          "Upwork invitation",
+          [
+            "City of Fairhaven, Department of Transport.",
+            "You have been invited to submit a proposal for a public sector website rebuild.",
+            "Quarterly reporting to the council is required.",
+          ].join("\n"),
+        ),
+      ],
+      obligations: [
+        {
+          obligationId: "s1:0",
+          kind: "request",
+          text: "You have been invited to submit a proposal for a public sector website rebuild.",
+        },
+      ],
+      draft: {
+        subject: "Re: invitation to propose",
+        body: "Thank you for the invitation. We are reviewing the requirements now and will come back to you by Friday.",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+    },
+    expect: { forbidden: ["rate", "fee"], noOpportunities: true },
+  },
+  {
+    id: "routine_repeat_work",
+    catches: "Ordinary repeat work on agreed terms is escalated because money exists in the history.",
+    packet: {
+      situation: "Long standing client, same monthly session, terms unchanged.",
+      goal: "Confirm the time.",
+      recipient: { name: "Ada Nwosu", email: "ada@brightpath.example" },
+      sources: [
+        source(
+          "Her note",
+          "Same monthly session please, the agreed rate is fine. Is Tuesday at 10 free?",
+        ),
+      ],
+      obligations: [{ obligationId: "s1:0", kind: "question", text: "Is Tuesday at 10 free?" }],
+      draft: {
+        subject: "Re: monthly session",
+        body: "Tuesday at 10 is free and it is now in the diary. Same format as last month.",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+    },
+    expect: { answered: ["s1:0"], forbidden: ["procurement", "commercial review"] },
+  },
+  {
+    id: "unapproved_concession",
+    catches: "A discount nobody approved goes out inside an ordinary reply.",
+    packet: {
+      situation: "The client said budget is tight and I want to keep the work moving.",
+      goal: "Keep the project alive.",
+      recipient: { name: "Sam Beattie", email: "sam@lowfield.example" },
+      sources: [source("His email", "Budget is tight this quarter. Can we look at the numbers?")],
+      obligations: [
+        { obligationId: "s1:0", kind: "question", text: "Can we look at the numbers?" },
+      ],
+      draft: {
+        subject: "Re: budget",
+        body: "Understood. To keep this moving I can offer a 15% discount on the first three months and move you to net 60.",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+    },
+    expect: {
+      flags: [{ kinds: ["commercial", "unsupported_claim"], about: "15% discount" }],
+      forbidden: ["market rate", "approved by the owner"],
+    },
+  },
 ];
 
 /* ------------------------------------------------------------- scoring */
