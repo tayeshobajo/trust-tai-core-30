@@ -62,7 +62,10 @@ import { PeopleSection } from "@/components/tt/scout/detail/people-section";
 import {
   discoverPeople,
   findWorkEmail,
+  listPersistedPeople,
   readEnrichmentStatus,
+  recordPersonHandoff,
+  savePeople,
 } from "@/data/scout/people-research";
 import { workEmailState, type ScoutPerson } from "@/domain/scout-people";
 import { ConversationTab } from "@/components/tt/scout/detail/conversation";
@@ -328,15 +331,42 @@ function CompanyDetail({
 
   // Scout's people research for this account. Search never spends on an
   // address: a lookup happens only when somebody clicks for that person.
+  // Saved people are read back on every visit, and reading them costs nothing.
   const [researched, setResearched] = useState<ScoutPerson[]>([]);
   const [peopleError, setPeopleError] = useState<string | null>(null);
   const [lookingUpKey, setLookingUpKey] = useState<string | null>(null);
+  const [saveProblem, setSaveProblem] = useState<string | null>(null);
 
   const enrichment = useQuery({
     queryKey: ["scout", "enrichment-status"],
     queryFn: readEnrichmentStatus,
     staleTime: 5 * 60 * 1000,
   });
+
+  const persistedPeople = useQuery({
+    queryKey: ["scout", "people", organizationId, prospectId],
+    queryFn: () => listPersistedPeople({ organizationId, prospectId }),
+    retry: false,
+  });
+
+  /* The card shows saved rows first, then anything found in this visit that
+     has not been saved yet. A saved row is never replaced by a session row. */
+  const peopleForCard = useMemo(() => {
+    const saved = persistedPeople.data ?? [];
+    const seen = new Set(
+      saved.map((person) => person.providerPersonId ?? person.fullName.toLowerCase()),
+    );
+    const unsaved = researched.filter(
+      (person) => !seen.has(person.providerPersonId ?? person.fullName.toLowerCase()),
+    );
+    return [...saved, ...unsaved];
+  }, [persistedPeople.data, researched]);
+
+  const storageUnavailable = persistedPeople.isError
+    ? persistedPeople.error instanceof Error
+      ? persistedPeople.error.message
+      : "Researched people cannot be saved yet."
+    : null;
 
   // Which functions could own this problem, read from the company we are
   // looking at rather than a global "find the C-suite" rule.
@@ -347,6 +377,24 @@ function CompanyDetail({
     if (/retail|hospitality|service|health/.test(industry)) families.push("customer");
     return families;
   }, [candidate]);
+
+  /* Saving research writes no address and calls no provider, so a retry after
+     a failed save never costs anything. The rows stay on screen either way. */
+  const saveResearch = useMutation({
+    mutationFn: (people: ScoutPerson[]) =>
+      savePeople({ organizationId, prospectId, people }),
+    onMutate: () => setSaveProblem(null),
+    onSuccess: () => {
+      setSaveProblem(null);
+      void persistedPeople.refetch();
+    },
+    onError: (error) =>
+      setSaveProblem(
+        error instanceof Error
+          ? error.message
+          : "These people were found but could not be saved yet.",
+      ),
+  });
 
   const findPeople = useMutation({
     mutationFn: () => {
@@ -359,19 +407,35 @@ function CompanyDetail({
       });
     },
     onMutate: () => setPeopleError(null),
-    onSuccess: (rows) => setResearched(rows),
+    onSuccess: (rows) => {
+      setResearched(rows);
+      if (rows.length > 0) saveResearch.mutate(rows);
+    },
     onError: (error) =>
       setPeopleError(error instanceof Error ? error.message : "That search could not be finished."),
   });
 
   const findEmail = useMutation({
-    mutationFn: (person: ScoutPerson) => findWorkEmail({ organizationId, person }),
+    mutationFn: (person: ScoutPerson) =>
+      findWorkEmail({ organizationId, person, prospectId }),
     onMutate: (person) => {
       setPeopleError(null);
       setLookingUpKey(person.key);
     },
-    onSuccess: (updated) =>
-      setResearched((rows) => rows.map((row) => (row.key === updated.key ? updated : row))),
+    onSuccess: (result, person) => {
+      setResearched((rows) =>
+        rows.map((row) => (row.key === person.key ? result.person : row)),
+      );
+      if (result.persisted) {
+        void persistedPeople.refetch();
+        setSaveProblem(null);
+      } else {
+        setSaveProblem(
+          result.because ??
+            "That address was found but has not been saved, so it will not survive a reload.",
+        );
+      }
+    },
     onError: (error) =>
       setPeopleError(error instanceof Error ? error.message : "That lookup could not be finished."),
     onSettled: () => setLookingUpKey(null),
@@ -380,7 +444,8 @@ function CompanyDetail({
   // Handing a researched person into Comms goes through the existing flow:
   // the person lands on the shared record, then the normal first-message
   // preparation runs. Nothing is sent, and a warning travels with an address
-  // that is unverified or past the freshness policy.
+  // that is unverified or past the freshness policy. Handing the same person
+  // over twice returns to the same conversation.
   const prepareOutreach = useMutation({
     mutationFn: async (person: ScoutPerson) => {
       if (!candidate) throw new Error("That company is no longer on your board.");
@@ -394,7 +459,7 @@ function CompanyDetail({
         },
         { organizationId, userId },
       );
-      return saveProspectPerson({
+      const saved = await saveProspectPerson({
         organizationId,
         userId,
         prospectId,
@@ -406,6 +471,25 @@ function CompanyDetail({
           companyName: candidate.prospect.name,
         },
       });
+      const relationshipId = saved.prepared?.relationshipId;
+      if (person.persistedId && relationshipId) {
+        try {
+          await recordPersonHandoff({
+            organizationId,
+            personId: person.persistedId,
+            relationshipId,
+            contactId: added.person.id,
+          });
+          void persistedPeople.refetch();
+        } catch (error) {
+          setSaveProblem(
+            error instanceof Error
+              ? error.message
+              : "The conversation is open, but the link back to this person was not saved.",
+          );
+        }
+      }
+      return saved;
     },
     onSuccess: (_result, person) => {
       const state = workEmailState(person, new Date().toISOString());
@@ -1081,7 +1165,7 @@ function CompanyDetail({
             {tab === "people" ? (
               <div className="space-y-6">
                 <PeopleSection
-                  people={researched}
+                  people={peopleForCard}
                   config={{
                     apolloConfigured: enrichment.data?.apolloConfigured ?? false,
                     clayConfigured: enrichment.data?.clayConfigured ?? false,
@@ -1095,6 +1179,10 @@ function CompanyDetail({
                   onFindPeople={() => findPeople.mutate()}
                   onFindEmail={(person) => findEmail.mutate(person)}
                   onPrepareOutreach={(person) => prepareOutreach.mutate(person)}
+                  storageUnavailable={storageUnavailable}
+                  saveProblem={saveProblem}
+                  saving={saveResearch.isPending}
+                  onRetrySave={() => saveResearch.mutate(researched)}
                 />
                 <ProspectPersonCard
                   people={peopleRows}

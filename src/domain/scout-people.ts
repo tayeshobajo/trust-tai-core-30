@@ -66,6 +66,10 @@ export interface ThoughtLeadership {
 export interface ScoutPerson {
   /** Stable key within the account. Provider id when there is one. */
   key: string;
+  /** The durable row id, once this person has actually been saved. */
+  persistedId?: string;
+  /** The Comms conversation this person was handed into, once there is one. */
+  handoffRelationshipId?: string;
   fullName: string;
   title?: string;
   companyName: string;
