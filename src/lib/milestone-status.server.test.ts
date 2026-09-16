@@ -210,6 +210,7 @@ describe("synthetic journey: one milestone, retried", () => {
     // The same milestone state prepares one record, however often the event arrives.
     expect(harness.rows.size).toBe(1);
     expect(retry?.key).toBe(first?.key);
+    expect(first?.status).toBe("prepared");
     expect(retry?.attempts).toBe(first?.attempts);
 
     const decision = decideMilestone({
