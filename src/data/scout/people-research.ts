@@ -146,7 +146,15 @@ export interface EnrichInput {
   person: ScoutPerson;
   /** Present once the person is saved, so the answer is written to their row. */
   prospectId?: string | undefined;
+  /**
+   * The company this page is about. Used only when the person record carries
+   * no company of its own, so a lookup is never refused for a company we can
+   * already see on screen.
+   */
+  companyName?: string | undefined;
+  domain?: string | undefined;
 }
+
 
 export interface EnrichResult {
   person: ScoutPerson;
@@ -158,19 +166,22 @@ export interface EnrichResult {
 
 /** One paid lookup for one person, asked for by the person who clicked. */
 export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
+  const companyName = (input.person.companyName || input.companyName || "").trim();
+  const domain = (input.person.companyDomain || input.domain || "").trim();
   const payload = await post({
     action: "enrich",
     organizationId: input.organizationId,
-    companyName: input.person.companyName,
+    companyName,
     fullName: input.person.fullName,
     ...(input.prospectId ? { prospectId: input.prospectId } : {}),
     ...(input.person.persistedId ? { personId: input.person.persistedId } : {}),
-    ...(input.person.companyDomain ? { domain: input.person.companyDomain } : {}),
+    ...(domain ? { domain } : {}),
     ...(input.person.providerPersonId
       ? { providerPersonId: input.person.providerPersonId }
       : {}),
     ...(input.person.profileUrl ? { profileUrl: input.person.profileUrl } : {}),
   });
+
 
   const stored = payload["person"];
   if (stored && typeof stored === "object") {

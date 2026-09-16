@@ -417,7 +417,15 @@ function CompanyDetail({
 
   const findEmail = useMutation({
     mutationFn: (person: ScoutPerson) =>
-      findWorkEmail({ organizationId, person, prospectId }),
+      findWorkEmail({
+        organizationId,
+        person,
+        prospectId,
+        // The company this page is about, used only when the person row has none.
+        ...(candidate?.prospect.name ? { companyName: candidate.prospect.name } : {}),
+        ...(candidate?.prospect.domain ? { domain: candidate.prospect.domain } : {}),
+      }),
+
     onMutate: (person) => {
       setPeopleError(null);
       setLookingUpKey(person.key);
