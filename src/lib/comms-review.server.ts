@@ -85,6 +85,12 @@ import {
 } from "@/domain/comms-sources";
 import { sha256 } from "@/domain/sha256";
 import { strategicFindings } from "@/domain/comms-strategic-gate";
+import {
+  actionIntegrityFindings,
+  attachmentStamp,
+  type StagedFile,
+} from "@/domain/comms-action-integrity";
+import { readOutgoingAttachments, type OutgoingAttachmentRef } from "@/domain/comms-outgoing";
 import { readDraftKind, type DraftKind } from "@/domain/comms-draft-kind";
 import type { ProposalSections } from "@/domain/comms-proposal";
 import {
@@ -124,7 +130,7 @@ import {
 } from "@/domain/comms-review";
 
 /** Bumped whenever the instructions or the packet change shape. */
-export const REVIEW_PROMPT_VERSION = "comms-review/2026-09-16-strategic";
+export const REVIEW_PROMPT_VERSION = "comms-review/2026-09-16-action-integrity";
 
 /* -------------------------------------------------------------- failures */
 
@@ -859,6 +865,29 @@ export async function reviseDraft(
 
 /* -------------------------------------------------------------- the read */
 
+/* --------------------------------------------------- outbound delivery facts */
+
+/**
+ * The files really staged on the draft this review governs, or null when the
+ * answer cannot be known: an unbound review with no draft behind it, or a
+ * read that failed. Null is never treated as "no attachments", so the gate
+ * stays silent rather than claiming a file is missing it could not look for.
+ * Metadata only; no bytes are read here and none reach the model.
+ */
+async function stagedAttachments(
+  caller: Caller,
+  organizationId: string,
+  draftId: string | null,
+): Promise<OutgoingAttachmentRef[] | null> {
+  if (!draftId) return null;
+  try {
+    const draft = await loadDraftForSend(caller.client, organizationId, draftId);
+    return readOutgoingAttachments(draft.rationale);
+  } catch {
+    return null;
+  }
+}
+
 export const REVIEW_INSTRUCTIONS = `You are the reviewer inside Trust Tai OS, an operating system for a
 small services business. A person has written a reply and is asking whether it is fit to send.
 You are reviewing THEIR words. You are not rewriting the message and you are not the author.
@@ -873,8 +902,10 @@ Judge in this order. Do not show your working; return only the findings.
     consequential commercial decision.
  3. Protect who owns the relationship.
  4. Protect the commercial judgment where this message commits a price or terms.
- 5. Check questions, promises, facts, tone, structure and voice.
- 6. Keep possible future opportunities private.
+ 5. Action integrity. For each sentence, ask what the recipient is being told they can click,
+    open, read, use, call, send or find, and whether it is actually there in this message.
+ 6. Check questions, promises, facts, tone, structure and voice.
+ 7. Keep possible future opportunities private.
 
 Laws you must obey:
 1. Judge only what is in the packet. Never introduce a date, price, name, commitment or fact that
@@ -928,12 +959,24 @@ Laws you must obey:
    If the outgoing draft makes no commercial commitment, do not raise a pricing finding merely
    because the source is public sector. Do not escalate routine support messages, or repeat work
    on terms the packet shows as already agreed.
+14. Action integrity. Read line by line. Where a sentence promises an action, an artifact or a
+   reference, check that the outgoing message really carries it, and return a must_fix
+   "action_integrity" finding quoting the exact promising words when it does not. The cases are:
+   a booking, form or "click here" style invitation with no usable http or https address in the
+   outgoing body, where the "delivery" section of the packet lists the addresses actually present;
+   a sentence saying a file is attached when "delivery.attachments" is a known and empty list;
+   a pointer to details "below" or "following" with nothing after it; and a promise of a number,
+   email address or postal address that is not then supplied. This product stores plain text, so
+   a label that reads like a link title is NOT a link; only a visible http or https address
+   counts. When "delivery.attachmentsKnown" is false you cannot see the files, so never say there
+   is no attachment. Never invent a URL, number, address or filename in a suggestion, and do not
+   raise a finding merely because a word such as "here" or "attached" appears.
 
 Return strict JSON only:
 {
  "summary": "one or two sentences on whether this is fit to send",
  "goalRead": "your reading of what they are trying to achieve, in their terms, for them to correct",
- "findings": [{"kind":"ambiguity|unsupported_claim|conflict|omission|tone|structure|identity|relationship|commercial",
+ "findings": [{"kind":"ambiguity|unsupported_claim|conflict|omission|tone|structure|identity|relationship|commercial|action_integrity",
    "severity":"must_fix|consider|note","excerpt":"exact words from the draft",
    "why":"one sentence","suggestion":"a concrete replacement, or null"}],
  "obligations": [{"obligationId":"...","status":"answered|partly_answered|pending_confirmation|missing|uncertain",
@@ -1174,10 +1217,21 @@ export async function runReview(
   const keptGuidance = lessonGuidance(kept.lessons);
   const keptCategories = [...new Set(activeLessons(kept.lessons).map((one) => one.category))].sort();
 
+  /* What would actually leave with this message. The staged file set is part
+     of whether the words are honest, so it is part of what an approval is
+     given over: change the files and this run goes stale. */
+  const staged = await stagedAttachments(caller, input.organizationId, session.draftId);
+  const stagedFiles: StagedFile[] | null =
+    staged?.map((file) => ({ filename: file.filename, mimeType: file.mimeType })) ?? null;
+  const linkTargets = [...version.body.matchAll(/https?:\/\/[^\s<>()\[\]"']{4,}/gi)].map(
+    (match) => match[0],
+  );
+
   const fingerprint = contextFingerprint({
     versionId: version.id,
     subject: version.subject,
     body: version.body,
+    attachmentStamp: attachmentStamp(staged),
     recipientEmail: session.recipientEmail,
     recipientName: session.recipientName,
     goal: session.goal,
@@ -1373,6 +1427,21 @@ export async function runReview(
       text: obligation.excerpt,
     })),
     draft: { subject: version.subject, body: version.body, version: version.version },
+    /* The outgoing message as it would really leave, so promises in the words
+       can be checked against it. Plain text is all this product stores, so the
+       only verifiable link targets are visible http and https addresses. */
+    delivery: {
+      channel: session.intendedChannel,
+      linkTargets,
+      linkTargetsNote:
+        "Every usable address visible in the draft body. This product stores plain text only, so a label that reads like a link title is not a link.",
+      attachmentsKnown: stagedFiles !== null,
+      attachments: stagedFiles ?? [],
+      attachmentsNote:
+        stagedFiles === null
+          ? "The staged files could not be read, so you cannot tell whether anything is attached. Never say there is no attachment."
+          : "The files actually staged on this draft. Names and types only.",
+    },
     reviewedBy: {
       name: reviewer.name,
       note: sameperson
@@ -1539,7 +1608,36 @@ export async function runReview(
     });
   }
 
-
+  /* The same floor for action integrity: a sentence that tells the recipient
+     to click, open, read, call or find something, where the outgoing message
+     does not carry it. Added only when the model did not already raise it. */
+  for (const broken of actionIntegrityFindings({
+    body: version.body,
+    subject: version.subject,
+    attachments: stagedFiles,
+    channel: session.intendedChannel,
+  })) {
+    const alreadyRaised = findingRows.some(
+      (row) => row.kind === "action_integrity" && row.severity === "must_fix",
+    );
+    if (alreadyRaised) break;
+    const at = version.body.indexOf(broken.excerpt);
+    findingRows.push({
+      organization_id: input.organizationId,
+      session_id: input.sessionId,
+      run_id: runId,
+      version_id: input.versionId,
+      kind: broken.kind,
+      severity: broken.severity,
+      excerpt: broken.excerpt,
+      excerpt_start: at >= 0 ? at : null,
+      excerpt_end: at >= 0 ? at + broken.excerpt.length : null,
+      why: broken.why,
+      suggestion: broken.suggestion,
+      state: "open",
+      position: findingRows.length,
+    });
+  }
 
   const verdicts = verifyObligationVerdicts({
     obligations,
@@ -1995,11 +2093,15 @@ export async function loadReview(
      they cannot be read there is no honest stamp: readiness says so and
      nothing is treated as approvable against guidance nobody could read. */
   const keptStamp = lessonSetStamp({ state: keptView.state, lessons: keptView.lessons });
+  /* Read the staged files the same way the run did, so an approval given
+     while a file was attached does not stay current after it is swapped. */
+  const stagedNow = await stagedAttachments(caller, input.organizationId, session.draftId);
   const fingerprint = currentVersion && keptStamp !== null
     ? contextFingerprint({
         versionId: currentVersion.id,
         subject: currentVersion.subject,
         body: currentVersion.body,
+        attachmentStamp: attachmentStamp(stagedNow),
         recipientEmail: session.recipientEmail,
         recipientName: session.recipientName,
         goal: session.goal,
