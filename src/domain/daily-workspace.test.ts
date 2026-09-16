@@ -11,6 +11,7 @@ import {
   WORK_GROUP_ORDER,
   type MembershipRecord,
   type WorkItem,
+  type WorkItemDraft,
 } from "./daily-workspace";
 
 const ORG = "org-fixture-0000-0000-0000-000000000001";
@@ -25,7 +26,7 @@ const memberships: MembershipRecord[] = [
 
 const people = peopleFromMemberships(memberships, ORG);
 
-function item(over: Partial<WorkItem> = {}): WorkItem {
+function item(over: Partial<WorkItemDraft> = {}): WorkItemDraft {
   return {
     id: "w1",
     group: "my_next_actions",
@@ -58,22 +59,49 @@ describe("work items", () => {
     expect(rejected[0]?.because).toContain("No reason");
   });
 
-  it("refuses an owner who is not an active member", () => {
-    const { rejected } = buildWorkspace({
+  it("keeps work whose owner has left, as an exception for a lead to assign", () => {
+    const read = buildWorkspace({
       items: [item({ ownerId: "u3", ownerName: "Person Three" })],
       people,
       viewerId: "u1",
+      viewerRole: "owner",
     });
-    expect(rejected[0]?.because).toContain("not an active member");
+    expect(read.rejected).toHaveLength(0);
+    expect(read.exceptions[0]?.ownership).toBe("owner_departed");
+    // It is nobody's personal work until somebody takes it.
+    expect(read.lists[0]?.items).toHaveLength(0);
   });
 
-  it("refuses an item that opens nowhere", () => {
-    const { rejected } = buildWorkspace({
-      items: [item({ verb: { verb: "Review", href: "nowhere" } })],
+  it("keeps work nobody owns and never hides the obligation", () => {
+    const read = buildWorkspace({
+      items: [item({ ownerId: "", ownerName: "" })],
+      people,
+      viewerId: "u1",
+      viewerRole: "admin",
+    });
+    expect(read.exceptions[0]?.ownership).toBe("unassigned");
+    expect(read.exceptions[0]?.ownerName).toBe("Nobody yet");
+  });
+
+  it("renames from the membership instead of dropping the work", () => {
+    const read = buildWorkspace({
+      items: [item({ ownerName: "Old Name" })],
       people,
       viewerId: "u1",
     });
-    expect(rejected[0]?.because).toContain("does not open anywhere");
+    expect(read.rejected).toHaveLength(0);
+    expect(read.lists[0]?.items[0]?.ownerName).toBe("Person One");
+  });
+
+  it("refuses an item that opens nowhere, or anywhere outside the app", () => {
+    for (const href of ["nowhere", "//evil.example", "/\\evil.example", "/javascript:alert(1)"]) {
+      const { rejected } = buildWorkspace({
+        items: [item({ verb: { verb: "Review", href } })],
+        people,
+        viewerId: "u1",
+      });
+      expect(rejected[0]?.because).toContain("does not open anywhere");
+    }
   });
 
   it("uses only the familiar verbs", () => {
@@ -102,23 +130,45 @@ describe("work items", () => {
     expect(lists[0]?.items.map((row) => row.id)).toEqual(["mine"]);
   });
 
-  it("shows prepared work even when somebody else owns it", () => {
-    const { lists } = buildWorkspace({
-      items: [
-        item({
-          id: "prep",
-          group: "prepared_for_you",
-          ownerId: "u2",
-          ownerName: "Person Two",
-          preparedDetail: "A short read of the conversation.",
-        }),
-      ],
+  it("does not show me work prepared for somebody else", () => {
+    const prepared = item({
+      id: "prep",
+      group: "prepared_for_you",
+      ownerId: "u2",
+      ownerName: "Person Two",
+      preparedDetail: "A short read of the conversation.",
+    });
+    const mine = buildWorkspace({ items: [prepared], people, viewerId: "u1", viewerRole: "owner" });
+    expect(mine.lists[1]?.items).toHaveLength(0);
+
+    const theirs = buildWorkspace({ items: [prepared], people, viewerId: "u2" });
+    expect(theirs.lists[1]?.items.map((row) => row.id)).toEqual(["prep"]);
+  });
+
+  it("gives a lead the team view and refuses it to everybody else", () => {
+    const lead = buildWorkspace({
+      items: [item({ id: "theirs", ownerId: "u2", ownerName: "Person Two" })],
       people,
       viewerId: "u1",
+      viewerRole: "owner",
+      view: "team",
     });
-    expect(lists[1]?.items.map((row) => row.id)).toEqual(["prep"]);
+    expect(lead.view).toBe("team");
+    expect(lead.lists[0]?.items.map((row) => row.id)).toEqual(["theirs"]);
+
+    const member = buildWorkspace({
+      items: [item({ id: "theirs", ownerId: "u1", ownerName: "Person One" })],
+      people,
+      viewerId: "u2",
+      viewerRole: "member",
+      view: "team",
+    });
+    expect(member.view).toBe("personal");
+    expect(member.viewRefusedBecause).toContain("owner or admin");
+    expect(member.exceptions).toHaveLength(0);
   });
 });
+
 
 describe("steward", () => {
   it("does not show a recommendation with no evidence", () => {

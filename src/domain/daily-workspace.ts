@@ -84,14 +84,25 @@ export interface WorkItemSource {
   label: string;
 }
 
+/** How an item's ownership actually stands. Never guessed, never hidden. */
+export type WorkOwnership =
+  /** A current active member owns it. */
+  | "assigned"
+  /** Nobody owns it. The obligation is real; the owner is missing. */
+  | "unassigned"
+  /** The person who owned it is no longer an active member here. */
+  | "owner_departed";
+
 export interface WorkItem {
   id: string;
   group: WorkGroup;
   title: string;
   /** Why this is here, in plain words. Never empty. */
   because: string;
+  /** Empty when nobody owns it. An empty owner never removes the work. */
   ownerId: ID;
   ownerName: string;
+  ownership: WorkOwnership;
   verb: WorkVerbAction;
   source: WorkItemSource;
   /** Preparation detail, collapsed by default. */
@@ -105,8 +116,10 @@ export interface WorkVerbAction {
   href: string;
 }
 
-export interface WorkItemDraft extends Omit<WorkItem, "group"> {
+export interface WorkItemDraft extends Omit<WorkItem, "group" | "ownership"> {
   group: WorkGroup;
+  /** Optional: the caller states what it knows, the rule decides. */
+  ownership?: WorkOwnership;
 }
 
 export interface WorkItemRejection {
@@ -115,27 +128,75 @@ export interface WorkItemRejection {
 }
 
 /**
- * Accept an item onto the workspace only when it can actually be acted on:
- * a reason, a real owner, a known verb and a route into the owning room.
+ * Where a row may send somebody. A destination is only accepted when it is a
+ * path inside this app: a leading slash is not enough, because "//evil.example"
+ * and "/\evil.example" are both browser-valid ways out of it.
+ */
+export const ALLOWED_ROUTE_ROOTS = ["/modules/", "/settings/", "/clients/", "/approvals"] as const;
+
+export function isInternalRoute(href: string): boolean {
+  if (!href.startsWith("/")) return false;
+  if (href.startsWith("//") || href.startsWith("/\\")) return false;
+  if (href.includes("\\")) return false;
+  // A scheme or an authority anywhere before the first slash is a way out.
+  if (/^\/[^/]*:/.test(href)) return false;
+  if (href === "/") return true;
+  return ALLOWED_ROUTE_ROOTS.some((root) => href.startsWith(root));
+}
+
+/**
+ * Accept an item onto the workspace when it can be acted on: a reason, a known
+ * verb and a route into the owning room.
+ *
+ * Ownership is read, not demanded. Work nobody owns, and work whose owner has
+ * left, is real work and stays visible as an exception for somebody to assign.
+ * Hiding it would quietly drop a business obligation. A name that no longer
+ * matches the membership is corrected from the membership, because the stable
+ * id is the person and the name is only how they are written today.
  */
 export function admitWorkItem(input: {
   item: WorkItemDraft;
   people: WorkspacePerson[];
 }): { admitted: true; item: WorkItem } | { admitted: false; rejection: WorkItemRejection } {
   const { item } = input;
-  const reject = (because: string) => ({ admitted: false as const, rejection: { id: item.id, because } });
+  const reject = (because: string) => ({
+    admitted: false as const,
+    rejection: { id: item.id, because },
+  });
 
   if (!item.because.trim()) return reject("No reason was recorded for showing this.");
-  const owner = input.people.find((person) => person.userId === item.ownerId);
-  if (!owner) return reject("The owner is not an active member of this workspace.");
-  if (owner.displayName !== item.ownerName) {
-    return reject("The owner name does not match the recorded membership.");
+  if (!isWorkspaceVerb(item.verb.verb)) {
+    return reject("The action is not one of the workspace verbs.");
   }
-  if (!isWorkspaceVerb(item.verb.verb)) return reject("The action is not one of the workspace verbs.");
-  if (!item.verb.href.startsWith("/") || !item.source.href.startsWith("/")) {
+  if (!isInternalRoute(item.verb.href) || !isInternalRoute(item.source.href)) {
     return reject("The item does not open anywhere in the app.");
   }
-  return { admitted: true, item };
+
+  const owner = item.ownerId
+    ? input.people.find((person) => person.userId === item.ownerId)
+    : undefined;
+
+  if (!item.ownerId) {
+    return {
+      admitted: true,
+      item: { ...item, ownership: "unassigned", ownerName: "Nobody yet" },
+    };
+  }
+  if (!owner) {
+    return {
+      admitted: true,
+      item: {
+        ...item,
+        ownership: "owner_departed",
+        ownerName: item.ownerName || "A former member",
+      },
+    };
+  }
+  // The membership is the source of the name, so a rename never drops work.
+  return {
+    admitted: true,
+    item: { ...item, ownership: "assigned", ownerName: owner.displayName },
+  };
 }
 
 export interface WorkspaceList {
@@ -145,15 +206,45 @@ export interface WorkspaceList {
   emptyState: string;
 }
 
+/** Who may pick up work nobody owns. Not a new permission: the existing one. */
+export function mayResolveOwnership(role: WorkspaceRole): boolean {
+  return role === "owner" || role === "admin";
+}
+
+export const OWNERSHIP_EXCEPTION_LABEL = "Needs an owner";
+
+function byWhenItMatters(a: WorkItem, b: WorkItem): number {
+  if (a.dueAt && b.dueAt) return a.dueAt.localeCompare(b.dueAt);
+  if (a.dueAt) return -1;
+  if (b.dueAt) return 1;
+  return b.updatedAt.localeCompare(a.updatedAt);
+}
+
 /**
  * Same three lists, same order, every day. Newest movement first, with a due
  * date ahead of anything undated.
+ *
+ * The personal view is genuinely personal: it holds what this person owns,
+ * including work prepared for them. Prepared work owned by somebody else is
+ * that person's to read, not everybody's, so it is not shown here merely
+ * because of the group it is in. A lead may also ask for the team view, and
+ * only a lead gets one.
  */
 export function buildWorkspace(input: {
-  items: WorkItem[];
+  items: (WorkItem | WorkItemDraft)[];
   people: WorkspacePerson[];
   viewerId: ID;
-}): { lists: WorkspaceList[]; rejected: WorkItemRejection[] } {
+  viewerRole?: WorkspaceRole;
+  /** "personal" is the default. "team" is refused to anyone who may not. */
+  view?: "personal" | "team";
+}): {
+  lists: WorkspaceList[];
+  rejected: WorkItemRejection[];
+  /** Work with no current owner, for whoever may assign it. */
+  exceptions: WorkItem[];
+  view: "personal" | "team";
+  viewRefusedBecause?: string;
+} {
   const rejected: WorkItemRejection[] = [];
   const admitted: WorkItem[] = [];
 
@@ -163,26 +254,39 @@ export function buildWorkspace(input: {
     else rejected.push(result.rejection);
   }
 
-  const mine = admitted.filter(
-    (item) => item.ownerId === input.viewerId || item.group === "prepared_for_you",
-  );
+  const role = input.viewerRole ?? "member";
+  const mayLead = mayResolveOwnership(role);
+  const askedForTeam = input.view === "team";
+  const view: "personal" | "team" = askedForTeam && mayLead ? "team" : "personal";
+
+  const visible =
+    view === "team"
+      ? admitted
+      : admitted.filter((entry) => entry.ownership === "assigned" && entry.ownerId === input.viewerId);
 
   const lists = WORK_GROUP_ORDER.map((group) => ({
     group,
     label: WORK_GROUP_LABEL[group],
     emptyState: WORK_GROUP_EMPTY_STATE[group],
-    items: mine
-      .filter((item) => item.group === group)
-      .sort((a, b) => {
-        if (a.dueAt && b.dueAt) return a.dueAt.localeCompare(b.dueAt);
-        if (a.dueAt) return -1;
-        if (b.dueAt) return 1;
-        return b.updatedAt.localeCompare(a.updatedAt);
-      }),
+    items: visible.filter((entry) => entry.group === group).sort(byWhenItMatters),
   }));
 
-  return { lists, rejected };
+  // Unowned work never disappears; it is simply nobody's until somebody says.
+  const exceptions = mayLead
+    ? admitted.filter((entry) => entry.ownership !== "assigned").sort(byWhenItMatters)
+    : [];
+
+  return {
+    lists,
+    rejected,
+    exceptions,
+    view,
+    ...(askedForTeam && !mayLead
+      ? { viewRefusedBecause: "Only an owner or admin can see the whole team's work." }
+      : {}),
+  };
 }
+
 
 /* ----------------------------------------------------- steward links */
 
