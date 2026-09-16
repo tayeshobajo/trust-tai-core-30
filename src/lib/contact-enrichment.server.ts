@@ -303,6 +303,10 @@ export function apolloProvider(env: Env, fetchImpl: FetchLike): ContactEnrichmen
         verified: status === "verified",
         provider: "apollo",
         at,
+        // A match names the person, so a title the search hid is recovered here.
+        ...(text(match["title"]) ? { title: text(match["title"])! } : {}),
+        ...(text(match["name"]) ? { fullName: text(match["name"])! } : {}),
+        ...(text(match["id"]) ? { providerPersonId: text(match["id"])! } : {}),
         ...(email
           ? status
             ? { because: `Apollo reported this address as ${status}.` }
