@@ -166,7 +166,12 @@ function apolloTitles(roleFamilies: string[]): string[] {
 }
 
 export function apolloProvider(env: Env, fetchImpl: FetchLike): ContactEnrichmentProvider {
-  const configured = Boolean(env["APOLLO_API_KEY"]?.trim() && env["LOVABLE_API_KEY"]?.trim());
+  // Apollo is configured when THIS runtime holds an Apollo key. A connector
+  // authorised elsewhere is not this app's credential.
+  const configured = Boolean(
+    env["APOLLO_API_KEY"]?.trim() && (!apolloViaGateway(env) || env["LOVABLE_API_KEY"]?.trim()),
+  );
+
 
   return {
     id: "apollo",
