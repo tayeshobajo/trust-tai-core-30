@@ -1,121 +1,148 @@
 /**
- * Preparing a conversation brief through the existing preparation rules.
+ * A conversation prepares its own brief (server only).
  *
- * Counting and state checks happen here in code. Only the writing goes to the
- * model, through the one reasoning route the rest of the system already uses.
- * Source material travels wrapped as quoted material, so nothing written
- * inside a client's email can give instructions or widen what we may read.
+ * This is the trigger side of the shared preparation contract for the
+ * conversation job: when a conversation is recorded and the workspace has
+ * turned the job on, the brief is prepared there and then.
+ *
+ * Counts and state checks are computed here in code. Only the writing goes to
+ * the model, through the one reasoning boundary, and the material travels as
+ * quoted data so nothing written inside a client's message can give orders.
  */
 
 import type { ID, ISODateTime } from "@/domain/entities";
 import type { BriefSource, ConversationBrief } from "@/domain/conversation-brief";
 import { assembleBrief, briefKey, eligibleSources } from "@/domain/conversation-brief";
-import type { PreparationRunInput } from "@/domain/preparation-jobs";
+import type { PreparationPolicy, PreparationRequest } from "@/domain/preparation-jobs";
+import {
+  runPreparation,
+  type DeterministicRead,
+  type PreparationRunInput,
+} from "@/lib/preparation-runner.server";
 
-export const CONVERSATION_BRIEF_JOB = "conversation_summary_actions" as const;
+export const CONVERSATION_BRIEF_JOB = "conversation_summary" as const;
 
-export interface BriefDeterministicRead {
-  sourceCount: number;
-  latestAt: ISODateTime | null;
-  /** Source ids that could not be read, and why, named rather than dropped. */
-  notRead: string[];
-  material: string;
-}
-
-/** Everything a person could count themselves, counted in code. */
-export function briefDeterministicRead(
-  clientRef: string,
-  sources: BriefSource[],
-): BriefDeterministicRead {
-  const { eligible, rejected } = eligibleSources(clientRef, sources);
-  const latest = eligible
-    .map((source) => source.occurredAt)
-    .sort()
-    .at(-1);
-  return {
-    sourceCount: eligible.length,
-    latestAt: latest ?? null,
-    notRead: rejected,
-    material: eligible
-      .map(
-        (source) =>
-          `<<<material ref=${source.sourceId} kind=${source.kind} at=${source.occurredAt}>>>\n${source.rawText}\n<<<end material>>>`,
-      )
-      .join("\n\n"),
-  };
-}
-
-export interface BriefPreparationRequest {
-  job: typeof CONVERSATION_BRIEF_JOB;
-  organizationId: ID;
-  /** Changes whenever the conversation does, so an old brief reads as stale. */
-  inputRevision: string;
-  idempotencyKey: string;
-  read: BriefDeterministicRead;
-}
-
+/** The subject and revision a brief is prepared from. */
 export function briefPreparationRequest(input: {
   organizationId: ID;
   clientRef: string;
   sources: BriefSource[];
-}): BriefPreparationRequest {
-  const read = briefDeterministicRead(input.clientRef, input.sources);
-  const key = briefKey(
-    input.organizationId,
-    input.clientRef,
-    eligibleSources(input.clientRef, input.sources).eligible.map((source) => source.sourceId),
-  );
+  triggerEventId: string;
+}): PreparationRequest {
+  const { eligible } = eligibleSources(input.clientRef, input.sources);
+  const latest = eligible.map((source) => source.occurredAt).sort().at(-1);
   return {
-    job: CONVERSATION_BRIEF_JOB,
     organizationId: input.organizationId,
-    inputRevision: `${read.sourceCount}|${read.latestAt ?? "none"}`,
-    idempotencyKey: key,
-    read,
-  };
-}
-
-export interface BriefRunOptions {
-  organizationId: ID;
-  clientRef: string;
-  sources: BriefSource[];
-  preparedAt: ISODateTime;
-  /** Off unless the workspace has switched this job on. */
-  jobEnabled: boolean;
-  runner?: PreparationRunInput["callModel"];
-  /** Turns the model's writing into brief lines. Refuses unreadable output. */
-  parse: (raw: string) => {
-    goal?: ConversationBrief["goal"];
-    knownFacts?: ConversationBrief["knownFacts"];
-    openQuestions?: ConversationBrief["openQuestions"];
-    commitments?: ConversationBrief["commitments"];
-    nextMove?: ConversationBrief["nextMove"];
+    jobId: CONVERSATION_BRIEF_JOB,
+    subjectRef: briefKey(
+      input.organizationId,
+      input.clientRef,
+      eligible.map((source) => source.sourceId),
+    ),
+    // The revision moves when the conversation moves.
+    inputRevision: [eligible.length, latest ?? "none"].join("|"),
+    triggerEventId: input.triggerEventId,
   };
 }
 
 /**
- * Prepare a brief when a conversation moves. Returns null while the job is off
- * in this workspace: preparation is never armed by being written.
+ * Everything the brief rests on, computed without a model: which sources are
+ * this client's own, how many there are, and what the latest one is.
  */
-export async function prepareBriefOnConversation(
-  options: BriefRunOptions,
-): Promise<ConversationBrief | null> {
-  if (!options.jobEnabled) return null;
-  if (!options.runner) throw new Error("No preparation runner is configured.");
+export function briefDeterministicRead(input: {
+  clientRef: string;
+  sources: BriefSource[];
+  ownerLabel?: string;
+}): DeterministicRead {
+  const { eligible, rejected } = eligibleSources(input.clientRef, input.sources);
+  const latest = eligible.map((source) => source.occurredAt).sort().at(-1);
+  const figures = {
+    sourcesRead: eligible.length,
+    sourcesNotRead: rejected.length,
+  };
+  const ownerLabel = input.ownerLabel ?? "Unassigned";
 
-  const request = briefPreparationRequest(options);
-  if (request.read.sourceCount === 0) return null;
+  if (eligible.length === 0) {
+    return {
+      figures,
+      evidenceRefs: [],
+      ownerLabel,
+      material: [],
+      cannotPrepareBecause:
+        rejected[0] ?? "There is nothing recorded in this conversation to prepare from.",
+    };
+  }
 
-  const result = await options.runner({
-    job: CONVERSATION_BRIEF_JOB,
-    material: request.read.material,
-  } as never);
-  const parsed = options.parse(result.raw);
+  return {
+    figures,
+    evidenceRefs: eligible.map((source) => source.sourceId),
+    ownerLabel,
+    material: eligible.map((source) => ({
+      ref: source.sourceId,
+      text: [
+        `${source.kind} on ${source.occurredAt}: ${source.label}`,
+        source.rawText,
+      ].join("\n"),
+    })),
+    ...(latest ? {} : {}),
+    ...(rejected.length > 0
+      ? { needsDecisionBecause: `Some material was not read: ${rejected.join(" ")}` }
+      : {}),
+  };
+}
 
+/**
+ * Called when a conversation is recorded, not by a button. Returns null when
+ * the job is off in this workspace, so nothing is prepared and nothing implied.
+ */
+export async function prepareBriefOnConversation(input: {
+  organizationId: ID;
+  clientRef: string;
+  sources: BriefSource[];
+  triggerEventId: string;
+  policy: PreparationPolicy;
+  ownerLabel?: string;
+  runner?: Omit<PreparationRunInput, "request" | "policy" | "currentInputRevision" | "deterministic">;
+}) {
+  if (!input.policy.enabledJobs.includes(CONVERSATION_BRIEF_JOB)) {
+    return null;
+  }
+  if (!input.runner) {
+    throw new Error("A store and token are required to prepare a conversation brief.");
+  }
+  const request = briefPreparationRequest(input);
+  return runPreparation({
+    ...input.runner,
+    request,
+    policy: input.policy,
+    currentInputRevision: request.inputRevision,
+    deterministic: () =>
+      briefDeterministicRead({
+        clientRef: input.clientRef,
+        sources: input.sources,
+        ...(input.ownerLabel ? { ownerLabel: input.ownerLabel } : {}),
+      }),
+  });
+}
+
+/**
+ * Turn prepared wording into a brief. Grounding is re-checked here, so a line
+ * the model attached to another client's material never reaches the brief.
+ */
+export function assemblePreparedBrief(input: {
+  organizationId: ID;
+  clientRef: string;
+  sources: BriefSource[];
+  preparedAt: ISODateTime;
+  written: Partial<
+    Pick<ConversationBrief, "goal" | "knownFacts" | "openQuestions" | "commitments" | "nextMove">
+  >;
+}): ConversationBrief {
   return assembleBrief({
-    organizationId: options.organizationId,
-    clientRef: options.clientRef,
-    sources: options.sources,
-    preparedAt: options.preparedAt,
-    ...parsed,
+    organizationId: input.organizationId,
+    clientRef: input.clientRef,
+    sources: input.sources,
+    preparedAt: input.preparedAt,
+    ...input.written,
   });
 }
