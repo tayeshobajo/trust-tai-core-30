@@ -123,6 +123,7 @@ describe("duplicates, retries and cancellation", () => {
     const output = await run({
       store,
       callModel: () => new Promise(() => {}),
+      timeoutMs: 20,
       request: sandboxRequest("milestone_status_draft", { subjectRef: "m-1" }),
       policy: sandboxPolicy(["milestone_status_draft"]),
       deterministic: () => ({ ...sandboxMilestoneRead(), needsDecisionBecause: undefined as never }),

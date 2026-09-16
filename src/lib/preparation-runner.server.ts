@@ -67,6 +67,8 @@ export interface PreparationRunInput {
   deterministic: () => Promise<DeterministicRead> | DeterministicRead;
   now?: () => Date;
   signal?: AbortSignal;
+  /** Override the spec timeout. Used by the synthetic sandbox only. */
+  timeoutMs?: number;
   /** Injected in the synthetic sandbox; production resolves the real boundary. */
   verifyAccess?: (token: string, organizationId: string) => Promise<boolean>;
   callModel?: RuntimeModelCaller;
@@ -259,7 +261,7 @@ export async function runPreparation(input: PreparationRunInput): Promise<Prepar
       new Promise<never>((_resolve, reject) => {
         const timer = setTimeout(
           () => reject(new Error("timeout")),
-          spec.timeoutMs,
+          input.timeoutMs ?? spec.timeoutMs,
         );
         input.signal?.addEventListener("abort", () => {
           clearTimeout(timer);
