@@ -72,7 +72,7 @@ describe("Apollo search", () => {
     expect(result.provider).toBe("apollo");
     expect(result.people[0]?.fullName).toBe("Dana Reid");
     expect(result.people[0]?.email).toBeUndefined();
-    const [url] = impl.mock.calls[0] as [URL, RequestInit];
+    const [url] = impl.mock.calls[0] as unknown as [URL, RequestInit];
     expect(String(url)).toContain("mixed_people/api_search");
     expect(String(url)).toContain("person_titles");
   });
@@ -108,7 +108,7 @@ describe("Apollo enrichment", () => {
       CONFIGURED,
       impl as unknown as typeof fetch,
     );
-    const [, init] = impl.mock.calls[0] as [string, RequestInit];
+    const [, init] = impl.mock.calls[0] as unknown as [string, RequestInit];
     expect(String(init.body)).toContain('"reveal_phone_number":false');
   });
 });

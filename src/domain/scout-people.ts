@@ -229,17 +229,25 @@ function conflicts(a: ScoutPerson, b: ScoutPerson): boolean {
 }
 
 function merge(into: ScoutPerson, other: ScoutPerson): ScoutPerson {
+  const pick = (a: string | undefined, b: string | undefined) => a ?? b;
+  const title = pick(into.title, other.title);
+  const profileUrl = pick(into.profileUrl, other.profileUrl);
+  const companyDomain = pick(into.companyDomain, other.companyDomain);
+  const workEmail = pick(into.workEmail, other.workEmail);
+  const emailFetchedAt = pick(into.emailFetchedAt, other.emailFetchedAt);
+  const emailVerifiedAt = pick(into.emailVerifiedAt, other.emailVerifiedAt);
+  const providerPersonId = pick(into.providerPersonId, other.providerPersonId);
   return {
     ...into,
-    title: into.title ?? other.title,
-    profileUrl: into.profileUrl ?? other.profileUrl,
-    companyDomain: into.companyDomain ?? other.companyDomain,
-    workEmail: into.workEmail ?? other.workEmail,
+    ...(title ? { title } : {}),
+    ...(profileUrl ? { profileUrl } : {}),
+    ...(companyDomain ? { companyDomain } : {}),
+    ...(workEmail ? { workEmail } : {}),
     emailStatus: into.workEmail ? into.emailStatus : other.emailStatus,
-    emailFetchedAt: into.emailFetchedAt ?? other.emailFetchedAt,
-    emailVerifiedAt: into.emailVerifiedAt ?? other.emailVerifiedAt,
-    providerPersonId: into.providerPersonId ?? other.providerPersonId,
-    thoughtLeadership: into.thoughtLeadership ?? other.thoughtLeadership,
+    ...(emailFetchedAt ? { emailFetchedAt } : {}),
+    ...(emailVerifiedAt ? { emailVerifiedAt } : {}),
+    ...(providerPersonId ? { providerPersonId } : {}),
+    thoughtLeadership: into.thoughtLeadership ?? other.thoughtLeadership ?? null,
     support: Math.max(into.support, other.support),
   };
 }

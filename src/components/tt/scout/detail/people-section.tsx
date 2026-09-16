@@ -188,7 +188,7 @@ export function PeopleSection({
                   {canPrepareOutreach(state) ? (
                     <TTButton
                       size="sm"
-                      variant={action === "prepare_outreach" ? "default" : "secondary"}
+                      variant={action === "prepare_outreach" ? "primary" : "secondary"}
                       onClick={() => onPrepareOutreach(person)}
                     >
                       Prepare outreach
