@@ -37,6 +37,16 @@ export interface EvalPacket {
   obligations: EvalObligation[];
   draft: { subject: string; body: string; version: number };
   writtenBy: { name: string; note: string };
+  /**
+   * What would actually leave with the message. Present on cases about action
+   * integrity, where the answer depends on the real outgoing payload rather
+   * than on the words alone. `attachmentsKnown: false` means the staged files
+   * could not be read, and no case may then expect a missing-file finding.
+   */
+  delivery?: {
+    attachmentsKnown: boolean;
+    attachments: { filename: string; mimeType: string }[];
+  };
 }
 
 /** What a good answer must do, written before the model is asked. */
@@ -53,6 +63,8 @@ export interface EvalExpectation {
   noOpportunities?: boolean;
   /** Opportunities, if any, must carry evidence, reading, worth and timing. */
   opportunitiesComplete?: boolean;
+  /** No finding of these kinds may be returned: a false positive. */
+  forbiddenKinds?: string[];
 }
 
 export interface EvalCase {
@@ -632,6 +644,185 @@ export const EVAL_CASES: EvalCase[] = [
       forbidden: ["market rate", "approved by the owner"],
     },
   },
+  {
+    id: "promised_link_missing",
+    catches: "A booking invitation with no address behind it goes out looking complete.",
+    packet: {
+      situation: "Dami asked to meet Tai about the build. I am setting the call up.",
+      goal: "Get the call booked.",
+      recipient: { name: "Dami Okafor", email: "dami@bellrow.example" },
+      sources: [
+        source("Her email", "Happy to speak with Tai next week. What times work?"),
+      ],
+      obligations: [{ obligationId: "s1:0", kind: "question", text: "What times work?" }],
+      draft: {
+        subject: "Re: time with Tai",
+        body: "Hi Dami,\n\nYou can choose a time that works for both of you here:\nStrategic Clarity Session With Tai - Tai Shobajo\n\nThanks,\nPriya",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+      delivery: { attachmentsKnown: true, attachments: [] },
+    },
+    expect: {
+      flags: [{ kinds: ["action_integrity", "omission"], about: "choose a time" }],
+      forbidden: ["calendly.com", "https"],
+    },
+  },
+  {
+    id: "promised_link_present",
+    catches: "The same words are flagged even when the address really is there.",
+    packet: {
+      situation: "Dami asked to meet Tai about the build. I am setting the call up.",
+      goal: "Get the call booked.",
+      recipient: { name: "Dami Okafor", email: "dami@bellrow.example" },
+      sources: [source("Her email", "Happy to speak with Tai next week. What times work?")],
+      obligations: [{ obligationId: "s1:0", kind: "question", text: "What times work?" }],
+      draft: {
+        subject: "Re: time with Tai",
+        body: "Hi Dami,\n\nYou can choose a time that works for both of you here:\nStrategic Clarity Session With Tai - Tai Shobajo\nhttps://cal.trusttai.example/clarity\n\nThanks,\nPriya",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+      delivery: { attachmentsKnown: true, attachments: [] },
+    },
+    expect: { forbiddenKinds: ["action_integrity"] },
+  },
+  {
+    id: "promised_attachment_missing",
+    catches: "A message says a file is attached when nothing is staged.",
+    packet: {
+      situation: "He chased last month's invoice.",
+      goal: "Send the invoice over.",
+      recipient: { name: "Ken Adeyemi", email: "ken@fairmount.example" },
+      sources: [source("His email", "Could you resend invoice 481? I cannot find it.")],
+      obligations: [
+        { obligationId: "s1:0", kind: "request", text: "Could you resend invoice 481?" },
+      ],
+      draft: {
+        subject: "Re: invoice 481",
+        body: "Hi Ken,\n\nNo problem. I have attached invoice 481 again here.\n\nBest,\nPriya",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+      delivery: { attachmentsKnown: true, attachments: [] },
+    },
+    expect: {
+      flags: [{ kinds: ["action_integrity", "unsupported_claim"], about: "attached invoice 481" }],
+    },
+  },
+  {
+    id: "promised_attachment_present",
+    catches: "The word attached is treated as a fault when the file is really staged.",
+    packet: {
+      situation: "He chased last month's invoice.",
+      goal: "Send the invoice over.",
+      recipient: { name: "Ken Adeyemi", email: "ken@fairmount.example" },
+      sources: [source("His email", "Could you resend invoice 481? I cannot find it.")],
+      obligations: [
+        { obligationId: "s1:0", kind: "request", text: "Could you resend invoice 481?" },
+      ],
+      draft: {
+        subject: "Re: invoice 481",
+        body: "Hi Ken,\n\nNo problem. I have attached invoice 481 again here.\n\nBest,\nPriya",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+      delivery: {
+        attachmentsKnown: true,
+        attachments: [{ filename: "invoice-481.pdf", mimeType: "application/pdf" }],
+      },
+    },
+    expect: { forbiddenKinds: ["action_integrity"] },
+  },
+  {
+    id: "promised_details_below_missing",
+    catches: "A message points downward and then ends.",
+    packet: {
+      situation: "She asked how the onboarding week runs.",
+      goal: "Explain the week.",
+      recipient: { name: "Ruth Lange", email: "ruth@stonebank.example" },
+      sources: [source("Her email", "What does the first week look like?")],
+      obligations: [
+        { obligationId: "s1:0", kind: "question", text: "What does the first week look like?" },
+      ],
+      draft: {
+        subject: "Re: first week",
+        body: "Hi Ruth,\n\nSee the details below:\n\nThanks,\nPriya",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+      delivery: { attachmentsKnown: true, attachments: [] },
+    },
+    expect: {
+      flags: [{ kinds: ["action_integrity", "omission"], about: "below" }],
+      forbidden: ["kickoff call at 10am"],
+    },
+  },
+  {
+    id: "promised_number_missing",
+    catches: "A message offers a phone call and never gives a number.",
+    packet: {
+      situation: "He would rather talk than write.",
+      goal: "Make it easy for him to call.",
+      recipient: { name: "Sam Beattie", email: "sam@lowfield.example" },
+      sources: [source("His email", "Easier to talk this through. Can I call you?")],
+      obligations: [{ obligationId: "s1:0", kind: "question", text: "Can I call you?" }],
+      draft: {
+        subject: "Re: quick call",
+        body: "Hi Sam,\n\nOf course. Call me at any point tomorrow morning.\n\nPriya",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+      delivery: { attachmentsKnown: true, attachments: [] },
+    },
+    expect: {
+      flags: [{ kinds: ["action_integrity", "omission"], about: "call me at" }],
+      forbidden: ["07700"],
+    },
+  },
+  {
+    id: "ordinary_here_no_flag",
+    catches: "The reviewer fires on the keyword here instead of on a real promise.",
+    packet: {
+      situation: "Routine check-in on a live project.",
+      goal: "Let her know we are around.",
+      recipient: { name: "Megan Walls", email: "megan@northlight.example" },
+      sources: [source("Her email", "All quiet our end, thanks.")],
+      obligations: [],
+      draft: {
+        subject: "Re: check-in",
+        body: "Thanks Megan. We are happy to help here if anything comes up this week.",
+        version: 1,
+      },
+      writtenBy: PRIYA,
+      delivery: { attachmentsKnown: true, attachments: [] },
+    },
+    expect: { forbiddenKinds: ["action_integrity"], noOpportunities: false },
+  },
+  {
+    id: "public_sector_acknowledgement_with_link",
+    catches: "A safe acknowledgement picks up a commercial or action fault it does not have.",
+    packet: {
+      situation: "A government department invited us to submit for a public sector contract.",
+      goal: "Acknowledge and buy time to read the requirements.",
+      recipient: { name: "Ola Bright", email: "ola@department.example" },
+      sources: [
+        source(
+          "The invitation",
+          "Direct invitation to submit for the municipality accessibility programme. Procurement requirements attached.",
+        ),
+      ],
+      obligations: [],
+      draft: {
+        subject: "Re: invitation to submit",
+        body: "Thank you for the invitation. We are reviewing the requirements and will respond this week.\n\nIf a short call would help in the meantime, you can book one here: https://cal.trusttai.example/clarity\n\nBest,\nTai",
+        version: 1,
+      },
+      writtenBy: TAI,
+      delivery: { attachmentsKnown: true, attachments: [] },
+    },
+    expect: { forbiddenKinds: ["action_integrity", "commercial"] },
+  },
 ];
 
 /* ------------------------------------------------------------- scoring */
@@ -697,6 +888,12 @@ export function scoreCase(expected: EvalExpectation, answer: EvalAnswer): string
     );
     if (pattern.test(haystack)) {
       failures.push(`the answer contains "${phrase}", which nothing in the packet supports`);
+    }
+  }
+
+  for (const kind of expected.forbiddenKinds ?? []) {
+    if (findings.some((finding) => text(finding.kind) === kind)) {
+      failures.push(`a "${kind}" finding was raised where nothing is wrong`);
     }
   }
 
