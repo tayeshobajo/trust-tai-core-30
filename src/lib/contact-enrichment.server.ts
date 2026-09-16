@@ -180,7 +180,7 @@ export function apolloProvider(env: Env, fetchImpl: FetchLike): ContactEnrichmen
 
     async searchPeople(input) {
       if (!configured) throw new EnrichmentNotConfigured();
-      const url = new URL(`${GATEWAY}/apollo/api/v1/mixed_people/api_search`);
+      const url = new URL(apolloUrl(env, "/api/v1/mixed_people/api_search"));
       const params = new URLSearchParams({
         per_page: String(Math.min(Math.max(input.limit, 1), 25)),
         page: "1",
@@ -190,14 +190,18 @@ export function apolloProvider(env: Env, fetchImpl: FetchLike): ContactEnrichmen
       for (const title of apolloTitles(input.roleFamilies)) {
         params.append("person_titles[]", title);
       }
+      for (const seniority of input.seniorities ?? []) {
+        params.append("person_seniorities[]", seniority);
+      }
       url.search = params.toString();
 
       let response: Response;
       try {
-        response = await fetchImpl(url, { method: "POST", headers: headers(env, "APOLLO_API_KEY") });
+        response = await fetchImpl(url, { method: "POST", headers: apolloHeaders(env) });
       } catch (error) {
         throw new ProviderFailure("apollo", 0, error instanceof Error ? error.message : "no answer");
       }
+
       const body = await readOrThrow("apollo", response);
       const people = Array.isArray(body["people"]) ? (body["people"] as unknown[]) : [];
 
