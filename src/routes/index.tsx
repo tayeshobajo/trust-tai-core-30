@@ -7,6 +7,7 @@ import { AppShell } from "@/components/tt/app-shell";
 import { ContinueSection, type ContinueItem } from "@/components/tt/home/continue-section";
 import { GuidanceCard } from "@/components/tt/home/guidance-card";
 import { HomeHero } from "@/components/tt/home/home-hero";
+import { MyWork } from "@/components/tt/home/my-work";
 import { SuiteRoomsGrid } from "@/components/tt/home/suite-rooms-grid";
 import { ThisWeek } from "@/components/tt/home/this-week";
 import { TodaySummary, type TodayItem } from "@/components/tt/home/today-summary";
@@ -160,6 +161,8 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
   return (
     <div className="w-full space-y-16 pb-8">
       <HomeHero firstName={identity.firstName} />
+
+      <MyWork identity={identity} />
 
       <TodaySummary
         items={todayItems}

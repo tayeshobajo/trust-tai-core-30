@@ -18,6 +18,7 @@ import { AppShell } from "@/components/tt/app-shell";
 import { CommercialPanel } from "@/components/tt/clients/commercial-panel";
 import { ProposalPanel } from "@/components/tt/clients/proposal-panel";
 import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
+import { ClientContinuity } from "@/components/tt/clients/continuity";
 import { OverviewTab } from "@/components/tt/clients/overview";
 import { CommercialTab } from "@/components/tt/clients/commercial-tab";
 import {
@@ -774,6 +775,20 @@ function ClientShell({
 
         <div role="tabpanel" aria-label={tab}>
           {tab === "overview" ? (
+            <>
+            <div className="mb-6">
+              <ClientContinuity
+                clientId={clientId}
+                roadmap={
+                  roadmapOutcomes === null
+                    ? null
+                    : roadmapOutcomes.available
+                      ? answered(roadmapOutcomes.value[0] ?? null)
+                      : roadmapOutcomes
+                }
+                projects={projectsForTab}
+              />
+            </div>
             <OverviewTab
               clientId={clientId}
               reads={{
@@ -810,6 +825,7 @@ function ClientShell({
                 provenance: commercialProvenanceLine,
               }}
             />
+            </>
           ) : null}
 
           {tab === "work" ? (
