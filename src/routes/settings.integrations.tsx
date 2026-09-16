@@ -5,6 +5,8 @@ import { SectionHeading } from "@/components/tt/primitives";
 import { Health } from "@/components/tt/settings/pieces";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import { readIntegrations, type IntegrationHealth } from "@/data/supabase/settings-integrations";
+import { readEnrichmentStatus } from "@/data/scout/people-research";
+
 
 export const Route = createFileRoute("/settings/integrations")({
   component: IntegrationSettings,
@@ -35,6 +37,11 @@ function IntegrationSettings() {
     queryKey: ["settings", "integrations", identity.organizationId],
     queryFn: () => readIntegrations(identity.organizationId),
   });
+  const enrichment = useQuery({
+    queryKey: ["settings", "contact-enrichment"],
+    queryFn: readEnrichmentStatus,
+  });
+
 
   return (
     <div className="tt-surface p-6">
@@ -77,6 +84,28 @@ function IntegrationSettings() {
         </div>
       )}
 
+      <div className="mt-6 rounded-xl border border-border p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-medium text-foreground">Contact research</p>
+          <Health tone={enrichment.data?.connected ? "good" : "neutral"}>
+            {enrichment.isPending
+              ? "Checking"
+              : enrichment.data?.connected
+                ? "Connected"
+                : "Not connected"}
+          </Health>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Used by Scout to find the people at a qualified company and, on request, one work address
+          at a time.
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Apollo {enrichment.data?.apolloConfigured ? "is set up" : "is not set up"}. Clay{" "}
+          {enrichment.data?.clayConfigured ? "is set up" : "is not set up"}. Keys live in the
+          workspace secrets and are never shown here.
+        </p>
+      </div>
+
       <p className="mt-4 text-xs text-muted-foreground">
         Agents connected through Paperclip are a workforce, not workspace members. They never appear
         in People &amp; access.
@@ -84,3 +113,4 @@ function IntegrationSettings() {
     </div>
   );
 }
+

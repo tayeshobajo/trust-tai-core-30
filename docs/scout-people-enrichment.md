@@ -45,16 +45,26 @@ app, no parallel CRM and no second integrations system.
 
 ## Provider state
 
-- **Apollo**: adapter written against the Lovable connector gateway. Needs
-  `APOLLO_API_KEY` plus `LOVABLE_API_KEY` in this app runtime. Search is free
-  and returns no address; `people/bulk_match` is the paid lookup.
+- **Apollo**: adapter calls Apollo directly at `https://api.apollo.io` with the
+  workspace's own key in the `X-Api-Key` header. The only secret it reads is
+  `APOLLO_API_KEY`, server side, inside the request. Apollo counts as configured
+  when that secret exists and nothing else is required. Search
+  (`mixed_people/api_search`, by company or domain, titles and optional
+  seniority bands) is free and returns no address; `people/bulk_match` is the
+  paid single-person lookup and always sends `reveal_phone_number: false`.
+  Optional: set `APOLLO_VIA_CONNECTOR_GATEWAY=true` when the stored value is a
+  Lovable connection key rather than an Apollo key; that path also needs
+  `LOVABLE_API_KEY` and is off by default.
 - **Clay**: adapter written for search, email enrichment and Find Thought
   Leadership. Needs `CLAY_API_KEY`, plus `CLAY_EMAIL_ROUTINE_ID` and
   `CLAY_THOUGHT_LEADERSHIP_ROUTINE_ID` for the two routines.
 - **Order**: `SCOUT_ENRICHMENT_ORDER`, default `apollo,clay`.
 - **Automatic enrichment**: off unless `SCOUT_AUTOMATIC_ENRICHMENT=true`.
 
-None of these keys is present in this app runtime today, so the card shows
+The key is never sent to the browser, never logged, never placed in a URL and
+never included in an error message; the browser only ever receives the booleans
+returned by `enrichmentStatus`. No key is present in this app runtime today as
+far as this build can tell, so until one is added the card shows
 "Contact enrichment is not connected" with a link to integration settings.
 Connectors authorised inside ChatGPT are not credentials for cmd.trusttai.com
 and are not treated as such anywhere in this code.
@@ -78,7 +88,12 @@ and are not treated as such anywhere in this code.
 ## Setup needed before this is live
 
 1. Tai decides the Apollo and Clay accounts the workspace will pay from.
-2. An admin adds `APOLLO_API_KEY` and, if Clay is used, `CLAY_API_KEY` plus the
-   two routine ids in Project Settings, Secrets.
+2. An admin adds `APOLLO_API_KEY` in Project Settings, Secrets, and, if Clay is
+   used, `CLAY_API_KEY` plus the two routine ids. Nobody pastes a key into chat,
+   a document or the repository.
+   First live smoke test after the secret exists: open a qualified company in
+   Scout, confirm the People card no longer says not connected, press Find the
+   right people once (search only, no credit), then press Find email on one
+   person to spend exactly one enrichment.
 3. Tai approves the proposed table; Codex applies it and Scout switches from
    session state to durable rows.
