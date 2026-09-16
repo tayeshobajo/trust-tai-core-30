@@ -105,7 +105,7 @@ describe("Apollo search", () => {
       { APOLLO_API_KEY: "secret-apollo-value" },
       impl as unknown as typeof fetch,
     );
-    expect(String(impl.mock.calls[0]?.[0])).toContain("person_seniorities");
+    expect(String((impl.mock.calls[0] as unknown as [URL])[0])).toContain("person_seniorities");
   });
 
   it("routes through the gateway only when the workspace says so", async () => {
@@ -115,7 +115,9 @@ describe("Apollo search", () => {
       { ...CONFIGURED, APOLLO_VIA_CONNECTOR_GATEWAY: "true" },
       impl as unknown as typeof fetch,
     );
-    expect(String(impl.mock.calls[0]?.[0])).toContain("connector-gateway.lovable.dev/apollo");
+    expect(String((impl.mock.calls[0] as unknown as [URL])[0])).toContain(
+      "connector-gateway.lovable.dev/apollo",
+    );
   });
 
 });
