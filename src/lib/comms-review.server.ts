@@ -84,6 +84,7 @@ import {
   type ClassifiedSource,
 } from "@/domain/comms-sources";
 import { sha256 } from "@/domain/sha256";
+import { strategicFindings } from "@/domain/comms-strategic-gate";
 import { readDraftKind, type DraftKind } from "@/domain/comms-draft-kind";
 import type { ProposalSections } from "@/domain/comms-proposal";
 import {
@@ -123,7 +124,7 @@ import {
 } from "@/domain/comms-review";
 
 /** Bumped whenever the instructions or the packet change shape. */
-export const REVIEW_PROMPT_VERSION = "comms-review/2026-09-15";
+export const REVIEW_PROMPT_VERSION = "comms-review/2026-09-16-strategic";
 
 /* -------------------------------------------------------------- failures */
 
