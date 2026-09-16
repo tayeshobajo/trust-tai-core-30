@@ -42,7 +42,7 @@ vi.mock("@/lib/preparation-store.server", () => ({
 vi.mock("@/lib/intelligence-runtime.server", () => ({
   requireRuntimeAccess: async () => activeMember,
   runtimeModelCaller: async () => model,
-  runtimeProviderStatus: () => ({ ready: true }),
+  runtimeProviderStatus: () => ({ configured: true }),
   ProviderCallFailedError: class extends Error {},
   ProviderNotConfiguredError: class extends Error {},
 }));
