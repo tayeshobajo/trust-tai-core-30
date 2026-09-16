@@ -165,3 +165,39 @@ No Apollo call, no credit, no send, no schema application in this round.
 | SP9.5 | A recorded title fills a provider gap, never overwrites a provider title, matched on name within the same company and never merging people | PASS-CODE (3 tests) |
 | SP9.6 | Live re-check of `public.scout_people`: still absent (PGRST205). Honest persistence-blocked state retained | BLOCKED - Codex must apply `docs/migrations/proposed/20260916180000_scout_people.sql` |
 | SP9.7 | No Apollo call and no credit spent in this round | PASS |
+
+## SP10 Durable storage live (table applied 2026-09-16)
+
+`public.scout_people` was applied to project okydosoacqdnursmmenf from the
+reviewed SQL. This round proves the durable path against the real database
+without any provider call and without leaving data behind.
+
+Method (no Apollo spend): `scripts/qa/scout-people-persistence-smoke.ts` creates
+a clearly marked probe company in a real workspace, saves one synthetic person
+through the same server store the app uses, records a `manual` provider answer,
+reads the row back through the reload path, saves the same research again, then
+deletes the probe company. No application role may delete `scout_people` rows,
+so cleanup is the table's own `on delete cascade` from the prospect. Row count
+for the probe after cleanup: 0.
+
+| # | Evidence | Result |
+|---|---|---|
+| SP10.1 | Table readable from the app runtime through the server credential (0 rows before the probe) | PASS-LIVE |
+| SP10.2 | Delete probe: `permission denied for table scout_people` (42501) for the server credential. Provenance is not erasable, as designed | PASS-LIVE |
+| SP10.3 | Cross-workspace insert refused by trigger: `scout_people.prospect_id belongs to another workspace` (P0001) | PASS-LIVE |
+| SP10.4 | Save research, then record the answer: row stored with title, provider person id, `verified`, address, fetched and verified timestamps | PASS-LIVE |
+| SP10.5 | Reload path (`store.list`) returns the same person with title, provider person id, address, status, provider and timestamps | PASS-LIVE |
+| SP10.6 | Repeat save of the same identity produces one row and keeps the recorded address and state | PASS-LIVE |
+| SP10.7 | Probe company deleted; cascade removed the person row; nothing left behind | PASS-LIVE |
+| SP10.8 | Enrichment auto-saves in the same flow; the second "Save this result" button appears only on a real storage failure, and retry posts the server receipt, never the provider | PASS-CODE (`src/routes/api/public/scout.people.ts`, `src/data/scout/people-research.ts`) |
+| SP10.9 | A verified, fresh address offers "Refresh" rather than "Find email", so no second credit is spent without an explicit choice | PASS-CODE (`nextAction` / `workEmailState`) |
+| SP10.10 | The "page only" storage banner appears solely when the durable read actually fails; with a healthy table it is absent | PASS-CODE |
+| SP10.11 | Prepare outreach uses the persisted person, hands into the existing Comms preparation and records the relationship on the Scout row. Nothing is sent | PASS-CODE (`prepareOutreach` in `src/routes/modules.scout.prospects.$prospectId.tsx`) |
+| SP10.12 | Signed-in screen acceptance: find people, find email, reload, prepare outreach | PENDING - user |
+
+SP4.7 and SP8.8 are superseded by SP10.5 and SP10.4. SP1.4 (database refusal of
+a non-active member) remains for an authenticated session: the read policy
+requires `status = 'active'` and no write policy exists for `authenticated`.
+
+No Apollo or Clay call, no credit, no message sent, no schema applied in this
+round.

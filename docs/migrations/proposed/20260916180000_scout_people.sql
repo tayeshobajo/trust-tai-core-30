@@ -1,6 +1,9 @@
--- PROPOSED, NOT APPLIED. Owner: Codex, pending explicit application.
--- Revision 2 (2026-09-16). Supersedes revision 1 in full; revision 1 was never
--- applied, so this is still a first apply, not a re-apply.
+-- APPLIED 2026-09-16 to project okydosoacqdnursmmenf from this reviewed SQL.
+-- DO NOT RE-APPLY. Kept as the record of what was applied.
+-- Reported verification at apply time: table present, 3 indexes, 1 RLS policy,
+-- 2 non-internal triggers.
+-- Revision 2 (2026-09-16). Superseded revision 1 in full; revision 1 was never
+-- applied, so this was a first apply, not a re-apply.
 --
 -- Scout people research for a qualified account.
 --
