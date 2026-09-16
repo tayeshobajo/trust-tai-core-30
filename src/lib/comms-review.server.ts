@@ -1504,6 +1504,43 @@ export async function runReview(
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
 
+  /* The floor beneath the model's judgment. Two strategic risks are also
+     checked in ordinary code, so a quiet answer cannot let a relationship
+     handoff or an unconsidered price pass unremarked. A gate finding is only
+     added when the model did not already raise that kind as a must fix, and
+     only ever quotes words that are really in this draft. */
+  for (const strategic of strategicFindings({
+    draftBody: version.body,
+    draftSubject: version.subject,
+    sourceTexts,
+    situation: session.situation,
+    goal: session.goal,
+    authorName: author.name,
+  })) {
+    const alreadyRaised = findingRows.some(
+      (row) => row.kind === strategic.kind && row.severity === "must_fix",
+    );
+    if (alreadyRaised) continue;
+    const at = version.body.indexOf(strategic.excerpt);
+    findingRows.push({
+      organization_id: input.organizationId,
+      session_id: input.sessionId,
+      run_id: runId,
+      version_id: input.versionId,
+      kind: strategic.kind,
+      severity: strategic.severity,
+      excerpt: strategic.excerpt,
+      excerpt_start: at >= 0 ? at : null,
+      excerpt_end: at >= 0 ? at + strategic.excerpt.length : null,
+      why: strategic.why,
+      suggestion: strategic.suggestion,
+      state: "open",
+      position: findingRows.length,
+    });
+  }
+
+
+
   const verdicts = verifyObligationVerdicts({
     obligations,
     draftText: version.body,
