@@ -236,7 +236,9 @@ export function PeopleSection({
                       </>
                     ) : (
                       <p className="mt-1 text-[12px] text-muted-foreground">
-                        This stays on the page while you are here, and is not kept afterwards.
+                        {storable
+                          ? "This result can't be saved anymore. Refresh the email when you're ready."
+                          : "This stays on the page while you are here, and is not kept afterwards."}
                       </p>
                     )}
                   </div>
