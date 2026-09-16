@@ -463,11 +463,15 @@ function CompanyDetail({
   });
 
   /* Store an answer we already paid for, using the server's own receipt. No
-     provider is called, so this can never cost a second credit. */
+     provider is called, so this can never cost a second credit. How the answer
+     is held is ours to know: the person only ever hears whether it can still
+     be saved. */
   const saveEmail = useMutation({
     mutationFn: (person: ScoutPerson) => {
       if (!person.receiptId) {
-        throw new Error("That lookup result is no longer held by the server.");
+        throw new Error(
+          "This result can't be saved anymore. Refresh the email when you're ready.",
+        );
       }
       return saveEnrichedEmail({
         organizationId,
