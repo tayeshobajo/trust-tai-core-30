@@ -691,11 +691,11 @@ send. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
 - `docs/agency-journey-daily-workspace.md` (new): the five minute guided scenario script and
   the U1–U10 usability scorecard, with the explicit rule that only the person running the
   session may record a result.
-- Tests: `src/domain/daily-workspace.test.ts` (21).
+- Tests: `src/domain/daily-workspace.test.ts` (22).
 
 **Evidence and build**
 
-- `bunx vitest run` — full suite pass (21 new this round).
+- `bunx vitest run` — full suite pass, 3,236 tests across 290 files (22 new this round).
 - `bunx tsgo --noEmit` — clean. Preview build — clean.
 - Evidence kind: **code**. No UI was changed this round, no real model call, no persisted
   record, no deployment, no team acceptance, no external action.
