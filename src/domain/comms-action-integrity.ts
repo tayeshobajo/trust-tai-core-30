@@ -148,12 +148,11 @@ function attachmentFinding(facts: OutboundFacts): ActionIntegrityFinding | null 
     kind: "action_integrity",
     problem: "missing_attachment",
     severity: "must_fix",
-    severityNote: undefined,
     why: "This says a file is attached, and no file is staged on the outgoing message. The recipient would open it looking for something that is not there.",
     excerpt,
     suggestion:
       "Attach the file before approval, or remove the sentence. Nothing is attached on your behalf.",
-  } as ActionIntegrityFinding;
+  };
 }
 
 /* -------------------------------------------------------- 3. below promise */
