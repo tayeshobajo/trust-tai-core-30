@@ -44,7 +44,7 @@ import {
   consumeReceipt,
   issueReceipt,
   readReceipt,
-  RECEIPT_TTL_MINUTES,
+  
 } from "@/lib/scout-enrichment-receipts.server";
 import { NOT_CONNECTED_MESSAGE, RECOMMENDED_LIMIT, type ScoutPerson } from "@/domain/scout-people";
 

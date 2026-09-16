@@ -184,6 +184,23 @@ export async function findWorkEmail(input: EnrichInput): Promise<EnrichResult> {
       ? { providerPersonId: input.person.providerPersonId }
       : {}),
     ...(input.person.profileUrl ? { profileUrl: input.person.profileUrl } : {}),
+    /* The person as this page knows them, so a lookup can put someone found
+       in this visit on record without a second click. The server states the
+       address and its verification; nothing here may. */
+    person: {
+      fullName: input.person.fullName,
+      title: input.person.title,
+      companyName,
+      companyDomain: domain || undefined,
+      profileUrl: input.person.profileUrl,
+      buyingRole: input.person.buyingRole,
+      buyingRoleEvidence: input.person.buyingRoleEvidence,
+      whyThisPerson: input.person.whyThisPerson,
+      provider: input.person.provider,
+      providerPersonId: input.person.providerPersonId,
+      discoveredAt: input.person.discoveredAt,
+      thoughtLeadership: input.person.thoughtLeadership,
+    },
   });
 
   const email = typeof payload["email"] === "string" ? payload["email"] : null;
