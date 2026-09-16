@@ -5,6 +5,8 @@ import { SectionHeading } from "@/components/tt/primitives";
 import { Health } from "@/components/tt/settings/pieces";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import { readIntegrations, type IntegrationHealth } from "@/data/supabase/settings-integrations";
+import { readEnrichmentStatus } from "@/data/scout/people-research";
+
 
 export const Route = createFileRoute("/settings/integrations")({
   component: IntegrationSettings,
