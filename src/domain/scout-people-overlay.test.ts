@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mergePeople, personIdentity, receiptUsable } from "./scout-people-overlay";
+import { fillKnownTitles, mergePeople, personIdentity, receiptUsable } from "./scout-people-overlay";
 import type { ScoutPerson } from "./scout-people";
 
 function person(over: Partial<ScoutPerson> & { key: string; fullName: string }): ScoutPerson {
@@ -153,5 +153,28 @@ describe("details recovered by a lookup", () => {
       },
     });
     expect(kept?.title).toBe("COO");
+  });
+});
+
+describe("fillKnownTitles", () => {
+  it("keeps a title this workspace already recorded when the provider gave none", () => {
+    const [row] = fillKnownTitles(
+      [person({ key: "apollo:1", fullName: "Robin Shah", companyName: "Thyme Care" })],
+      [{ fullName: "Robin Shah", roleTitle: "Co-founder (publicly profiled)", companyName: "Thyme Care" }],
+    );
+    expect(row?.title).toBe("Co-founder (publicly profiled)");
+  });
+
+  it("never overwrites the title the provider did give", () => {
+    const [row] = fillKnownTitles(
+      [person({ key: "apollo:1", fullName: "Robin Shah", companyName: "Thyme Care", title: "COO" })],
+      [{ fullName: "Robin Shah", roleTitle: "Co-founder", companyName: "Thyme Care" }],
+    );
+    expect(row?.title).toBe("COO");
+  });
+
+  it("leaves a person with no recorded title alone", () => {
+    const [row] = fillKnownTitles([person({ key: "apollo:2", fullName: "Sam Reed" })], []);
+    expect(row?.title).toBeUndefined();
   });
 });
