@@ -142,3 +142,86 @@ No migration was applied. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` unto
 - No trigger is armed anywhere; every job stays off until an authorised person enables it.
 - Live authenticated verification remains unavailable in this environment. Owner: Codex.
 - Round 2 advances no Comms acceptance row and implies no completion.
+
+---
+
+## Round 3 of 10 — Source qualified opportunities
+
+**Exact submitted prompt**
+
+> TRUST TAI AI AGENCY JOURNEY BUILD. Tai authorizes this ordered queue. Goal: eight-person team can source, diagnose, propose, onboard, deliver, support and grow clients using AI for repeatable preparation. Read current architecture canon, app registry, prior round output and existing services before changing code. Preserve unfinished Comms acceptance work and security fixes; do not overwrite concurrent work. No new parallel CRM, approval queue or business-data store. Apps own state; core identity; event history; Steward interpretation; Pulse visibility; Conductor routes actions. Preserve white cards/pale-blue OS styling, plain words, existing routes and client links. Do not introduce a new top-level app without demonstrated need.
+>
+> Product interpretation of Hit Makers: familiar surprise and MAYA. Familiar inbox/list/client workspace, consistent verbs and repeatable layout; intelligence prepares useful next work with evidence. Progressive disclosure, primary next action, clear owner, undo/correction where feasible. No agent jargon or orchestration diagrams in daily user flows. This is an application of the book, not a guaranteed popularity formula.
+>
+> Autonomy: implement and verify useful low-risk internal preparation (summaries, research packets, draft plans, reminders/tasks) via scoped server-side workers using existing services. Human authority governs commitments, pricing, scope/date approval and external action. Nothing in this build queue authorizes actual outreach, publication, payment, production deployment, live mailbox scope expansion or production schedule activation. Configure new automation disabled or preview-only until its policy/configuration is explicitly enabled by an authorized user; synthetic sandbox execution allowed. No real team assignment guesses, credentials or customer data in fixtures. SQL proposals to Codex; do not apply or reapply migrations. Never bypass auth for live evidence.
+>
+> Each round must write exact submitted prompt and numbered acceptance rows to docs/agency-journey-build-progress.md, with dependencies, changes, evidence/build, pass/blocked, owner and next step. Preserve C01-C22/T01-T05/P1-P8. Code, synthetic model evaluation, real persisted execution, production deployment and team acceptance are distinct. Do independent useful work when dependencies blocked, but do not mark dependent checks passed. No 100% from queue completion.
+>
+> QUEUED ROUND 3/10: 3. Source qualified opportunities
+> Connect Website and Scout using existing sources and permitted integrations.
+> A3.1 Enquiry retains source/time/consent context and links to canonical company/person without duplicate creation on retry.
+> A3.2 AI prepares fit rationale, evidence URLs/dates, business need, unknowns and suggested first move against explicit ICP. Unsupported sources remain unavailable.
+> A3.3 Separate facts/inferences and relevance from invented intent/budget. Fit is explainable/editable, not arbitrary confidence decoration.
+> A3.4 Named person qualifies/passes/defers; qualified handoff creates linked Comms preparation once with context and owner.
+> A3.5 No external outreach or new data-source purchase/connection in QA. Test repeat intake, incomplete data, conflicting companies and rejected prospects.
+> A3.6 Repeatable prep automatically runs in synthetic enabled test policy, not only via a decorative Generate button.
+
+**What was read first**
+
+`docs/architecture-canon.md`, `src/domain/registry.ts`, `src/domain/website.ts`,
+`src/domain/website-matching.ts`, `src/domain/scout.ts`, `src/domain/scout-fit.ts`,
+`src/domain/confidence.ts`, Round 1 (`agency-journey.ts`) and Round 2
+(`preparation-jobs.ts`, `preparation-runner.server.ts`). Website→Scout identity
+matching already existed, so this round builds on `matchProspect` rather than
+adding a second matcher or a second store.
+
+**Changes**
+
+- `src/domain/enquiry-qualification.ts` (new). Pure contract between Website and
+  Scout: `enquiryKey`/`enquiryContext`/`receiveEnquiry` (source, time, consent and
+  attribution carried exactly; repeat submission returns `duplicate`; ambiguous
+  identity stays `unlinked`; unsupported source kinds are `unavailable`), the
+  qualification packet (`PacketFact` with evidence URL and observed date,
+  `PacketInference` with what it rests on, named `unknowns`, quoted business need,
+  editable `FitRationale` tied to an explicit ICP version), `stripInventedIntent`,
+  `packetReadiness`, `QualificationDecision` (qualify/pass/defer by a named person)
+  and `commsPreparationFor` (one keyed Comms preparation per enquiry, with owner
+  and tiered context).
+- `src/lib/enquiry-preparation.server.ts` (new). Trigger side:
+  `enquiryPreparationRequest`, `enquiryDeterministicRead` (counts and gaps computed
+  in code; their words travel only as wrapped material), `prepareEnquiryOnIntake`
+  (runs on intake through the Round 2 runner, returns `null` while the job is off),
+  `finalisePacket`.
+- `src/domain/enquiry-qualification.test.ts` (12) and
+  `src/lib/enquiry-preparation.server.test.ts` (6).
+
+No new table, no new room, no new route, no navigation or styling change, no schema
+applied, no outreach, no new data source connected, no Comms acceptance row touched.
+QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
+
+**Evidence and build**
+
+- `bunx vitest run` — 3,097 tests across 278 files pass (18 new this round).
+- `bunx tsgo --noEmit` — clean. Build observability: `build OK`.
+- Evidence kind: **code plus synthetic sandbox execution**. No real model call, no
+  persisted database output, no live enquiry, no deployment, no team acceptance.
+
+**Acceptance rows**
+
+| Row | Criterion | Dependencies | Evidence | Result | Owner | Next step |
+| --- | --- | --- | --- | --- | --- | --- |
+| A3.1 | Enquiry retains source/time/consent and links canonically without duplicate creation on retry | Round 1, existing `matchProspect` | `enquiryContext`, `receiveEnquiry`; tests "keeps source, time and consent", "does not create a second enquiry", "leaves conflicting companies for a person" | PASS-CODE | Agent | Wire into the real Website intake handler when the preparation store lands |
+| A3.2 | AI prepares fit rationale, evidence URLs/dates, business need, unknowns, first move against explicit ICP; unsupported sources unavailable | A3.1, Round 2 runner | `QualificationPacket`, `PacketEvidence` (url + observedAt), `enquiryDeterministicRead` ICP block, `SUPPORTED_ENQUIRY_SOURCES`, `packetReadiness` refusing fit without an ICP | PASS-CODE + synthetic | Agent | Real wording quality unproven until an authorised provider call runs |
+| A3.3 | Facts, inferences and relevance separated from invented intent/budget; fit explainable and editable | A3.2 | Separate `facts`/`inferences`/`unknowns` arrays, `FitRationale.editedByPerson`, `stripInventedIntent`; tests "drops invented spend and intent", "keeps a spend claim they actually made" | PASS-CODE | Agent | Surface the edit affordance in Scout in a later round |
+| A3.4 | Named person qualifies/passes/defers; qualified handoff creates one linked Comms preparation with context and owner | A3.1–A3.3 | `QualificationDecision`, `commsPreparationFor`; tests "opens one Comms preparation", "never opens a second", "opens nothing for a rejected or deferred enquiry", "will not hand off without a named owner" | PASS-CODE | Agent | Handoff record persistence is BLOCKED on the Round 2 SQL proposal |
+| A3.5 | No external outreach or new data source in QA; repeat intake, incomplete data, conflicting companies and rejected prospects tested | A3.1–A3.4 | All 18 tests are in-memory and synthetic; no network call, no connector added, no mailbox scope change; the four named cases each have a test | PASS-CODE + synthetic | Agent | — |
+| A3.6 | Repeatable prep runs automatically under an enabled synthetic policy, not only via a Generate button | Round 2 A2.5 | `prepareEnquiryOnIntake` called from intake, not from UI; tests "does nothing while the job is off" and "prepares automatically once the workspace enables the job"; idempotency test proves one stored record for two arrivals | PASS-CODE + synthetic | Agent | Arming the trigger on real events stays BLOCKED until the schema is applied and an authorised person enables the job |
+
+**Open and blocked**
+
+- Persisted enquiry preparation and persisted handoff records remain **blocked** on
+  the unapplied `20260916130000_preparation_outputs.sql`. Owner: Codex.
+- No real provider call, so fit wording quality and usage/cost stay **unverified**.
+- No trigger is armed on a real Website event; the job remains off by default.
+- Live authenticated verification remains unavailable here. Owner: Codex.
+- Round 3 advances no Comms acceptance row and implies no completion.
