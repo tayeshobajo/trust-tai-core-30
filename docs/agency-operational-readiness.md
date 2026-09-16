@@ -553,7 +553,7 @@ broken out and any row whose claim does not survive review is corrected.
 
 Unchanged by this queue and not restated as new results. The live checks
 blocked during closure remain blocked with their original records, session
-`9b329dbe-04c0-...` remains Codex-owned and untouched, and the recent-mail
+`9b329dbe-02ca-40d6-9f54-9ec728c64446` remains Codex-owned and untouched, and the recent-mail
 feed behaviour is unchanged. No Comms row moves on the strength of this round.
 
 ### Acceptance rows
