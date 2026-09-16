@@ -45,6 +45,9 @@ export interface PeopleSearchInput {
   domain?: string | undefined;
   /** Functional families this opportunity implies. Never a global C-suite rule. */
   roleFamilies: string[];
+  /** Apollo seniority bands, when the opportunity implies them. Optional. */
+  seniorities?: string[] | undefined;
+
   limit: number;
 }
 
