@@ -43,10 +43,10 @@ describe("enrichment receipts", () => {
       now: "2026-09-16T10:00:00Z",
     });
     expect(
-      readReceipt({ id: receipt.id, organizationId: "org-2", prospectId: "pro-1" }),
+      readReceipt({ id: receipt.id, organizationId: "org-2", prospectId: "pro-1", now: "2026-09-16T10:05:00Z" }),
     ).toBeNull();
     expect(
-      readReceipt({ id: receipt.id, organizationId: "org-1", prospectId: "pro-2" }),
+      readReceipt({ id: receipt.id, organizationId: "org-1", prospectId: "pro-2", now: "2026-09-16T10:05:00Z" }),
     ).toBeNull();
   });
 
@@ -58,9 +58,13 @@ describe("enrichment receipts", () => {
       answer,
       now: "2026-09-16T10:00:00Z",
     });
-    expect(readReceipt({ id: receipt.id, organizationId: "org-1", prospectId: "pro-1" })).not.toBeNull();
+    expect(
+      readReceipt({ id: receipt.id, organizationId: "org-1", prospectId: "pro-1", now: "2026-09-16T10:05:00Z" }),
+    ).not.toBeNull();
     consumeReceipt(receipt.id);
-    expect(readReceipt({ id: receipt.id, organizationId: "org-1", prospectId: "pro-1" })).toBeNull();
+    expect(
+      readReceipt({ id: receipt.id, organizationId: "org-1", prospectId: "pro-1", now: "2026-09-16T10:05:00Z" }),
+    ).toBeNull();
   });
 
   it("expires honestly rather than pretending it still holds the answer", () => {
