@@ -544,3 +544,94 @@ send. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
 - Live authenticated verification remains unavailable here. Owner: Codex.
 - Round 7 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged), touches no
   Comms code, and implies no completion. Queue progress is not a completion claim.
+
+---
+
+## Round 8 of 10 — Support, retain and create relevant demand
+
+**Exact submitted prompt**
+
+> TRUST TAI AI AGENCY JOURNEY BUILD. Tai authorizes this ordered queue. Goal: eight-person team can source, diagnose, propose, onboard, deliver, support and grow clients using AI for repeatable preparation. Read current architecture canon, app registry, prior round output and existing services before changing code. Preserve unfinished Comms acceptance work and security fixes; do not overwrite concurrent work. No new parallel CRM, approval queue or business-data store. Apps own state; core identity; event history; Steward interpretation; Pulse visibility; Conductor routes actions. Preserve white cards/pale-blue OS styling, plain words, existing routes and client links. Do not introduce a new top-level app without demonstrated need.
+>
+> Product interpretation of Hit Makers: familiar surprise and MAYA. Familiar inbox/list/client workspace, consistent verbs and repeatable layout; intelligence prepares useful next work with evidence. Progressive disclosure, primary next action, clear owner, undo/correction where feasible. No agent jargon or orchestration diagrams in daily user flows. This is an application of the book, not a guaranteed popularity formula.
+>
+> Autonomy: implement and verify useful low-risk internal preparation (summaries, research packets, draft plans, reminders/tasks) via scoped server-side workers using existing services. Human authority governs commitments, pricing, scope/date approval and external action. Nothing in this build queue authorizes actual outreach, publication, payment, production deployment, live mailbox scope expansion or production schedule activation. Configure new automation disabled or preview-only until its policy/configuration is explicitly enabled by an authorized user; synthetic sandbox execution allowed. No real team assignment guesses, credentials or customer data in fixtures. SQL proposals to Codex; do not apply or reapply migrations. Never bypass auth for live evidence.
+>
+> Each round must write exact submitted prompt and numbered acceptance rows to docs/agency-journey-build-progress.md, with dependencies, changes, evidence/build, pass/blocked, owner and next step. Preserve C01-C22/T01-T05/P1-P8. Code, synthetic model evaluation, real persisted execution, production deployment and team acceptance are distinct. Do independent useful work when dependencies blocked, but do not mark dependent checks passed. No 100% from queue completion.
+>
+> QUEUED ROUND 8/10: 8. Support, retain and create relevant demand
+> Ops owns technical care; Clients owns account; Roadmap future strategy; Studio content; Website attribution.
+> A8.1 Accepted delivery creates linked care checklist with support boundaries, owner, monitoring references and review date; unknown health stays unknown.
+> A8.2 Existing permitted health events generate deduplicated triage/work suggestions; no autonomous destructive remediation.
+> A8.3 Outcome review compares confirmed baseline/target/observed result; attributed value not invented or confused with output volume.
+> A8.4 AI proposes evidence-backed renewal/expansion opportunity with timing; complaint/service recovery does not trigger automatic upsell.
+> A8.5 Studio prepares content brief from deliberately approved lessons/results, no cross-client details or case-study publication permission assumed. Content references source/target audience/goal; approved publication remains separate.
+> A8.6 Website/intake attribution links subsequent enquiry when evidence exists; no invented causal revenue attribution. Run synthetic care→review→next-roadmap loop.
+
+**Dependencies**
+
+- Round 7 milestone acceptance (`src/domain/milestone-delivery.ts`) supplies the accepted
+  delivery that opens care.
+- Existing shared vocabulary reused, not duplicated: `src/domain/outcomes.ts`
+  (`TruthClass`, `MetricClass`, `metricClassOf`, `FACTORY_METRICS`) and the existing Ops
+  health vocabulary in `src/domain/ops.ts`. No new CRM, approval queue, business-data store
+  or top-level app was introduced.
+
+**Changes**
+
+- `src/domain/client-care.ts` (new): `openCarePlan` (one care plan per accepted milestone,
+  key `${clientRef}::care::${milestoneId}`, retry returns the first, refused before
+  acceptance), the four fixed checklist items (support boundaries, owner, monitoring
+  references, review date) and `careGaps`; `readCareHealth` (health is read from what
+  monitoring actually said, no reference or no reading stays `unknown`, all-unreadable stays
+  `unknown` with the sources named, mixed reads take the worst state and are labelled a
+  partial reading); `HealthEvent` / `triageFromEvents` (grouped by signature so repeats make
+  one suggestion, other clients' events excluded, every suggestion `needsPersonToAct`) and
+  `suggestionIsPermitted` (refuses any wording that would delete, restart, reset, revoke,
+  rotate, truncate, wipe or restore); `reviewOutcome` (baseline/target/observed each carry a
+  truth tier and evidence, a missing figure is named as unknown rather than counted as
+  nought, an unconfirmed baseline or result makes the comparison provisional, and attributed
+  value is refused for an output-class metric, with no evidence, or with an unconfirmed
+  result); `proposeOpportunity` (evidence-backed, timed against a recorded renewal date,
+  `needsPersonToRaise`, refused outright while a complaint is open or service recovery is
+  under way).
+- `src/domain/demand-attribution.ts` (new): `prepareContentBrief` (uses only lessons
+  approved for content use for this client, excludes another client's material and says so,
+  requires audience and goal, keeps naming permission separate from content permission,
+  `publicationApproved` is always `false`, source references carried per point, and no value
+  is claimed where none was attributed); `attributeEnquiry` (links an enquiry to content only
+  where the enquiry itself carried a known marker, states plainly that it does not claim
+  revenue causation, refuses timing-only links); `openNextRoadmap` (one handoff per reviewed
+  measure, named owner required, refused while the result cannot be told, retry returns the
+  first).
+- Tests: `src/domain/client-care.test.ts` (16), `src/domain/demand-attribution.test.ts` (10,
+  including the synthetic care → review → next roadmap loop).
+- No route, styling, Comms, auth, schema or send code was touched.
+
+**Evidence and build**
+
+- `bunx vitest run` — full suite pass (26 new this round).
+- `bunx tsgo --noEmit` — clean. Preview build — clean.
+- Evidence kind: **code plus synthetic sandbox execution**. No real model call, no persisted
+  record, no publication, no deployment, no team acceptance, no external action.
+
+**Acceptance rows**
+
+| Row | Criterion | Dependencies | Evidence | Result | Owner | Next step |
+| --- | --- | --- | --- | --- | --- | --- |
+| A8.1 | Accepted delivery opens a linked care checklist with boundaries, owner, monitoring references and review date; unknown health stays unknown | Round 7 acceptance | `openCarePlan`, `careGaps`, `readCareHealth`; tests "does not open before the milestone is accepted", "opens once and returns the first plan on retry", "carries the four checklist items and names the gaps", "starts unknown, not healthy", "stays unknown with no monitoring reference", "stays unknown when every source failed to read", "takes the worst state and flags a partial reading" | PASS-CODE | Agent | Surface the care checklist in the Ops room in a later round |
+| A8.2 | Permitted health events produce deduplicated triage suggestions; no autonomous destructive remediation | A8.1, existing Ops health events | `triageFromEvents`, `suggestionIsPermitted`; tests "groups repeats into one suggestion and keeps other clients out", "refuses anything that would destroy or disrupt" | PASS-CODE | Agent | Bind to the real Ops event source once it is read-scoped in a later round |
+| A8.3 | Outcome review compares confirmed baseline, target and observed; attributed value never invented nor confused with output volume | `src/domain/outcomes.ts` | `reviewOutcome`; tests "names a missing figure instead of counting it as nought", "compares baseline, target and observed when all are recorded", "refuses to attribute value to a measure of output volume", "refuses attributed value with no evidence" | PASS-CODE | Agent | Real baselines depend on recorded client measures; fixtures only here |
+| A8.4 | Evidence-backed renewal or expansion proposal with timing; complaint or service recovery blocks automatic upsell | A8.3 | `proposeOpportunity`; tests "proposes from confirmed evidence with timing", "proposes nothing while a complaint is open", "proposes nothing during service recovery" | PASS-CODE | Agent | Account mood must come from a recorded account state, not inference, when wired to Clients |
+| A8.5 | Studio brief from deliberately approved lessons and results; no cross-client detail, no assumed publication permission; source, audience and goal recorded | A8.3 | `prepareContentBrief`; tests "refuses a lesson that was never approved for content", "leaves another client's lesson out", "needs an audience and a goal", "never assumes naming or publication permission" | PASS-CODE | Agent | Publication approval stays a separate human decision in Studio; nothing here publishes |
+| A8.6 | Website and intake attribution links a later enquiry where evidence exists, with no invented causal revenue; synthetic care → review → next roadmap loop runs | A8.1, A8.3 | `attributeEnquiry`, `openNextRoadmap`; tests "links only when the enquiry carried evidence", "claims nothing from timing alone", "opens once with an owner and returns the first on retry", "refuses without a named owner", "refuses when the result cannot be told", suite "synthetic care to review to next roadmap loop" | PASS-CODE + synthetic | Agent / Codex | Loop proven in the synthetic sandbox; **real persisted evidence remains BLOCKED** on the unapplied `20260916130000_preparation_outputs.sql` |
+
+**Open and blocked**
+
+- Persisted care plans, triage suggestions, reviews, opportunities, briefs and attribution
+  links remain **blocked** on the unapplied `20260916130000_preparation_outputs.sql`.
+  Owner: Codex. No migration was applied or reapplied this round; no new SQL was proposed.
+- No real model has written a brief or an opportunity; wording quality is **unproven**.
+- Live authenticated verification remains unavailable here. Owner: Codex.
+- Round 8 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged), touches no
+  Comms code, and implies no completion. Queue progress is not a completion claim.
