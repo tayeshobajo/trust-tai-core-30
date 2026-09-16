@@ -112,6 +112,37 @@ function headers(env: Env, keyName: string): Record<string, string> {
   };
 }
 
+/**
+ * Apollo transport.
+ *
+ * Two shapes are supported and the key never leaves this module:
+ *  - direct (default): the workspace holds its own Apollo key, so the request
+ *    goes to Apollo with `X-Api-Key`.
+ *  - gateway: only when APOLLO_VIA_CONNECTOR_GATEWAY is "true" and this runtime
+ *    also holds a Lovable key, meaning the Apollo credential is a Lovable
+ *    connection key rather than an Apollo one.
+ */
+const APOLLO_DIRECT = "https://api.apollo.io";
+
+function apolloViaGateway(env: Env): boolean {
+  return env["APOLLO_VIA_CONNECTOR_GATEWAY"] === "true" && Boolean(env["LOVABLE_API_KEY"]?.trim());
+}
+
+function apolloUrl(env: Env, path: string): string {
+  return apolloViaGateway(env) ? `${GATEWAY}/apollo${path}` : `${APOLLO_DIRECT}${path}`;
+}
+
+function apolloHeaders(env: Env): Record<string, string> {
+  if (apolloViaGateway(env)) return headers(env, "APOLLO_API_KEY");
+  return {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    // Apollo's own scheme. Never a query parameter, never a bearer token.
+    "X-Api-Key": env["APOLLO_API_KEY"] ?? "",
+  };
+}
+
+
 /** Never let a key or a header reach an error message. */
 async function readOrThrow(
   provider: EnrichmentProviderId,
