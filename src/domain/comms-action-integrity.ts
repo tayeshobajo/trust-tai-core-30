@@ -185,8 +185,8 @@ function belowFinding(facts: OutboundFacts): ActionIntegrityFinding | null {
 
 /** A promise of a concrete destination, with the text that follows it. */
 const DESTINATION_PROMISES: RegExp[] = [
-  /\b(?:call|ring|phone|text|whatsapp) (?:me|us|him|her|them|[A-Z][a-z]+) (?:on|at)\b\s*[:.]?/g,
-  /\b(?:e-?mail|write to|send it to|send them to|reach (?:me|us|him|her|them)) (?:me |us |him |her |them |[A-Z][a-z]+ )?(?:at|on)\b\s*[:.]?/g,
+  /\b(?:call|ring|phone|text|whatsapp) (?:me|us|him|her|them|[A-Z][a-z]+) (?:on|at)\b\s*[:.]?/gi,
+  /\b(?:e-?mail|write to|send it to|send them to|reach (?:me|us|him|her|them)) (?:me |us |him |her |them |[A-Z][a-z]+ )?(?:at|on)\b\s*[:.]?/gi,
   /\b(?:the|my|our) (?:address|number|details) (?:is|are) below\b\s*[:.]?/gi,
 ];
 
