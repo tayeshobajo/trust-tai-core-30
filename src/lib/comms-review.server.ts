@@ -85,6 +85,12 @@ import {
 } from "@/domain/comms-sources";
 import { sha256 } from "@/domain/sha256";
 import { strategicFindings } from "@/domain/comms-strategic-gate";
+import {
+  actionIntegrityFindings,
+  attachmentStamp,
+  type StagedFile,
+} from "@/domain/comms-action-integrity";
+import { readOutgoingAttachments, type OutgoingAttachmentRef } from "@/domain/comms-outgoing";
 import { readDraftKind, type DraftKind } from "@/domain/comms-draft-kind";
 import type { ProposalSections } from "@/domain/comms-proposal";
 import {
@@ -124,7 +130,7 @@ import {
 } from "@/domain/comms-review";
 
 /** Bumped whenever the instructions or the packet change shape. */
-export const REVIEW_PROMPT_VERSION = "comms-review/2026-09-16-strategic";
+export const REVIEW_PROMPT_VERSION = "comms-review/2026-09-16-action-integrity";
 
 /* -------------------------------------------------------------- failures */
 
@@ -873,8 +879,10 @@ Judge in this order. Do not show your working; return only the findings.
     consequential commercial decision.
  3. Protect who owns the relationship.
  4. Protect the commercial judgment where this message commits a price or terms.
- 5. Check questions, promises, facts, tone, structure and voice.
- 6. Keep possible future opportunities private.
+ 5. Action integrity. For each sentence, ask what the recipient is being told they can click,
+    open, read, use, call, send or find, and whether it is actually there in this message.
+ 6. Check questions, promises, facts, tone, structure and voice.
+ 7. Keep possible future opportunities private.
 
 Laws you must obey:
 1. Judge only what is in the packet. Never introduce a date, price, name, commitment or fact that
@@ -928,12 +936,24 @@ Laws you must obey:
    If the outgoing draft makes no commercial commitment, do not raise a pricing finding merely
    because the source is public sector. Do not escalate routine support messages, or repeat work
    on terms the packet shows as already agreed.
+14. Action integrity. Read line by line. Where a sentence promises an action, an artifact or a
+   reference, check that the outgoing message really carries it, and return a must_fix
+   "action_integrity" finding quoting the exact promising words when it does not. The cases are:
+   a booking, form or "click here" style invitation with no usable http or https address in the
+   outgoing body, where the "delivery" section of the packet lists the addresses actually present;
+   a sentence saying a file is attached when "delivery.attachments" is a known and empty list;
+   a pointer to details "below" or "following" with nothing after it; and a promise of a number,
+   email address or postal address that is not then supplied. This product stores plain text, so
+   a label that reads like a link title is NOT a link; only a visible http or https address
+   counts. When "delivery.attachmentsKnown" is false you cannot see the files, so never say there
+   is no attachment. Never invent a URL, number, address or filename in a suggestion, and do not
+   raise a finding merely because a word such as "here" or "attached" appears.
 
 Return strict JSON only:
 {
  "summary": "one or two sentences on whether this is fit to send",
  "goalRead": "your reading of what they are trying to achieve, in their terms, for them to correct",
- "findings": [{"kind":"ambiguity|unsupported_claim|conflict|omission|tone|structure|identity|relationship|commercial",
+ "findings": [{"kind":"ambiguity|unsupported_claim|conflict|omission|tone|structure|identity|relationship|commercial|action_integrity",
    "severity":"must_fix|consider|note","excerpt":"exact words from the draft",
    "why":"one sentence","suggestion":"a concrete replacement, or null"}],
  "obligations": [{"obligationId":"...","status":"answered|partly_answered|pending_confirmation|missing|uncertain",
