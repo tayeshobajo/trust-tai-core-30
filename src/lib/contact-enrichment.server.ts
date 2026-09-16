@@ -66,6 +66,11 @@ export interface EmailEnrichment {
   /** When the provider answered. Stored as fetched/verified time. */
   at: string;
   because?: string;
+  /** The matched person's own details, when the provider states them. A match
+      often knows the title a masked search result withheld. */
+  title?: string;
+  fullName?: string;
+  providerPersonId?: string;
 }
 
 export interface ContactEnrichmentProvider {
