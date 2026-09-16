@@ -70,6 +70,7 @@ import {
 } from "@/data/scout/people-research";
 import { workEmailState, type ScoutPerson } from "@/domain/scout-people";
 import {
+  fillKnownTitles,
   mergePeople,
   personIdentity,
   type PendingEnrichment,
