@@ -130,7 +130,13 @@ describe("details recovered by a lookup", () => {
     const [filled] = mergePeople({
       saved: [withoutTitle],
       session: [],
-      pending: [{ ...answer, identity: personIdentity(withoutTitle), title: "Head of Partnerships" }],
+      pending: {
+        [personIdentity(withoutTitle)]: {
+          ...answer,
+          identity: personIdentity(withoutTitle),
+          title: "Head of Partnerships",
+        },
+      },
     });
     expect(filled?.title).toBe("Head of Partnerships");
 
@@ -138,7 +144,13 @@ describe("details recovered by a lookup", () => {
     const [kept] = mergePeople({
       saved: [known],
       session: [],
-      pending: [{ ...answer, identity: personIdentity(known), title: "Head of Partnerships" }],
+      pending: {
+        [personIdentity(known)]: {
+          ...answer,
+          identity: personIdentity(known),
+          title: "Head of Partnerships",
+        },
+      },
     });
     expect(kept?.title).toBe("COO");
   });
