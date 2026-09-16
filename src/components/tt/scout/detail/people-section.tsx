@@ -151,7 +151,7 @@ export function PeopleSection({
                   <div className="min-w-0">
                     <p className="text-[14px] font-medium text-foreground">{person.fullName}</p>
                     <p className="text-[13px] text-muted-foreground">
-                      {person.title ?? "Title not recorded"}
+                      {person.title ?? "Title unavailable"}
                     </p>
                   </div>
                   <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
