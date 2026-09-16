@@ -15,6 +15,7 @@ import { PulseFilters, type PulseFilter } from "@/components/tt/pulse/filters";
 import { PulseHeader } from "@/components/tt/pulse/header";
 import { PulseAtAGlance } from "@/components/tt/pulse/right-rail";
 import { PulseSidebar } from "@/components/tt/pulse/sidebar";
+import { BusinessHealth } from "@/components/tt/pulse/business-health";
 import { PulseSignalGroup } from "@/components/tt/pulse/signal-group";
 import { TodayCommandCenter } from "@/components/tt/revenue-ops/today-command-center";
 import { EmptyState } from "@/components/tt/primitives";
@@ -289,6 +290,8 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
                 </p>
               ) : null}
             </section>
+
+            <BusinessHealth identity={identity} />
 
             <p className="text-[13px] text-muted-foreground">
               Pulse says what deserves attention and where the work lives. For the read behind a
