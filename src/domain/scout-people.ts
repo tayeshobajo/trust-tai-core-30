@@ -145,8 +145,8 @@ function mentions(title: string, family: string): boolean {
   const key = family.toLowerCase();
   if (value.includes(key)) return true;
   const aliases: Record<string, string[]> = {
-    operations: ["operations", "ops", "delivery", "service"],
-    digital: ["digital", "technology", "technical", "it", "engineering", "product"],
+    operations: ["operations", "operating", "ops", "coo", "delivery", "service"],
+    digital: ["digital", "technology", "technical", "cto", "engineering", "product"],
     marketing: ["marketing", "brand", "growth", "demand", "communications"],
     learning: ["learning", "training", "enablement", "development", "l&d"],
     customer: ["customer", "client", "experience", "success", "support"],
