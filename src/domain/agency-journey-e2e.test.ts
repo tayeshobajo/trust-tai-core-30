@@ -65,7 +65,10 @@ function discovery(): DiscoveryRecord {
     stakeholders: [
       { label: "Finance lead (synthetic)", role: "Signs it off", groundedIn: ["fixture:note/1"] },
     ],
-    unknowns: [{ topic: "budget", question: "What can they spend this year?" }],
+    unknowns: [
+      { topic: "budget", question: "What can they spend this year?" },
+      { topic: "timing", question: "When do they want it live?" },
+    ],
     successMeasure: {
       statement: "The board stops asking for ad hoc numbers.",
       groundedIn: ["fixture:note/1"],
