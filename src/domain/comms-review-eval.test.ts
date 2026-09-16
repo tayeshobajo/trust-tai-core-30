@@ -34,6 +34,15 @@ describe("the fixed evaluation set", () => {
       "public_sector_acknowledgement_only",
       "routine_repeat_work",
       "unapproved_concession",
+      /* The action-integrity gate. */
+      "promised_link_missing",
+      "promised_link_present",
+      "promised_attachment_missing",
+      "promised_attachment_present",
+      "promised_details_below_missing",
+      "promised_number_missing",
+      "ordinary_here_no_flag",
+      "public_sector_acknowledgement_with_link",
     ];
     for (const id of required) {
       expect(EVAL_CASES.some((entry) => entry.id === id)).toBe(true);
@@ -104,6 +113,25 @@ describe("the reviewer's laws", () => {
     expect(REVIEW_INSTRUCTIONS).toContain("for them to correct");
   });
 
+  it("keeps the action integrity gate, ahead of the ordinary writing checks", () => {
+    expect(REVIEW_INSTRUCTIONS).toContain("Action integrity");
+    expect(REVIEW_INSTRUCTIONS).toContain("delivery.attachmentsKnown");
+    expect(REVIEW_INSTRUCTIONS).toContain("is NOT a link");
+    const action = REVIEW_INSTRUCTIONS.indexOf("Action integrity. For each sentence");
+    const writing = REVIEW_INSTRUCTIONS.indexOf("Check questions, promises, facts, tone");
+    expect(action).toBeGreaterThanOrEqual(0);
+    expect(action).toBeLessThan(writing);
+  });
+
+  it("scores a false action-integrity finding as a failure", () => {
+    expect(
+      scoreCase({ forbiddenKinds: ["action_integrity"] }, {
+        findings: [{ kind: "action_integrity", excerpt: "here", why: "x" }],
+      }),
+    ).toHaveLength(1);
+    expect(scoreCase({ forbiddenKinds: ["action_integrity"] }, { findings: [] })).toEqual([]);
+  });
+
   it("keeps the strategic judgment gate, in the order it is meant to be applied", () => {
     expect(REVIEW_INSTRUCTIONS).toContain("Relationship continuity");
     expect(REVIEW_INSTRUCTIONS).toContain("Commercial judgment on THIS decision");
@@ -117,6 +145,6 @@ describe("the reviewer's laws", () => {
 
   it("bumps the prompt version so old runs are not mistaken for this reviewer", async () => {
     const { REVIEW_PROMPT_VERSION } = await import("@/lib/comms-review.server");
-    expect(REVIEW_PROMPT_VERSION).toBe("comms-review/2026-09-16-strategic");
+    expect(REVIEW_PROMPT_VERSION).toBe("comms-review/2026-09-16-action-integrity");
   });
 });
