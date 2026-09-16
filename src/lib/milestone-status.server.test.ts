@@ -182,7 +182,7 @@ describe("synthetic journey: one milestone, retried", () => {
       token: "fixture-token",
       verifyAccess: async () => true,
       callModel: async () => ({
-        text: JSON.stringify({ summary: "Reporting pack is done and waiting for acceptance.", suggestions: [] }),
+        raw: JSON.stringify({ summary: "Reporting pack is done and waiting for acceptance.", suggestions: [] }),
         provider: "fixture",
         model: "fixture",
       }),
