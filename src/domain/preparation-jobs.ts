@@ -204,6 +204,10 @@ export interface ModelUse {
   model: string;
   /** The prompt identity, not the prompt text. */
   instructionsRef: string;
+  /** A hash of the exact instructions used, so wording drift is visible. */
+  instructionsHash?: string;
+  /** The subject revision the material was read from. */
+  inputRevision?: string;
   /** Ids of what was given to the model. Never the material itself. */
   inputRefs: string[];
   /** Present only when the provider reported it. Absent stays absent. */
@@ -225,7 +229,18 @@ export interface PreparationOutput {
   /** Deterministic figures, computed in code and never by a model. */
   figures: Record<string, number>;
   ownerLabel: string;
+  /** The membership id of the person who owns the decision, when known. */
+  ownerMembershipId?: ID;
   attempts: number;
+  /** The attempt that holds this record right now. */
+  attemptId?: string;
+  /** Until when that attempt holds it. Past means it is recoverable. */
+  leaseUntil?: ISODateTime;
+  /**
+   * False when this record was not written down. A refusal that nobody could
+   * save is still told to the person, but it is never called persisted.
+   */
+  persisted?: boolean;
   /** Set only when the run used a model. */
   modelUse?: ModelUse;
   /** Why it could not finish, or what decision is wanted. Always present when not prepared. */
@@ -235,6 +250,7 @@ export interface PreparationOutput {
   /** Set when a later change made this output no longer current. */
   supersededBecause?: string;
 }
+
 
 /* ----------------------------------------------------------- staleness */
 
