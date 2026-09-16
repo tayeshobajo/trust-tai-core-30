@@ -865,6 +865,29 @@ export async function reviseDraft(
 
 /* -------------------------------------------------------------- the read */
 
+/* --------------------------------------------------- outbound delivery facts */
+
+/**
+ * The files really staged on the draft this review governs, or null when the
+ * answer cannot be known: an unbound review with no draft behind it, or a
+ * read that failed. Null is never treated as "no attachments", so the gate
+ * stays silent rather than claiming a file is missing it could not look for.
+ * Metadata only; no bytes are read here and none reach the model.
+ */
+async function stagedAttachments(
+  caller: Caller,
+  organizationId: string,
+  draftId: string | null,
+): Promise<OutgoingAttachmentRef[] | null> {
+  if (!draftId) return null;
+  try {
+    const draft = await loadDraftForSend(caller.client, organizationId, draftId);
+    return readOutgoingAttachments(draft.rationale);
+  } catch {
+    return null;
+  }
+}
+
 export const REVIEW_INSTRUCTIONS = `You are the reviewer inside Trust Tai OS, an operating system for a
 small services business. A person has written a reply and is asking whether it is fit to send.
 You are reviewing THEIR words. You are not rewriting the message and you are not the author.
@@ -1194,10 +1217,21 @@ export async function runReview(
   const keptGuidance = lessonGuidance(kept.lessons);
   const keptCategories = [...new Set(activeLessons(kept.lessons).map((one) => one.category))].sort();
 
+  /* What would actually leave with this message. The staged file set is part
+     of whether the words are honest, so it is part of what an approval is
+     given over: change the files and this run goes stale. */
+  const staged = await stagedAttachments(caller, input.organizationId, session.draftId);
+  const stagedFiles: StagedFile[] | null =
+    staged?.map((file) => ({ filename: file.filename, mimeType: file.mimeType })) ?? null;
+  const linkTargets = [...version.body.matchAll(/https?:\/\/[^\s<>()\[\]"']{4,}/gi)].map(
+    (match) => match[0],
+  );
+
   const fingerprint = contextFingerprint({
     versionId: version.id,
     subject: version.subject,
     body: version.body,
+    attachmentStamp: attachmentStamp(staged),
     recipientEmail: session.recipientEmail,
     recipientName: session.recipientName,
     goal: session.goal,
@@ -1393,6 +1427,21 @@ export async function runReview(
       text: obligation.excerpt,
     })),
     draft: { subject: version.subject, body: version.body, version: version.version },
+    /* The outgoing message as it would really leave, so promises in the words
+       can be checked against it. Plain text is all this product stores, so the
+       only verifiable link targets are visible http and https addresses. */
+    delivery: {
+      channel: session.intendedChannel,
+      linkTargets,
+      linkTargetsNote:
+        "Every usable address visible in the draft body. This product stores plain text only, so a label that reads like a link title is not a link.",
+      attachmentsKnown: stagedFiles !== null,
+      attachments: stagedFiles ?? [],
+      attachmentsNote:
+        stagedFiles === null
+          ? "The staged files could not be read, so you cannot tell whether anything is attached. Never say there is no attachment."
+          : "The files actually staged on this draft. Names and types only.",
+    },
     reviewedBy: {
       name: reviewer.name,
       note: sameperson
@@ -1559,7 +1608,36 @@ export async function runReview(
     });
   }
 
-
+  /* The same floor for action integrity: a sentence that tells the recipient
+     to click, open, read, call or find something, where the outgoing message
+     does not carry it. Added only when the model did not already raise it. */
+  for (const broken of actionIntegrityFindings({
+    body: version.body,
+    subject: version.subject,
+    attachments: stagedFiles,
+    channel: session.intendedChannel,
+  })) {
+    const alreadyRaised = findingRows.some(
+      (row) => row.kind === "action_integrity" && row.severity === "must_fix",
+    );
+    if (alreadyRaised) break;
+    const at = version.body.indexOf(broken.excerpt);
+    findingRows.push({
+      organization_id: input.organizationId,
+      session_id: input.sessionId,
+      run_id: runId,
+      version_id: input.versionId,
+      kind: broken.kind,
+      severity: broken.severity,
+      excerpt: broken.excerpt,
+      excerpt_start: at >= 0 ? at : null,
+      excerpt_end: at >= 0 ? at + broken.excerpt.length : null,
+      why: broken.why,
+      suggestion: broken.suggestion,
+      state: "open",
+      position: findingRows.length,
+    });
+  }
 
   const verdicts = verifyObligationVerdicts({
     obligations,
