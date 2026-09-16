@@ -58,6 +58,13 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { HandoffPanel } from "@/components/tt/prospect/handoff";
 import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
 import { ProspectPersonCard } from "@/components/tt/scout/detail/person-card";
+import { PeopleSection } from "@/components/tt/scout/detail/people-section";
+import {
+  discoverPeople,
+  findWorkEmail,
+  readEnrichmentStatus,
+} from "@/data/scout/people-research";
+import { workEmailState, type ScoutPerson } from "@/domain/scout-people";
 import { ConversationTab } from "@/components/tt/scout/detail/conversation";
 import { listProspectConversations } from "@/data/scout/conversation";
 import {
@@ -317,6 +324,101 @@ function CompanyDetail({
         });
       }
     },
+  });
+
+  // Scout's people research for this account. Search never spends on an
+  // address: a lookup happens only when somebody clicks for that person.
+  const [researched, setResearched] = useState<ScoutPerson[]>([]);
+  const [peopleError, setPeopleError] = useState<string | null>(null);
+  const [lookingUpKey, setLookingUpKey] = useState<string | null>(null);
+
+  const enrichment = useQuery({
+    queryKey: ["scout", "enrichment-status"],
+    queryFn: readEnrichmentStatus,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Which functions could own this problem, read from the company we are
+  // looking at rather than a global "find the C-suite" rule.
+  const functionalOwners = useMemo(() => {
+    const industry = (candidate?.profile?.industry ?? "").toLowerCase();
+    const families = ["operations", "digital", "marketing"];
+    if (/train|educat|learn|academy/.test(industry)) families.push("learning");
+    if (/retail|hospitality|service|health/.test(industry)) families.push("customer");
+    return families;
+  }, [candidate]);
+
+  const findPeople = useMutation({
+    mutationFn: () => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return discoverPeople({
+        organizationId,
+        companyName: candidate.prospect.name,
+        ...(candidate.prospect.domain ? { domain: candidate.prospect.domain } : {}),
+        opportunity: { functionalOwners },
+      });
+    },
+    onMutate: () => setPeopleError(null),
+    onSuccess: (rows) => setResearched(rows),
+    onError: (error) =>
+      setPeopleError(error instanceof Error ? error.message : "That search could not be finished."),
+  });
+
+  const findEmail = useMutation({
+    mutationFn: (person: ScoutPerson) => findWorkEmail({ organizationId, person }),
+    onMutate: (person) => {
+      setPeopleError(null);
+      setLookingUpKey(person.key);
+    },
+    onSuccess: (updated) =>
+      setResearched((rows) => rows.map((row) => (row.key === updated.key ? updated : row))),
+    onError: (error) =>
+      setPeopleError(error instanceof Error ? error.message : "That lookup could not be finished."),
+    onSettled: () => setLookingUpKey(null),
+  });
+
+  // Handing a researched person into Comms goes through the existing flow:
+  // the person lands on the shared record, then the normal first-message
+  // preparation runs. Nothing is sent, and a warning travels with an address
+  // that is unverified or past the freshness policy.
+  const prepareOutreach = useMutation({
+    mutationFn: async (person: ScoutPerson) => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      const added = await peopleService.addManual(
+        {
+          prospectId,
+          fullName: person.fullName,
+          roleTitle: person.title || undefined,
+          email: person.workEmail || undefined,
+          linkedinUrl: person.profileUrl || undefined,
+        },
+        { organizationId, userId },
+      );
+      return saveProspectPerson({
+        organizationId,
+        userId,
+        prospectId,
+        companyName: candidate.prospect.name,
+        person: added.person,
+        identity: {
+          fullName: person.fullName,
+          roleTitle: person.title,
+          companyName: candidate.prospect.name,
+        },
+      });
+    },
+    onSuccess: (_result, person) => {
+      const state = workEmailState(person, new Date().toISOString());
+      toast.success("Prepared in Comms", {
+        description:
+          state === "verified"
+            ? `${person.fullName} is on record and a first message is prepared. Nothing is sent.`
+            : `${person.fullName} is prepared in Comms. The address is ${state === "stale" ? "past the freshness policy" : "not verified"}, so confirm it before approval.`,
+      });
+      void refresh();
+    },
+    onError: (error) =>
+      setPeopleError(error instanceof Error ? error.message : "That handoff could not be finished."),
   });
 
   const addPerson = useMutation({
@@ -978,6 +1080,22 @@ function CompanyDetail({
 
             {tab === "people" ? (
               <div className="space-y-6">
+                <PeopleSection
+                  people={researched}
+                  config={{
+                    apolloConfigured: enrichment.data?.apolloConfigured ?? false,
+                    clayConfigured: enrichment.data?.clayConfigured ?? false,
+                    ...(enrichment.data?.order?.length ? { preferred: enrichment.data.order } : {}),
+                    automaticEnrichment: enrichment.data?.automaticEnrichment ?? false,
+                  }}
+                  now={new Date().toISOString()}
+                  busyKey={lookingUpKey}
+                  error={peopleError}
+                  searching={findPeople.isPending}
+                  onFindPeople={() => findPeople.mutate()}
+                  onFindEmail={(person) => findEmail.mutate(person)}
+                  onPrepareOutreach={(person) => prepareOutreach.mutate(person)}
+                />
                 <ProspectPersonCard
                   people={peopleRows}
                   companyName={prospect.name}
