@@ -225,3 +225,78 @@ QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
 - No trigger is armed on a real Website event; the job remains off by default.
 - Live authenticated verification remains unavailable here. Owner: Codex.
 - Round 3 advances no Comms acceptance row and implies no completion.
+
+---
+
+## Round 4 of 10 — Turn conversations into discovery and decisions
+
+**Exact submitted prompt**
+
+> TRUST TAI AI AGENCY JOURNEY BUILD. Tai authorizes this ordered queue. Goal: eight-person team can source, diagnose, propose, onboard, deliver, support and grow clients using AI for repeatable preparation. Read current architecture canon, app registry, prior round output and existing services before changing code. Preserve unfinished Comms acceptance work and security fixes; do not overwrite concurrent work. No new parallel CRM, approval queue or business-data store. Apps own state; core identity; event history; Steward interpretation; Pulse visibility; Conductor routes actions. Preserve white cards/pale-blue OS styling, plain words, existing routes and client links. Do not introduce a new top-level app without demonstrated need.
+>
+> Product interpretation of Hit Makers: familiar surprise and MAYA. Familiar inbox/list/client workspace, consistent verbs and repeatable layout; intelligence prepares useful next work with evidence. Progressive disclosure, primary next action, clear owner, undo/correction where feasible. No agent jargon or orchestration diagrams in daily user flows. This is an application of the book, not a guaranteed popularity formula.
+>
+> Autonomy: implement and verify useful low-risk internal preparation (summaries, research packets, draft plans, reminders/tasks) via scoped server-side workers using existing services. Human authority governs commitments, pricing, scope/date approval and external action. Nothing in this build queue authorizes actual outreach, publication, payment, production deployment, live mailbox scope expansion or production schedule activation. Configure new automation disabled or preview-only until its policy/configuration is explicitly enabled by an authorized user; synthetic sandbox execution allowed. No real team assignment guesses, credentials or customer data in fixtures. SQL proposals to Codex; do not apply or reapply migrations. Never bypass auth for live evidence.
+>
+> Each round must write exact submitted prompt and numbered acceptance rows to docs/agency-journey-build-progress.md, with dependencies, changes, evidence/build, pass/blocked, owner and next step. Preserve C01-C22/T01-T05/P1-P8. Code, synthetic model evaluation, real persisted execution, production deployment and team acceptance are distinct. Do independent useful work when dependencies blocked, but do not mark dependent checks passed. No 100% from queue completion.
+>
+> QUEUED ROUND 4/10: 4. Turn conversations into discovery and decisions
+> Build on current Comms, including recent-email dashboard and existing review gates.
+> A4.1 Eligible source events prepare concise brief: goal, known facts, open questions, commitments and next move, each grounded in same-client context.
+> A4.2 Distinguish proposed tasks/commitments from confirmed ones; owner accepts actionable handoff without retyping. Inbound/unread is not automatically reply owed.
+> A4.3 Discovery intake captures desired outcome, current constraints, stakeholders, budget/timing unknowns, success measure and sources. Raw notes remain accessible.
+> A4.4 AI drafts responses under current Voice DNA and actual author, answers all requests, suggests private opportunities appropriately; preserve all original reviewer criteria.
+> A4.5 Approved discovery handoff opens linked Roadmap with source references, unanswered questions and owner, exactly once.
+> A4.6 Preserve draft save/reload, real thread targeting, sync freshness and failed-read honesty. No actual sends. Do not silently waive open Comms live checks.
+
+**Changes**
+
+- `src/domain/conversation-brief.ts` (new) — grounded brief: goal, known facts, open
+  questions, commitments, one next move; same-client grounding enforced and anything
+  ungrounded named in `droppedBecause`; proposed vs confirmed commitments;
+  `acceptCommitment` carries wording, due date and sources across untouched;
+  `replyOwed` treats arrival and unread as not an obligation.
+- `src/domain/discovery-intake.ts` (new) — discovery record with desired outcome,
+  constraints, stakeholders, named budget/timing unknowns, success measure, sources;
+  `rawNotesOf` keeps raw notes reachable; `discoveryReadiness`; `roadmapHandoffFor`
+  opens exactly one roadmap from an approved, complete, owned discovery.
+- `src/lib/conversation-brief.server.ts` (new) — the conversation job on the Round 2
+  shared runner: `briefPreparationRequest` (job `conversation_summary`),
+  `briefDeterministicRead` (counts in code, material as quoted data),
+  `prepareBriefOnConversation` (null while the job is off), `assemblePreparedBrief`
+  (grounding re-checked after the model writes).
+- Tests: `src/domain/conversation-brief.test.ts` (14),
+  `src/domain/discovery-intake.test.ts` (10),
+  `src/lib/conversation-brief.server.test.ts` (6).
+
+No new room, route, navigation entry, styling change, table or migration. No Comms
+component, review gate, draft save path, thread targeting or sync code changed. No
+send. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
+
+**Evidence and build**
+
+- `bunx vitest run` — 3,127 tests across 281 files pass (30 new this round).
+- `bunx tsgo --noEmit` — clean. Preview build: OK.
+- Evidence kind: **code plus synthetic sandbox execution**. No real model call, no
+  persisted output, no live conversation, no deployment, no team acceptance.
+
+**Acceptance rows**
+
+| Row | Criterion | Dependencies | Evidence | Result | Owner | Next step |
+| --- | --- | --- | --- | --- | --- | --- |
+| A4.1 | Eligible source events prepare a concise grounded brief | Round 2 runner | `assembleBrief`, `eligibleSources`, `briefDeterministicRead`; tests "keeps goal, facts, questions and next move that are grounded", "drops an ungrounded line and says so", "refuses a line grounded in another client's material" | PASS-CODE + synthetic | Agent | Wording quality unproven until an authorised provider call runs |
+| A4.2 | Proposed vs confirmed; owner accepts without retyping; inbound/unread is not reply owed | A4.1, existing `comms-obligations` | `Commitment.state`, `acceptCommitment`, `replyOwed`; tests "never accepts a commitment that arrives already confirmed", "carries the wording and sources across without retyping", "does not owe a reply just because mail arrived unread", "stays silent rather than guessing when nothing has been reviewed" | PASS-CODE | Agent | Surface accept in the conversation room in a later round |
+| A4.3 | Discovery intake captures outcome, constraints, stakeholders, budget/timing unknowns, measure, sources; raw notes accessible | Round 1 contract | `DiscoveryRecord`, `discoveryReadiness`, `rawNotesOf`; tests "asks for the success measure when it is missing", "accepts an unknown budget only when the question is written down", "keeps the raw notes reachable and unchanged" | PASS-CODE | Agent | Persisted discovery records BLOCKED on the Round 2 SQL proposal |
+| A4.4 | AI drafts under current Voice DNA and actual author, answers all requests, preserves reviewer criteria | Existing Comms review stack | No change made to Voice DNA resolution, author identity, `comms-obligations`, `comms-review` or reviewer criteria this round; existing suite passes unchanged | NOT-PERFORMED (unchanged existing behaviour) | Codex | Authenticated live review evidence remains open in the Comms closure record; not advanced here |
+| A4.5 | Approved discovery opens a linked Roadmap with source refs, unanswered questions and owner, exactly once | A4.3 | `roadmapHandoffFor`; tests "opens one roadmap with sources, open questions and an owner", "opens nothing before a person approves", "opens nothing without an owner", "returns the first roadmap rather than opening a second" | PASS-CODE | Agent | Persisted roadmap opening BLOCKED on the Round 2 SQL proposal |
+| A4.6 | Draft save/reload, thread targeting, sync freshness and failed-read honesty preserved; no sends | Existing Comms | No Comms save, thread-parameter, sync or recent-email code touched; full suite green; no send path exercised or added | PASS-CODE | Agent | Live signed-in confirmation remains with Codex; no open Comms live check is waived |
+
+**Open and blocked**
+
+- Persisted briefs, accepted tasks, discovery records and roadmap openings remain
+  **blocked** on the unapplied `20260916130000_preparation_outputs.sql`. Owner: Codex.
+- No real provider call this round, so brief wording quality and usage/cost stay
+  **unverified**; the conversation job remains off by default.
+- Live authenticated verification remains unavailable here. Owner: Codex.
+- Round 4 advances no Comms acceptance row (C01–C22, T01–T05, P1–P8 unchanged) and
+  implies no completion.
