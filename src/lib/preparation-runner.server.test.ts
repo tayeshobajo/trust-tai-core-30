@@ -157,11 +157,14 @@ describe("duplicates, retries and cancellation", () => {
 });
 
 describe("access, policy and material boundaries", () => {
-  it("checks workspace access at execution, not only when the trigger was armed", async () => {
-    const output = await run({ verifyAccess: async () => false });
-    expect(output.status).toBe("could_not_finish");
-    expect(output.because).toContain("do not have access");
+  it("refuses access at execution and writes nothing at all", async () => {
+    const store = sandboxStore();
+    await expect(run({ store, verifyAccess: async () => false })).rejects.toThrow(
+      "do not have access",
+    );
+    expect(store.all()).toHaveLength(0);
   });
+
 
   it("refuses a job that nobody turned on and names the gap", async () => {
     const output = await run({ policy: sandboxPolicy([]) });
