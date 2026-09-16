@@ -204,6 +204,14 @@ export interface ReviewContext {
    * since moved.
    */
   lessonSetStamp?: string | null;
+  /**
+   * The files staged on the outgoing draft, as one stable string. Empty when
+   * nothing is staged, so a review with no attachments keeps exactly the
+   * fingerprint it had before this existed. Changing the staged set makes an
+   * earlier run and an earlier approval stale, which is what keeps a finding
+   * about a missing attachment from outliving the file being added.
+   */
+  attachmentStamp?: string | null;
 }
 
 /**
@@ -232,6 +240,9 @@ export function contextFingerprint(context: ReviewContext): string {
     ...(context.lessonSetStamp && !/^lessons:(none|unsupported)$/.test(context.lessonSetStamp)
       ? [context.lessonSetStamp.trim()]
       : []),
+    /* Same rule: an empty staged set adds nothing, so nothing recorded before
+       attachments were part of this moves. */
+    ...(context.attachmentStamp ? [`attachments:${context.attachmentStamp.trim()}`] : []),
 
   ];
   return sourceChecksum(parts.join("\u0000"));

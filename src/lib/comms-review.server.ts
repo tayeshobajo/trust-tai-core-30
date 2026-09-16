@@ -2093,11 +2093,15 @@ export async function loadReview(
      they cannot be read there is no honest stamp: readiness says so and
      nothing is treated as approvable against guidance nobody could read. */
   const keptStamp = lessonSetStamp({ state: keptView.state, lessons: keptView.lessons });
+  /* Read the staged files the same way the run did, so an approval given
+     while a file was attached does not stay current after it is swapped. */
+  const stagedNow = await stagedAttachments(caller, input.organizationId, session.draftId);
   const fingerprint = currentVersion && keptStamp !== null
     ? contextFingerprint({
         versionId: currentVersion.id,
         subject: currentVersion.subject,
         body: currentVersion.body,
+        attachmentStamp: attachmentStamp(stagedNow),
         recipientEmail: session.recipientEmail,
         recipientName: session.recipientName,
         goal: session.goal,
