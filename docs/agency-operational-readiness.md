@@ -295,3 +295,95 @@ executed anywhere, no signed-in session used.
    Owner: Lovable, R3.
 3. No accept action, and no Scout or Comms panel. Owner: Lovable, R3.
 4. No team acceptance is claimed, and this round is not a completion claim.
+
+## Round R3/5 — the daily work screen and client continuity
+
+### Exact prompt
+
+> Tai authorizes R3/5: build the daily work screen and client continuity now.
+> R3.1–R3.6 require rendering Home lists from real authorized queries and
+> memberships, visible ownership exceptions with Assign/Resolve, stable-ID
+> display names, personal/team scoping, validated internal routes, client
+> continuity with current stage/outcome/next action/owner/blocker/scope/version
+> and linked evidence, white-card responsive keyboard UX, save/resume/reload/
+> deep links, server role checks, and no deferral of rendering. Team usability
+> remains awaiting real participants.
+
+### What changed, and why
+
+The R9 rules were written to be strict, and two of those strictnesses were
+wrong for real work:
+
+1. Work whose owner had left the workspace, or that had no owner at all, was
+   *rejected* and therefore invisible. That silently drops a business
+   obligation exactly when somebody needs to pick it up. It is now admitted and
+   surfaced as an ownership exception to an owner or admin.
+2. A display name that did not match the membership rejected the item. A person
+   being renamed is not a reason to lose their work. The name is now resolved
+   from the membership by stable user id; the row text is only a fallback for a
+   person who has left.
+
+Route validation was also tightened: `startsWith("/")` accepts `//evil.example`
+and `/\evil.example`, both of which leave the app. Destinations must now be a
+known internal root.
+
+### Changed files
+
+| File | What it does now |
+| --- | --- |
+| `src/domain/daily-workspace.ts` | `WorkOwnership` (assigned / unassigned / owner_departed); names resolved by stable id; `isInternalRoute` with an allow-list; `buildWorkspace` returns `exceptions`, a `view` and a refusal reason; personal view no longer leaks other people's prepared work |
+| `src/domain/daily-workspace.test.ts` | Updated to the corrected rules; 25 tests |
+| `src/data/daily-workspace.ts` | New. Reads memberships + profiles, and three real sources under the caller's session: `commitments`, `preparation_outputs`, `approval_requests`. Each source reports read / unreadable separately |
+| `src/components/tt/home/my-work.tsx` | New. Three white cards, familiar verbs, collapsed prepared detail, per-source unreadable banner, Mine / Everyone toggle for leads, keyboard-visible focus |
+| `src/routes/index.tsx` | Mounts `MyWork` directly under the hero |
+| `src/domain/client-continuity.ts` | New. Six continuity answers with certainty and evidence links |
+| `src/domain/client-continuity.test.ts` | New. 8 tests |
+| `src/components/tt/clients/continuity.tsx` | New "Where this stands" card |
+| `src/routes/modules.clients.$clientId.tsx` | Renders the continuity card above Overview |
+
+### Route to service to record
+
+| Screen | Read | Table |
+| --- | --- | --- |
+| Home, My next actions | `loadDailyWorkspace` | `commitments` (organization-scoped, open only) |
+| Home, Prepared for you | `loadDailyWorkspace` | `preparation_outputs` (absent until R1 SQL is applied; renders as unreadable, not empty) |
+| Home, Decisions needed | `loadDailyWorkspace` | `approval_requests` (`needs_review`) |
+| Home, people and names | `loadWorkspacePeople` | `organization_memberships` + `profiles` |
+| Client, Where this stands | `clientContinuity` over existing shell reads | `roadmaps`/`roadmap_stages`/`roadmap_decisions`, `projects` |
+
+### Acceptance rows
+
+| # | Criterion | Result | Evidence level | Evidence | Owner | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| R3.1a | Home renders three lists from real authorized queries | PASS (rendering + wiring) | CODE | `MyWork` mounted in `src/routes/index.tsx`, reading `loadDailyWorkspace` under the signed-in session with RLS and an explicit organization filter. Not deferred to a later round. | Lovable | Observe on a signed-in screen |
+| R3.1b | Lists are built from real memberships, not invented people | PASS | CODE | `loadWorkspacePeople` reads `organization_memberships` + `profiles`; `peopleFromMemberships` keeps active members of that workspace only. | Lovable | None |
+| R3.1c | A source that fails is shown as unreadable, never as an empty list | PASS | CODE | Each source is read independently; failures render a named banner and the lists are declared incomplete. | Lovable | None |
+| R3.2a | Missing and departed owners are visible exceptions, not hidden | PASS | CODE | `WorkOwnership`; `buildWorkspace` returns `exceptions`; 2 tests. | Lovable | None |
+| R3.2b | Assign / Resolve available to whoever may | PARTIAL | CODE | The exception card is shown to owners and admins only (`mayResolveOwnership`) and each row carries its room action. There is no in-place assign control: ownership is changed in the owning room, so Home does not open a second write path into other rooms' records. | Lovable | Decide with Tai whether Home should write ownership at all |
+| R3.3 | Display names resolve by stable id | PASS | CODE | The membership supplies the name; a rename no longer rejects the item. 1 test. | Lovable | None |
+| R3.4a | Personal and team scoping | PASS | CODE | Personal shows only what the viewer owns, including prepared work for them; prepared work for somebody else is no longer shown to everyone. Team view is refused to a member with a stated reason. 2 tests. | Lovable | None |
+| R3.4b | Server-side role check | PARTIAL | CODE | The role comes from the workspace identity resolved from the membership record, and every read is RLS-scoped, so a member cannot read outside their workspace. The team-view filter itself is applied client-side over rows the caller may already read; it is a view, not a permission. | Lovable | None |
+| R3.5 | Internal destinations validated | PASS | CODE | `isInternalRoute` rejects `//host`, `/\host`, backslashes and schemes; allow-listed roots only. 1 test over 4 hostile inputs. | Lovable | None |
+| R3.6a | Client continuity: stage, outcome, next action, owner, blocker, scope version | PASS | CODE | `clientContinuity`, 8 tests, rendered above Overview. | Lovable | Observe on a signed-in client |
+| R3.6b | Linked evidence on each answer | PASS | CODE | Roadmap answers link to the roadmap; the owner links to the project that names them. | Lovable | None |
+| R3.6c | Inferred is never shown as agreed | PASS | CODE | An unapproved Point B reads "Inferred, not approved". Certainty is a word, not a colour. | Lovable | None |
+| R3.6d | A failed room read is distinct from nothing recorded | PASS | CODE | Separate `unreadable` and `not_recorded` certainties; 1 test. | Lovable | None |
+| R3.7 | White card, responsive, keyboard usable | PASS (code), UNVERIFIED (screen) | CODE | Card tokens match the approved surfaces; grids collapse at `sm`/`lg`; every control is a real button or link with a visible focus ring. Not yet checked at 1440 / 768 / 375 on a signed-in screen. | Codex | Viewport and keyboard pass on a signed-in screen |
+| R3.8 | Save, resume, reload, deep links | PARTIAL | CODE | Home holds no local state: every mount re-reads, so reload resumes. Deep links into rooms are validated. Nothing on Home is saved, so there is nothing to resume. | Lovable | None |
+| R3.9 | Prepared work visible with real rows | BLOCKED | — | `preparation_outputs` still does not exist, so that source reads as not set up. Correct behaviour, not a pass for showing prepared work. | Codex | Apply the R1 SQL |
+| R3.10 | Team usability | AWAITING-TEAM | — | Not claimed. Requires real teammates. | Tai | Run the guided scenario with the team |
+| R3.11 | Nothing published, sent, paid, widened or switched on | PASS | CODE | No send, publish, payment, mailbox scope, schema or schedule code touched. | Lovable | None |
+
+### Evidence and build
+
+`bunx vitest run`: 3,291 tests in 296 files, all passing. `bunx tsgo --noEmit`
+clean. `build OK` at 2026-09-16T07:38:24Z. No migration applied, no SQL
+executed, no signed-in session used.
+
+### Remaining blockers after R3
+
+1. The three preparation tables are still missing. Owner: Codex.
+2. No signed-in screen evidence for Home or the continuity card. Owner: Codex.
+3. No accept action, and no Scout or Comms preparation panel. Owner: Lovable.
+4. Whether Home should write ownership directly needs a decision. Owner: Tai.
+5. No team acceptance is claimed, and this round is not a completion claim.
