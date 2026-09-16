@@ -157,9 +157,9 @@ describe("outcome review", () => {
   it("refuses to attribute value to a measure of output volume", () => {
     const review = reviewOutcome({
       clientRef: CLIENT,
-      baseline: point({ key: "posts_published", value: 0 }),
-      target: point({ key: "posts_published", value: 10 }),
-      observed: point({ key: "posts_published", value: 12, evidenceRef: "fixture:report/1" }),
+      baseline: point({ key: "comms.drafts_prepared", value: 0 }),
+      target: point({ key: "comms.drafts_prepared", value: 10 }),
+      observed: point({ key: "comms.drafts_prepared", value: 12, evidenceRef: "fixture:report/1" }),
       attributed: { amountMinor: 500000, currency: "GBP", evidenceRef: "fixture:report/1" },
     });
     expect(review.attributedValue).toBeNull();
