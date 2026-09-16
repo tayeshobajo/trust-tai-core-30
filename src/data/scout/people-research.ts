@@ -146,7 +146,15 @@ export interface EnrichInput {
   person: ScoutPerson;
   /** Present once the person is saved, so the answer is written to their row. */
   prospectId?: string | undefined;
+  /**
+   * The company this page is about. Used only when the person record carries
+   * no company of its own, so a lookup is never refused for a company we can
+   * already see on screen.
+   */
+  companyName?: string | undefined;
+  domain?: string | undefined;
 }
+
 
 export interface EnrichResult {
   person: ScoutPerson;
