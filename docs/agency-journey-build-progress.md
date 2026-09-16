@@ -69,3 +69,76 @@ applied. Unfinished Comms acceptance work, the preserved QA session
 - Tai acceptance of the journey mapping and of the Home / client workspace
   specification is **awaiting Tai**. Not marked by the agent.
 - Round 1 completion does not advance any Comms acceptance row.
+
+---
+
+## Round 2/10 — Make AI execute repeatable preparation reliably
+
+**Exact submitted prompt (verbatim):**
+
+> TRUST TAI AI AGENCY JOURNEY BUILD. Tai authorizes this ordered queue. Goal: eight-person team can source, diagnose, propose, onboard, deliver, support and grow clients using AI for repeatable preparation. Read current architecture canon, app registry, prior round output and existing services before changing code. Preserve unfinished Comms acceptance work and security fixes; do not overwrite concurrent work. No new parallel CRM, approval queue or business-data store. Apps own state; core identity; event history; Steward interpretation; Pulse visibility; Conductor routes actions. Preserve white cards/pale-blue OS styling, plain words, existing routes and client links. Do not introduce a new top-level app without demonstrated need.
+>
+> Product interpretation of Hit Makers: familiar surprise and MAYA. Familiar inbox/list/client workspace, consistent verbs and repeatable layout; intelligence prepares useful next work with evidence. Progressive disclosure, primary next action, clear owner, undo/correction where feasible. No agent jargon or orchestration diagrams in daily user flows. This is an application of the book, not a guaranteed popularity formula.
+>
+> Autonomy: implement and verify useful low-risk internal preparation (summaries, research packets, draft plans, reminders/tasks) via scoped server-side workers using existing services. Human authority governs commitments, pricing, scope/date approval and external action. Nothing in this build queue authorizes actual outreach, publication, payment, production deployment, live mailbox scope expansion or production schedule activation. Configure new automation disabled or preview-only until its policy/configuration is explicitly enabled by an authorized user; synthetic sandbox execution allowed. No real team assignment guesses, credentials or customer data in fixtures. SQL proposals to Codex; do not apply or reapply migrations. Never bypass auth for live evidence.
+>
+> Each round must write exact submitted prompt and numbered acceptance rows to docs/agency-journey-build-progress.md, with dependencies, changes, evidence/build, pass/blocked, owner and next step. Preserve C01-C22/T01-T05/P1-P8. Code, synthetic model evaluation, real persisted execution, production deployment and team acceptance are distinct. Do independent useful work when dependencies blocked, but do not mark dependent checks passed. No 100% from queue completion.
+>
+> QUEUED ROUND 2/10: 2. Make AI execute repeatable preparation reliably
+> Implement common execution through existing jobs/providers, not competing automation framework.
+> A2.1 Each supported job has trigger, authorized scope, input revision, output record/owner, status, retry policy and idempotency key.
+> A2.2 Duplicate events and retries don't duplicate work; bounded retries/backoff, timeouts, cancellation and operator recovery; uncertain external outcomes never auto-retry.
+> A2.3 Use deterministic code for arithmetic/state checks; real model for synthesis/judgment. Capture actual provider/model/prompt/input references, validation and usage/cost when available.
+> A2.4 Workspace access checked at execution; changed/revoked input invalidates stale output; source material cannot override instructions or expand permissions.
+> A2.5 Build disabled-by-default triggers for eligible new enquiry→qualification packet, new conversation→summary/action suggestions, milestone change→status draft. Run synthetic flows and persist outputs.
+> A2.6 Per-job and workspace limits/stop switch; explicit configuration gaps, no infinite agent loops. Show friendly Prepared/Needs your decision/Could not finish states. Admin detail stays secondary.
+
+**Audit before building**
+
+No competing framework was added. Synthesis goes through the existing single
+reasoning boundary `src/lib/intelligence-runtime.server.ts` (guarded by
+`src/lib/intelligence-runtime-boundary.ts`), which is the only module allowed to
+reach a provider. Runs, fingerprints and cadence in `src/data/intelligence/engine/runs.ts`
+and the runtime protocol in `src/data/intelligence/runtime/` were read and left
+untouched. Comms review, delivery and lessons work was not modified.
+
+**Changes in this round**
+
+| File | Change |
+| --- | --- |
+| `src/domain/preparation-jobs.ts` | New. The shared contract: three job specs with trigger, scope (`writes: preparation_output` only, plus an explicit never-does list), decision owner, retry policy, timeout, `enabledByDefault: false` and required configuration; `preparationKey`; status set and plain-word labels; `outputIsCurrent`; `retryDecision`; `mayRun` with limits, stop switch and configuration gaps; `boundedInstructions` and `materialBlock`. |
+| `src/lib/preparation-runner.server.ts` | New. The one runner: execution-time access check, policy gate, idempotent load, revision recheck, deterministic read first, synthesis through the reasoning boundary, timeout, cancellation, answer validation, `recoveryDecision`. Writes one record kind through an injected store. |
+| `src/data/fixtures/preparation-sandbox.ts` | New. In-memory store, fake model caller, sandbox policy, and the three synthetic reads, built on the Round 1 client fixture. No real data. |
+| `src/components/tt/preparation-state.tsx` | New. Friendly state badge and result card in the existing white-card style; admin detail hidden behind `showDetail`. Not wired into any route in this round. |
+| `src/domain/preparation-jobs.test.ts`, `src/lib/preparation-runner.server.test.ts` | New. 31 tests. |
+| `docs/migrations/proposed/20260916130000_preparation_outputs.sql` | New, **not applied**. `preparation_outputs` + `preparation_policy`, least-privilege grants (no DELETE/TRUNCATE for any application role), RLS by active membership, immutable request identity and model record. |
+
+No route, navigation, styling token, schema, auth, Comms or send behaviour changed.
+No migration was applied. QA session `9b329dbe-02ca-40d6-9f54-9ec728c64446` untouched.
+
+**Evidence and build**
+
+- `bunx vitest run preparation` — 31/31 pass across 2 files.
+- `bunx tsgo --noEmit` — clean. Build observability: `build OK`.
+- Evidence kind: **code plus synthetic sandbox execution**. No real model call, no
+  persisted database output, no deployment, no team acceptance.
+
+**Acceptance rows**
+
+| Row | Criterion | Dependencies | Evidence | Result | Owner | Next step |
+| --- | --- | --- | --- | --- | --- | --- |
+| A2.1 | Trigger, authorized scope, input revision, output record/owner, status, retry policy, idempotency key per job | Round 1 | `PREPARATION_JOBS`, `preparationKey`, `PreparationOutput`; tests "job contract", "idempotency" | PASS-CODE | Agent | Bind each trigger to its room's real event when the store lands |
+| A2.2 | Duplicates and retries do not duplicate work; bounded backoff, timeout, cancellation, operator recovery; uncertain never auto-retried | A2.1 | `retryDecision`, runner duplicate/running/uncertain short-circuits; tests "duplicates, retries and cancellation" (6) | PASS-CODE + synthetic | Agent | Re-prove against the real store once the schema is applied |
+| A2.3 | Deterministic code for arithmetic/state, model for synthesis; capture provider/model/prompt/input refs, validation, usage/cost when available | A2.1 | Runner computes `figures` before any model call and never accepts figures from the model; `ModelUse` records provider, model, `instructionsRef`, `inputRefs`, optional usage/cost; unreadable answers refused | PASS-CODE + synthetic | Agent | Usage/cost values remain unverified until a real gateway call runs |
+| A2.4 | Access checked at execution; changed/revoked input invalidates stale output; material cannot override instructions or widen permissions | A2.1 | `verifyAccess` at execution (default `requireRuntimeAccess`), revision recheck, `outputIsCurrent`, `boundedInstructions` + `materialBlock`; tests include a planted "ignore all previous instructions" string that travels only as wrapped material | PASS-CODE + synthetic | Agent | Live membership refusal still needs an authenticated run |
+| A2.5 | Disabled-by-default triggers for enquiry packet, conversation summary, milestone status draft; synthetic flows run and outputs persisted | A2.1–A2.4 | All three specs `enabledByDefault: false` and `PREPARATION_POLICY_DEFAULT.enabledJobs = []`; three synthetic flows executed and stored in the sandbox store | PASS-CODE + synthetic; **persistence to the database BLOCKED** | Agent / Codex | Codex reviews `20260916130000_preparation_outputs.sql`; no trigger is wired to a live event in this round |
+| A2.6 | Per-job and workspace limits, stop switch, explicit configuration gaps, no infinite loops; friendly states with admin detail secondary | A2.1 | `mayRun`, `configGaps`, `PREPARATION_POLICY_DEFAULT`; bounded `maxAttempts` with no self-scheduling anywhere in the runner; `PREPARATION_STATE_LABEL` and `PreparationStateBadge` / `PreparationResult` | PASS-CODE | Agent / Tai | Surface the states in a room in a later round; Tai to confirm limit defaults |
+
+**Open and blocked**
+
+- Real persisted execution is **blocked** on the unapplied SQL proposal. Owner: Codex.
+- A real provider call (and therefore genuine provider, model, token and cost capture)
+  is **not performed**. Owner: a later authorised round.
+- No trigger is armed anywhere; every job stays off until an authorised person enables it.
+- Live authenticated verification remains unavailable in this environment. Owner: Codex.
+- Round 2 advances no Comms acceptance row and implies no completion.
