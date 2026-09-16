@@ -85,3 +85,22 @@ create policy "members update scout people"
         and coalesce(m.status, 'active') = 'active'
     )
   );
+
+create policy "members delete scout people"
+  on public.scout_people for delete to authenticated
+  using (
+    exists (
+      select 1 from public.organization_memberships m
+      where m.organization_id = scout_people.organization_id
+        and m.user_id = auth.uid()
+        and coalesce(m.status, 'active') = 'active'
+    )
+  );
+
+-- Reviewed against the live schema on 2026-09-16 (project okydosoacqdnursmmenf):
+--   organizations.id, prospects.id, contacts.id and
+--   organization_memberships(organization_id, user_id, status) all exist as
+--   referenced. public.scout_people does not exist yet, so this is a first
+--   apply, not a re-apply. A delete policy was added so the delete grant is
+--   not dead. STILL NOT APPLIED: this runtime has no database credential that
+--   can run DDL on the external project. Codex applies it.
