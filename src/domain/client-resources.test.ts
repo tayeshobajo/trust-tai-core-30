@@ -74,10 +74,16 @@ describe("duplicates", () => {
 
   it("catches the exact same address in the same scope", () => {
     const hit = findDuplicate(existing, {
-      url: "https://lovable.dev/projects/one/",
+      url: "https://lovable.dev/projects/one",
       projectId: "proj-1",
     });
     expect(hit?.id).toBe("a");
+  });
+
+  it("treats a trailing slash as a different address, because it can be one", () => {
+    expect(
+      findDuplicate(existing, { url: "https://lovable.dev/projects/one/", projectId: "proj-1" }),
+    ).toBeNull();
   });
 
   it("allows the same address on another project", () => {
