@@ -29,12 +29,21 @@ import {
   type ClientProposalState,
 } from "@/components/tt/clients/chat";
 import { FilesTab, RelationshipTab } from "@/components/tt/clients/tabs";
+import { ClientPinnedShortcuts, ClientResourcesSection } from "@/components/tt/clients/resources";
 import { ClientProjectWorkspace } from "@/components/tt/clients/project-workspace";
 
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { buildClientBook } from "@/data/clients/book-projection";
 import { uploadClientLogo } from "@/data/clients/logo";
+import {
+  addClientResource,
+  editClientResource,
+  listClientResources,
+  removeClientResource,
+} from "@/data/clients/resources";
+import type { ClientResourceDraft } from "@/domain/client-resources";
+import { canWorkInRoom } from "@/lib/room-authority";
 import {
   eventsAbout,
   readClientApprovals,
@@ -348,6 +357,38 @@ function ClientShell({
     () => Object.fromEntries(projects.map((project) => [project.id, project.name])),
     [projects],
   );
+
+  /**
+   * Files & Links: the company's own saved references. Read through the
+   * authenticated route, which proves membership before answering, and
+   * reported as unavailable rather than empty when the store is missing.
+   */
+  const resourcesQuery = useQuery({
+    queryKey: ["clients", "resources", organizationId, clientId],
+    queryFn: () => listClientResources(organizationId, clientId),
+    retry: false,
+  });
+  const resourcesRead = resourcesQuery.data ?? null;
+  const resources = resourcesRead?.resources ?? [];
+  const canWriteResources = canWorkInRoom("clients");
+  const [resourceBusy, setResourceBusy] = useState(false);
+
+  async function afterResourceWrite() {
+    await queryClient.invalidateQueries({
+      queryKey: ["clients", "resources", organizationId, clientId],
+    });
+  }
+
+  async function withResourceBusy<T>(work: () => Promise<T>): Promise<T> {
+    setResourceBusy(true);
+    try {
+      const result = await work();
+      await afterResourceWrite();
+      return result;
+    } finally {
+      setResourceBusy(false);
+    }
+  }
 
   const filesQuery = useQuery({
     queryKey: ["clients", "files", organizationId, projectIds],
@@ -778,102 +819,109 @@ function ClientShell({
         <div role="tabpanel" aria-label={tab}>
           {tab === "overview" ? (
             <>
-            <div className="mb-6">
-              <ClientContinuity
+              <div className="mb-6">
+                <ClientContinuity
+                  clientId={clientId}
+                  roadmap={
+                    roadmapOutcomes === null
+                      ? null
+                      : roadmapOutcomes.available
+                        ? answered(roadmapOutcomes.value[0] ?? null)
+                        : roadmapOutcomes
+                  }
+                  projects={projectsForTab}
+                />
+              </div>
+              <div className="mb-6">
+                <ClientJourneyProgress
+                  clientId={clientId}
+                  relationship={
+                    relationshipRead === null
+                      ? null
+                      : relationshipRead.available
+                        ? answered({
+                            peopleCount: relationshipRead.value.people.length,
+                            lastExchangeAt: relationshipRead.value.lastTouchAt ?? null,
+                          })
+                        : relationshipRead
+                  }
+                  roadmap={
+                    roadmapOutcomes === null
+                      ? null
+                      : roadmapOutcomes.available
+                        ? answered(roadmapOutcomes.value[0] ?? null)
+                        : roadmapOutcomes
+                  }
+                  proposals={
+                    proposalsRead === null
+                      ? null
+                      : proposalsRead.available
+                        ? answered(
+                            proposalsRead.value
+                              .filter((proposal) => proposal.clientId === clientId)
+                              .map((proposal) => ({
+                                id: proposal.id,
+                                title: proposal.title,
+                                sentAt: proposal.proposalSentAt,
+                                outcome: proposal.proposalOutcome,
+                                amountCents: proposal.proposalAmountCents,
+                              })),
+                          )
+                        : proposalsRead
+                  }
+                  commercial={answered({
+                    tier: record.tier,
+                    mrrCents: record.mrrCents,
+                    nextReviewAt: record.nextReviewAt,
+                    renewalAt: record.renewalAt,
+                    recordedAt: record.commercialUpdatedAt,
+                  })}
+                  projects={projectsForTab}
+                />
+              </div>
+              {resourcesRead?.available && resources.length > 0 ? (
+                <ClientPinnedShortcuts
+                  resources={resources}
+                  projects={projects.map((project) => ({ id: project.id, name: project.name }))}
+                  clientId={clientId}
+                />
+              ) : null}
+              <OverviewTab
                 clientId={clientId}
-                roadmap={
-                  roadmapOutcomes === null
-                    ? null
-                    : roadmapOutcomes.available
-                      ? answered(roadmapOutcomes.value[0] ?? null)
-                      : roadmapOutcomes
-                }
-                projects={projectsForTab}
+                reads={{
+                  roadmap:
+                    roadmapOutcomes === null
+                      ? null
+                      : roadmapOutcomes.available
+                        ? answered(roadmapOutcomes.value[0] ?? null)
+                        : roadmapOutcomes,
+                  projects: projectsForTab,
+                  approvals: approvalsRead,
+                  relationship: relationshipRead,
+                  history: historyRead,
+                  site: readOf(siteQuery),
+                  loading: {
+                    roadmap: roadmapsQuery.isLoading,
+                    projects: projectsQuery.isLoading,
+                    approvals: !linksSettled || approvalsQuery.isLoading,
+                    relationship: relationshipsQuery.isLoading,
+                    history: historyQuery.isLoading,
+                    site: siteQuery.isLoading,
+                  },
+                }}
+                cadence={cadence}
+                client={{ name: record.name, websiteUrl: record.websiteUrl }}
+                now={now}
+                timeZone={timeZone}
+                roadmapProject={overviewRoadmapProject}
+                exchange={exchangeWindow}
+                commercial={{
+                  headline: card.commercialLine,
+                  review: cadence.line,
+                  renewal: cadence.renewalLine,
+                  provenance: commercialProvenanceLine,
+                }}
               />
-            </div>
-            <div className="mb-6">
-              <ClientJourneyProgress
-                clientId={clientId}
-                relationship={
-                  relationshipRead === null
-                    ? null
-                    : relationshipRead.available
-                      ? answered({
-                          peopleCount: relationshipRead.value.people.length,
-                          lastExchangeAt: relationshipRead.value.lastTouchAt ?? null,
-                        })
-                      : relationshipRead
-                }
-                roadmap={
-                  roadmapOutcomes === null
-                    ? null
-                    : roadmapOutcomes.available
-                      ? answered(roadmapOutcomes.value[0] ?? null)
-                      : roadmapOutcomes
-                }
-                proposals={
-                  proposalsRead === null
-                    ? null
-                    : proposalsRead.available
-                      ? answered(
-                          proposalsRead.value
-                            .filter((proposal) => proposal.clientId === clientId)
-                            .map((proposal) => ({
-                              id: proposal.id,
-                              title: proposal.title,
-                              sentAt: proposal.proposalSentAt,
-                              outcome: proposal.proposalOutcome,
-                              amountCents: proposal.proposalAmountCents,
-                            })),
-                        )
-                      : proposalsRead
-                }
-                commercial={answered({
-                  tier: record.tier,
-                  mrrCents: record.mrrCents,
-                  nextReviewAt: record.nextReviewAt,
-                  renewalAt: record.renewalAt,
-                  recordedAt: record.commercialUpdatedAt,
-                })}
-                projects={projectsForTab}
-              />
-            </div>
-            <OverviewTab
-              clientId={clientId}
-              reads={{
-                roadmap:
-                  roadmapOutcomes === null
-                    ? null
-                    : roadmapOutcomes.available
-                      ? answered(roadmapOutcomes.value[0] ?? null)
-                      : roadmapOutcomes,
-                projects: projectsForTab,
-                approvals: approvalsRead,
-                relationship: relationshipRead,
-                history: historyRead,
-                site: readOf(siteQuery),
-                loading: {
-                  roadmap: roadmapsQuery.isLoading,
-                  projects: projectsQuery.isLoading,
-                  approvals: !linksSettled || approvalsQuery.isLoading,
-                  relationship: relationshipsQuery.isLoading,
-                  history: historyQuery.isLoading,
-                  site: siteQuery.isLoading,
-                },
-              }}
-              cadence={cadence}
-              client={{ name: record.name, websiteUrl: record.websiteUrl }}
-              now={now}
-              timeZone={timeZone}
-              roadmapProject={overviewRoadmapProject}
-              exchange={exchangeWindow}
-              commercial={{
-                headline: card.commercialLine,
-                review: cadence.line,
-                renewal: cadence.renewalLine,
-                provenance: commercialProvenanceLine,
-              }}
-            />
             </>
           ) : null}
 
@@ -941,20 +989,53 @@ function ClientShell({
             />
           ) : null}
           {tab === "files" ? (
-            <FilesTab
-              read={readOf(filesQuery)}
-              linkedRead={readOf(linkedSourcesQuery)}
-              loading={projectsQuery.isLoading || filesQuery.isLoading}
-              linkedLoading={projectsQuery.isLoading || linkedSourcesQuery.isLoading}
-              hasProjects={projects.length > 0}
-              projectNames={projectNames}
-              timeZone={timeZone}
-              onOpen={(file) => {
-                void projectDelivery.fileUrl(file).then((url) => {
-                  window.open(url, "_blank", "noopener,noreferrer");
-                });
-              }}
-            />
+            <div className="space-y-8">
+              <ClientResourcesSection
+                resources={resources}
+                available={resourcesRead?.available ?? true}
+                unavailableBecause={resourcesRead?.unavailableBecause}
+                loading={resourcesQuery.isLoading}
+                readProblem={
+                  resourcesQuery.isError ? "The saved links could not be read just now." : null
+                }
+                projects={projects.map((project) => ({
+                  id: project.id,
+                  name: project.name,
+                }))}
+                selectedProjectId={selectedProjectId}
+                canWrite={canWriteResources}
+                busy={resourceBusy}
+                onAdd={(draft: ClientResourceDraft) =>
+                  withResourceBusy(() => addClientResource(organizationId, clientId, draft)).then(
+                    () => undefined,
+                  )
+                }
+                onEdit={(id: string, draft: ClientResourceDraft) =>
+                  withResourceBusy(() =>
+                    editClientResource(organizationId, clientId, id, draft),
+                  ).then(() => undefined)
+                }
+                onRemove={(resource) =>
+                  withResourceBusy(() =>
+                    removeClientResource(organizationId, clientId, resource.id),
+                  )
+                }
+              />
+              <FilesTab
+                read={readOf(filesQuery)}
+                linkedRead={readOf(linkedSourcesQuery)}
+                loading={projectsQuery.isLoading || filesQuery.isLoading}
+                linkedLoading={projectsQuery.isLoading || linkedSourcesQuery.isLoading}
+                hasProjects={projects.length > 0}
+                projectNames={projectNames}
+                timeZone={timeZone}
+                onOpen={(file) => {
+                  void projectDelivery.fileUrl(file).then((url) => {
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  });
+                }}
+              />
+            </div>
           ) : null}
           {tab === "chat" ? (
             <ClientChatTab

@@ -51,7 +51,8 @@ export const CLIENT_TAB_LABEL: Record<ClientTab, string> = {
   work: "Work",
   relationship: "Relationship",
   commercial: "Commercial",
-  files: "Files",
+  // The tab keeps its `files` address so every old link still opens it.
+  files: "Files & Links",
   chat: "Chat",
 };
 
