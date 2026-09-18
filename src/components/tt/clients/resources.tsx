@@ -28,6 +28,7 @@ import {
   filterResources,
   findDuplicate,
   groupByProject,
+  pinnedShortcuts,
   scopeLabel,
   type ClientResource,
   type ClientResourceDraft,
@@ -506,5 +507,62 @@ export function ClientResourcesSection({
         </p>
       </div>
     </RoomSection>
+  );
+}
+
+/* --------------------------------------------------------------- shortcuts */
+
+/**
+ * The shortcuts pinned on the client overview: every Lovable project, every
+ * knowledge base, every working chat. Several of one kind is normal, so each
+ * keeps its own label and, when two share a name, its scope.
+ */
+export function ClientPinnedShortcuts({
+  resources,
+  projects,
+  onOpenAll,
+}: {
+  resources: ClientResource[];
+  projects: ResourceProject[];
+  onOpenAll: () => void;
+}) {
+  const projectNames = useMemo(
+    () => Object.fromEntries(projects.map((project) => [project.id, project.name])),
+    [projects],
+  );
+  const shortcuts = useMemo(
+    () => pinnedShortcuts(resources, projectNames),
+    [resources, projectNames],
+  );
+  if (shortcuts.length === 0) return null;
+  return (
+    <TTCard className="p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="tt-eyebrow">Where this work lives</p>
+        <button
+          type="button"
+          onClick={onOpenAll}
+          className="rounded-md text-[13px] font-medium text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          All files and links
+        </button>
+      </div>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {shortcuts.map((shortcut) => (
+          <li key={shortcut.resource.id}>
+            <a
+              href={shortcut.resource.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tt-pressable inline-flex max-w-[20rem] items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[13px] text-foreground hover:border-royal/30 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="truncate">{shortcut.label}</span>
+              <MetaPill>{RESOURCE_CATEGORY_LABEL[shortcut.resource.category]}</MetaPill>
+              <ExternalLink aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </TTCard>
   );
 }
