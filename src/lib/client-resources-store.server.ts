@@ -212,15 +212,19 @@ export const clientResourcesStore = {
     scope: Pick<ResourceScope, "organizationId" | "clientId">,
     id: string,
   ): Promise<void> {
-    const { error } = await clientResourcesWriter()
+    const { data, error } = await clientResourcesWriter()
       .from(TABLE)
       .delete()
       .eq("id", id)
       .eq("organization_id", scope.organizationId)
-      .eq("client_id", scope.clientId);
+      .eq("client_id", scope.clientId)
+      .select("id");
     if (error) {
       if (missingSchema(error)) throw new ClientResourcesSchemaUnavailable();
       throw new ClientResourcesStoreError("That link could not be removed.");
     }
+    // Nothing matched. Either it was already gone, or it names another
+    // company's link: both are refusals, never a confirmed removal.
+    if ((data ?? []).length === 0) throw new ClientResourceNotHere();
   },
 };
