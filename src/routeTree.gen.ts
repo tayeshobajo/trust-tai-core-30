@@ -78,6 +78,7 @@ import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/clients.ask'
 import { Route as ApiPublicClientsLogoRouteImport } from './routes/api/public/clients.logo'
+import { Route as ApiPublicClientsResourcesRouteImport } from './routes/api/public/clients.resources'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicCommsReviewRouteImport } from './routes/api/public/comms.review'
 import { Route as ApiPublicCommsSendRouteImport } from './routes/api/public/comms.send'
@@ -474,6 +475,12 @@ const ApiPublicClientsLogoRoute = ApiPublicClientsLogoRouteImport.update({
   path: '/api/public/clients/logo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicClientsResourcesRoute =
+  ApiPublicClientsResourcesRouteImport.update({
+    id: '/api/public/clients/resources',
+    path: '/api/public/clients/resources',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
   id: '/api/public/comms/draft',
   path: '/api/public/comms/draft',
@@ -799,6 +806,7 @@ export interface FileRoutesByFullPath {
   '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
+  '/api/public/clients/resources': typeof ApiPublicClientsResourcesRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/comms/review': typeof ApiPublicCommsReviewRoute
   '/api/public/comms/send': typeof ApiPublicCommsSendRoute
@@ -907,6 +915,7 @@ export interface FileRoutesByTo {
   '/modules/studio': typeof ModulesStudioIndexRoute
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
+  '/api/public/clients/resources': typeof ApiPublicClientsResourcesRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/comms/review': typeof ApiPublicCommsReviewRoute
   '/api/public/comms/send': typeof ApiPublicCommsSendRoute
@@ -1025,6 +1034,7 @@ export interface FileRoutesById {
   '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
+  '/api/public/clients/resources': typeof ApiPublicClientsResourcesRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/comms/review': typeof ApiPublicCommsReviewRoute
   '/api/public/comms/send': typeof ApiPublicCommsSendRoute
@@ -1144,6 +1154,7 @@ export interface FileRouteTypes {
     | '/modules/studio/'
     | '/api/public/clients/ask'
     | '/api/public/clients/logo'
+    | '/api/public/clients/resources'
     | '/api/public/comms/draft'
     | '/api/public/comms/review'
     | '/api/public/comms/send'
@@ -1252,6 +1263,7 @@ export interface FileRouteTypes {
     | '/modules/studio'
     | '/api/public/clients/ask'
     | '/api/public/clients/logo'
+    | '/api/public/clients/resources'
     | '/api/public/comms/draft'
     | '/api/public/comms/review'
     | '/api/public/comms/send'
@@ -1369,6 +1381,7 @@ export interface FileRouteTypes {
     | '/modules/studio/'
     | '/api/public/clients/ask'
     | '/api/public/clients/logo'
+    | '/api/public/clients/resources'
     | '/api/public/comms/draft'
     | '/api/public/comms/review'
     | '/api/public/comms/send'
@@ -1446,6 +1459,7 @@ export interface RootRouteChildren {
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
   ApiPublicClientsAskRoute: typeof ApiPublicClientsAskRoute
   ApiPublicClientsLogoRoute: typeof ApiPublicClientsLogoRoute
+  ApiPublicClientsResourcesRoute: typeof ApiPublicClientsResourcesRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicCommsReviewRoute: typeof ApiPublicCommsReviewRoute
   ApiPublicCommsSendRoute: typeof ApiPublicCommsSendRoute
@@ -1974,6 +1988,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/clients/logo'
       fullPath: '/api/public/clients/logo'
       preLoaderRoute: typeof ApiPublicClientsLogoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/clients/resources': {
+      id: '/api/public/clients/resources'
+      path: '/api/public/clients/resources'
+      fullPath: '/api/public/clients/resources'
+      preLoaderRoute: typeof ApiPublicClientsResourcesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/comms/draft': {
@@ -2519,6 +2540,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
   ApiPublicClientsAskRoute: ApiPublicClientsAskRoute,
   ApiPublicClientsLogoRoute: ApiPublicClientsLogoRoute,
+  ApiPublicClientsResourcesRoute: ApiPublicClientsResourcesRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicCommsReviewRoute: ApiPublicCommsReviewRoute,
   ApiPublicCommsSendRoute: ApiPublicCommsSendRoute,
