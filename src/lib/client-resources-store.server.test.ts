@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { missingSchema, toResource } from "./client-resources-store.server";
+import { ClientResourceNotHere, missingSchema, toResource } from "./client-resources-store.server";
 
 describe("client resources store", () => {
   it("reads a missing table as a gap, not as an empty healthy list", () => {
@@ -30,5 +30,13 @@ describe("client resources store", () => {
 
   it("falls back to Other for a category this build does not know", () => {
     expect(toResource({ category: "something_new" }).category).toBe("other");
+  });
+});
+
+describe("refusals", () => {
+  it("has a distinct refusal for a link that is not on this company", () => {
+    const error = new ClientResourceNotHere();
+    expect(error.name).toBe("ClientResourceNotHere");
+    expect(error.message).toMatch(/nothing was removed/i);
   });
 });

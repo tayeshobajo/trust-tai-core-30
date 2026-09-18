@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canonicalUrl,
   checkResourceUrl,
   filterResources,
   findDuplicate,
@@ -51,6 +52,20 @@ describe("checkResourceUrl", () => {
 
   it("refuses nothing at all", () => {
     expect(checkResourceUrl("   ").ok).toBe(false);
+  });
+});
+
+describe("canonicalUrl", () => {
+  it("normalises only the parts that are case-insensitive by definition", () => {
+    expect(canonicalUrl("HTTPS://Docs.Google.com/document/d/AbC")).toBe(
+      "https://docs.google.com/document/d/AbC",
+    );
+  });
+
+  it("keeps a trailing slash as written, because it can mean another page", () => {
+    expect(canonicalUrl("https://example.com/space")).not.toBe(
+      canonicalUrl("https://example.com/space/"),
+    );
   });
 });
 
@@ -146,5 +161,42 @@ describe("pinned shortcuts", () => {
       "Build (Onboarding app)",
       "Working chat",
     ]);
+  });
+});
+
+describe("duplicates are case aware after the host", () => {
+  const existing = [
+    resource({ id: "doc", url: "https://docs.google.com/document/d/DocA", projectId: null }),
+    resource({ id: "q", url: "https://example.com/report?id=AbC", projectId: null }),
+  ];
+
+  it("treats /DocA and /doca as different documents", () => {
+    expect(
+      findDuplicate(existing, { url: "https://docs.google.com/document/d/doca", projectId: null }),
+    ).toBeNull();
+  });
+
+  it("treats a query token as case significant", () => {
+    expect(
+      findDuplicate(existing, { url: "https://example.com/report?id=abc", projectId: null }),
+    ).toBeNull();
+  });
+
+  it("still catches the same address written with a different scheme or host case", () => {
+    expect(
+      findDuplicate(existing, {
+        url: "HTTPS://Docs.Google.com/document/d/DocA",
+        projectId: null,
+      })?.id,
+    ).toBe("doc");
+  });
+
+  it("allows that same address on one of this client's projects", () => {
+    expect(
+      findDuplicate(existing, {
+        url: "https://docs.google.com/document/d/DocA",
+        projectId: "proj-1",
+      }),
+    ).toBeNull();
   });
 });
