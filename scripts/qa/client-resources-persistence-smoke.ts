@@ -26,10 +26,7 @@ function say(label: string, detail: unknown) {
 const created: string[] = [];
 
 async function main() {
-  const { data: clients } = await sb
-    .from("clients")
-    .select("id, organization_id, name")
-    .limit(1);
+  const { data: clients } = await sb.from("clients").select("id, organization_id, name").limit(1);
   const client = clients?.[0];
   if (!client) throw new Error("No client to probe against.");
 
