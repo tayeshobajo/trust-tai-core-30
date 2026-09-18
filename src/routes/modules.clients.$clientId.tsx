@@ -29,10 +29,7 @@ import {
   type ClientProposalState,
 } from "@/components/tt/clients/chat";
 import { FilesTab, RelationshipTab } from "@/components/tt/clients/tabs";
-import {
-  ClientPinnedShortcuts,
-  ClientResourcesSection,
-} from "@/components/tt/clients/resources";
+import { ClientPinnedShortcuts, ClientResourcesSection } from "@/components/tt/clients/resources";
 import { ClientProjectWorkspace } from "@/components/tt/clients/project-workspace";
 
 import { EmptyState } from "@/components/tt/primitives";
@@ -822,111 +819,109 @@ function ClientShell({
         <div role="tabpanel" aria-label={tab}>
           {tab === "overview" ? (
             <>
-            <div className="mb-6">
-              <ClientContinuity
+              <div className="mb-6">
+                <ClientContinuity
+                  clientId={clientId}
+                  roadmap={
+                    roadmapOutcomes === null
+                      ? null
+                      : roadmapOutcomes.available
+                        ? answered(roadmapOutcomes.value[0] ?? null)
+                        : roadmapOutcomes
+                  }
+                  projects={projectsForTab}
+                />
+              </div>
+              <div className="mb-6">
+                <ClientJourneyProgress
+                  clientId={clientId}
+                  relationship={
+                    relationshipRead === null
+                      ? null
+                      : relationshipRead.available
+                        ? answered({
+                            peopleCount: relationshipRead.value.people.length,
+                            lastExchangeAt: relationshipRead.value.lastTouchAt ?? null,
+                          })
+                        : relationshipRead
+                  }
+                  roadmap={
+                    roadmapOutcomes === null
+                      ? null
+                      : roadmapOutcomes.available
+                        ? answered(roadmapOutcomes.value[0] ?? null)
+                        : roadmapOutcomes
+                  }
+                  proposals={
+                    proposalsRead === null
+                      ? null
+                      : proposalsRead.available
+                        ? answered(
+                            proposalsRead.value
+                              .filter((proposal) => proposal.clientId === clientId)
+                              .map((proposal) => ({
+                                id: proposal.id,
+                                title: proposal.title,
+                                sentAt: proposal.proposalSentAt,
+                                outcome: proposal.proposalOutcome,
+                                amountCents: proposal.proposalAmountCents,
+                              })),
+                          )
+                        : proposalsRead
+                  }
+                  commercial={answered({
+                    tier: record.tier,
+                    mrrCents: record.mrrCents,
+                    nextReviewAt: record.nextReviewAt,
+                    renewalAt: record.renewalAt,
+                    recordedAt: record.commercialUpdatedAt,
+                  })}
+                  projects={projectsForTab}
+                />
+              </div>
+              {resourcesRead?.available && resources.length > 0 ? (
+                <ClientPinnedShortcuts
+                  resources={resources}
+                  projects={projects.map((project) => ({ id: project.id, name: project.name }))}
+                  clientId={clientId}
+                />
+              ) : null}
+              <OverviewTab
                 clientId={clientId}
-                roadmap={
-                  roadmapOutcomes === null
-                    ? null
-                    : roadmapOutcomes.available
-                      ? answered(roadmapOutcomes.value[0] ?? null)
-                      : roadmapOutcomes
-                }
-                projects={projectsForTab}
+                reads={{
+                  roadmap:
+                    roadmapOutcomes === null
+                      ? null
+                      : roadmapOutcomes.available
+                        ? answered(roadmapOutcomes.value[0] ?? null)
+                        : roadmapOutcomes,
+                  projects: projectsForTab,
+                  approvals: approvalsRead,
+                  relationship: relationshipRead,
+                  history: historyRead,
+                  site: readOf(siteQuery),
+                  loading: {
+                    roadmap: roadmapsQuery.isLoading,
+                    projects: projectsQuery.isLoading,
+                    approvals: !linksSettled || approvalsQuery.isLoading,
+                    relationship: relationshipsQuery.isLoading,
+                    history: historyQuery.isLoading,
+                    site: siteQuery.isLoading,
+                  },
+                }}
+                cadence={cadence}
+                client={{ name: record.name, websiteUrl: record.websiteUrl }}
+                now={now}
+                timeZone={timeZone}
+                roadmapProject={overviewRoadmapProject}
+                exchange={exchangeWindow}
+                commercial={{
+                  headline: card.commercialLine,
+                  review: cadence.line,
+                  renewal: cadence.renewalLine,
+                  provenance: commercialProvenanceLine,
+                }}
               />
-            </div>
-            <div className="mb-6">
-              <ClientJourneyProgress
-                clientId={clientId}
-                relationship={
-                  relationshipRead === null
-                    ? null
-                    : relationshipRead.available
-                      ? answered({
-                          peopleCount: relationshipRead.value.people.length,
-                          lastExchangeAt: relationshipRead.value.lastTouchAt ?? null,
-                        })
-                      : relationshipRead
-                }
-                roadmap={
-                  roadmapOutcomes === null
-                    ? null
-                    : roadmapOutcomes.available
-                      ? answered(roadmapOutcomes.value[0] ?? null)
-                      : roadmapOutcomes
-                }
-                proposals={
-                  proposalsRead === null
-                    ? null
-                    : proposalsRead.available
-                      ? answered(
-                          proposalsRead.value
-                            .filter((proposal) => proposal.clientId === clientId)
-                            .map((proposal) => ({
-                              id: proposal.id,
-                              title: proposal.title,
-                              sentAt: proposal.proposalSentAt,
-                              outcome: proposal.proposalOutcome,
-                              amountCents: proposal.proposalAmountCents,
-                            })),
-                        )
-                      : proposalsRead
-                }
-                commercial={answered({
-                  tier: record.tier,
-                  mrrCents: record.mrrCents,
-                  nextReviewAt: record.nextReviewAt,
-                  renewalAt: record.renewalAt,
-                  recordedAt: record.commercialUpdatedAt,
-                })}
-                projects={projectsForTab}
-              />
-            </div>
-            {resourcesRead?.available && resources.length > 0 ? (
-              <ClientPinnedShortcuts
-                resources={resources}
-                projects={projects.map((project) => ({ id: project.id, name: project.name }))}
-                onOpenAll={() =>
-                  void navigateTab("files")
-                }
-              />
-            ) : null}
-            <OverviewTab
-              clientId={clientId}
-              reads={{
-                roadmap:
-                  roadmapOutcomes === null
-                    ? null
-                    : roadmapOutcomes.available
-                      ? answered(roadmapOutcomes.value[0] ?? null)
-                      : roadmapOutcomes,
-                projects: projectsForTab,
-                approvals: approvalsRead,
-                relationship: relationshipRead,
-                history: historyRead,
-                site: readOf(siteQuery),
-                loading: {
-                  roadmap: roadmapsQuery.isLoading,
-                  projects: projectsQuery.isLoading,
-                  approvals: !linksSettled || approvalsQuery.isLoading,
-                  relationship: relationshipsQuery.isLoading,
-                  history: historyQuery.isLoading,
-                  site: siteQuery.isLoading,
-                },
-              }}
-              cadence={cadence}
-              client={{ name: record.name, websiteUrl: record.websiteUrl }}
-              now={now}
-              timeZone={timeZone}
-              roadmapProject={overviewRoadmapProject}
-              exchange={exchangeWindow}
-              commercial={{
-                headline: card.commercialLine,
-                review: cadence.line,
-                renewal: cadence.renewalLine,
-                provenance: commercialProvenanceLine,
-              }}
-            />
             </>
           ) : null}
 
@@ -1001,9 +996,7 @@ function ClientShell({
                 unavailableBecause={resourcesRead?.unavailableBecause}
                 loading={resourcesQuery.isLoading}
                 readProblem={
-                  resourcesQuery.isError
-                    ? "The saved links could not be read just now."
-                    : null
+                  resourcesQuery.isError ? "The saved links could not be read just now." : null
                 }
                 projects={projects.map((project) => ({
                   id: project.id,
@@ -1013,12 +1006,14 @@ function ClientShell({
                 canWrite={canWriteResources}
                 busy={resourceBusy}
                 onAdd={(draft: ClientResourceDraft) =>
-                  withResourceBusy(() => addClientResource(organizationId, clientId, draft))
-                    .then(() => undefined)
+                  withResourceBusy(() => addClientResource(organizationId, clientId, draft)).then(
+                    () => undefined,
+                  )
                 }
                 onEdit={(id: string, draft: ClientResourceDraft) =>
-                  withResourceBusy(() => editClientResource(organizationId, clientId, id, draft))
-                    .then(() => undefined)
+                  withResourceBusy(() =>
+                    editClientResource(organizationId, clientId, id, draft),
+                  ).then(() => undefined)
                 }
                 onRemove={(resource) =>
                   withResourceBusy(() =>
@@ -1027,17 +1022,17 @@ function ClientShell({
                 }
               />
               <FilesTab
-              read={readOf(filesQuery)}
-              linkedRead={readOf(linkedSourcesQuery)}
-              loading={projectsQuery.isLoading || filesQuery.isLoading}
-              linkedLoading={projectsQuery.isLoading || linkedSourcesQuery.isLoading}
-              hasProjects={projects.length > 0}
-              projectNames={projectNames}
-              timeZone={timeZone}
-              onOpen={(file) => {
-                void projectDelivery.fileUrl(file).then((url) => {
-                  window.open(url, "_blank", "noopener,noreferrer");
-                });
+                read={readOf(filesQuery)}
+                linkedRead={readOf(linkedSourcesQuery)}
+                loading={projectsQuery.isLoading || filesQuery.isLoading}
+                linkedLoading={projectsQuery.isLoading || linkedSourcesQuery.isLoading}
+                hasProjects={projects.length > 0}
+                projectNames={projectNames}
+                timeZone={timeZone}
+                onOpen={(file) => {
+                  void projectDelivery.fileUrl(file).then((url) => {
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  });
                 }}
               />
             </div>

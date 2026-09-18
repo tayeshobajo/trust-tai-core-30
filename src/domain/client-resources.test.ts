@@ -73,7 +73,11 @@ describe("duplicates", () => {
 
   it("ignores the record being edited", () => {
     expect(
-      findDuplicate(existing, { url: "https://lovable.dev/projects/one", projectId: "proj-1" }, "a"),
+      findDuplicate(
+        existing,
+        { url: "https://lovable.dev/projects/one", projectId: "proj-1" },
+        "a",
+      ),
     ).toBeNull();
   });
 });

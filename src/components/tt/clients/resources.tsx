@@ -11,6 +11,7 @@
  * is connected, synced or read, and removing one removes the reference only.
  */
 
+import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
 
@@ -326,7 +327,13 @@ export function ClientResourcesSection({
   const groups = useMemo(() => groupByProject(shown, projectNames), [shown, projectNames]);
 
   function startAdd() {
-    setForm(emptyForm(filter.projectId !== "all" && filter.projectId !== "client" ? filter.projectId : selectedProjectId));
+    setForm(
+      emptyForm(
+        filter.projectId !== "all" && filter.projectId !== "client"
+          ? filter.projectId
+          : selectedProjectId,
+      ),
+    );
     setProblem(null);
     setEditingId(null);
     setAdding(true);
@@ -520,11 +527,11 @@ export function ClientResourcesSection({
 export function ClientPinnedShortcuts({
   resources,
   projects,
-  onOpenAll,
+  clientId,
 }: {
   resources: ClientResource[];
   projects: ResourceProject[];
-  onOpenAll: () => void;
+  clientId: string;
 }) {
   const projectNames = useMemo(
     () => Object.fromEntries(projects.map((project) => [project.id, project.name])),
@@ -539,13 +546,14 @@ export function ClientPinnedShortcuts({
     <TTCard className="p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="tt-eyebrow">Where this work lives</p>
-        <button
-          type="button"
-          onClick={onOpenAll}
+        <Link
+          to="/modules/clients/$clientId"
+          params={{ clientId }}
+          search={{ tab: "files" }}
           className="rounded-md text-[13px] font-medium text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           All files and links
-        </button>
+        </Link>
       </div>
       <ul className="mt-3 flex flex-wrap gap-2">
         {shortcuts.map((shortcut) => (

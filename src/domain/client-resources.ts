@@ -121,7 +121,9 @@ export function checkResourceUrl(raw: string): UrlCheck {
 /* -------------------------------------------------------------- duplicates */
 
 function sameUrl(left: string, right: string): boolean {
-  return left.trim().toLowerCase().replace(/\/+$/, "") === right.trim().toLowerCase().replace(/\/+$/, "");
+  return (
+    left.trim().toLowerCase().replace(/\/+$/, "") === right.trim().toLowerCase().replace(/\/+$/, "")
+  );
 }
 
 /**
@@ -252,7 +254,9 @@ export function pinnedShortcuts(
     const repeated = (titleCounts.get(resource.title.trim().toLowerCase()) ?? 0) > 1;
     return {
       resource,
-      label: repeated ? `${resource.title} (${scopeLabel(resource, projectNames)})` : resource.title,
+      label: repeated
+        ? `${resource.title} (${scopeLabel(resource, projectNames)})`
+        : resource.title,
     };
   });
 }

@@ -120,7 +120,10 @@ export const Route = createFileRoute("/api/public/clients/resources")({
                 { status: 400 },
               );
             }
-            return Response.json({ resource: await clientResourcesStore.add(scope, draft), saved: true });
+            return Response.json({
+              resource: await clientResourcesStore.add(scope, draft),
+              saved: true,
+            });
           }
 
           if (action === "edit") {

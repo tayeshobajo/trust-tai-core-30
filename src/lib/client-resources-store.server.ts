@@ -208,7 +208,10 @@ export const clientResourcesStore = {
    * Removes the reference only. The document, recording or folder it points
    * at is untouched, and no project file is affected.
    */
-  async remove(scope: Pick<ResourceScope, "organizationId" | "clientId">, id: string): Promise<void> {
+  async remove(
+    scope: Pick<ResourceScope, "organizationId" | "clientId">,
+    id: string,
+  ): Promise<void> {
     const { error } = await clientResourcesWriter()
       .from(TABLE)
       .delete()
