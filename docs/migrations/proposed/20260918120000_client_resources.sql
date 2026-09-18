@@ -1,8 +1,19 @@
--- PROPOSED. NOT APPLIED. For Codex review before any application.
+-- APPLIED 2026-09-18 to project okydosoacqdnursmmenf by Codex.
+-- DO NOT RE-APPLY. This file is the record of exactly what was applied.
+--
+-- Applied from the proposal at 5d6c6de with two amendments, both included
+-- below verbatim:
+--   1. The unique index keys on btrim(url), not lower(btrim(url)), so a path,
+--      query token or document id keeps its case. /DocA and /doca are two
+--      different addresses.
+--   2. EXECUTE on both trigger functions is revoked from public, anon and
+--      authenticated, so neither can be called outside the trigger.
+-- Everything else is unchanged from the reviewed proposal.
+--
 -- Reviewed against the live schema of project okydosoacqdnursmmenf on
 -- 2026-09-18: public.organizations, public.clients, public.projects and
 -- public.organization_memberships all exist with the columns referenced here;
--- public.client_resources does NOT exist, so this is a first creation.
+-- public.client_resources did not exist, so this was a first creation.
 --
 -- Files & Links on a client page.
 --
@@ -44,12 +55,14 @@ create table if not exists public.client_resources (
 
 -- One exact address per scope. The same address on a different project, or
 -- once company-wide and once on a project, is a deliberate act and allowed.
+-- Keyed on btrim(url) only: case matters in a path, a query token and a
+-- document id, so /DocA and /doca are two different addresses.
 create unique index if not exists client_resources_scope_url
   on public.client_resources (
     organization_id,
     client_id,
     coalesce(project_id, '00000000-0000-0000-0000-000000000000'::uuid),
-    lower(btrim(url))
+    btrim(url)
   );
 
 create index if not exists client_resources_client
@@ -147,3 +160,7 @@ create policy "active members read client resources"
 
 -- Note on DELETE: removing a resource removes the reference only. No external
 -- document, recording or folder is touched, and no project file is affected.
+
+-- The trigger functions are called by the triggers and by nothing else.
+revoke all on function public.client_resources_same_workspace() from public, anon, authenticated;
+revoke all on function public.client_resources_frozen() from public, anon, authenticated;

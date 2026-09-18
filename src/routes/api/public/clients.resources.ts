@@ -21,6 +21,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { bearerToken, clientForToken, requireActiveMember } from "@/lib/context-packet.server";
 import {
+  ClientResourceNotHere,
   ClientResourcesSchemaUnavailable,
   ClientResourcesStoreError,
   clientResourcesStore,
@@ -36,6 +37,9 @@ const WRITE_ACTIONS = new Set(["add", "edit", "remove"]);
 const KNOWN_ACTIONS = new Set(["list", "add", "edit", "remove"]);
 
 function storeFailure(error: unknown): Response | null {
+  if (error instanceof ClientResourceNotHere) {
+    return Response.json({ error: error.message, removed: false }, { status: 404 });
+  }
   if (error instanceof ClientResourcesSchemaUnavailable) {
     return Response.json({ error: error.message, schemaUnavailable: true }, { status: 503 });
   }
@@ -75,7 +79,12 @@ export const Route = createFileRoute("/api/public/clients/resources")({
 
         let body: Record<string, unknown>;
         try {
-          body = (await request.json()) as Record<string, unknown>;
+          const parsed: unknown = await request.json();
+          // null and an array both parse as JSON and are neither a request.
+          if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+            return Response.json({ error: "That request could not be read." }, { status: 400 });
+          }
+          body = parsed as Record<string, unknown>;
         } catch {
           return Response.json({ error: "That request could not be read." }, { status: 400 });
         }
