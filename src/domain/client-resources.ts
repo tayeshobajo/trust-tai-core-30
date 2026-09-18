@@ -120,10 +120,26 @@ export function checkResourceUrl(raw: string): UrlCheck {
 
 /* -------------------------------------------------------------- duplicates */
 
+/**
+ * One address written the same way twice.
+ *
+ * The URL parser already lowercases the scheme and the host, which are
+ * case-insensitive by definition. Everything after the host is left exactly as
+ * written, because a path, a query token and a document id are case
+ * significant: /DocA and /doca are two different documents, and a trailing
+ * slash can mean a different page. Nothing is stripped.
+ */
+export function canonicalUrl(raw: string): string {
+  const trimmed = (raw ?? "").trim();
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    return trimmed;
+  }
+}
+
 function sameUrl(left: string, right: string): boolean {
-  return (
-    left.trim().toLowerCase().replace(/\/+$/, "") === right.trim().toLowerCase().replace(/\/+$/, "")
-  );
+  return canonicalUrl(left) === canonicalUrl(right);
 }
 
 /**
