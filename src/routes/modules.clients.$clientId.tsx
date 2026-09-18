@@ -882,6 +882,15 @@ function ClientShell({
                 projects={projectsForTab}
               />
             </div>
+            {resourcesRead?.available && resources.length > 0 ? (
+              <ClientPinnedShortcuts
+                resources={resources}
+                projects={projects.map((project) => ({ id: project.id, name: project.name }))}
+                onOpenAll={() =>
+                  void navigateTab("files")
+                }
+              />
+            ) : null}
             <OverviewTab
               clientId={clientId}
               reads={{
