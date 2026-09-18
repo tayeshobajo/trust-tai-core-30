@@ -29,12 +29,24 @@ import {
   type ClientProposalState,
 } from "@/components/tt/clients/chat";
 import { FilesTab, RelationshipTab } from "@/components/tt/clients/tabs";
+import {
+  ClientPinnedShortcuts,
+  ClientResourcesSection,
+} from "@/components/tt/clients/resources";
 import { ClientProjectWorkspace } from "@/components/tt/clients/project-workspace";
 
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { buildClientBook } from "@/data/clients/book-projection";
 import { uploadClientLogo } from "@/data/clients/logo";
+import {
+  addClientResource,
+  editClientResource,
+  listClientResources,
+  removeClientResource,
+} from "@/data/clients/resources";
+import type { ClientResourceDraft } from "@/domain/client-resources";
+import { canWorkInRoom } from "@/lib/room-authority";
 import {
   eventsAbout,
   readClientApprovals,
@@ -348,6 +360,38 @@ function ClientShell({
     () => Object.fromEntries(projects.map((project) => [project.id, project.name])),
     [projects],
   );
+
+  /**
+   * Files & Links: the company's own saved references. Read through the
+   * authenticated route, which proves membership before answering, and
+   * reported as unavailable rather than empty when the store is missing.
+   */
+  const resourcesQuery = useQuery({
+    queryKey: ["clients", "resources", organizationId, clientId],
+    queryFn: () => listClientResources(organizationId, clientId),
+    retry: false,
+  });
+  const resourcesRead = resourcesQuery.data ?? null;
+  const resources = resourcesRead?.resources ?? [];
+  const canWriteResources = canWorkInRoom("clients");
+  const [resourceBusy, setResourceBusy] = useState(false);
+
+  async function afterResourceWrite() {
+    await queryClient.invalidateQueries({
+      queryKey: ["clients", "resources", organizationId, clientId],
+    });
+  }
+
+  async function withResourceBusy<T>(work: () => Promise<T>): Promise<T> {
+    setResourceBusy(true);
+    try {
+      const result = await work();
+      await afterResourceWrite();
+      return result;
+    } finally {
+      setResourceBusy(false);
+    }
+  }
 
   const filesQuery = useQuery({
     queryKey: ["clients", "files", organizationId, projectIds],
@@ -941,7 +985,39 @@ function ClientShell({
             />
           ) : null}
           {tab === "files" ? (
-            <FilesTab
+            <div className="space-y-8">
+              <ClientResourcesSection
+                resources={resources}
+                available={resourcesRead?.available ?? true}
+                unavailableBecause={resourcesRead?.unavailableBecause}
+                loading={resourcesQuery.isLoading}
+                readProblem={
+                  resourcesQuery.isError
+                    ? "The saved links could not be read just now."
+                    : null
+                }
+                projects={projects.map((project) => ({
+                  id: project.id,
+                  name: project.name,
+                }))}
+                selectedProjectId={selectedProjectId}
+                canWrite={canWriteResources}
+                busy={resourceBusy}
+                onAdd={(draft: ClientResourceDraft) =>
+                  withResourceBusy(() => addClientResource(organizationId, clientId, draft))
+                    .then(() => undefined)
+                }
+                onEdit={(id: string, draft: ClientResourceDraft) =>
+                  withResourceBusy(() => editClientResource(organizationId, clientId, id, draft))
+                    .then(() => undefined)
+                }
+                onRemove={(resource) =>
+                  withResourceBusy(() =>
+                    removeClientResource(organizationId, clientId, resource.id),
+                  )
+                }
+              />
+              <FilesTab
               read={readOf(filesQuery)}
               linkedRead={readOf(linkedSourcesQuery)}
               loading={projectsQuery.isLoading || filesQuery.isLoading}
@@ -953,8 +1029,9 @@ function ClientShell({
                 void projectDelivery.fileUrl(file).then((url) => {
                   window.open(url, "_blank", "noopener,noreferrer");
                 });
-              }}
-            />
+                }}
+              />
+            </div>
           ) : null}
           {tab === "chat" ? (
             <ClientChatTab
