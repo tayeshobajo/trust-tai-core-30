@@ -35,6 +35,14 @@ export class ClientResourcesSchemaUnavailable extends Error {
   }
 }
 
+/** No such link in this company's scope. Nothing was removed or changed. */
+export class ClientResourceNotHere extends Error {
+  constructor(message = "That link is not saved on this company, so nothing was removed.") {
+    super(message);
+    this.name = "ClientResourceNotHere";
+  }
+}
+
 /** Something went wrong while writing. Nothing was saved. */
 export class ClientResourcesStoreError extends Error {
   constructor(message: string) {
