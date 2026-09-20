@@ -42,6 +42,7 @@ const CHANNELS: ThreadChannel[] = ["email", "call", "meeting", "message", "note"
 
 const REVIEW_STATES: DraftReviewState[] = [
   "draft",
+  "needs_redraft",
   "needs_human_review",
   "approved",
   "sending",

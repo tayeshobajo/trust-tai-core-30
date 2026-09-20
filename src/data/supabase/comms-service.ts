@@ -37,6 +37,11 @@ import {
   writeDraftApproval,
   type DraftApproval,
 } from "@/domain/comms-approval";
+import {
+  actionFromReviewState,
+  buildFeedbackRow,
+  readGateSnapshot,
+} from "@/domain/voice-gate-feedback";
 import type { MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
 
@@ -784,6 +789,32 @@ export const commsService = {
       },
     );
     const updated = toDraft(data as unknown as DraftRow);
+
+    /*
+     * Voice-gate learning capture. This human action IS the label: it tells us
+     * whether the gate's earlier verdict agreed with Tai. Best-effort — a
+     * capture failure must never break the actual approve/discard/redraft. The
+     * gate snapshot is read off the draft Tai acted on (pre-transition rationale).
+     */
+    try {
+      const snapshot = readGateSnapshot(draft.rationale);
+      const row = buildFeedbackRow(snapshot, actionFromReviewState(reviewState));
+      if (row) {
+        await supabase.from("voice_gate_feedback").insert({
+          organization_id: context.organizationId,
+          draft_id: draft.id,
+          relationship_id: relationship.id,
+          register: draft.register,
+          intent: draft.intent,
+          draft_excerpt: draft.body.slice(0, 500),
+          ...(context.userId ? { acted_by: context.userId } : {}),
+          ...(approval?.reason ? { human_reason: approval.reason } : {}),
+          ...row,
+        });
+      }
+    } catch {
+      /* Learning is downstream of the human's decision; never let it interfere. */
+    }
 
     /* Sending back for review is the same boundary, reached later. */
     const { submitCommsDraftQuietly } = await import("@/data/approvals/intake");

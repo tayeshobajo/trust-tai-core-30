@@ -183,10 +183,20 @@ export interface Touch {
  * the last word through verification.
  */
 export type DraftReviewState =
-  "draft" | "needs_human_review" | "approved" | "sending" | "sent" | "send_failed" | "discarded";
+  | "draft"
+  | "needs_redraft"
+  | "needs_human_review"
+  | "approved"
+  | "sending"
+  | "sent"
+  | "send_failed"
+  | "discarded";
 
 export const REVIEW_STATE_LABEL: Record<DraftReviewState, string> = {
   draft: "Draft",
+  // Bounced by the Jev voice pre-gate before reaching human review. An agent
+  // must redraft; this state never appears in the human-review queue.
+  needs_redraft: "Needs redraft",
   needs_human_review: "Needs human review",
   approved: "Approved",
   sending: "Sending",
