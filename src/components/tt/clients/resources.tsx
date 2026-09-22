@@ -495,6 +495,8 @@ export function ClientResourcesSection({
   onAdd,
   onEdit,
   onRemove,
+  onUpload,
+  onOpenFile,
 }: {
   resources: ClientResource[];
   /** false when the store is not in this database yet. */
@@ -509,8 +511,20 @@ export function ClientResourcesSection({
   onAdd: (draft: ClientResourceDraft) => Promise<void>;
   onEdit: (id: string, draft: ClientResourceDraft) => Promise<void>;
   onRemove: (resource: ClientResource) => Promise<void>;
+  /** Absent when this build cannot keep files, so no upload is offered. */
+  onUpload?:
+    | ((upload: {
+        file: File;
+        title: string;
+        category: ResourceCategory;
+        projectId: string | null;
+        description?: string | undefined;
+      }) => Promise<void>)
+    | undefined;
+  onOpenFile?: ((resource: ClientResource) => Promise<void>) | undefined;
 }) {
   const [adding, setAdding] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(() => emptyForm(selectedProjectId));
   const [problem, setProblem] = useState<string | null>(null);
