@@ -1,0 +1,6 @@
+-- 20260918142420 (client_resources)
+-- Applied out-of-band by Lovable; already live in production.
+-- Recorded in supabase_migrations.schema_migrations. This local file exists
+-- only so the CLI migration history matches local files. It is intentionally
+-- a no-op: the real objects were created by the original Lovable migration.
+-- Do not add DDL here; add a new timestamped migration instead.
