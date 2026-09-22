@@ -36,7 +36,6 @@ import {
   type LinkableRoadmap,
 } from "@/domain/project-roadmap-link";
 
-
 import { can, type AccessContext } from "@/domain/access";
 import {
   ROUTE_EVENT_KEY,
@@ -147,6 +146,10 @@ export function toProject(row: Row): ExecutionProject {
     ...(str(meta["execution_boundary"])
       ? { executionBoundary: String(meta["execution_boundary"]) }
       : {}),
+    ...(str(meta["lovable_url"]) ? { lovableUrl: String(meta["lovable_url"]) } : {}),
+    ...(str(meta["knowledge_base_url"])
+      ? { knowledgeBaseUrl: String(meta["knowledge_base_url"]) }
+      : {}),
     origin: originOf(meta["origin"]),
     lastMovedAt: String(meta["last_moved_at"] ?? updatedAt),
     createdAt,
@@ -196,6 +199,8 @@ function payloadFor(input: ProjectInput, state: ExecutionState, now: string): Ro
     evidence: input.evidence ?? [],
     dependencies: input.dependencies ?? [],
     execution_boundary: input.executionBoundary ?? null,
+    lovable_url: input.lovableUrl ?? null,
+    knowledge_base_url: input.knowledgeBaseUrl ?? null,
     origin: input.origin,
     ...(input.dueDate ? { due_date: input.dueDate } : {}),
     ...(input.deliveryItems ? { delivery_items: input.deliveryItems } : {}),
@@ -332,8 +337,6 @@ export const projectsService = {
     return next;
   },
 
-
-
   async findByMilestone(milestoneId: ID, organizationId: ID): Promise<ExecutionProject | null> {
     const { data, error } = await supabase
       .from("projects")
@@ -375,6 +378,10 @@ export const projectsService = {
       deliveryItems?: { label: string; done: boolean }[];
       /** Pass "" to say the wait is over. */
       waitingOn?: string;
+      /** Pass "" to say this project has no Lovable build after all. */
+      lovableUrl?: string;
+      /** Pass "" to say this project has no knowledge base link after all. */
+      knowledgeBaseUrl?: string;
     },
     context: ProjectsContext,
   ): Promise<ExecutionProject> {
@@ -409,6 +416,10 @@ export const projectsService = {
       ...(changes.pointB !== undefined ? { pointB: changes.pointB } : {}),
       ...(changes.dueDate !== undefined ? { dueDate: changes.dueDate } : {}),
       ...(changes.subjectLabel !== undefined ? { subjectLabel: changes.subjectLabel } : {}),
+      ...(changes.lovableUrl !== undefined ? { lovableUrl: changes.lovableUrl } : {}),
+      ...(changes.knowledgeBaseUrl !== undefined
+        ? { knowledgeBaseUrl: changes.knowledgeBaseUrl }
+        : {}),
     };
     // A delivery-item correction is a correction to what a person typed, not a
     // change of next move. It is classified with the other detail edits so the
@@ -426,6 +437,14 @@ export const projectsService = {
       changes.dueDate !== undefined ? changes.dueDate.trim() || undefined : project.dueDate;
     const currentWork = changes.currentWork ?? project.currentWork;
     const deliveryItems = changes.deliveryItems ?? project.deliveryItems;
+    const lovableUrl =
+      changes.lovableUrl !== undefined
+        ? changes.lovableUrl.trim() || undefined
+        : project.lovableUrl;
+    const knowledgeBaseUrl =
+      changes.knowledgeBaseUrl !== undefined
+        ? changes.knowledgeBaseUrl.trim() || undefined
+        : project.knowledgeBaseUrl;
     const origin: ProjectOrigin =
       changes.subjectLabel !== undefined
         ? { ...project.origin, subjectLabel: changes.subjectLabel.trim() }
@@ -450,6 +469,8 @@ export const projectsService = {
       ...(dueDate ? { dueDate } : {}),
       ...(currentWork ? { currentWork } : {}),
       ...(deliveryItems ? { deliveryItems } : {}),
+      ...(lovableUrl ? { lovableUrl } : {}),
+      ...(knowledgeBaseUrl ? { knowledgeBaseUrl } : {}),
       origin,
     };
 
@@ -536,6 +557,10 @@ export const projectsService = {
             ...(changes.dueDate !== undefined ? { dueDate: project.dueDate ?? null } : {}),
             ...(changes.subjectLabel !== undefined
               ? { subjectLabel: project.origin.subjectLabel ?? null }
+              : {}),
+            ...(changes.lovableUrl !== undefined ? { lovableUrl: project.lovableUrl ?? null } : {}),
+            ...(changes.knowledgeBaseUrl !== undefined
+              ? { knowledgeBaseUrl: project.knowledgeBaseUrl ?? null }
               : {}),
             ...(deliveryChanged ? { deliveryItems: (project.deliveryItems ?? []) as unknown } : {}),
           },

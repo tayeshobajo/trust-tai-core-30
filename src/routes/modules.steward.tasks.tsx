@@ -8,9 +8,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
+import {
+  CreateTaskDrawer,
+  type CreateManualTaskInput,
+} from "@/components/tt/steward/create-task-drawer";
 import { ReassignPicker, type AssignablePerson } from "@/components/tt/steward/reassign-picker";
 import { StewardHero } from "@/components/tt/steward/steward-hero";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
@@ -29,6 +34,7 @@ import {
   type TasksFilter,
 } from "@/data/steward/accountability";
 import { fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
+import { stewardTasks } from "@/data/supabase/steward-tasks";
 import { reassignAuthority } from "@/data/steward/authority";
 import { useStewardActions } from "@/data/steward/use-steward-actions";
 import { STEWARD_FOCUS_LABEL, type StewardTask } from "@/domain/steward-accountability";
@@ -112,6 +118,7 @@ function StewardTasks({
   const [selected, setSelected] = useState<string[]>([]);
   const [openTask, setOpenTask] = useState<StewardTask | null>(null);
   const [reassign, setReassign] = useState<StewardTask | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const navigate = Route.useNavigate();
   const actor = { userId: identity.userId, canManage: identity.canManage };
@@ -167,6 +174,82 @@ function StewardTasks({
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [tasks]);
 
+  /* Drawer choices, derived only from rows the read already carries. The
+     current person is always offered, so a task can be taken by whoever opens
+     the drawer even before anyone else appears in the list. */
+  const drawerPeople = useMemo<{ key: string; name: string; userId?: string }[]>(() => {
+    const map = new Map<string, { key: string; name: string; userId?: string }>();
+    map.set(viewerKey, { key: viewerKey, name: identity.name, userId: identity.userId });
+    for (const task of tasks) {
+      if (task.owner.kind !== "human") continue;
+      if (map.has(task.owner.key)) continue;
+      map.set(task.owner.key, {
+        key: task.owner.key,
+        name: task.owner.name,
+        ...(task.owner.userId ? { userId: task.owner.userId } : {}),
+      });
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks, viewerKey, identity.name, identity.userId]);
+
+  const clients = useMemo<{ id: string; label: string }[]>(() => {
+    const map = new Map<string, string>();
+    for (const task of tasks) {
+      if (task.companyLabel) map.set(task.companyLabel, task.companyLabel);
+    }
+    return Array.from(map.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [tasks]);
+
+  const projects = useMemo<{ id: string; label: string }[]>(() => {
+    const map = new Map<string, string>();
+    for (const task of tasks) {
+      if (task.projectId && task.projectName) map.set(task.projectId, task.projectName);
+    }
+    return Array.from(map.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [tasks]);
+
+  async function handleCreate(
+    input: CreateManualTaskInput,
+    opts: { assignToAI: boolean },
+  ): Promise<void> {
+    try {
+      await stewardTasks.create({
+        organizationId: identity.organizationId,
+        createdBy: identity.userId,
+        title: input.title,
+        clientId: input.clientId ?? null,
+        clientLabel: input.clientLabel ?? null,
+        projectId: input.projectId ?? null,
+        projectLabel: input.projectLabel ?? null,
+        dueAt: input.dueAt ?? null,
+        ownerUserId: input.ownerUserId ?? null,
+        ownerLabel: input.ownerLabel ?? null,
+        priority: input.priority,
+        assigneeKind: input.assigneeKind,
+        aiMode: input.aiMode ?? null,
+        status: input.status,
+        subtasks: input.subtasks,
+        acceptanceCriteria: input.acceptanceCriteria,
+        contextLinks: input.contextLinks,
+        notes: input.notes ?? null,
+      });
+      // TODO(phase-2): route to assignStewardAgentTask once the manual task is in the read model
+      if (opts.assignToAI) {
+        toast.success("Created and queued for AI. It will pick this up on the next sync.");
+      } else {
+        toast.success("Task created.");
+      }
+      setCreating(false);
+      void queryClient.invalidateQueries({ queryKey: ["steward", "team", identity.organizationId] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create the task.");
+    }
+  }
+
   const selectedTasks = tasks.filter((task) => selected.includes(task.key));
 
   function bulkComplete() {
@@ -205,6 +288,9 @@ function StewardTasks({
       ) : (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-3">
+            <TTButton type="button" size="sm" onClick={() => setCreating(true)}>
+              New task
+            </TTButton>
             <div className="flex flex-wrap gap-1">
               {FILTERS.map((value) => (
                 <button
@@ -363,6 +449,16 @@ function StewardTasks({
           setReassign(null);
           setSelected([]);
         }}
+      />
+
+      <CreateTaskDrawer
+        open={creating}
+        onClose={() => setCreating(false)}
+        identity={identity}
+        clients={clients}
+        projects={projects}
+        people={drawerPeople}
+        onCreate={handleCreate}
       />
 
       <p className="sr-only" aria-live="polite">

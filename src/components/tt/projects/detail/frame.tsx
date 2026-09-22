@@ -204,6 +204,20 @@ export function ProjectIdentityHeader({
               </Link>
             </TTButton>
           ) : null}
+          {project.lovableUrl ? (
+            <TTButton asChild variant="secondary">
+              <a href={project.lovableUrl} target="_blank" rel="noopener noreferrer">
+                Open in Lovable
+              </a>
+            </TTButton>
+          ) : null}
+          {project.knowledgeBaseUrl ? (
+            <TTButton asChild variant="secondary">
+              <a href={project.knowledgeBaseUrl} target="_blank" rel="noopener noreferrer">
+                Open knowledge base
+              </a>
+            </TTButton>
+          ) : null}
         </div>
       </div>
     </AmbientSurface>

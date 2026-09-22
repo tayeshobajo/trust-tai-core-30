@@ -246,6 +246,10 @@ export interface ExecutionProject {
   evidence: EvidenceRef[];
   dependencies: string[];
   executionBoundary?: string;
+  /** Where this project's Lovable build lives, when one was built there. */
+  lovableUrl?: string;
+  /** The chat or doc a person uses as this project's knowledge base. */
+  knowledgeBaseUrl?: string;
   origin: ProjectOrigin;
   /** Last time a person moved this, not the last time a row was touched. */
   lastMovedAt: ISODateTime;
@@ -367,6 +371,8 @@ export interface ProjectInput {
   dueDate?: ISODateTime;
   deliveryItems?: DeliveryItem[];
   currentWork?: string;
+  lovableUrl?: string;
+  knowledgeBaseUrl?: string;
   origin: ProjectOrigin;
 }
 
@@ -387,6 +393,20 @@ export interface ProjectDetailEdit {
   dueDate?: string;
   /** The company this serves. Correctable only on manually started work. */
   subjectLabel?: string;
+  /** Pass "" to say this project has no Lovable build after all. */
+  lovableUrl?: string;
+  /** Pass "" to say this project has no knowledge base link after all. */
+  knowledgeBaseUrl?: string;
+}
+
+/** A full http(s) address, or not a URL at all. Empty is not checked here. */
+function validHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -459,6 +479,23 @@ export function checkDetailEdit(
     if (!edit.subjectLabel.trim()) {
       return { ok: false, because: "Say who this work is for, or leave it as it stands." };
     }
+  }
+  if (
+    edit.lovableUrl !== undefined &&
+    edit.lovableUrl.trim() &&
+    !validHttpUrl(edit.lovableUrl.trim())
+  ) {
+    return { ok: false, because: "The Lovable link needs a full address, starting with https://." };
+  }
+  if (
+    edit.knowledgeBaseUrl !== undefined &&
+    edit.knowledgeBaseUrl.trim() &&
+    !validHttpUrl(edit.knowledgeBaseUrl.trim())
+  ) {
+    return {
+      ok: false,
+      because: "The knowledge base link needs a full address, starting with https://.",
+    };
   }
   return { ok: true, because: "Records the correction." };
 }

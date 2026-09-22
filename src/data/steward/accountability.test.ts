@@ -45,7 +45,7 @@ const agent: StewardAgent = {
   isPaused: false,
 };
 
-const base = { now: NOW, workItems: [], projects: [], agents: [], taskState: [] };
+const base = { now: NOW, workItems: [], projects: [], agents: [], taskState: [], manualTasks: [] };
 
 describe("Steward accountability projection", () => {
   it("lets Steward complete a meeting-only commitment", () => {

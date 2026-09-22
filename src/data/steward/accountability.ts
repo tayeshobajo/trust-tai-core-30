@@ -15,6 +15,7 @@ import {
   STEWARD_FOCUS_ORDER,
   UNOWNED,
   type CompletionPath,
+  type ManualTaskRecord,
   type StewardAgent,
   type StewardFocus,
   type StewardOwner,
@@ -32,6 +33,7 @@ export interface AccountabilityInput {
   projects: ExecutionProject[];
   agents: StewardAgent[];
   taskState: StewardTaskStateRecord[];
+  manualTasks: ManualTaskRecord[];
 }
 
 function daysBetween(from: string, to: string): number {
@@ -115,6 +117,11 @@ function workState(item: WorkItem): StewardTaskState {
     default:
       return "open";
   }
+}
+
+/** Manual tasks carry a real StewardTaskState, save for "draft" which we show as open. */
+function manualState(status: ManualTaskRecord["status"]): StewardTaskState {
+  return status === "draft" ? "open" : status;
 }
 
 function agentTaskState(status: string): StewardTaskState {
@@ -279,6 +286,40 @@ export function buildStewardTasks(input: AccountabilityInput): StewardTask[] {
         updatedAt: item.updatedAt ?? input.now,
       });
     }
+  }
+
+  /* ---- manual tasks ---------------------------------------------------- */
+  for (const m of input.manualTasks) {
+    const state = manualState(m.status);
+    const owner: StewardOwner =
+      m.assigneeKind === "agent"
+        ? {
+            kind: "agent",
+            key: (m.ownerLabel ?? "AI teammate").toLowerCase(),
+            name: m.ownerLabel ?? "AI teammate",
+            initials: initialsOf(m.ownerLabel ?? "AI teammate"),
+          }
+        : humanOwner(m.ownerLabel ?? "", undefined, m.ownerUserId);
+    const overdue = Boolean(
+      m.dueAt && state !== "complete" && Date.parse(m.dueAt) < Date.parse(input.now),
+    );
+    push({
+      key: `manual:${m.id}`,
+      id: m.id,
+      origin: "manual",
+      title: m.title,
+      sourceLabel: "Created here",
+      owner,
+      ...(m.dueAt ? { dueAt: m.dueAt } : {}),
+      state,
+      overdue,
+      completionPath: "steward",
+      ...(m.projectId ? { projectId: m.projectId } : {}),
+      ...(m.projectLabel ? { projectName: m.projectLabel } : {}),
+      ...(m.clientLabel ? { companyLabel: m.clientLabel } : {}),
+      evidence: [],
+      updatedAt: m.updatedAt,
+    });
   }
 
   return tasks.sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title));

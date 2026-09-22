@@ -82,6 +82,8 @@ export function ManageProjectPanel({
   const [dueDate, setDueDate] = useState(dateValue(project.dueDate));
   const [company, setCompany] = useState(project.origin.subjectLabel ?? "");
   const [items, setItems] = useState(itemsText(project.deliveryItems));
+  const [lovableUrl, setLovableUrl] = useState(project.lovableUrl ?? "");
+  const [knowledgeBaseUrl, setKnowledgeBaseUrl] = useState(project.knowledgeBaseUrl ?? "");
 
   const [blockedReason, setBlockedReason] = useState("");
   const [nextMove, setNextMove] = useState("");
@@ -96,6 +98,8 @@ export function ManageProjectPanel({
     setDueDate(dateValue(project.dueDate));
     setCompany(project.origin.subjectLabel ?? "");
     setItems(itemsText(project.deliveryItems));
+    setLovableUrl(project.lovableUrl ?? "");
+    setKnowledgeBaseUrl(project.knowledgeBaseUrl ?? "");
   }, [
     project.id,
     project.name,
@@ -104,6 +108,8 @@ export function ManageProjectPanel({
     project.dueDate,
     project.origin.subjectLabel,
     project.deliveryItems,
+    project.lovableUrl,
+    project.knowledgeBaseUrl,
     project.updatedAt,
   ]);
 
@@ -121,6 +127,8 @@ export function ManageProjectPanel({
     ...(companyEditable && company !== (project.origin.subjectLabel ?? "")
       ? { subjectLabel: company }
       : {}),
+    ...(lovableUrl !== (project.lovableUrl ?? "") ? { lovableUrl } : {}),
+    ...(knowledgeBaseUrl !== (project.knowledgeBaseUrl ?? "") ? { knowledgeBaseUrl } : {}),
   };
   // Delivery items were typed on the way in, so they are correctable here too.
   // What is already ticked stays ticked: only labels that survive keep their state.
@@ -137,6 +145,8 @@ export function ManageProjectPanel({
     setDueDate(dateValue(project.dueDate));
     setCompany(project.origin.subjectLabel ?? "");
     setItems(itemsText(project.deliveryItems));
+    setLovableUrl(project.lovableUrl ?? "");
+    setKnowledgeBaseUrl(project.knowledgeBaseUrl ?? "");
   }
 
   return (
@@ -203,6 +213,27 @@ export function ManageProjectPanel({
             <span className="block text-[12px] text-muted-foreground">
               Clear it if no date was really agreed.
             </span>
+          </label>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block space-y-1.5">
+            <span className="text-[12px] text-muted-foreground">Lovable project</span>
+            <TTInput
+              type="url"
+              value={lovableUrl}
+              placeholder="https://lovable.dev/projects/…"
+              onChange={(event) => setLovableUrl(event.target.value)}
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-[12px] text-muted-foreground">Knowledge base / chat</span>
+            <TTInput
+              type="url"
+              value={knowledgeBaseUrl}
+              placeholder="https://chatgpt.com/c/…"
+              onChange={(event) => setKnowledgeBaseUrl(event.target.value)}
+            />
           </label>
         </div>
 
