@@ -534,6 +534,57 @@ export const peopleService = {
   },
 
   /**
+   * Carry a provider-verified professional address, already stored on a
+   * durable Scout People row, onto the shared people record.
+   *
+   * The verification is the provider's claim, not this app's: it may only be
+   * written when the address came back verified from a lookup that was saved
+   * (`scoutPersonId`). Nothing here asks a provider anything, so no credit is
+   * spent, and a title the lookup recovered travels with the address so the
+   * Comms handoff opens on a real person, not a nameless role.
+   */
+  async recordProviderVerifiedEmail(
+    person: Person,
+    input: {
+      email: string;
+      /** The durable Scout People row the verification is stored on. */
+      scoutPersonId: string;
+      providerLabel: string;
+      roleTitle?: string | undefined;
+    },
+    context: PeopleContext,
+  ): Promise<Person> {
+    const email = input.email.trim().toLowerCase();
+    if (!email) throw new Error("There is no address to carry across.");
+    if (!input.scoutPersonId.trim()) {
+      throw new Error("Only an address saved on a Scout person can be carried across as verified.");
+    }
+
+    const updated = await updateContact(
+      person.id,
+      {
+        email,
+        emailStatus: "verified",
+        emailCheckedBy: input.providerLabel,
+        ...(input.roleTitle?.trim() && !person.roleTitle
+          ? { roleTitle: input.roleTitle.trim() }
+          : {}),
+      },
+      context.userId,
+    );
+    await record(
+      context,
+      "updated",
+      updated,
+      `${updated.fullName}'s professional address was verified by ${input.providerLabel} and saved in Scout, so it now stands on the shared record.`,
+      { provider: input.providerLabel, scout_person_id: input.scoutPersonId },
+    );
+    return updated;
+  },
+
+
+
+  /**
    * Put a way of reaching somebody already on record: an address, a LinkedIn
    * profile, or both.
    *
