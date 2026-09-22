@@ -68,7 +68,7 @@ import {
   saveEnrichedEmail,
   savePeople,
 } from "@/data/scout/people-research";
-import { workEmailState, type ScoutPerson } from "@/domain/scout-people";
+import { PROVIDER_LABEL, workEmailState, type ScoutPerson } from "@/domain/scout-people";
 import {
   fillKnownTitles,
   mergePeople,
@@ -537,15 +537,39 @@ function CompanyDetail({
         },
         { organizationId, userId },
       );
+
+      // An address the provider verified, and Scout actually saved, is the one
+      // fact that makes this person writable. Carry it, and the title the
+      // lookup recovered, onto the shared record before the first message is
+      // prepared, so Comms opens on a real verified address rather than an
+      // unchecked one. No provider is asked anything here.
+      let contact = added.person;
+      const verifiedNow =
+        Boolean(person.persistedId) &&
+        Boolean(person.workEmail) &&
+        workEmailState(person, new Date().toISOString()) === "verified";
+      if (verifiedNow) {
+        contact = await peopleService.recordProviderVerifiedEmail(
+          contact,
+          {
+            email: person.workEmail!,
+            scoutPersonId: person.persistedId!,
+            providerLabel: PROVIDER_LABEL[person.provider],
+            roleTitle: person.title,
+          },
+          { organizationId, userId },
+        );
+      }
+
       const saved = await saveProspectPerson({
         organizationId,
         userId,
         prospectId,
         companyName: candidate.prospect.name,
-        person: added.person,
+        person: contact,
         identity: {
           fullName: person.fullName,
-          roleTitle: person.title,
+          roleTitle: person.title ?? contact.roleTitle,
           companyName: candidate.prospect.name,
         },
       });
