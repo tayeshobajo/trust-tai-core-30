@@ -42,6 +42,7 @@ import {
   listClientResources,
   removeClientResource,
 } from "@/data/clients/resources";
+import { openClientFile, uploadClientFile } from "@/data/clients/files";
 import type { ClientResourceDraft } from "@/domain/client-resources";
 import { canWorkInRoom } from "@/lib/room-authority";
 import {
