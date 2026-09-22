@@ -47,6 +47,7 @@ const TABS: { to: string; section: CommsSection; label: string }[] = [
   { to: "/modules/comms", section: "dashboard", label: "Dashboard" },
   { to: "/modules/comms/relationships", section: "conversations", label: "Conversations" },
   { to: "/modules/comms/drafts", section: "drafts", label: "Drafts & Reviews" },
+  { to: "/modules/comms/history", section: "history", label: "History" },
   { to: "/modules/comms/voice", section: "voice", label: "Voice DNA" },
   { to: "/modules/comms/integrations", section: "integrations", label: "Connections" },
 ];
