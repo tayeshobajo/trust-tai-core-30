@@ -17,6 +17,13 @@ import type { Row } from "./schema";
 
 const NOT_PROVISIONED = /does not exist|schema cache|42P01|PGRST205|PGRST20[0-9]/i;
 
+/**
+ * A person may hold only one active (proposed or confirmed) goal per week. A
+ * second insert trips the partial unique index; that is not an error, it means
+ * someone already proposed. Postgres 23505 or the conflict text both mean this.
+ */
+const ALREADY_ACTIVE = /23505|duplicate key|unique constraint|already exists/i;
+
 export class WeeklyGoalsNotProvisionedError extends Error {
   constructor() {
     super(
@@ -172,5 +179,23 @@ export const weeklyGoals = {
       throw new Error(error.message);
     }
     return toRecord((data ?? {}) as Row);
+  },
+
+  /**
+   * Persist the Captain's proposal idempotently. It lands 'proposed', so it is
+   * inert until a person confirms it. When a goal for this person and week is
+   * already active the unique index blocks the insert; that is swallowed and
+   * null is returned, so concurrent tabs stay safe and quiet. Missing table is
+   * swallowed the same way: nothing to propose into yet.
+   */
+  async propose(input: CreateWeeklyGoalInput): Promise<WeeklyGoalRecord | null> {
+    try {
+      return await this.create(input);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof WeeklyGoalsNotProvisionedError) return null;
+      if (ALREADY_ACTIVE.test(message)) return null;
+      throw error;
+    }
   },
 };

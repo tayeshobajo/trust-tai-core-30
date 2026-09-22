@@ -7,7 +7,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
@@ -34,16 +34,28 @@ import {
   TASKS_FILTER_LABEL,
   type TasksFilter,
 } from "@/data/steward/accountability";
-import { fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
+import { fathomStatusLine, readStewardTeam, weekStartOf } from "@/data/steward/team-read";
 import { stewardTasks } from "@/data/supabase/steward-tasks";
 import { weeklyGoals } from "@/data/supabase/weekly-goals";
 import { computeWeeklyGoalProgress } from "@/domain/steward-weekly-goal";
+import { proposeWeeklyGoal } from "@/domain/steward-weekly-goal-proposer";
 import { reassignAuthority } from "@/data/steward/authority";
 import { useStewardActions } from "@/data/steward/use-steward-actions";
 import { STEWARD_FOCUS_LABEL, type StewardTask } from "@/domain/steward-accountability";
 import { personKeyOf } from "@/domain/steward";
 import { cn } from "@/lib/utils";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
+/**
+ * Monday of the week before the one containing `iso`. Used to fetch last week's
+ * goal so a fresh proposal can carry unfinished work forward.
+ */
+function priorWeekStartOf(iso: string): string {
+  const thisMonday = weekStartOf(iso);
+  const prior = new Date(`${thisMonday}T00:00:00.000Z`);
+  prior.setUTCDate(prior.getUTCDate() - 7);
+  return prior.toISOString().slice(0, 10);
+}
 
 const TITLE = "Steward · Tasks · Trust Tai OS";
 const DESCRIPTION =
@@ -141,6 +153,64 @@ function StewardTasks({
     () => (weeklyGoal ? computeWeeklyGoalProgress(weeklyGoal, tasks) : null),
     [weeklyGoal, tasks],
   );
+
+  /* Captain proposes, the person confirms. When the read settles with no goal
+     for this week, propose one from real open tasks exactly once, writing it as
+     'proposed'. It is never confirmed here. A one-shot ref keyed to org and week
+     stops re-renders from re-proposing; weeklyGoals.propose swallows the active
+     goal unique-violation so concurrent tabs stay safe and silent. */
+  const proposedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!read.isSuccess || read.isFetching) return;
+    if (read.data.weeklyGoal) return;
+    if (!identity.userId) return;
+
+    const now = read.data.now || new Date().toISOString();
+    const weekStart = weekStartOf(now);
+    const guardKey = `${identity.organizationId}:${weekStart}:${identity.userId}`;
+    if (proposedRef.current === guardKey) return;
+    proposedRef.current = guardKey;
+
+    void (async () => {
+      const lastWeekGoal = await weeklyGoals
+        .currentFor(identity.organizationId, identity.userId, priorWeekStartOf(now))
+        .catch(() => null);
+      const draft = proposeWeeklyGoal({
+        tasks: read.data.tasks,
+        lastWeekGoal,
+        ownerUserId: identity.userId,
+        ownerLabel: identity.name,
+        weekStart,
+      });
+      if (!draft) return;
+      const created = await weeklyGoals
+        .propose({
+          organizationId: identity.organizationId,
+          weekStart,
+          title: draft.title,
+          ownerUserId: identity.userId,
+          ownerLabel: identity.name,
+          linkedTaskIds: draft.linkedTaskIds,
+          targetCount: draft.targetCount,
+          proposedBy: draft.proposedBy,
+          createdBy: identity.userId,
+        })
+        .catch(() => null);
+      if (created) {
+        void queryClient.invalidateQueries({
+          queryKey: ["steward", "team", identity.organizationId],
+        });
+      }
+    })();
+  }, [
+    read.isSuccess,
+    read.isFetching,
+    read.data,
+    identity.organizationId,
+    identity.userId,
+    identity.name,
+    queryClient,
+  ]);
 
   async function handleConfirmGoal(): Promise<void> {
     if (!weeklyGoal) return;
