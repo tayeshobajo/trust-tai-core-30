@@ -53,6 +53,7 @@ import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.in
 import { Route as ModulesCommsConversationsRouteImport } from './routes/modules.comms.conversations'
 import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comms.dashboard'
 import { Route as ModulesCommsDraftsRouteImport } from './routes/modules.comms.drafts'
+import { Route as ModulesCommsHistoryRouteImport } from './routes/modules.comms.history'
 import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.inbox'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsPlanRouteImport } from './routes/modules.comms.plan'
@@ -345,6 +346,11 @@ const ModulesCommsDashboardRoute = ModulesCommsDashboardRouteImport.update({
 const ModulesCommsDraftsRoute = ModulesCommsDraftsRouteImport.update({
   id: '/drafts',
   path: '/drafts',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
+const ModulesCommsHistoryRoute = ModulesCommsHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
 const ModulesCommsInboxRoute = ModulesCommsInboxRouteImport.update({
@@ -779,6 +785,7 @@ export interface FileRoutesByFullPath {
   '/modules/comms/conversations': typeof ModulesCommsConversationsRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/drafts': typeof ModulesCommsDraftsRoute
+  '/modules/comms/history': typeof ModulesCommsHistoryRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
@@ -889,6 +896,7 @@ export interface FileRoutesByTo {
   '/modules/comms/conversations': typeof ModulesCommsConversationsRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/drafts': typeof ModulesCommsDraftsRoute
+  '/modules/comms/history': typeof ModulesCommsHistoryRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
@@ -1007,6 +1015,7 @@ export interface FileRoutesById {
   '/modules/comms/conversations': typeof ModulesCommsConversationsRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/drafts': typeof ModulesCommsDraftsRoute
+  '/modules/comms/history': typeof ModulesCommsHistoryRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
@@ -1127,6 +1136,7 @@ export interface FileRouteTypes {
     | '/modules/comms/conversations'
     | '/modules/comms/dashboard'
     | '/modules/comms/drafts'
+    | '/modules/comms/history'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
@@ -1237,6 +1247,7 @@ export interface FileRouteTypes {
     | '/modules/comms/conversations'
     | '/modules/comms/dashboard'
     | '/modules/comms/drafts'
+    | '/modules/comms/history'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
@@ -1354,6 +1365,7 @@ export interface FileRouteTypes {
     | '/modules/comms/conversations'
     | '/modules/comms/dashboard'
     | '/modules/comms/drafts'
+    | '/modules/comms/history'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
@@ -1813,6 +1825,13 @@ declare module '@tanstack/react-router' {
       path: '/drafts'
       fullPath: '/modules/comms/drafts'
       preLoaderRoute: typeof ModulesCommsDraftsRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
+    '/modules/comms/history': {
+      id: '/modules/comms/history'
+      path: '/history'
+      fullPath: '/modules/comms/history'
+      preLoaderRoute: typeof ModulesCommsHistoryRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
     '/modules/comms/inbox': {
@@ -2384,6 +2403,7 @@ interface ModulesCommsRouteChildren {
   ModulesCommsConversationsRoute: typeof ModulesCommsConversationsRoute
   ModulesCommsDashboardRoute: typeof ModulesCommsDashboardRoute
   ModulesCommsDraftsRoute: typeof ModulesCommsDraftsRoute
+  ModulesCommsHistoryRoute: typeof ModulesCommsHistoryRoute
   ModulesCommsInboxRoute: typeof ModulesCommsInboxRoute
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsPlanRoute: typeof ModulesCommsPlanRoute
@@ -2399,6 +2419,7 @@ const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
   ModulesCommsConversationsRoute: ModulesCommsConversationsRoute,
   ModulesCommsDashboardRoute: ModulesCommsDashboardRoute,
   ModulesCommsDraftsRoute: ModulesCommsDraftsRoute,
+  ModulesCommsHistoryRoute: ModulesCommsHistoryRoute,
   ModulesCommsInboxRoute: ModulesCommsInboxRoute,
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsPlanRoute: ModulesCommsPlanRoute,
