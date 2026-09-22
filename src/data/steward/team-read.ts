@@ -10,6 +10,7 @@ import { projectDelivery } from "@/data/supabase/project-delivery";
 import { projectsService } from "@/data/supabase/projects-service";
 import { stewardService, type StoredConversation } from "@/data/supabase/steward-service";
 import { stewardTaskState } from "@/data/supabase/steward-task-state";
+import { stewardTasks } from "@/data/supabase/steward-tasks";
 import { paperclipConnection } from "@/domain/paperclip-connection";
 import { getStewardAgents } from "@/data/steward-agents.functions";
 import type { Commitment } from "@/domain/steward";
@@ -38,22 +39,31 @@ const NO_AGENTS: StewardAgentRead = {
 export async function readStewardTeam(organizationId: string): Promise<StewardTeamRead> {
   const now = new Date().toISOString();
 
-  const [commitments, conversations, projects, workItems, taskState, stateProvisioned, agents] =
-    await Promise.all([
-      stewardService.commitments(organizationId),
-      stewardService.conversations(organizationId, 12).catch(() => []),
-      projectsService.list(organizationId).catch(() => []),
-      projectDelivery.listOrgWork(organizationId).catch(() => []),
-      stewardTaskState.list(organizationId).catch(() => []),
-      stewardTaskState.provisioned(organizationId).catch(() => false),
-      getStewardAgents({ data: { organizationId } }).catch((error: unknown): StewardAgentRead => ({
-        ...NO_AGENTS,
-        because:
-          error instanceof Error
-            ? `Paperclip could not be read. ${error.message}`
-            : NO_AGENTS.because,
-      })),
-    ]);
+  const [
+    commitments,
+    conversations,
+    projects,
+    workItems,
+    taskState,
+    stateProvisioned,
+    agents,
+    manualTasks,
+  ] = await Promise.all([
+    stewardService.commitments(organizationId),
+    stewardService.conversations(organizationId, 12).catch(() => []),
+    projectsService.list(organizationId).catch(() => []),
+    projectDelivery.listOrgWork(organizationId).catch(() => []),
+    stewardTaskState.list(organizationId).catch(() => []),
+    stewardTaskState.provisioned(organizationId).catch(() => false),
+    getStewardAgents({ data: { organizationId } }).catch((error: unknown): StewardAgentRead => ({
+      ...NO_AGENTS,
+      because:
+        error instanceof Error
+          ? `Paperclip could not be read. ${error.message}`
+          : NO_AGENTS.because,
+    })),
+    stewardTasks.list(organizationId).catch(() => []),
+  ]);
 
   return {
     now,
@@ -68,6 +78,7 @@ export async function readStewardTeam(organizationId: string): Promise<StewardTe
       projects,
       agents: agents.agents,
       taskState,
+      manualTasks,
     }),
   };
 }

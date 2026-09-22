@@ -34,6 +34,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { gateDraft } from "../_shared/voice-gate.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -530,6 +531,16 @@ async function handleDraftIntro(req: Request): Promise<Response> {
     );
   }
 
+  // Jev voice pre-gate. A scout intro is always first-contact, so recognition is
+  // expected. Bounces clearly off-voice drafts to needs_redraft before the human
+  // queue; never approves (the app's deterministic voice policy still runs at
+  // approval time, voice_checked stays false). Fail-open on any Jev error.
+  const gate = await gateDraft(rawBody, {
+    recipient: prospect.company_name as string,
+    messageType: "first",
+  });
+  const reviewState = gate.allow ? "needs_human_review" : "needs_redraft";
+
   const { data: draft, error: draftError } = await supabase
     .from("comms_drafts")
     .insert({
@@ -539,7 +550,7 @@ async function handleDraftIntro(req: Request): Promise<Response> {
       register: "scout_intro",
       subject,
       body: rawBody,
-      review_state: "needs_human_review",
+      review_state: reviewState,
       rationale: {
         source: "scout_agent",
         template_id: template.id,
@@ -549,6 +560,9 @@ async function handleDraftIntro(req: Request): Promise<Response> {
         // Voice policy lives in the app (src/data/voice-policy.ts) and is not
         // ported to Deno. The app MUST re-check voice at approval time.
         voice_checked: false,
+        gate: gate.audit,
+        gate_verdict: gate.verdict,
+        gate_reasons: gate.reasons,
         idempotency_key: idempotencyKey,
       },
     })
@@ -572,13 +586,16 @@ async function handleDraftIntro(req: Request): Promise<Response> {
 
   await completeBinding(binding.id, {
     status: "completed",
-    resultSummary: `Drafted an intro to ${prospect.company_name}; waiting for human review.`,
+    resultSummary: reviewState === "needs_redraft"
+      ? `Drafted an intro to ${prospect.company_name}; bounced by voice gate for redraft (${gate.reasons.join(", ")}).`
+      : `Drafted an intro to ${prospect.company_name}; waiting for human review.`,
     businessOutputs: {
       draft_id: (draft as { id: string }).id,
       relationship_id: relationshipId,
       prospect_id: prospect.id,
       template_id: template.id,
-      review_state: "needs_human_review",
+      review_state: reviewState,
+      gate_verdict: gate.verdict,
     },
   });
 
@@ -587,7 +604,8 @@ async function handleDraftIntro(req: Request): Promise<Response> {
     relationship_id: relationshipId,
     prospect_id: prospect.id,
     prospect_status: prospectStatus,
-    review_state: "needs_human_review",
+    review_state: reviewState,
+    gate: { verdict: gate.verdict, reasons: gate.reasons },
     voice_checked: false,
   });
 }

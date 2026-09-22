@@ -28,6 +28,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { gateDraft } from "../_shared/voice-gate.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -274,7 +275,7 @@ async function handleDraft(req: Request): Promise<Response> {
   // Verify relationship belongs to this org
   const { data: relationship, error: relError } = await supabase
 .from("comms_relationships")
-.select("id, organization_id")
+.select("id, organization_id, full_name, stage")
 .eq("id", relationshipId)
 .eq("organization_id", agent.organization_id)
 .maybeSingle();
@@ -293,7 +294,23 @@ async function handleDraft(req: Request): Promise<Response> {
     if (!thread) return fail("Thread not found for this relationship.", 404);
   }
 
-  // Governance: always needs_human_review, agent cannot self-approve
+  // Jev voice pre-gate. Bounces clearly off-voice drafts to needs_redraft BEFORE
+  // they reach the human-review queue. Never approves (see _shared/voice-gate.ts):
+  // a pass only means the draft may proceed to needs_human_review, where the
+  // deterministic voice policy still runs at approval time. Fail-open on Jev error.
+  // Message type: a brand-new relationship (no prior stage progression) is treated
+  // as first-contact, so recognition is expected.
+  const relStage = (relationship as { stage?: string }).stage;
+  const messageType: "first" | "ongoing" =
+    intent === "introduce" || intent === "cold_intro_from_scout" || relStage === "ready_to_reach"
+      ? "first"
+: "ongoing";
+  const gate = await gateDraft(draftBody, {
+    recipient: (relationship as { full_name?: string }).full_name ?? undefined,
+    messageType,
+  });
+  const reviewState = gate.allow ? "needs_human_review": "needs_redraft";
+
   const { data: draft, error } = await supabase
 .from("comms_drafts")
 .insert({
@@ -305,12 +322,15 @@ async function handleDraft(req: Request): Promise<Response> {
       subject,
       body: draftBody,
       voice_version: voiceVersion,
-      review_state: "needs_human_review",
+      review_state: reviewState,
       rationale: {
 ...rationale,
         source: "comms_agent",
         agent_id: agent.paperclip_agent_id,
         written_at: new Date().toISOString(),
+        gate: gate.audit,
+        gate_verdict: gate.verdict,
+        gate_reasons: gate.reasons,
       },
       evidence,
       created_by: null, // agent, not a user
@@ -319,7 +339,7 @@ async function handleDraft(req: Request): Promise<Response> {
 .single();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
 
-  return json({ draft, created: true });
+  return json({ draft, created: true, gate: { verdict: gate.verdict, reasons: gate.reasons } });
 }
 
 /**

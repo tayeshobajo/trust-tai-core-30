@@ -95,7 +95,73 @@ export const STEWARD_STATE_TONE: Record<StewardTaskState, string> = {
 /** Which system may record completion. Steward never overrides another room. */
 export type CompletionPath = "steward" | "projects" | "paperclip" | "none";
 
-export type StewardTaskOrigin = "commitment" | "project" | "agent";
+export type StewardTaskOrigin = "commitment" | "project" | "agent" | "manual";
+
+/* ------------------------------------------------------- manual task shape */
+
+/** How urgently a person marked a manual task. */
+export type ManualTaskPriority = "low" | "normal" | "high" | "urgent";
+
+export const MANUAL_TASK_PRIORITY_LABEL: Record<ManualTaskPriority, string> = {
+  low: "Low",
+  normal: "Normal",
+  high: "High",
+  urgent: "Urgent",
+};
+
+/** Who carries a manual task: a teammate or an AI teammate. */
+export type ManualAssigneeKind = "human" | "agent";
+
+/**
+ * The boundary a person set for an AI teammate. `safe_internal` keeps it to
+ * internal, reversible work. `routine_end_to_end` lets it handle routine work
+ * on its own. Null unless the task is assigned to an agent.
+ */
+export type ManualAiMode = "safe_internal" | "routine_end_to_end";
+
+export const MANUAL_AI_MODE_LABEL: Record<ManualAiMode, string> = {
+  safe_internal: "Can complete safe internal work",
+  routine_end_to_end: "Handles routine work end to end",
+};
+
+export interface ManualSubtask {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface ManualContextLink {
+  label: string;
+  url: string;
+  kind?: string;
+}
+
+/** A task a person created directly in Steward. */
+export interface ManualTaskRecord {
+  id: ID;
+  organizationId: ID;
+  title: string;
+  clientId?: ID;
+  clientLabel?: string;
+  projectId?: ID;
+  projectLabel?: string;
+  dueAt?: ISODateTime;
+  ownerUserId?: ID;
+  ownerLabel?: string;
+  priority: ManualTaskPriority;
+  assigneeKind: ManualAssigneeKind;
+  aiMode?: ManualAiMode;
+  status: StewardTaskState | "draft";
+  subtasks: ManualSubtask[];
+  acceptanceCriteria: string[];
+  contextLinks: ManualContextLink[];
+  notes?: string;
+  paperclipTaskId?: string;
+  correlationId?: string;
+  createdBy?: ID;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
 
 export interface StewardTask {
   /** Stable across reloads: `<origin>:<id>`. Used as the task-state key. */
