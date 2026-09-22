@@ -1,10 +1,10 @@
 /**
  * Comms navigation.
  *
- * Five destinations, agreed with Tai: what needs action, the conversations
- * themselves, the drafts waiting on a review, how we sound, and what we are
- * connected to. Everything else in Comms is reached from inside the work it
- * belongs to, not from a tenth tab.
+ * Six destinations, agreed with Tai: what needs action, the conversations
+ * themselves, the drafts waiting on a review, the record of what has already
+ * left and come back, how we sound, and what we are connected to. Everything
+ * else in Comms is reached from inside the work it belongs to.
  *
  * The persistent "New draft" action starts a piece of writing of a stated
  * kind. It never sends anything.
