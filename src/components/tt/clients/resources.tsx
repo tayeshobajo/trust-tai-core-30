@@ -768,6 +768,7 @@ export function ClientResourcesSection({
                         busy={busy}
                         onEdit={() => startEdit(resource)}
                         onRemove={() => void onRemove(resource)}
+                        onOpenFile={onOpenFile}
                       />
                     </li>
                   ))}
@@ -778,8 +779,9 @@ export function ClientResourcesSection({
         )}
 
         <p className="text-[12px] text-muted-foreground">
-          Removing a link here removes the reference only. The document, recording or folder itself
-          is untouched. Uploading a file is a separate act and happens on the project that owns it.
+          Removing a link removes the reference only, and the document, recording or folder itself
+          is untouched. Removing an uploaded file removes the file Trust Tai holds, and that cannot
+          be undone.
         </p>
       </div>
     </RoomSection>
