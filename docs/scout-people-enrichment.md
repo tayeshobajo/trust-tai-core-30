@@ -97,3 +97,43 @@ and are not treated as such anywhere in this code.
    person to spend exactly one enrichment.
 3. Tai approves the proposed table; Codex applies it and Scout switches from
    session state to durable rows.
+
+## Verified address into the Comms handoff (SP16)
+
+Prepare outreach used to put a researched person on the shared record through
+the by-hand path, which may never claim a verification. A real Apollo-verified
+address therefore arrived in Comms as "found, nobody checked it", and the
+person read as unreachable.
+
+Now, when the person has a durable Scout People row whose stored address state
+is `verified` and still inside the freshness policy, Prepare outreach carries
+that address, and the title the lookup recovered, onto the shared record before
+the first message is prepared:
+
+| Area | File |
+| --- | --- |
+| Carry across, provider named | `peopleService.recordProviderVerifiedEmail`, `src/data/supabase/people-service.ts` |
+| Wiring on Prepare outreach | `src/routes/modules.scout.prospects.$prospectId.tsx` |
+| Tests | `src/data/supabase/scout-verified-email.test.ts` (3) |
+
+Rules kept: only an address saved on a Scout People row may be carried as
+verified, no provider is called during the handoff, a title entered by hand is
+never overwritten, and an unverified or stale address still travels with its
+warning and is not upgraded.
+
+### Live evidence, 22 September 2026
+
+One real Apollo lookup, one person, through the app's own adapter and store
+(`scripts/qa/scout-people-live-enrich.ts`):
+
+- Company: Thyme Care, prospect `80e9fa08-6f9e-4fe1-bb25-a57fcde60537`.
+- Person: Robin Shah. Apollo returned `robin@thymecare.com`, reported verified,
+  with the title "Co-founder; Executive Chairman". No phone was requested.
+- The answer saved automatically into `public.scout_people` row
+  `fdec2b65-fa74-44b3-8ec0-be65279a2c4f` as `verified`, with the verification
+  date recorded, and read back unchanged.
+
+Not verified here: the signed-in click on Prepare outreach. This runtime
+reports no browser session for the external backend (`no_supabase`), so no
+session was minted or impersonated. The handoff wiring is CODE verified by the
+tests above; the screen pass stays with Tai or Codex.
