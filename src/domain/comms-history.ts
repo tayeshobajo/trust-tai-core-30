@@ -96,7 +96,7 @@ export function entriesFromMessages(
 ): HistoryEntry[] {
   return messages.map((message) => {
     const person = message.relationshipId ? people.get(message.relationshipId) : undefined;
-    const name = person?.fullName ?? trim(message.fromName) || UNKNOWN_PERSON;
+    const name = person?.fullName ?? (trim(message.fromName) || UNKNOWN_PERSON);
     const body = trim(message.bodyText) || trim(message.snippet);
     return {
       id: `message:${message.id}`,
