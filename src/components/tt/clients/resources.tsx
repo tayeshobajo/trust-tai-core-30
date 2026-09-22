@@ -649,17 +649,50 @@ export function ClientResourcesSection({
             ))}
           </select>
           {canWrite && available ? (
-            <TTButton size="sm" onClick={adding ? () => setAdding(false) : startAdd}>
-              {adding ? (
-                <>
-                  <X aria-hidden className="size-4" /> Close
-                </>
-              ) : (
-                <>
-                  <Plus aria-hidden className="size-4" /> Add link
-                </>
-              )}
-            </TTButton>
+            <>
+              <TTButton
+                size="sm"
+                onClick={
+                  adding
+                    ? () => setAdding(false)
+                    : () => {
+                        setUploading(false);
+                        startAdd();
+                      }
+                }
+              >
+                {adding ? (
+                  <>
+                    <X aria-hidden className="size-4" /> Close
+                  </>
+                ) : (
+                  <>
+                    <Plus aria-hidden className="size-4" /> Add link
+                  </>
+                )}
+              </TTButton>
+              {onUpload ? (
+                <TTButton
+                  size="sm"
+                  variant="quiet"
+                  onClick={() => {
+                    setUploading((value) => !value);
+                    setAdding(false);
+                    setEditingId(null);
+                  }}
+                >
+                  {uploading ? (
+                    <>
+                      <X aria-hidden className="size-4" /> Close
+                    </>
+                  ) : (
+                    <>
+                      <Upload aria-hidden className="size-4" /> Upload a file
+                    </>
+                  )}
+                </TTButton>
+              ) : null}
+            </>
           ) : null}
         </div>
 
@@ -679,6 +712,24 @@ export function ClientResourcesSection({
             }}
           />
         ) : null}
+
+        {uploading && onUpload ? (
+          <UploadForm
+            projects={projects}
+            defaultProjectId={
+              filter.projectId !== "all" && filter.projectId !== "client"
+                ? filter.projectId
+                : selectedProjectId
+            }
+            busy={busy}
+            onUpload={async (upload) => {
+              await onUpload(upload);
+              setUploading(false);
+            }}
+            onCancel={() => setUploading(false)}
+          />
+        ) : null}
+
 
         {!available ? (
           <Unreadable
