@@ -11,10 +11,12 @@ import { projectsService } from "@/data/supabase/projects-service";
 import { stewardService, type StoredConversation } from "@/data/supabase/steward-service";
 import { stewardTaskState } from "@/data/supabase/steward-task-state";
 import { stewardTasks } from "@/data/supabase/steward-tasks";
+import { weeklyGoals } from "@/data/supabase/weekly-goals";
 import { paperclipConnection } from "@/domain/paperclip-connection";
 import { getStewardAgents } from "@/data/steward-agents.functions";
 import type { Commitment } from "@/domain/steward";
 import type { StewardAgentRead, StewardTask } from "@/domain/steward-accountability";
+import type { WeeklyGoalRecord } from "@/domain/steward-weekly-goal";
 
 import { buildStewardTasks } from "./accountability";
 
@@ -24,8 +26,24 @@ export interface StewardTeamRead {
   commitments: Commitment[];
   conversations: StoredConversation[];
   agents: StewardAgentRead;
+  /** The current week's goal for the viewer, or null when there is none. */
+  weeklyGoal: WeeklyGoalRecord | null;
   /** True when Steward may persist focus and ordering. */
   stateProvisioned: boolean;
+}
+
+/**
+ * Monday of the week that contains `iso`, as an ISO date (YYYY-MM-DD). Weeks
+ * start on Monday to match how the goal's week_start is stored.
+ */
+export function weekStartOf(iso: string): string {
+  const date = new Date(iso);
+  const day = date.getUTCDay(); // 0 = Sunday
+  const diff = (day + 6) % 7; // days since Monday
+  const monday = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - diff),
+  );
+  return monday.toISOString().slice(0, 10);
 }
 
 const NO_AGENTS: StewardAgentRead = {
@@ -36,8 +54,12 @@ const NO_AGENTS: StewardAgentRead = {
   because: "Paperclip is not reachable from this workspace right now.",
 };
 
-export async function readStewardTeam(organizationId: string): Promise<StewardTeamRead> {
+export async function readStewardTeam(
+  organizationId: string,
+  viewerUserId?: string,
+): Promise<StewardTeamRead> {
   const now = new Date().toISOString();
+  const weekStart = weekStartOf(now);
 
   const [
     commitments,
@@ -48,6 +70,7 @@ export async function readStewardTeam(organizationId: string): Promise<StewardTe
     stateProvisioned,
     agents,
     manualTasks,
+    weeklyGoal,
   ] = await Promise.all([
     stewardService.commitments(organizationId),
     stewardService.conversations(organizationId, 12).catch(() => []),
@@ -63,6 +86,9 @@ export async function readStewardTeam(organizationId: string): Promise<StewardTe
           : NO_AGENTS.because,
     })),
     stewardTasks.list(organizationId).catch(() => []),
+    weeklyGoals
+      .currentFor(organizationId, viewerUserId ?? null, weekStart)
+      .catch((): WeeklyGoalRecord | null => null),
   ]);
 
   return {
@@ -70,6 +96,7 @@ export async function readStewardTeam(organizationId: string): Promise<StewardTe
     commitments,
     conversations,
     agents,
+    weeklyGoal,
     stateProvisioned,
     tasks: buildStewardTasks({
       now,

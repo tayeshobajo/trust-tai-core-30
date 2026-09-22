@@ -16,6 +16,7 @@ import {
   CreateTaskDrawer,
   type CreateManualTaskInput,
 } from "@/components/tt/steward/create-task-drawer";
+import { GoalHeroBand } from "@/components/tt/steward/goal-hero-band";
 import { ReassignPicker, type AssignablePerson } from "@/components/tt/steward/reassign-picker";
 import { StewardHero } from "@/components/tt/steward/steward-hero";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
@@ -35,6 +36,8 @@ import {
 } from "@/data/steward/accountability";
 import { fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
 import { stewardTasks } from "@/data/supabase/steward-tasks";
+import { weeklyGoals } from "@/data/supabase/weekly-goals";
+import { computeWeeklyGoalProgress } from "@/domain/steward-weekly-goal";
 import { reassignAuthority } from "@/data/steward/authority";
 import { useStewardActions } from "@/data/steward/use-steward-actions";
 import { STEWARD_FOCUS_LABEL, type StewardTask } from "@/domain/steward-accountability";
@@ -119,13 +122,39 @@ function StewardTasks({
   const [openTask, setOpenTask] = useState<StewardTask | null>(null);
   const [reassign, setReassign] = useState<StewardTask | null>(null);
   const [creating, setCreating] = useState(false);
+  const [confirmingGoal, setConfirmingGoal] = useState(false);
 
   const navigate = Route.useNavigate();
   const actor = { userId: identity.userId, canManage: identity.canManage };
-  const read = useQuery({ queryKey, queryFn: () => readStewardTeam(identity.organizationId) });
+  const read = useQuery({
+    queryKey,
+    queryFn: () => readStewardTeam(identity.organizationId, identity.userId),
+  });
   const actions = useStewardActions({ identity, queryKey });
 
   const tasks = read.data?.tasks ?? [];
+
+  /* The week's goal and its progress, computed from real task state only.
+     Null goal renders a quiet empty band; it never crashes the page. */
+  const weeklyGoal = read.data?.weeklyGoal ?? null;
+  const goalProgress = useMemo(
+    () => (weeklyGoal ? computeWeeklyGoalProgress(weeklyGoal, tasks) : null),
+    [weeklyGoal, tasks],
+  );
+
+  async function handleConfirmGoal(): Promise<void> {
+    if (!weeklyGoal) return;
+    setConfirmingGoal(true);
+    try {
+      await weeklyGoals.confirm(weeklyGoal.id);
+      toast.success("Goal confirmed. It is yours for the week.");
+      void queryClient.invalidateQueries({ queryKey: ["steward", "team", identity.organizationId] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not confirm the goal.");
+    } finally {
+      setConfirmingGoal(false);
+    }
+  }
 
   /* Opened from the activity stream: show the task the event was about, and
    * say plainly that the row is as it stands now, not a snapshot. */
@@ -263,6 +292,13 @@ function StewardTasks({
   return (
     <div className="space-y-8">
       <StewardHero status={fathomStatusLine(read.data)} />
+
+      <GoalHeroBand
+        goal={weeklyGoal}
+        progress={goalProgress}
+        onConfirm={handleConfirmGoal}
+        pending={confirmingGoal}
+      />
 
       <StewardTabs active="tasks" />
 
