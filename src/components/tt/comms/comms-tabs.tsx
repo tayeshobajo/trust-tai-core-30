@@ -17,7 +17,13 @@ import { ChevronDown } from "lucide-react";
 import { TTButton } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 
-export type CommsSection = "dashboard" | "conversations" | "drafts" | "voice" | "integrations";
+export type CommsSection =
+  | "dashboard"
+  | "conversations"
+  | "drafts"
+  | "history"
+  | "voice"
+  | "integrations";
 
 /** What a new piece of writing is. Carried into the intake as its kind. */
 export type NewDraftKind = "message" | "email" | "proposal";
