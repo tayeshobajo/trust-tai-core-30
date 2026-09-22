@@ -71,6 +71,7 @@ import { Route as ModulesScoutOutreachRouteImport } from './routes/modules.scout
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
 import { Route as ModulesStewardIndexRouteImport } from './routes/modules.steward.index'
 import { Route as ModulesStewardAgentsRouteImport } from './routes/modules.steward.agents'
+import { Route as ModulesStewardDashboardRouteImport } from './routes/modules.steward.dashboard'
 import { Route as ModulesStewardMeetingsRouteImport } from './routes/modules.steward.meetings'
 import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.steward.memory'
 import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
@@ -115,6 +116,7 @@ import { Route as ApiPublicZenmodeLookupRouteImport } from './routes/api/public/
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
+import { Route as ModulesStewardPeopleUserIdRouteImport } from './routes/modules.steward.people.$userId'
 import { Route as ModulesWebsiteSubmissionsSubmissionIdRouteImport } from './routes/modules.website_.submissions.$submissionId'
 import { Route as ApiInternalExecutionScoutDraftIntroRouteImport } from './routes/api/internal/execution/scout.draft-intro'
 import { Route as ApiInternalExecutionScoutIcpRouteImport } from './routes/api/internal/execution/scout.icp'
@@ -442,6 +444,11 @@ const ModulesStewardAgentsRoute = ModulesStewardAgentsRouteImport.update({
   path: '/agents',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
+const ModulesStewardDashboardRoute = ModulesStewardDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => ModulesStewardRoute,
+} as any)
 const ModulesStewardMeetingsRoute = ModulesStewardMeetingsRouteImport.update({
   id: '/meetings',
   path: '/meetings',
@@ -677,6 +684,12 @@ const ModulesStewardMeetingsConversationIdRoute =
     path: '/$conversationId',
     getParentRoute: () => ModulesStewardMeetingsRoute,
   } as any)
+const ModulesStewardPeopleUserIdRoute =
+  ModulesStewardPeopleUserIdRouteImport.update({
+    id: '/people/$userId',
+    path: '/people/$userId',
+    getParentRoute: () => ModulesStewardRoute,
+  } as any)
 const ModulesWebsiteSubmissionsSubmissionIdRoute =
   ModulesWebsiteSubmissionsSubmissionIdRouteImport.update({
     id: '/modules/website_/submissions/$submissionId',
@@ -805,6 +818,7 @@ export interface FileRoutesByFullPath {
   '/modules/scout/outreach': typeof ModulesScoutOutreachRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
+  '/modules/steward/dashboard': typeof ModulesStewardDashboardRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
@@ -854,6 +868,7 @@ export interface FileRoutesByFullPath {
   '/api/public/zenmode/lookup': typeof ApiPublicZenmodeLookupRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
+  '/modules/steward/people/$userId': typeof ModulesStewardPeopleUserIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
   '/api/internal/execution/scout/draft-intro': typeof ApiInternalExecutionScoutDraftIntroRoute
@@ -917,6 +932,7 @@ export interface FileRoutesByTo {
   '/modules/scout/outreach': typeof ModulesScoutOutreachRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
+  '/modules/steward/dashboard': typeof ModulesStewardDashboardRoute
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
@@ -965,6 +981,7 @@ export interface FileRoutesByTo {
   '/api/public/zenmode/lookup': typeof ApiPublicZenmodeLookupRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
+  '/modules/steward/people/$userId': typeof ModulesStewardPeopleUserIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsIndexRoute
   '/api/internal/execution/scout/draft-intro': typeof ApiInternalExecutionScoutDraftIntroRoute
@@ -1037,6 +1054,7 @@ export interface FileRoutesById {
   '/modules/scout/outreach': typeof ModulesScoutOutreachRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
+  '/modules/steward/dashboard': typeof ModulesStewardDashboardRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
@@ -1086,6 +1104,7 @@ export interface FileRoutesById {
   '/api/public/zenmode/lookup': typeof ApiPublicZenmodeLookupRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
+  '/modules/steward/people/$userId': typeof ModulesStewardPeopleUserIdRoute
   '/modules/website_/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
   '/api/internal/execution/scout/draft-intro': typeof ApiInternalExecutionScoutDraftIntroRoute
@@ -1159,6 +1178,7 @@ export interface FileRouteTypes {
     | '/modules/scout/outreach'
     | '/modules/scout/settings'
     | '/modules/steward/agents'
+    | '/modules/steward/dashboard'
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
@@ -1208,6 +1228,7 @@ export interface FileRouteTypes {
     | '/api/public/zenmode/lookup'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
+    | '/modules/steward/people/$userId'
     | '/modules/website/submissions/$submissionId'
     | '/modules/steward/meetings/'
     | '/api/internal/execution/scout/draft-intro'
@@ -1271,6 +1292,7 @@ export interface FileRouteTypes {
     | '/modules/scout/outreach'
     | '/modules/scout/settings'
     | '/modules/steward/agents'
+    | '/modules/steward/dashboard'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
     | '/modules/studio/$itemId'
@@ -1319,6 +1341,7 @@ export interface FileRouteTypes {
     | '/api/public/zenmode/lookup'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
+    | '/modules/steward/people/$userId'
     | '/modules/website/submissions/$submissionId'
     | '/modules/steward/meetings'
     | '/api/internal/execution/scout/draft-intro'
@@ -1390,6 +1413,7 @@ export interface FileRouteTypes {
     | '/modules/scout/outreach'
     | '/modules/scout/settings'
     | '/modules/steward/agents'
+    | '/modules/steward/dashboard'
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
@@ -1439,6 +1463,7 @@ export interface FileRouteTypes {
     | '/api/public/zenmode/lookup'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
+    | '/modules/steward/people/$userId'
     | '/modules/website_/submissions/$submissionId'
     | '/modules/steward/meetings/'
     | '/api/internal/execution/scout/draft-intro'
@@ -1966,6 +1991,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardAgentsRouteImport
       parentRoute: typeof ModulesStewardRoute
     }
+    '/modules/steward/dashboard': {
+      id: '/modules/steward/dashboard'
+      path: '/dashboard'
+      fullPath: '/modules/steward/dashboard'
+      preLoaderRoute: typeof ModulesStewardDashboardRouteImport
+      parentRoute: typeof ModulesStewardRoute
+    }
     '/modules/steward/meetings': {
       id: '/modules/steward/meetings'
       path: '/meetings'
@@ -2274,6 +2306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardMeetingsConversationIdRouteImport
       parentRoute: typeof ModulesStewardMeetingsRoute
     }
+    '/modules/steward/people/$userId': {
+      id: '/modules/steward/people/$userId'
+      path: '/people/$userId'
+      fullPath: '/modules/steward/people/$userId'
+      preLoaderRoute: typeof ModulesStewardPeopleUserIdRouteImport
+      parentRoute: typeof ModulesStewardRoute
+    }
     '/modules/website_/submissions/$submissionId': {
       id: '/modules/website_/submissions/$submissionId'
       path: '/modules/website/submissions/$submissionId'
@@ -2520,18 +2559,22 @@ const ModulesStewardMeetingsRouteWithChildren =
 
 interface ModulesStewardRouteChildren {
   ModulesStewardAgentsRoute: typeof ModulesStewardAgentsRoute
+  ModulesStewardDashboardRoute: typeof ModulesStewardDashboardRoute
   ModulesStewardMeetingsRoute: typeof ModulesStewardMeetingsRouteWithChildren
   ModulesStewardMemoryRoute: typeof ModulesStewardMemoryRoute
   ModulesStewardTasksRoute: typeof ModulesStewardTasksRoute
   ModulesStewardIndexRoute: typeof ModulesStewardIndexRoute
+  ModulesStewardPeopleUserIdRoute: typeof ModulesStewardPeopleUserIdRoute
 }
 
 const ModulesStewardRouteChildren: ModulesStewardRouteChildren = {
   ModulesStewardAgentsRoute: ModulesStewardAgentsRoute,
+  ModulesStewardDashboardRoute: ModulesStewardDashboardRoute,
   ModulesStewardMeetingsRoute: ModulesStewardMeetingsRouteWithChildren,
   ModulesStewardMemoryRoute: ModulesStewardMemoryRoute,
   ModulesStewardTasksRoute: ModulesStewardTasksRoute,
   ModulesStewardIndexRoute: ModulesStewardIndexRoute,
+  ModulesStewardPeopleUserIdRoute: ModulesStewardPeopleUserIdRoute,
 }
 
 const ModulesStewardRouteWithChildren = ModulesStewardRoute._addFileChildren(

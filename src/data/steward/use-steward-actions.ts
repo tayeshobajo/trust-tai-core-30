@@ -25,6 +25,7 @@ import {
   requestAgentAssignment,
   setTaskDue,
   setTaskFocus,
+  undoAgentCleared,
   type StewardWriteDeps,
   type StewardWriter,
 } from "./actions";
@@ -136,6 +137,17 @@ export function useStewardActions({
       }),
   });
 
+  const undoClear = useMutation({
+    mutationFn: (input: { activityId: string; taskTitle: string }) =>
+      undoAgentCleared(writer, input),
+    onSuccess: () => {
+      toast.success("Undone.");
+      refresh();
+    },
+    onError: (error: unknown) =>
+      toast.error("Not undone", { description: message(error, "That could not be undone.") }),
+  });
+
   return {
     complete: (task: StewardTask, note: string) => complete.mutate({ task, note }),
     setFocus: (task: StewardTask, value: StewardFocus) => focus.mutate({ task, focus: value }),
@@ -146,8 +158,15 @@ export function useStewardActions({
       person.mutate({ task, person: target }),
     requestAgentAssignment: (task: StewardTask, target: StewardAgent) =>
       agent.mutate({ task, agent: target }),
+    undoAgentCleared: (activityId: string, taskTitle: string) =>
+      undoClear.mutate({ activityId, taskTitle }),
     eligibleAgent: agentCanTake,
     pending:
-      complete.isPending || person.isPending || agent.isPending || due.isPending || rank.isPending,
+      complete.isPending ||
+      person.isPending ||
+      agent.isPending ||
+      due.isPending ||
+      rank.isPending ||
+      undoClear.isPending,
   };
 }

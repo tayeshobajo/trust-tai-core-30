@@ -207,6 +207,36 @@ export async function reassignToPerson(
   });
 }
 
+/**
+ * Undo one agent-clear a person sees on their dashboard activity feed.
+ *
+ * This never touches Paperclip or the task itself, agent completion truth
+ * stays exactly where it already lives. It only records a compensating
+ * activity row so the feed and the stats stop counting that clear: history is
+ * kept, never deleted, and a later read sees the original row as undone (see
+ * `markUndone` in src/data/steward/dashboard-read.ts).
+ */
+export async function undoAgentCleared(
+  writer: StewardWriter,
+  { activityId, taskTitle }: { activityId: string; taskTitle: string },
+): Promise<void> {
+  const at = writer.deps.now();
+  await writer.deps.recordActivity({
+    organizationId: writer.identity.organizationId,
+    name: "task.updated",
+    subject: { type: "task", id: activityId, label: taskTitle },
+    summary: `${writer.identity.name} undid the agent clear on “${taskTitle}”.`,
+    payload: { steward_agent_cleared_undo: true, undoes_activity_id: activityId },
+    provenance: {
+      appId: "steward",
+      actor: { type: "user", id: writer.identity.userId, label: writer.identity.name },
+      observedAt: at,
+      confidence: "observed",
+    },
+    occurredAt: at,
+  });
+}
+
 export async function requestAgentAssignment(
   writer: StewardWriter,
   { task, agent }: { task: StewardTask; agent: StewardAgent },

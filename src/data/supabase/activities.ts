@@ -155,3 +155,37 @@ export const supabaseActivity: ActivityStream = {
     return ((data ?? []) as Row[]).map(toEvent);
   },
 };
+
+const NOT_PROVISIONED = /does not exist|schema cache|42P01|PGRST205|PGRST20[0-9]/i;
+
+/**
+ * A person's own recent activity rows, newest first. Used by the per-person
+ * dashboard for both the feed and the raw rows the stat functions aggregate.
+ *
+ * This does not invent a new table: it reads the same public.activities stream
+ * as everything else, filtered to `actor_user_id`. When the table is not in
+ * this workspace yet the read is a graceful empty rather than an error, so the
+ * dashboard renders honest zeros instead of crashing.
+ */
+export async function listForActor(
+  organizationId: string,
+  userId: string,
+  sinceISO?: string,
+  limit = 200,
+): Promise<ActivityEvent[]> {
+  let request = supabase
+    .from("activities")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("actor_user_id", userId)
+    .order("occurred_at", { ascending: false })
+    .limit(limit);
+  if (sinceISO) request = request.gte("occurred_at", sinceISO);
+
+  const { data, error } = await request;
+  if (error) {
+    if (NOT_PROVISIONED.test(`${error.code} ${error.message}`)) return [];
+    throw new Error(error.message);
+  }
+  return ((data ?? []) as Row[]).map(toEvent);
+}

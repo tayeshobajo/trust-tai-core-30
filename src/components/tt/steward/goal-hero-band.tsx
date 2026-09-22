@@ -72,11 +72,13 @@ export function GoalHeroBand({
   progress,
   onConfirm,
   pending = false,
+  canConfirm = true,
 }: {
   goal: WeeklyGoalRecord | null;
   progress: WeeklyGoalProgress | null;
   onConfirm: () => void;
   pending?: boolean;
+  canConfirm?: boolean;
 }) {
   if (!goal) {
     return (
@@ -87,7 +89,7 @@ export function GoalHeroBand({
     );
   }
 
-  const proposed = goal.status === "proposed";
+  const proposed = goal.status === "proposed" && canConfirm;
 
   return (
     <div className="rounded-2xl border border-border bg-card px-6 py-5">

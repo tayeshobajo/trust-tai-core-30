@@ -15,6 +15,7 @@ import {
   requestAgentAssignment,
   setTaskDue,
   StewardRefusal,
+  undoAgentCleared,
   type StewardWriteDeps,
   type StewardWriter,
 } from "./actions";
@@ -318,5 +319,29 @@ describe("due dates", () => {
       }),
     ).rejects.toThrow(/room that owns it/);
     expect(r.calls).toEqual([]);
+  });
+});
+
+describe("undoing an agent clear", () => {
+  it("records a compensating activity and touches nothing else", async () => {
+    const r = writerFor();
+    await undoAgentCleared(r.writer, {
+      activityId: "activity-1",
+      taskTitle: "Draft the onboarding email",
+    });
+
+    expect(r.calls).toEqual([]);
+    expect(r.activity).toHaveLength(1);
+    expect(r.activity[0]).toMatchObject({
+      name: "task.updated",
+      organizationId: "org",
+      subject: { type: "task", id: "activity-1", label: "Draft the onboarding email" },
+      occurredAt: NOW,
+    });
+    expect(r.activity[0]?.payload).toMatchObject({
+      steward_agent_cleared_undo: true,
+      undoes_activity_id: "activity-1",
+    });
+    expect(r.activity[0]?.summary).toContain("undid the agent clear");
   });
 });
