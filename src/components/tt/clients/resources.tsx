@@ -13,7 +13,14 @@
 
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+
+import {
+  CLIENT_FILE_MAX_BYTES,
+  categoryForFile,
+  isUploadedFile,
+  readableSize,
+} from "@/domain/client-files";
 
 import { Absent, RoomSection, Unreadable } from "@/components/tt/clients/shell";
 import { MetaPill, TTButton, TTCard, TTInput } from "@/components/tt/primitives";
@@ -227,6 +234,7 @@ function ResourceRow({
   busy,
   onEdit,
   onRemove,
+  onOpenFile,
 }: {
   resource: ClientResource;
   projectNames: Record<string, string>;
@@ -234,7 +242,27 @@ function ResourceRow({
   busy: boolean;
   onEdit: () => void;
   onRemove: () => void;
+  onOpenFile?: ((resource: ClientResource) => Promise<void>) | undefined;
 }) {
+  const held = isUploadedFile(resource.url);
+  const [opening, setOpening] = useState(false);
+  const [openProblem, setOpenProblem] = useState<string | null>(null);
+
+  async function open() {
+    if (!onOpenFile) return;
+    setOpening(true);
+    setOpenProblem(null);
+    try {
+      await onOpenFile(resource);
+    } catch (error) {
+      setOpenProblem(
+        error instanceof Error ? error.message : "That file could not be opened just now.",
+      );
+    } finally {
+      setOpening(false);
+    }
+  }
+
   return (
     <TTCard className="flex flex-wrap items-start justify-between gap-3 p-3">
       <div className="min-w-0 flex-1">
@@ -243,28 +271,43 @@ function ResourceRow({
           <MetaPill>{RESOURCE_CATEGORY_LABEL[resource.category]}</MetaPill>
           <MetaPill>{scopeLabel(resource, projectNames)}</MetaPill>
           {resource.meetingDate ? <MetaPill>Met {resource.meetingDate}</MetaPill> : null}
-          <MetaPill>Link saved</MetaPill>
+          <MetaPill>{held ? "File kept here" : "Link saved"}</MetaPill>
         </div>
         {resource.description ? (
           <p className="mt-1.5 text-[13px] text-muted-foreground">{resource.description}</p>
         ) : null}
-        <p className="mt-1 truncate text-[12px] text-muted-foreground">{resource.url}</p>
+        <p className="mt-1 truncate text-[12px] text-muted-foreground">
+          {held ? "Held privately by Trust Tai. It opens with a link that lasts ten minutes." : resource.url}
+        </p>
+        {openProblem ? (
+          <p role="alert" className="mt-1 text-[12px] font-medium text-destructive">
+            {openProblem}
+          </p>
+        ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <a
-          href={resource.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] font-medium text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Open <ExternalLink aria-hidden className="size-3.5" />
-        </a>
+        {held ? (
+          <TTButton size="sm" variant="quiet" onClick={() => void open()} disabled={opening}>
+            {opening ? "Opening…" : "Open file"}
+          </TTButton>
+        ) : (
+          <a
+            href={resource.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] font-medium text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Open <ExternalLink aria-hidden className="size-3.5" />
+          </a>
+        )}
         {canWrite ? (
           <>
-            <TTButton size="sm" variant="quiet" onClick={onEdit} disabled={busy}>
-              <Pencil aria-hidden className="size-3.5" />
-              <span className="sr-only">Edit {resource.title}</span>
-            </TTButton>
+            {held ? null : (
+              <TTButton size="sm" variant="quiet" onClick={onEdit} disabled={busy}>
+                <Pencil aria-hidden className="size-3.5" />
+                <span className="sr-only">Edit {resource.title}</span>
+              </TTButton>
+            )}
             <TTButton size="sm" variant="quiet" onClick={onRemove} disabled={busy}>
               <Trash2 aria-hidden className="size-3.5" />
               <span className="sr-only">Remove {resource.title}</span>
@@ -272,6 +315,167 @@ function ResourceRow({
           </>
         ) : null}
       </div>
+    </TTCard>
+  );
+}
+
+/* ------------------------------------------------------------------ upload */
+
+/**
+ * Uploading keeps the bytes themselves. It is deliberately a different act
+ * from saving a link, and the page says which one each row is.
+ */
+function UploadForm({
+  projects,
+  defaultProjectId,
+  busy,
+  onUpload,
+  onCancel,
+}: {
+  projects: ResourceProject[];
+  defaultProjectId: string | null;
+  busy: boolean;
+  onUpload: (upload: {
+    file: File;
+    title: string;
+    category: ResourceCategory;
+    projectId: string | null;
+    description?: string | undefined;
+  }) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<ResourceCategory | "">("");
+  const [projectId, setProjectId] = useState(defaultProjectId ?? "");
+  const [description, setDescription] = useState("");
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const suggested = file ? categoryForFile(file.name, file.type) : "other";
+
+  async function submit() {
+    if (!file) {
+      setProblem("Choose a file first.");
+      return;
+    }
+    if (file.size > CLIENT_FILE_MAX_BYTES) {
+      setProblem(`That file is ${readableSize(file.size)}, which is over the 25 MB limit.`);
+      return;
+    }
+    setProblem(null);
+    try {
+      await onUpload({
+        file,
+        title: title.trim() || file.name,
+        category: (category || suggested) as ResourceCategory,
+        projectId: projectId ? projectId : null,
+        ...(description.trim() ? { description: description.trim() } : {}),
+      });
+      setFile(null);
+      setTitle("");
+      setDescription("");
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : "That file could not be saved.");
+    }
+  }
+
+  return (
+    <TTCard className="p-4">
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
+        <label className="block text-[13px]">
+          <span className="mb-1 block text-muted-foreground">File</span>
+          <input
+            type="file"
+            className="block w-full text-[13px] text-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-secondary file:px-3 file:py-1.5 file:text-[13px]"
+            onChange={(event) => {
+              const chosen = event.target.files?.[0] ?? null;
+              setFile(chosen);
+              setProblem(null);
+              if (chosen && !title.trim()) setTitle(chosen.name);
+            }}
+          />
+          <span className="mt-1 block text-[12px] text-muted-foreground">
+            Documents, images, recordings and anything else about this work. Up to 25 MB each.
+            {file ? ` Chosen: ${file.name}, ${readableSize(file.size)}.` : ""}
+          </span>
+        </label>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block text-[13px]">
+            <span className="mb-1 block text-muted-foreground">Kind</span>
+            <select
+              className={`${SELECT} w-full`}
+              value={category || suggested}
+              onChange={(event) => setCategory(event.target.value as ResourceCategory)}
+            >
+              {RESOURCE_CATEGORIES.map((option) => (
+                <option key={option} value={option}>
+                  {RESOURCE_CATEGORY_LABEL[option]}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-[13px]">
+            <span className="mb-1 block text-muted-foreground">Belongs to</span>
+            <select
+              className={`${SELECT} w-full`}
+              value={projectId}
+              onChange={(event) => setProjectId(event.target.value)}
+            >
+              <option value="">Client-wide</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-[13px]">
+            <span className="mb-1 block text-muted-foreground">Title</span>
+            <TTInput
+              value={title}
+              placeholder="What this is, in a few words"
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </label>
+
+          <label className="block text-[13px]">
+            <span className="mb-1 block text-muted-foreground">Note (optional)</span>
+            <TTInput
+              value={description}
+              placeholder="Why this matters, if it is not obvious"
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </label>
+        </div>
+
+        {problem ? (
+          <p role="alert" className="text-[13px] font-medium text-destructive">
+            {problem} Nothing was saved, so you can fix it and try again.
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <TTButton type="submit" size="sm" disabled={busy}>
+            {busy ? "Uploading…" : "Upload file"}
+          </TTButton>
+          <TTButton type="button" size="sm" variant="quiet" onClick={onCancel} disabled={busy}>
+            Cancel
+          </TTButton>
+          <span className="text-[12px] text-muted-foreground">
+            The file is kept privately for this company. It is never published, read or sent
+            anywhere.
+          </span>
+        </div>
+      </form>
     </TTCard>
   );
 }
@@ -291,6 +495,8 @@ export function ClientResourcesSection({
   onAdd,
   onEdit,
   onRemove,
+  onUpload,
+  onOpenFile,
 }: {
   resources: ClientResource[];
   /** false when the store is not in this database yet. */
@@ -305,8 +511,20 @@ export function ClientResourcesSection({
   onAdd: (draft: ClientResourceDraft) => Promise<void>;
   onEdit: (id: string, draft: ClientResourceDraft) => Promise<void>;
   onRemove: (resource: ClientResource) => Promise<void>;
+  /** Absent when this build cannot keep files, so no upload is offered. */
+  onUpload?:
+    | ((upload: {
+        file: File;
+        title: string;
+        category: ResourceCategory;
+        projectId: string | null;
+        description?: string | undefined;
+      }) => Promise<void>)
+    | undefined;
+  onOpenFile?: ((resource: ClientResource) => Promise<void>) | undefined;
 }) {
   const [adding, setAdding] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(() => emptyForm(selectedProjectId));
   const [problem, setProblem] = useState<string | null>(null);
@@ -431,17 +649,50 @@ export function ClientResourcesSection({
             ))}
           </select>
           {canWrite && available ? (
-            <TTButton size="sm" onClick={adding ? () => setAdding(false) : startAdd}>
-              {adding ? (
-                <>
-                  <X aria-hidden className="size-4" /> Close
-                </>
-              ) : (
-                <>
-                  <Plus aria-hidden className="size-4" /> Add link
-                </>
-              )}
-            </TTButton>
+            <>
+              <TTButton
+                size="sm"
+                onClick={
+                  adding
+                    ? () => setAdding(false)
+                    : () => {
+                        setUploading(false);
+                        startAdd();
+                      }
+                }
+              >
+                {adding ? (
+                  <>
+                    <X aria-hidden className="size-4" /> Close
+                  </>
+                ) : (
+                  <>
+                    <Plus aria-hidden className="size-4" /> Add link
+                  </>
+                )}
+              </TTButton>
+              {onUpload ? (
+                <TTButton
+                  size="sm"
+                  variant="quiet"
+                  onClick={() => {
+                    setUploading((value) => !value);
+                    setAdding(false);
+                    setEditingId(null);
+                  }}
+                >
+                  {uploading ? (
+                    <>
+                      <X aria-hidden className="size-4" /> Close
+                    </>
+                  ) : (
+                    <>
+                      <Upload aria-hidden className="size-4" /> Upload a file
+                    </>
+                  )}
+                </TTButton>
+              ) : null}
+            </>
           ) : null}
         </div>
 
@@ -461,6 +712,24 @@ export function ClientResourcesSection({
             }}
           />
         ) : null}
+
+        {uploading && onUpload ? (
+          <UploadForm
+            projects={projects}
+            defaultProjectId={
+              filter.projectId !== "all" && filter.projectId !== "client"
+                ? filter.projectId
+                : selectedProjectId
+            }
+            busy={busy}
+            onUpload={async (upload) => {
+              await onUpload(upload);
+              setUploading(false);
+            }}
+            onCancel={() => setUploading(false)}
+          />
+        ) : null}
+
 
         {!available ? (
           <Unreadable
@@ -499,6 +768,7 @@ export function ClientResourcesSection({
                         busy={busy}
                         onEdit={() => startEdit(resource)}
                         onRemove={() => void onRemove(resource)}
+                        onOpenFile={onOpenFile}
                       />
                     </li>
                   ))}
@@ -509,8 +779,9 @@ export function ClientResourcesSection({
         )}
 
         <p className="text-[12px] text-muted-foreground">
-          Removing a link here removes the reference only. The document, recording or folder itself
-          is untouched. Uploading a file is a separate act and happens on the project that owns it.
+          Removing a link removes the reference only, and the document, recording or folder itself
+          is untouched. Removing an uploaded file removes the file Trust Tai holds, and that cannot
+          be undone.
         </p>
       </div>
     </RoomSection>

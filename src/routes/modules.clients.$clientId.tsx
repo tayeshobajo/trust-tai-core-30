@@ -42,6 +42,7 @@ import {
   listClientResources,
   removeClientResource,
 } from "@/data/clients/resources";
+import { openClientFile, uploadClientFile } from "@/data/clients/files";
 import type { ClientResourceDraft } from "@/domain/client-resources";
 import { canWorkInRoom } from "@/lib/room-authority";
 import {
@@ -1020,6 +1021,16 @@ function ClientShell({
                     removeClientResource(organizationId, clientId, resource.id),
                   )
                 }
+                onUpload={(upload) =>
+                  withResourceBusy(() =>
+                    uploadClientFile(organizationId, clientId, upload),
+                  ).then(() => undefined)
+                }
+                onOpenFile={async (resource) => {
+                  // A fresh short lived address every time. Nothing is cached.
+                  const link = await openClientFile(organizationId, clientId, resource.url);
+                  window.open(link, "_blank", "noopener,noreferrer");
+                }}
               />
               <FilesTab
                 read={readOf(filesQuery)}

@@ -53,6 +53,7 @@ import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.in
 import { Route as ModulesCommsConversationsRouteImport } from './routes/modules.comms.conversations'
 import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comms.dashboard'
 import { Route as ModulesCommsDraftsRouteImport } from './routes/modules.comms.drafts'
+import { Route as ModulesCommsHistoryRouteImport } from './routes/modules.comms.history'
 import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.inbox'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsPlanRouteImport } from './routes/modules.comms.plan'
@@ -77,6 +78,7 @@ import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.
 import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/clients.ask'
+import { Route as ApiPublicClientsFilesRouteImport } from './routes/api/public/clients.files'
 import { Route as ApiPublicClientsLogoRouteImport } from './routes/api/public/clients.logo'
 import { Route as ApiPublicClientsResourcesRouteImport } from './routes/api/public/clients.resources'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
@@ -347,6 +349,11 @@ const ModulesCommsDraftsRoute = ModulesCommsDraftsRouteImport.update({
   path: '/drafts',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
+const ModulesCommsHistoryRoute = ModulesCommsHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
 const ModulesCommsInboxRoute = ModulesCommsInboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
@@ -468,6 +475,11 @@ const ModulesWebsitePageRoute = ModulesWebsitePageRouteImport.update({
 const ApiPublicClientsAskRoute = ApiPublicClientsAskRouteImport.update({
   id: '/api/public/clients/ask',
   path: '/api/public/clients/ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicClientsFilesRoute = ApiPublicClientsFilesRouteImport.update({
+  id: '/api/public/clients/files',
+  path: '/api/public/clients/files',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicClientsLogoRoute = ApiPublicClientsLogoRouteImport.update({
@@ -779,6 +791,7 @@ export interface FileRoutesByFullPath {
   '/modules/comms/conversations': typeof ModulesCommsConversationsRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/drafts': typeof ModulesCommsDraftsRoute
+  '/modules/comms/history': typeof ModulesCommsHistoryRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
@@ -805,6 +818,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
+  '/api/public/clients/files': typeof ApiPublicClientsFilesRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/clients/resources': typeof ApiPublicClientsResourcesRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
@@ -889,6 +903,7 @@ export interface FileRoutesByTo {
   '/modules/comms/conversations': typeof ModulesCommsConversationsRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/drafts': typeof ModulesCommsDraftsRoute
+  '/modules/comms/history': typeof ModulesCommsHistoryRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
@@ -914,6 +929,7 @@ export interface FileRoutesByTo {
   '/modules/steward': typeof ModulesStewardIndexRoute
   '/modules/studio': typeof ModulesStudioIndexRoute
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
+  '/api/public/clients/files': typeof ApiPublicClientsFilesRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/clients/resources': typeof ApiPublicClientsResourcesRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
@@ -1007,6 +1023,7 @@ export interface FileRoutesById {
   '/modules/comms/conversations': typeof ModulesCommsConversationsRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/drafts': typeof ModulesCommsDraftsRoute
+  '/modules/comms/history': typeof ModulesCommsHistoryRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
@@ -1033,6 +1050,7 @@ export interface FileRoutesById {
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
+  '/api/public/clients/files': typeof ApiPublicClientsFilesRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/clients/resources': typeof ApiPublicClientsResourcesRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
@@ -1127,6 +1145,7 @@ export interface FileRouteTypes {
     | '/modules/comms/conversations'
     | '/modules/comms/dashboard'
     | '/modules/comms/drafts'
+    | '/modules/comms/history'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
@@ -1153,6 +1172,7 @@ export interface FileRouteTypes {
     | '/modules/steward/'
     | '/modules/studio/'
     | '/api/public/clients/ask'
+    | '/api/public/clients/files'
     | '/api/public/clients/logo'
     | '/api/public/clients/resources'
     | '/api/public/comms/draft'
@@ -1237,6 +1257,7 @@ export interface FileRouteTypes {
     | '/modules/comms/conversations'
     | '/modules/comms/dashboard'
     | '/modules/comms/drafts'
+    | '/modules/comms/history'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
@@ -1262,6 +1283,7 @@ export interface FileRouteTypes {
     | '/modules/steward'
     | '/modules/studio'
     | '/api/public/clients/ask'
+    | '/api/public/clients/files'
     | '/api/public/clients/logo'
     | '/api/public/clients/resources'
     | '/api/public/comms/draft'
@@ -1354,6 +1376,7 @@ export interface FileRouteTypes {
     | '/modules/comms/conversations'
     | '/modules/comms/dashboard'
     | '/modules/comms/drafts'
+    | '/modules/comms/history'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
@@ -1380,6 +1403,7 @@ export interface FileRouteTypes {
     | '/modules/steward/'
     | '/modules/studio/'
     | '/api/public/clients/ask'
+    | '/api/public/clients/files'
     | '/api/public/clients/logo'
     | '/api/public/clients/resources'
     | '/api/public/comms/draft'
@@ -1458,6 +1482,7 @@ export interface RootRouteChildren {
   ApiLinkiExecuteRoute: typeof ApiLinkiExecuteRoute
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
   ApiPublicClientsAskRoute: typeof ApiPublicClientsAskRoute
+  ApiPublicClientsFilesRoute: typeof ApiPublicClientsFilesRoute
   ApiPublicClientsLogoRoute: typeof ApiPublicClientsLogoRoute
   ApiPublicClientsResourcesRoute: typeof ApiPublicClientsResourcesRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
@@ -1815,6 +1840,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesCommsDraftsRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
+    '/modules/comms/history': {
+      id: '/modules/comms/history'
+      path: '/history'
+      fullPath: '/modules/comms/history'
+      preLoaderRoute: typeof ModulesCommsHistoryRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
     '/modules/comms/inbox': {
       id: '/modules/comms/inbox'
       path: '/inbox'
@@ -1981,6 +2013,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/clients/ask'
       fullPath: '/api/public/clients/ask'
       preLoaderRoute: typeof ApiPublicClientsAskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/clients/files': {
+      id: '/api/public/clients/files'
+      path: '/api/public/clients/files'
+      fullPath: '/api/public/clients/files'
+      preLoaderRoute: typeof ApiPublicClientsFilesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/clients/logo': {
@@ -2384,6 +2423,7 @@ interface ModulesCommsRouteChildren {
   ModulesCommsConversationsRoute: typeof ModulesCommsConversationsRoute
   ModulesCommsDashboardRoute: typeof ModulesCommsDashboardRoute
   ModulesCommsDraftsRoute: typeof ModulesCommsDraftsRoute
+  ModulesCommsHistoryRoute: typeof ModulesCommsHistoryRoute
   ModulesCommsInboxRoute: typeof ModulesCommsInboxRoute
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsPlanRoute: typeof ModulesCommsPlanRoute
@@ -2399,6 +2439,7 @@ const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
   ModulesCommsConversationsRoute: ModulesCommsConversationsRoute,
   ModulesCommsDashboardRoute: ModulesCommsDashboardRoute,
   ModulesCommsDraftsRoute: ModulesCommsDraftsRoute,
+  ModulesCommsHistoryRoute: ModulesCommsHistoryRoute,
   ModulesCommsInboxRoute: ModulesCommsInboxRoute,
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsPlanRoute: ModulesCommsPlanRoute,
@@ -2539,6 +2580,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLinkiExecuteRoute: ApiLinkiExecuteRoute,
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
   ApiPublicClientsAskRoute: ApiPublicClientsAskRoute,
+  ApiPublicClientsFilesRoute: ApiPublicClientsFilesRoute,
   ApiPublicClientsLogoRoute: ApiPublicClientsLogoRoute,
   ApiPublicClientsResourcesRoute: ApiPublicClientsResourcesRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,

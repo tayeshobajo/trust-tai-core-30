@@ -1,10 +1,10 @@
 /**
  * Comms navigation.
  *
- * Five destinations, agreed with Tai: what needs action, the conversations
- * themselves, the drafts waiting on a review, how we sound, and what we are
- * connected to. Everything else in Comms is reached from inside the work it
- * belongs to, not from a tenth tab.
+ * Six destinations, agreed with Tai: what needs action, the conversations
+ * themselves, the drafts waiting on a review, the record of what has already
+ * left and come back, how we sound, and what we are connected to. Everything
+ * else in Comms is reached from inside the work it belongs to.
  *
  * The persistent "New draft" action starts a piece of writing of a stated
  * kind. It never sends anything.
@@ -17,7 +17,13 @@ import { ChevronDown } from "lucide-react";
 import { TTButton } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 
-export type CommsSection = "dashboard" | "conversations" | "drafts" | "voice" | "integrations";
+export type CommsSection =
+  | "dashboard"
+  | "conversations"
+  | "drafts"
+  | "history"
+  | "voice"
+  | "integrations";
 
 /** What a new piece of writing is. Carried into the intake as its kind. */
 export type NewDraftKind = "message" | "email" | "proposal";
@@ -41,6 +47,7 @@ const TABS: { to: string; section: CommsSection; label: string }[] = [
   { to: "/modules/comms", section: "dashboard", label: "Dashboard" },
   { to: "/modules/comms/relationships", section: "conversations", label: "Conversations" },
   { to: "/modules/comms/drafts", section: "drafts", label: "Drafts & Reviews" },
+  { to: "/modules/comms/history", section: "history", label: "History" },
   { to: "/modules/comms/voice", section: "voice", label: "Voice DNA" },
   { to: "/modules/comms/integrations", section: "integrations", label: "Connections" },
 ];
