@@ -28,6 +28,7 @@ import {
   type ResourceWrite,
 } from "@/lib/client-resources-store.server";
 import { isResourceCategory } from "@/domain/client-resources";
+import { isUploadedFile } from "@/domain/client-files";
 
 function str(value: unknown): string {
   return typeof value === "string" ? value : "";
