@@ -177,6 +177,14 @@ export function CreateTaskDrawer({
   }
 
   async function submit(status: "draft" | "open", kind: ManualAssigneeKind) {
+    /* A draft is a parking spot: it saves as it stands, even half-filled, so
+     * we only need a title. Full assignment rules apply when it goes live. */
+    if (status === "draft") {
+      const hasTitle = await form.trigger("title");
+      if (!hasTitle) return;
+      await onCreate(buildInput(status, kind), { assignToAI: false });
+      return;
+    }
     form.setValue("assignTo", kind);
     if (kind === "agent") form.setValue("aiMode", (aiMode || undefined) as ManualAiMode | undefined);
     const valid = await form.trigger();
