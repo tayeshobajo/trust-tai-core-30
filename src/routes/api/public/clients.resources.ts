@@ -152,7 +152,14 @@ export const Route = createFileRoute("/api/public/clients/resources")({
 
           const id = str(body["id"]);
           if (!id) return Response.json({ error: "A saved link is needed." }, { status: 400 });
+          // An uploaded file is bytes we hold, so removing the record has to
+          // remove them too. A link out is only ever a reference.
+          const existing = (await clientResourcesStore.list(scope)).find((row) => row.id === id);
           await clientResourcesStore.remove(scope, id);
+          if (existing && isUploadedFile(existing.url)) {
+            const { deleteClientFile } = await import("@/lib/client-files-store.server");
+            await deleteClientFile(existing.url).catch(() => undefined);
+          }
           return Response.json({ removed: true });
         } catch (error) {
           const failure = storeFailure(error);

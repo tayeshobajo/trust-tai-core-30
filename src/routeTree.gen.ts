@@ -78,6 +78,7 @@ import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.
 import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/clients.ask'
+import { Route as ApiPublicClientsFilesRouteImport } from './routes/api/public/clients.files'
 import { Route as ApiPublicClientsLogoRouteImport } from './routes/api/public/clients.logo'
 import { Route as ApiPublicClientsResourcesRouteImport } from './routes/api/public/clients.resources'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
@@ -476,6 +477,11 @@ const ApiPublicClientsAskRoute = ApiPublicClientsAskRouteImport.update({
   path: '/api/public/clients/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicClientsFilesRoute = ApiPublicClientsFilesRouteImport.update({
+  id: '/api/public/clients/files',
+  path: '/api/public/clients/files',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicClientsLogoRoute = ApiPublicClientsLogoRouteImport.update({
   id: '/api/public/clients/logo',
   path: '/api/public/clients/logo',
@@ -812,6 +818,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
+  '/api/public/clients/files': typeof ApiPublicClientsFilesRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/clients/resources': typeof ApiPublicClientsResourcesRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
@@ -922,6 +929,7 @@ export interface FileRoutesByTo {
   '/modules/steward': typeof ModulesStewardIndexRoute
   '/modules/studio': typeof ModulesStudioIndexRoute
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
+  '/api/public/clients/files': typeof ApiPublicClientsFilesRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/clients/resources': typeof ApiPublicClientsResourcesRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
@@ -1042,6 +1050,7 @@ export interface FileRoutesById {
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
+  '/api/public/clients/files': typeof ApiPublicClientsFilesRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/clients/resources': typeof ApiPublicClientsResourcesRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
@@ -1163,6 +1172,7 @@ export interface FileRouteTypes {
     | '/modules/steward/'
     | '/modules/studio/'
     | '/api/public/clients/ask'
+    | '/api/public/clients/files'
     | '/api/public/clients/logo'
     | '/api/public/clients/resources'
     | '/api/public/comms/draft'
@@ -1273,6 +1283,7 @@ export interface FileRouteTypes {
     | '/modules/steward'
     | '/modules/studio'
     | '/api/public/clients/ask'
+    | '/api/public/clients/files'
     | '/api/public/clients/logo'
     | '/api/public/clients/resources'
     | '/api/public/comms/draft'
@@ -1392,6 +1403,7 @@ export interface FileRouteTypes {
     | '/modules/steward/'
     | '/modules/studio/'
     | '/api/public/clients/ask'
+    | '/api/public/clients/files'
     | '/api/public/clients/logo'
     | '/api/public/clients/resources'
     | '/api/public/comms/draft'
@@ -1470,6 +1482,7 @@ export interface RootRouteChildren {
   ApiLinkiExecuteRoute: typeof ApiLinkiExecuteRoute
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
   ApiPublicClientsAskRoute: typeof ApiPublicClientsAskRoute
+  ApiPublicClientsFilesRoute: typeof ApiPublicClientsFilesRoute
   ApiPublicClientsLogoRoute: typeof ApiPublicClientsLogoRoute
   ApiPublicClientsResourcesRoute: typeof ApiPublicClientsResourcesRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
@@ -2000,6 +2013,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/clients/ask'
       fullPath: '/api/public/clients/ask'
       preLoaderRoute: typeof ApiPublicClientsAskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/clients/files': {
+      id: '/api/public/clients/files'
+      path: '/api/public/clients/files'
+      fullPath: '/api/public/clients/files'
+      preLoaderRoute: typeof ApiPublicClientsFilesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/clients/logo': {
@@ -2560,6 +2580,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLinkiExecuteRoute: ApiLinkiExecuteRoute,
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
   ApiPublicClientsAskRoute: ApiPublicClientsAskRoute,
+  ApiPublicClientsFilesRoute: ApiPublicClientsFilesRoute,
   ApiPublicClientsLogoRoute: ApiPublicClientsLogoRoute,
   ApiPublicClientsResourcesRoute: ApiPublicClientsResourcesRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
