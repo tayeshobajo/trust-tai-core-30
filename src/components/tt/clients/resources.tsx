@@ -13,7 +13,14 @@
 
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+
+import {
+  CLIENT_FILE_MAX_BYTES,
+  categoryForFile,
+  isUploadedFile,
+  readableSize,
+} from "@/domain/client-files";
 
 import { Absent, RoomSection, Unreadable } from "@/components/tt/clients/shell";
 import { MetaPill, TTButton, TTCard, TTInput } from "@/components/tt/primitives";
