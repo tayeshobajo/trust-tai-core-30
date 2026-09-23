@@ -334,7 +334,7 @@ export function CreateTaskDrawer({
             </TTField>
           </div>
 
-          <div className="space-y-2">
+          {allowAgentCreate ? <div className="space-y-2">
             <span className="text-sm font-medium text-foreground">Priority</span>
             <div className="flex flex-wrap gap-1">
               {PRIORITIES.map((value) => (
@@ -347,7 +347,7 @@ export function CreateTaskDrawer({
                 </Pill>
               ))}
             </div>
-          </div>
+          </div> : null}
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-foreground">Assign to</span>
