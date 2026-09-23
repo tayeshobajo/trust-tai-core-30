@@ -524,8 +524,10 @@ function CompanyDetail({
   // preparation runs. Nothing is sent, and a warning travels with an address
   // that is unverified or past the freshness policy. Handing the same person
   // over twice returns to the same conversation.
-  const prepareOutreach = useMutation({
-    mutationFn: async (person: ScoutPerson) => {
+  const handOffPerson = async (
+    person: ScoutPerson,
+    template?: { subject: string; body: string; campaignKey: string },
+  ) => {
       if (!candidate) throw new Error("That company is no longer on your board.");
       const added = await peopleService.addManual(
         {
@@ -572,6 +574,7 @@ function CompanyDetail({
           roleTitle: person.title ?? contact.roleTitle,
           companyName: candidate.prospect.name,
         },
+        ...(template ? { template } : {}),
       });
       const relationshipId = saved.prepared?.relationshipId;
       if (person.persistedId && relationshipId) {
@@ -592,7 +595,9 @@ function CompanyDetail({
         }
       }
       return saved;
-    },
+  };
+  const prepareOutreach = useMutation({
+    mutationFn: (person: ScoutPerson) => handOffPerson(person),
     onSuccess: (_result, person) => {
       const state = workEmailState(person, new Date().toISOString());
       toast.success("Prepared in Comms", {
