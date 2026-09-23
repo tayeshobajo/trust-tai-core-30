@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as MockupsCommsFamiliarARouteImport } from './routes/mockups.comms-familiar-a'
 import { Route as MockupsCommsFamiliarBRouteImport } from './routes/mockups.comms-familiar-b'
@@ -143,6 +144,11 @@ const AuthRoute = AuthRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -765,6 +771,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
+  '/welcome': typeof WelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
   '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
@@ -886,6 +893,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
+  '/welcome': typeof WelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
   '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
@@ -1001,6 +1009,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
+  '/welcome': typeof WelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
   '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
@@ -1125,6 +1134,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/settings'
+    | '/welcome'
     | '/auth/callback'
     | '/mockups/comms-familiar-a'
     | '/mockups/comms-familiar-b'
@@ -1246,6 +1256,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/welcome'
     | '/auth/callback'
     | '/mockups/comms-familiar-a'
     | '/mockups/comms-familiar-b'
@@ -1360,6 +1371,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/settings'
+    | '/welcome'
     | '/auth/callback'
     | '/mockups/comms-familiar-a'
     | '/mockups/comms-familiar-b'
@@ -1483,6 +1495,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
+  WelcomeRoute: typeof WelcomeRoute
   MockupsCommsFamiliarARoute: typeof MockupsCommsFamiliarARoute
   MockupsCommsFamiliarBRoute: typeof MockupsCommsFamiliarBRoute
   MockupsCommsFamiliarCRoute: typeof MockupsCommsFamiliarCRoute
@@ -1576,6 +1589,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -2599,6 +2619,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
+  WelcomeRoute: WelcomeRoute,
   MockupsCommsFamiliarARoute: MockupsCommsFamiliarARoute,
   MockupsCommsFamiliarBRoute: MockupsCommsFamiliarBRoute,
   MockupsCommsFamiliarCRoute: MockupsCommsFamiliarCRoute,
