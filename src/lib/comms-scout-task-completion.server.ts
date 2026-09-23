@@ -6,6 +6,8 @@ export interface ScoutTaskCompletion {
   recorded: boolean;
   taskId: string | null;
   note: string;
+  /** The AI follow-up task created for this exact send, when one was. */
+  followUpTaskId?: string | null;
 }
 
 /**
@@ -16,6 +18,8 @@ export async function completeScoutTaskAfterSentDelivery(input: {
   client: SupabaseClient;
   organizationId: string;
   deliveryId: string;
+  /** Starts the AI teammate on the follow-up. Failure never undoes completion. */
+  dispatch?: (taskId: string) => Promise<void>;
 }): Promise<ScoutTaskCompletion> {
   const delivery = await input.client
     .from("comms_review_deliveries")
@@ -69,9 +73,11 @@ export async function completeScoutTaskAfterSentDelivery(input: {
       .eq("correlation_id", correlationId)
       .maybeSingle();
     const row = (existing.data ?? null) as Row | null;
-    return row?.["status"] === "complete"
-      ? { recorded: true, taskId: String(row["id"]), note: "The linked Scout task was already complete." }
-      : { recorded: false, taskId: null, note: "No exact linked Scout task was found." };
+    if (row?.["status"] !== "complete") {
+      return { recorded: false, taskId: null, note: "No exact linked Scout task was found." };
+    }
+    const followUpTaskId = await ensureFollowUp(input, prospectId);
+    return { recorded: true, taskId: String(row["id"]), note: "The linked Scout task was already complete.", followUpTaskId };
   }
   if (rows.length !== 1) {
     return { recorded: false, taskId: null, note: "More than one linked Scout task matched; none was inferred." };
@@ -94,5 +100,48 @@ export async function completeScoutTaskAfterSentDelivery(input: {
       completion_basis: "provider_confirmed_sent",
     },
   });
-  return { recorded: true, taskId, note: "The linked Scout task is complete." };
+  const followUpTaskId = await ensureFollowUp(input, prospectId);
+  return { recorded: true, taskId, note: "The linked Scout task is complete.", followUpTaskId };
+}
+
+/**
+ * One follow-up task per sent delivery, assigned to the AI teammate as internal
+ * preparation. The key makes retries of the same delivery create nothing new;
+ * the AI only prepares a draft or plan that waits for a person's review.
+ */
+async function ensureFollowUp(
+  input: { client: SupabaseClient; organizationId: string; deliveryId: string; dispatch?: (taskId: string) => Promise<void> },
+  prospectId: string,
+): Promise<string | null> {
+  const correlationId = `scout:prospect:${prospectId}:follow-up:${input.deliveryId}`;
+  const existing = await input.client
+    .from("steward_tasks")
+    .select("id")
+    .eq("organization_id", input.organizationId)
+    .eq("correlation_id", correlationId)
+    .maybeSingle();
+  if (existing.error) return null;
+  if (existing.data) return String((existing.data as Row)["id"]);
+  const created = await input.client
+    .from("steward_tasks")
+    .insert({
+      organization_id: input.organizationId,
+      title: "Prepare the follow-up after the first message",
+      assignee_kind: "agent",
+      owner_label: "Trust Tai AI",
+      priority: "normal",
+      status: "open",
+      correlation_id: correlationId,
+      source_app: "scout",
+      source_entity_type: "prospect",
+      source_entity_id: prospectId,
+      notes:
+        "Internal preparation only: draft a follow-up or plan for review. Never send, promise, price or change dates.",
+    })
+    .select("id")
+    .maybeSingle();
+  if (created.error || !created.data) return null;
+  const taskId = String((created.data as Row)["id"]);
+  if (input.dispatch) await input.dispatch(taskId).catch(() => undefined);
+  return taskId;
 }

@@ -561,6 +561,10 @@ export async function settleDelivery(input: {
       client: writer,
       organizationId: input.organizationId,
       deliveryId: input.deliveryId,
+      dispatch: async (taskId) => {
+        const { dispatchAgentFromRequest } = await import("@/lib/steward-agent-dispatch.server");
+        await dispatchAgentFromRequest({ organizationId: input.organizationId, taskId, writer });
+      },
     }).catch(() => undefined);
   }
   return { recorded: true, note: describeDelivery(input.state, input.channel) };
