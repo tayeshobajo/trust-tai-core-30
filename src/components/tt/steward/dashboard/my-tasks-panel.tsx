@@ -189,7 +189,7 @@ export function MyTasksPanel({
     );
   }
 
-  const hasAny = openTasks.length > 0;
+  const hasAny = tasks.length > 0;
 
   return (
     <div className="rounded-xl border border-border bg-card p-3">

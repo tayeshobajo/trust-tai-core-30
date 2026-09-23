@@ -152,6 +152,20 @@ describe("completing a task", () => {
     });
   });
 
+  it("completes a manual task in its durable task row and gives the audit a stable key", async () => {
+    const r = writerFor();
+    await completeTask(r.writer, {
+      task: task({ id: "manual-1", key: "manual:manual-1", origin: "manual" }),
+      note: "Done",
+    });
+
+    expect(r.calls).toContain('manual:manual-1:{"status":"complete"}');
+    expect(r.calls.some((call) => call.startsWith("status:"))).toBe(false);
+    expect(r.activity[0]?.payload?.["source_event_key"]).toBe(
+      "steward:task-completed:manual:manual-1",
+    );
+  });
+
   it("still completes when Steward's own state table is missing", async () => {
     const r = writerFor(
       {},

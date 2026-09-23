@@ -589,15 +589,15 @@ export function CreateTaskDrawer({
           >
             Save draft
           </TTButton>
-          {allowAgentCreate ? <TTButton
+          <TTButton
             type="button"
             variant="primary"
             pending={pending}
             onClick={() => void submit("open", "human")}
           >
             Create task
-          </TTButton> : null}
-          <TTButton
+          </TTButton>
+          {allowAgentCreate ? <TTButton
             type="button"
             variant="signal"
             pending={pending}
@@ -605,7 +605,7 @@ export function CreateTaskDrawer({
             onClick={() => void submit("open", "agent")}
           >
             Create and assign to AI
-          </TTButton>
+          </TTButton> : null}
         </div>
       </aside>
     </div>
