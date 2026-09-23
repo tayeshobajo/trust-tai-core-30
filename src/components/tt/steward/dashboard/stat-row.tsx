@@ -26,12 +26,12 @@ function StatCard({
   detail?: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
         <p className="tt-eyebrow">{label}</p>
       </div>
-      <p className="mt-3 font-display text-2xl text-foreground">{value}</p>
+       <p className="mt-2 font-display text-xl text-foreground">{value}</p>
       {detail ? <div className="mt-2">{detail}</div> : null}
     </div>
   );
@@ -75,7 +75,7 @@ export function StatRow({
         : `${minutesSaved}m`;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
         icon={<Flame aria-hidden className="size-4" />}
         label="Current streak"

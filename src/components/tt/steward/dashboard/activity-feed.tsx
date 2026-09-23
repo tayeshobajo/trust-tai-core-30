@@ -64,7 +64,7 @@ export function ActivityFeed({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6">
+    <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-1 flex items-end justify-between gap-3">
         <p className="tt-eyebrow">AI teammate activity</p>
         <Link to={viewAllHref} className="text-sm text-royal hover:underline">

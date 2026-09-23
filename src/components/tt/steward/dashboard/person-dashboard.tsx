@@ -93,7 +93,7 @@ export function PersonDashboard({
   const clearedCount = goalProgress?.agentCleared ?? 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-3 pb-6">
       <DashboardHeader identity={read.identity} now={read.now} scope={scope} />
 
       <div className="space-y-3">
@@ -126,23 +126,25 @@ export function PersonDashboard({
         minutesSaved={minutesSaved}
       />
 
-      <MyTasksPanel
-        tasks={read.tasks}
-        now={read.now}
-        scope={scope}
-        onToggle={onCompleteTask}
-        viewAllHref={tasksHref}
-      />
+      <div className="grid items-start gap-3 xl:grid-cols-[1.08fr_1fr]">
+        <MyTasksPanel
+          tasks={read.tasks}
+          now={read.now}
+          scope={scope}
+          onToggle={onCompleteTask}
+          viewAllHref={tasksHref}
+        />
 
-      <ActivityFeed
-        activities={read.activities}
-        now={read.now}
-        scope={scope}
-        clearedCount={clearedCount}
-        minutesSaved={minutesSaved}
-        onUndo={onUndoActivity}
-        viewAllHref={activityHref}
-      />
+        <ActivityFeed
+          activities={read.activities}
+          now={read.now}
+          scope={scope}
+          clearedCount={clearedCount}
+          minutesSaved={minutesSaved}
+          onUndo={onUndoActivity}
+          viewAllHref={activityHref}
+        />
+      </div>
 
       <BlockersStrip tasks={read.tasks} scope={scope} />
     </div>

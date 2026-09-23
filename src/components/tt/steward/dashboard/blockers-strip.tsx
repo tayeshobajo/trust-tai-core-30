@@ -22,8 +22,12 @@ export function BlockersStrip({
 
   if (blockers.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-card/60 px-6 py-4">
-        <p className="text-sm text-muted-foreground">No blockers right now.</p>
+      <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4">
+        <AlertTriangle aria-hidden className="size-4 text-success" />
+        <div>
+          <p className="text-sm font-medium text-foreground">No blockers right now</p>
+          <p className="text-xs text-muted-foreground">You are all clear. Anything urgent will appear here.</p>
+        </div>
       </div>
     );
   }

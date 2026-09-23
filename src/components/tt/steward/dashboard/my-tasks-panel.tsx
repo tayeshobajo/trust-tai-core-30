@@ -100,7 +100,7 @@ export function MyTasksPanel({
   const hasAny = tasks.some((task) => task.state !== "complete");
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6">
+    <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex items-end justify-between gap-3">
         <p className="tt-eyebrow">My tasks</p>
         <Link to={viewAllHref} className="text-sm text-royal hover:underline">
