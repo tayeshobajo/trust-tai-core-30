@@ -90,3 +90,8 @@ Build: full suite 325 files / 3,541 tests, `tsgo --noEmit` clean. Auth status `n
 | S4 AI start failure keeps completion | CODE | PASS | — |
 
 The follow-up agent runs as the sending person's own token (RLS); with no token it stays queued and never impersonates. No send, publish, SQL application or provider call occurred.
+
+### Signed-in run 2026-09-23 23:15 UTC (tai@trust-tai.com, magic link, session discarded after)
+- LIVE PASS: H1 signed in, H2 create, H2 complete shows check + crossed + locked, H4 persists after reload, Q1 queued on Trust Tai AI page, D1 Scouts tab loads, T1 Timeline lists task.
+- LIVE BLOCKED: L1/L2/L4. The page reported "AI run history is not stored in this workspace yet" and "AI work can't start here yet because its server access isn't set up." Dependencies: Codex applying `20260923190000_steward_agent_runs_and_source_links.sql`, and server write access in the preview.
+- The 2 QA tasks were deleted with the user's own session (RLS), and the session file was removed.
