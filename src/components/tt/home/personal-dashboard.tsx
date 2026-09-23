@@ -105,6 +105,7 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
   }
 
   return (
+    <>
     <PersonDashboard
       read={read.data}
       scope="self"

@@ -390,7 +390,7 @@ export function CreateTaskDrawer({
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Subtasks</span>
               {onGenerateSubtasks ? (
-           {allowAgentCreate ? <TTButton
+                <TTButton
                   type="button"
                   size="sm"
                   variant="secondary"
@@ -401,7 +401,7 @@ export function CreateTaskDrawer({
                 >
                   <Sparkles aria-hidden />
                   Generate with AI
-           </TTButton> : null}
+                </TTButton>
               ) : null}
             </div>
             <ul className="space-y-2">
@@ -581,14 +581,14 @@ export function CreateTaskDrawer({
         </div>
 
         <div className="mt-8 flex flex-wrap gap-2 border-t border-border pt-4">
-          <TTButton
+          {allowAgentCreate ? <TTButton
             type="button"
             variant="secondary"
             pending={pending}
             onClick={() => void submit("draft", assignTo)}
           >
             Save draft
-          </TTButton>
+          </TTButton> : null}
           <TTButton
             type="button"
             variant="primary"
