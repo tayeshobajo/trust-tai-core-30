@@ -81,7 +81,7 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task) => {
   });
   let parsed: unknown;
   try {
-    parsed = JSON.parse(extractJsonObject(response.raw));
+    parsed = extractJsonObject(response.raw);
   } catch {
     throw new AgentRunUnavailable("The AI returned an unreadable result. The task stayed open.");
   }
