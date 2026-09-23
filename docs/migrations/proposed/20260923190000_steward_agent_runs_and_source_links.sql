@@ -39,7 +39,7 @@ create table if not exists public.steward_agent_runs (
   constraint steward_agent_runs_org_idempotency_unique unique (organization_id, idempotency_key)
 );
 
-grant select, insert, update on public.steward_agent_runs to authenticated;
+grant select on public.steward_agent_runs to authenticated;
 grant all on public.steward_agent_runs to service_role;
 
 alter table public.steward_agent_runs enable row level security;
@@ -55,41 +55,8 @@ create policy "Active members read bounded agent runs"
     )
   );
 
-create policy "Active members request bounded agent runs"
-  on public.steward_agent_runs for insert to authenticated
-  with check (
-    requested_by = auth.uid()
-    and status in ('working', 'needs_approval')
-    and exists (
-      select 1 from public.organization_memberships m
-      where m.organization_id = steward_agent_runs.organization_id
-        and m.user_id = auth.uid()
-        and m.status = 'active'
-    )
-    and exists (
-      select 1 from public.steward_tasks t
-      where t.id = steward_agent_runs.task_id
-        and t.organization_id = steward_agent_runs.organization_id
-        and t.assignee_kind = 'agent'
-    )
-  );
-
-create policy "Run requester settles bounded agent run"
-  on public.steward_agent_runs for update to authenticated
-  using (
-    requested_by = auth.uid()
-    and status = 'working'
-    and exists (
-      select 1 from public.organization_memberships m
-      where m.organization_id = steward_agent_runs.organization_id
-        and m.user_id = auth.uid()
-        and m.status = 'active'
-    )
-  )
-  with check (
-    requested_by = auth.uid()
-    and status in ('completed', 'failed', 'blocked', 'needs_approval')
-  );
+-- Browser roles cannot create or settle execution evidence. The authenticated
+-- server entry point verifies the caller, then the service role writes the run.
 
 create or replace function private.guard_steward_agent_run_identity()
 returns trigger

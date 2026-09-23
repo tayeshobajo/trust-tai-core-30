@@ -15,8 +15,10 @@ export const runStewardAgentTask = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => RunInput.parse(input))
   .handler(async ({ context, data }) => {
     const { executeStewardAgentTask } = await import("@/lib/steward-agent-runner.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return executeStewardAgentTask({
       client: context.supabase,
+      writer: supabaseAdmin,
       organizationId: data.organizationId,
       taskId: data.taskId,
       agentId: data.agentId,

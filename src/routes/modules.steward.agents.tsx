@@ -425,6 +425,9 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   const agents = read.data?.agents;
+  const internalTasks = (read.data?.tasks ?? []).filter(
+    (task) => task.origin === "manual" && task.owner.kind === "agent",
+  );
   const connection = paperclipConnection({
     liveReachable: Boolean(agents?.connected),
     lastSuccessAt: agents?.syncHealth?.lastSuccessAt ?? null,
@@ -455,6 +458,35 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
           </button>
         </div>
       </div>
+
+      <section className="tt-surface p-5" aria-labelledby="trust-tai-agent-tasks">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="tt-eyebrow">Trust Tai AI</p>
+            <h3 id="trust-tai-agent-tasks" className="mt-1 font-display text-lg text-foreground">
+              Internal task list
+            </h3>
+          </div>
+          <MetaPill>{internalTasks.length} tasks</MetaPill>
+        </div>
+        {internalTasks.length > 0 ? (
+          <ul className="mt-4 divide-y divide-border border-y border-border">
+            {internalTasks.map((task) => (
+              <li key={task.key} className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0">
+                  <p className={cn("truncate text-sm text-foreground", task.state === "complete" && "text-muted-foreground line-through")}>{task.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{task.sourceLabel}</p>
+                </div>
+                <MetaPill>{task.state.replace("_", " ")}</MetaPill>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Assign a task to an AI teammate from Home or Steward Tasks to start bounded internal work.
+          </p>
+        )}
+      </section>
 
       {read.isError ? (
         <StewardUnavailable error={read.error} />

@@ -125,6 +125,7 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task) => {
 
 export async function executeStewardAgentTask(input: {
   client: SupabaseClient;
+  writer: SupabaseClient;
   organizationId: string;
   taskId: string;
   agentId: string;
@@ -155,7 +156,7 @@ export async function executeStewardAgentTask(input: {
   }
   const risk = classifyAgentTask(task);
   const idempotencyKey = `steward-agent:${input.organizationId}:${input.taskId}:v1`;
-  const claim = await input.client
+  const claim = await input.writer
     .from("steward_agent_runs")
     .insert({
       organization_id: input.organizationId,
@@ -173,7 +174,7 @@ export async function executeStewardAgentTask(input: {
     .maybeSingle();
   if (claim.error) {
     if (claim.error.code === "23505") {
-      const existing = await input.client
+      const existing = await input.writer
         .from("steward_agent_runs")
         .select("id, status")
         .eq("organization_id", input.organizationId)
@@ -198,7 +199,7 @@ export async function executeStewardAgentTask(input: {
   }
   const runId = String((claim.data as Row)["id"]);
   if (!risk.executable) {
-    await input.client
+    await input.writer
       .from("steward_tasks")
       .update({ status: "needs_approval" })
       .eq("organization_id", input.organizationId)
@@ -209,7 +210,7 @@ export async function executeStewardAgentTask(input: {
   try {
     const result = await (input.callModel ?? callStewardAgentModel)(task);
     const settledAt = new Date().toISOString();
-    const settled = await input.client
+    const settled = await input.writer
       .from("steward_agent_runs")
       .update({
         status: "completed",
@@ -226,7 +227,7 @@ export async function executeStewardAgentTask(input: {
     if (settled.error || (settled.data ?? []).length !== 1) {
       throw new AgentRunUnavailable("The result could not be saved, so the task stayed open.");
     }
-    const completed = await input.client
+    const completed = await input.writer
       .from("steward_tasks")
       .update({ status: "complete", updated_at: settledAt })
       .eq("organization_id", input.organizationId)
@@ -237,7 +238,7 @@ export async function executeStewardAgentTask(input: {
     if (completed.error || (completed.data ?? []).length !== 1) {
       throw new AgentRunUnavailable("The result was saved, but task completion needs reconciliation.");
     }
-    await input.client.from("activities").insert({
+    await input.writer.from("activities").insert({
       organization_id: input.organizationId,
       app_key: "steward",
       event_type: "task.completed",
@@ -262,7 +263,7 @@ export async function executeStewardAgentTask(input: {
       error instanceof AgentRunUnavailable
         ? error.message
         : "The AI task failed safely. The task stayed open.";
-    await input.client
+    await input.writer
       .from("steward_agent_runs")
       .update({ status: "failed", safe_error: safe, settled_at: new Date().toISOString() })
       .eq("organization_id", input.organizationId)

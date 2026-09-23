@@ -14,7 +14,7 @@
 | ID | Criterion | Evidence | Result | Remaining owner |
 |---|---|---|---|---|
 | AE1 | One explicit assignment starts at most one run | CODE: deterministic organization/task idempotency key and unique proposed index | Pass in code | Codex: apply SQL |
-| AE2 | Inactive and cross-workspace callers fail closed | CODE: literal active membership and organization-scoped task reads; RLS proposal | Pass in code | Codex: live RLS proof |
+| AE2 | Inactive and cross-workspace callers fail closed | CODE: literal active membership and organization-scoped task reads; authenticated receives SELECT only | Pass in code | Codex: live RLS proof |
 | AE3 | High-risk work cannot execute | CODE/TEST: deterministic risk gate | Pass | — |
 | AE4 | No-context tasks do not guess | CODE/TEST | Pass | — |
 | AE5 | Low-risk work uses Astra through the server only | CODE: literal model and server-only module | Pass | Live model smoke test after schema |
