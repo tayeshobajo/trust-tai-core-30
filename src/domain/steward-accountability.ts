@@ -158,9 +158,39 @@ export interface ManualTaskRecord {
   notes?: string;
   paperclipTaskId?: string;
   correlationId?: string;
+  /** Canonical cross-room identity. Never inferred from a task title. */
+  sourceApp?: string;
+  sourceEntityType?: string;
+  sourceEntityId?: string;
   createdBy?: ID;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
+}
+
+export type StewardAgentRunStatus =
+  | "queued"
+  | "working"
+  | "needs_approval"
+  | "blocked"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+/** Durable execution receipt. The task remains the work item; this is proof of one run. */
+export interface StewardAgentRun {
+  id: ID;
+  organizationId: ID;
+  taskId: ID;
+  agentId: string;
+  status: StewardAgentRunStatus;
+  risk: "low" | "high";
+  artifact: string | null;
+  evidenceRefs: string[];
+  safeError: string | null;
+  model: string | null;
+  providerRunId: string | null;
+  createdAt: ISODateTime;
+  settledAt: ISODateTime | null;
 }
 
 export interface StewardTask {
