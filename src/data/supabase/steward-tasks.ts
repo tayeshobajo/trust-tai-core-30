@@ -168,7 +168,8 @@ export const stewardTasks = {
       .eq("organization_id", organizationId)
       .limit(1);
     if (!error) return true;
-    return !NOT_PROVISIONED.test(`${error.code} ${error.message}`);
+    if (NOT_PROVISIONED.test(`${error.code} ${error.message}`)) return false;
+    throw new Error(error.message);
   },
 
   /** Create one task. Only the keys provided are set; the table defaults the rest. */

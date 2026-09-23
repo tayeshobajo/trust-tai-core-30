@@ -53,12 +53,14 @@ function TaskListRow({
   onReassign,
   actor,
   pending,
+  onOpen,
 }: {
   task: StewardTask;
   onToggle: (task: StewardTask) => void;
   onReassign?: (task: StewardTask) => void;
   actor: StewardActor;
   pending: boolean;
+  onOpen?: (task: StewardTask) => void;
 }) {
   const done = task.state === "complete";
   const completion = completeAuthority(task, actor);
@@ -74,9 +76,19 @@ function TaskListRow({
         />
       </span>
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <p className={cn("truncate text-xs font-medium text-foreground", done && "text-muted-foreground line-through")}>
-          {task.title}
-        </p>
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={() => onOpen(task)}
+            className={cn("truncate text-left text-xs font-medium text-foreground hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", done && "text-muted-foreground line-through")}
+          >
+            {task.title}
+          </button>
+        ) : (
+          <p className={cn("truncate text-xs font-medium text-foreground", done && "text-muted-foreground line-through")}>
+            {task.title}
+          </p>
+        )}
         <span className="hidden shrink-0 rounded-full bg-royal/8 px-2 py-0.5 text-[10px] text-royal sm:inline">
           {task.companyLabel ?? task.projectName ?? task.sourceLabel}
         </span>
@@ -133,6 +145,7 @@ export function MyTasksPanel({
   actor,
   completingTaskKey,
   taskStorageAvailable = true,
+  onOpen,
   viewAllHref,
 }: {
   tasks: StewardTask[];
@@ -144,6 +157,7 @@ export function MyTasksPanel({
   actor: StewardActor;
   completingTaskKey?: string | null;
   taskStorageAvailable?: boolean;
+  onOpen?: (task: StewardTask) => void;
   viewAllHref: string;
 }) {
   const [page, setPage] = useState(1);
@@ -222,6 +236,7 @@ export function MyTasksPanel({
                       onReassign={onReassign}
                       actor={actor}
                       pending={completingTaskKey === task.key}
+                      onOpen={onOpen}
                     />
                   ))}
                 </ul>

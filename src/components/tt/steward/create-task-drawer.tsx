@@ -104,6 +104,7 @@ export function CreateTaskDrawer({
   onGenerateSubtasks,
   onGenerateAcceptance,
   pending = false,
+  allowAgentCreate = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -115,6 +116,7 @@ export function CreateTaskDrawer({
   onGenerateSubtasks?: (title: string) => Promise<string[]>;
   onGenerateAcceptance?: (title: string) => Promise<string[]>;
   pending?: boolean;
+  allowAgentCreate?: boolean;
 }) {
   const defaultOwnerKey =
     people.find((person) => person.userId === identity.userId)?.key ?? people[0]?.key ?? "";
@@ -388,7 +390,7 @@ export function CreateTaskDrawer({
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Subtasks</span>
               {onGenerateSubtasks ? (
-                <TTButton
+           {allowAgentCreate ? <TTButton
                   type="button"
                   size="sm"
                   variant="secondary"
@@ -399,7 +401,7 @@ export function CreateTaskDrawer({
                 >
                   <Sparkles aria-hidden />
                   Generate with AI
-                </TTButton>
+           </TTButton> : null}
               ) : null}
             </div>
             <ul className="space-y-2">
