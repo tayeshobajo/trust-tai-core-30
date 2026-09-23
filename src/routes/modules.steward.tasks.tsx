@@ -316,7 +316,7 @@ function StewardTasks({
     opts: { assignToAI: boolean },
   ): Promise<void> {
     try {
-      await stewardTasks.create({
+      const created = await stewardTasks.create({
         organizationId: identity.organizationId,
         createdBy: identity.userId,
         title: input.title,
@@ -336,9 +336,22 @@ function StewardTasks({
         contextLinks: input.contextLinks,
         notes: input.notes ?? null,
       });
-      // TODO(phase-2): route to assignStewardAgentTask once the manual task is in the read model
       if (opts.assignToAI) {
-        toast.success("Created and queued for AI. It will pick this up on the next sync.");
+        const { runStewardAgentTask } = await import("@/data/steward-agent-runs.functions");
+        const run = await runStewardAgentTask({
+          data: {
+            organizationId: identity.organizationId,
+            taskId: created.id,
+            agentId: "trust-tai-internal",
+          },
+        });
+        toast.success(
+          run.status === "completed"
+            ? "AI teammate completed the task with saved evidence."
+            : run.status === "needs_approval"
+              ? "Task created. It needs your approval before the AI can continue."
+              : "Task created and assigned to the AI teammate.",
+        );
       } else {
         toast.success("Task created.");
       }

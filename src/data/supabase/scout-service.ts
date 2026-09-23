@@ -68,6 +68,7 @@ import { emitSuiteEvent } from "@/data/events/suite-events";
 import { fetchCompanyIdentity } from "./company-identity";
 import { getCurrentIcp, type IcpProfile } from "./icp";
 import { peopleService } from "./people-service";
+import { stewardTasks } from "./steward-tasks";
 import {
   SCOUT_LIVE_SOURCE,
   findProspectRowByWebsite,
@@ -930,6 +931,15 @@ export const scoutService = {
     const relationship = await receiveScoutHandoff(draft, {
       organizationId: context.organizationId,
       userId: context.userId,
+    });
+
+    // Home and Steward share this exact task. It is linked by the canonical
+    // prospect id and can only be completed from a recorded sent delivery.
+    await stewardTasks.ensureScoutOutreach({
+      organizationId: context.organizationId,
+      prospectId: draft.prospectId,
+      companyName: draft.companyName,
+      ownerUserId: context.userId,
     });
 
     return { record, relationshipId: relationship.id };

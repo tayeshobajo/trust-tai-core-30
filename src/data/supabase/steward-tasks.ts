@@ -153,6 +153,9 @@ export interface UpdateManualTaskPatch {
   notes?: string | null;
   paperclipTaskId?: string | null;
   correlationId?: string | null;
+  sourceApp?: string | null;
+  sourceEntityType?: string | null;
+  sourceEntityId?: string | null;
 }
 
 export const stewardTasks = {
@@ -247,6 +250,10 @@ export const stewardTasks = {
     if (patch.notes !== undefined) payload["notes"] = patch.notes;
     if (patch.paperclipTaskId !== undefined) payload["paperclip_task_id"] = patch.paperclipTaskId;
     if (patch.correlationId !== undefined) payload["correlation_id"] = patch.correlationId;
+    if (patch.sourceApp !== undefined) payload["source_app"] = patch.sourceApp;
+    if (patch.sourceEntityType !== undefined)
+      payload["source_entity_type"] = patch.sourceEntityType;
+    if (patch.sourceEntityId !== undefined) payload["source_entity_id"] = patch.sourceEntityId;
 
     const { data, error } = await supabase
       .from("steward_tasks")
@@ -261,5 +268,55 @@ export const stewardTasks = {
       throw new Error(error.message);
     }
     return toRecord((data ?? {}) as Row);
+  },
+
+  /** One exact Scout outreach task per prospect; never matches on a person's name or title. */
+  async ensureScoutOutreach(input: {
+    organizationId: ID;
+    prospectId: ID;
+    companyName: string;
+    ownerUserId: ID;
+  }): Promise<ManualTaskRecord> {
+    const correlationId = `scout:prospect:${input.prospectId}:first-message`;
+    const existing = await supabase
+      .from("steward_tasks")
+      .select("*")
+      .eq("organization_id", input.organizationId)
+      .eq("correlation_id", correlationId)
+      .maybeSingle();
+    if (existing.error) throw new Error(existing.error.message);
+    if (existing.data) return toRecord(existing.data as Row);
+    try {
+      return await this.create({
+        organizationId: input.organizationId,
+        title: `Send the first message to ${input.companyName}`,
+        clientId: input.prospectId,
+        clientLabel: input.companyName,
+        ownerUserId: input.ownerUserId,
+        ownerLabel: "Scout owner",
+        status: "open",
+        priority: "high",
+        correlationId,
+        sourceApp: "scout",
+        sourceEntityType: "prospect",
+        sourceEntityId: input.prospectId,
+        notes: "Complete only after Comms records a provider-confirmed sent delivery.",
+      });
+    } catch (error) {
+      if (!NOT_PROVISIONED.test(error instanceof Error ? error.message : "")) throw error;
+      // Compatibility until Codex applies the additive source-identity columns.
+      return this.create({
+        organizationId: input.organizationId,
+        title: `Send the first message to ${input.companyName}`,
+        clientId: input.prospectId,
+        clientLabel: input.companyName,
+        ownerUserId: input.ownerUserId,
+        ownerLabel: "Scout owner",
+        status: "open",
+        priority: "high",
+        correlationId,
+        notes: "Complete only after Comms records a provider-confirmed sent delivery.",
+      });
+    }
   },
 };

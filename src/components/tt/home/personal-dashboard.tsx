@@ -59,10 +59,13 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
     actions.undoAgentCleared(activity.id, activity.summary);
   }
 
-  async function handleCreate(input: CreateManualTaskInput): Promise<void> {
+  async function handleCreate(
+    input: CreateManualTaskInput,
+    opts: { assignToAI: boolean } = { assignToAI: false },
+  ): Promise<void> {
     setCreatingTask(true);
     try {
-      await stewardTasks.create({
+      const created = await stewardTasks.create({
         organizationId: identity.organizationId,
         createdBy: identity.userId,
         title: input.title,
@@ -71,18 +74,24 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
         projectId: input.projectId ?? null,
         projectLabel: input.projectLabel ?? null,
         dueAt: input.dueAt ?? null,
-        ownerUserId: input.ownerUserId ?? identity.userId,
-        ownerLabel: input.ownerLabel ?? identity.name,
+        ownerUserId: opts.assignToAI ? null : (input.ownerUserId ?? identity.userId),
+        ownerLabel: opts.assignToAI ? "Trust Tai AI" : (input.ownerLabel ?? identity.name),
         priority: input.priority,
-        assigneeKind: "human",
-        aiMode: null,
+        assigneeKind: opts.assignToAI ? "agent" : "human",
+        aiMode: opts.assignToAI ? (input.aiMode ?? "safe_internal") : null,
         status: input.status,
         subtasks: input.subtasks,
         acceptanceCriteria: input.acceptanceCriteria,
         contextLinks: input.contextLinks,
         notes: input.notes ?? null,
       });
-      toast.success(input.status === "draft" ? "Task draft saved." : "Task created.");
+      if (opts.assignToAI && input.status !== "draft") {
+        const { runStewardAgentTask } = await import("@/data/steward-agent-runs.functions");
+        const run = await runStewardAgentTask({ data: { organizationId: identity.organizationId, taskId: created.id, agentId: "trust-tai-internal" } });
+        toast.success(run.status === "completed" ? "AI teammate completed the task with saved evidence." : run.status === "needs_approval" ? "Task saved. It needs your approval before the AI can continue." : "Task assigned to the AI teammate.");
+      } else {
+        toast.success(input.status === "draft" ? "Task draft saved." : "Task created.");
+      }
       setCreating(false);
       await queryClient.invalidateQueries({ queryKey });
     } catch (error) {
@@ -161,9 +170,9 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
       clients={Array.from(new Map(read.data.tasks.filter((task) => task.companyLabel).map((task) => [task.companyLabel!, task.companyLabel!])).entries()).map(([id, label]) => ({ id, label }))}
       projects={Array.from(new Map(read.data.tasks.filter((task) => task.projectId && task.projectName).map((task) => [task.projectId!, task.projectName!])).entries()).map(([id, label]) => ({ id, label }))}
       people={read.data.people}
-      onCreate={(input) => handleCreate(input)}
+      onCreate={handleCreate}
       pending={creatingTask}
-      allowAgentCreate={false}
+      allowAgentCreate
     />
     </>
   );
