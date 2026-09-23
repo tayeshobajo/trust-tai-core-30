@@ -41,7 +41,9 @@ async def main():
             await ctx.add_cookies(cs)
         page = await ctx.new_page()
         await page.goto(BASE)
-        await page.evaluate(f"localStorage.setItem({json.dumps(key)}, {json.dumps(session)})")
+        # The app's client stores its session under tt-auth-<ref>; write both keys.
+        for k in {key, "tt-auth-okydosoacqdnursmmenf"}:
+            await page.evaluate(f"localStorage.setItem({json.dumps(k)}, {json.dumps(session)})")
         await page.goto(BASE + "/", wait_until="networkidle")
         await page.wait_for_timeout(4000)
         await page.screenshot(path=str(OUT / "0_home.png"))
