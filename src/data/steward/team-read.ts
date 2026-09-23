@@ -30,6 +30,8 @@ export interface StewardTeamRead {
   weeklyGoal: WeeklyGoalRecord | null;
   /** True when Steward may persist focus and ordering. */
   stateProvisioned: boolean;
+  /** True when people can create durable manual tasks. */
+  manualTasksProvisioned: boolean;
 }
 
 /**
@@ -70,6 +72,7 @@ export async function readStewardTeam(
     stateProvisioned,
     agents,
     manualTasks,
+    manualTasksProvisioned,
     weeklyGoal,
   ] = await Promise.all([
     stewardService.commitments(organizationId),
@@ -86,6 +89,7 @@ export async function readStewardTeam(
           : NO_AGENTS.because,
     })),
     stewardTasks.list(organizationId).catch(() => []),
+    stewardTasks.provisioned(organizationId).catch(() => false),
     weeklyGoals
       .currentFor(organizationId, viewerUserId ?? null, weekStart)
       .catch((): WeeklyGoalRecord | null => null),
@@ -98,6 +102,7 @@ export async function readStewardTeam(
     agents,
     weeklyGoal,
     stateProvisioned,
+    manualTasksProvisioned,
     tasks: buildStewardTasks({
       now,
       commitments,

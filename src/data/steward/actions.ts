@@ -53,7 +53,7 @@ export interface StewardWriteDeps {
     completedBy?: string | null;
     completedAt?: string | null;
     completionNote?: string | null;
-  }): Promise<{ issueId: string; bindingId: string; isNew: boolean }>;
+  }): Promise<unknown>;
   recordActivity(event: Omit<ActivityEvent, "id">): Promise<unknown>;
   assignAgentTask(input: {
     organizationId: string;
@@ -64,7 +64,7 @@ export interface StewardWriteDeps {
     sourceEntityId?: string | null;
     sourceEntityType?: string | null;
     sourceApp?: string | null;
-  }): Promise<unknown>;
+  }): Promise<{ issueId: string; bindingId: string; isNew: boolean }>;
   now(): string;
 }
 

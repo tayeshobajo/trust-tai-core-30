@@ -206,6 +206,6 @@ export async function readStewardDashboard(
       syncHealth: null,
       liveFailureDetail: null,
     },
-    taskStorageAvailable: team !== null,
+    taskStorageAvailable: team?.manualTasksProvisioned ?? false,
   };
 }
