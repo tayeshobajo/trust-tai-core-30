@@ -3,7 +3,7 @@
  * state. Self and team read the same real rows; team never sees titles.
  */
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Coffee } from "lucide-react";
 
 import type { StewardTask } from "@/domain/steward-accountability";
 
@@ -22,12 +22,15 @@ export function BlockersStrip({
 
   if (blockers.length === 0) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4">
-        <AlertTriangle aria-hidden className="size-4 text-success" />
-        <div>
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+        <span className="flex size-9 items-center justify-center rounded-xl bg-royal/8 text-royal">
+          <Coffee aria-hidden className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">No blockers right now</p>
-          <p className="text-xs text-muted-foreground">You are all clear. Anything urgent will appear here.</p>
+          <p className="text-[11px] text-muted-foreground">You are all clear. If something needs your attention, it will show up here.</p>
         </div>
+        <p className="hidden text-[11px] text-muted-foreground sm:block">Keep the momentum going.</p>
       </div>
     );
   }

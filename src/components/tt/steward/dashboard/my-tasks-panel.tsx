@@ -7,11 +7,15 @@
  */
 
 import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DashboardPagination } from "@/components/tt/steward/dashboard/dashboard-pagination";
+import { paginate } from "@/data/pagination";
 import type { StewardTask } from "@/domain/steward-accountability";
 import { cn } from "@/lib/utils";
 
 type Group = "overdue" | "due_soon" | "later";
+const TASKS_PER_PAGE = 6;
 
 const GROUP_LABEL: Record<Group, string> = {
   overdue: "Overdue",
@@ -41,24 +45,24 @@ function TaskListRow({
   onToggle: (task: StewardTask) => void;
 }) {
   return (
-    <li className="flex items-center gap-3 border-b border-border py-3 last:border-b-0">
+    <li className="flex min-h-9 items-center gap-2 border-b border-border px-2 py-1.5 last:border-b-0">
       <Checkbox
         aria-label={`Mark ${task.title} complete`}
         checked={false}
         onCheckedChange={() => onToggle(task)}
       />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-foreground">{task.title}</p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <p className="truncate text-xs font-medium text-foreground">{task.title}</p>
+        <span className="hidden shrink-0 rounded-full bg-royal/8 px-2 py-0.5 text-[10px] text-royal sm:inline">
           {task.companyLabel ?? task.projectName ?? task.sourceLabel}
-        </p>
+        </span>
       </div>
-      <span className={cn("text-xs", task.overdue ? "text-destructive" : "text-muted-foreground")}>
+      <span className={cn("shrink-0 text-[10px]", task.overdue ? "text-destructive" : "text-muted-foreground")}>
         {task.dueAt ? task.dueAt.slice(0, 10) : "No date"}
       </span>
       <span
         aria-hidden
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-[10px] font-medium text-foreground"
+        className="flex size-5 shrink-0 items-center justify-center rounded-full bg-royal/8 text-[9px] font-medium text-royal"
         title={task.owner.name}
       >
         {task.owner.kind === "agent" ? "AI" : task.owner.initials}
@@ -80,13 +84,21 @@ export function MyTasksPanel({
   onToggle: (task: StewardTask) => void;
   viewAllHref: string;
 }) {
-  const grouped = groupTasks(tasks, now);
+  const [page, setPage] = useState(1);
+  const openTasks = useMemo(() => tasks.filter((task) => task.state !== "complete"), [tasks]);
+  const view = useMemo(() => paginate(openTasks, page, TASKS_PER_PAGE), [openTasks, page]);
+  const grouped = groupTasks(view.rows, now);
   const groups: Group[] = ["overdue", "due_soon", "later"];
 
+  useEffect(() => {
+    if (view.page !== page) setPage(view.page);
+  }, [page, view.page]);
+
   if (scope === "team") {
-    const open = tasks.filter((task) => task.state !== "complete");
-    const overdue = grouped.overdue.length;
-    const dueSoon = grouped.due_soon.length;
+    const teamGroups = groupTasks(tasks, now);
+    const open = openTasks;
+    const overdue = teamGroups.overdue.length;
+    const dueSoon = teamGroups.due_soon.length;
     return (
       <div className="rounded-2xl border border-border bg-card p-6">
         <p className="tt-eyebrow">Tasks</p>
@@ -97,23 +109,28 @@ export function MyTasksPanel({
     );
   }
 
-  const hasAny = tasks.some((task) => task.state !== "complete");
+  const hasAny = openTasks.length > 0;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <div className="mb-4 flex items-end justify-between gap-3">
-        <p className="tt-eyebrow">My tasks</p>
-        <Link to={viewAllHref} className="text-sm text-royal hover:underline">
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="mb-1 flex items-center justify-between gap-3 px-1">
+        <h2 className="font-display text-base font-semibold text-foreground">My tasks</h2>
+        <Link to={viewAllHref} className="text-[11px] text-royal hover:underline">
           View all tasks →
         </Link>
       </div>
 
       {hasAny ? (
-        <div className="space-y-5">
+        <div>
           {groups.map((group) =>
             grouped[group].length > 0 ? (
-              <section key={group}>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <section key={group} className="mt-2 first:mt-0">
+                <p className={cn(
+                  "rounded-md px-3 py-1 text-[10px] font-semibold",
+                  group === "overdue" && "bg-destructive/8 text-destructive",
+                  group === "due_soon" && "bg-warning/10 text-warning",
+                  group === "later" && "bg-secondary text-muted-foreground",
+                )}>
                   {GROUP_LABEL[group]} ({grouped[group].length})
                 </p>
                 <ul>
@@ -124,6 +141,7 @@ export function MyTasksPanel({
               </section>
             ) : null,
           )}
+          <DashboardPagination view={view} onPage={setPage} label="My tasks pagination" />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Nothing open. You are caught up.</p>

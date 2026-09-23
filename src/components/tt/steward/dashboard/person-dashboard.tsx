@@ -96,7 +96,7 @@ export function PersonDashboard({
     <div className="space-y-3 pb-6">
       <DashboardHeader identity={read.identity} now={read.now} scope={scope} />
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <GoalHeroBand
           goal={read.weeklyGoal}
           progress={goalProgress}
@@ -105,11 +105,11 @@ export function PersonDashboard({
           canConfirm={scope === "self"}
         />
         {scope === "self" && linkedTasks.length > 0 ? (
-          <ul className="flex flex-wrap gap-2">
+          <ul className="-mt-12 ml-[132px] mr-[190px] hidden flex-wrap gap-2 pb-2 md:flex">
             {linkedTasks.map((task) => (
               <li
                 key={task.key}
-                className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground"
+                className="rounded-md border border-border bg-card px-3 py-1.5 text-[11px] text-muted-foreground"
               >
                 {task.state === "complete" ? "✓ " : ""}
                 {task.title}

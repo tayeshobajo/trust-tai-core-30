@@ -5,11 +5,13 @@
  * says plainly it is a status-only view of a teammate's week.
  */
 
+import { CalendarDays } from "lucide-react";
+
 import type { DashboardIdentity } from "@/data/steward/dashboard-read";
 
-function weekLabelOf(nowISO: string): string {
+function datePartsOf(nowISO: string): { date: string; week: string } {
   const date = new Date(nowISO);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return { date: "", week: "" };
   const start = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
   const days = Math.floor((date.getTime() - start.getTime()) / 86_400_000);
   const week = Math.ceil((days + start.getUTCDay() + 1) / 7);
@@ -17,8 +19,9 @@ function weekLabelOf(nowISO: string): string {
     weekday: "short",
     month: "short",
     day: "numeric",
+    year: "numeric",
   });
-  return `${dateLabel} · Week ${week}`;
+  return { date: dateLabel, week: `Week ${week}` };
 }
 
 export function DashboardHeader({
@@ -30,12 +33,13 @@ export function DashboardHeader({
   now: string;
   scope: "self" | "team";
 }) {
+  const date = datePartsOf(now);
   return (
-    <header className="tt-rise flex flex-wrap items-center justify-between gap-6 rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
-      <div className="flex items-center gap-4">
+    <header className="tt-rise grid gap-5 rounded-xl border border-border bg-card px-5 py-4 md:grid-cols-[1.25fr_1fr_auto] md:items-center md:px-6">
+      <div className="flex min-w-0 items-center gap-4">
         <span
           aria-hidden
-          className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-royal/25 bg-royal/8 font-display text-lg text-royal"
+          className="relative flex size-12 shrink-0 items-center justify-center rounded-full border border-royal/20 bg-royal/8 font-display text-base font-semibold text-foreground"
         >
           {identity.initials}
           <span
@@ -43,9 +47,9 @@ export function DashboardHeader({
             className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-card bg-success"
           />
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="tt-eyebrow">Your dashboard</p>
-          <h1 className="mt-1 font-display text-2xl leading-tight text-foreground">
+          <h1 className="mt-1 truncate font-display text-xl font-semibold leading-tight text-foreground">
             {identity.name}
           </h1>
           {identity.role ? (
@@ -54,8 +58,8 @@ export function DashboardHeader({
         </div>
       </div>
 
-      <div className="border-l border-border pl-6 text-left sm:text-right">
-        <p className="text-sm text-muted-foreground">
+      <div className="border-border md:border-l md:px-6">
+        <p className="text-sm font-medium text-foreground">
           {scope === "self"
             ? "Your operating view for this week."
             : `Viewing as teammate. Status only.`}
@@ -63,9 +67,15 @@ export function DashboardHeader({
         {scope === "self" ? (
           <p className="text-sm text-muted-foreground">Same mission. More momentum.</p>
         ) : null}
-        <p className="mt-2 inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-          {weekLabelOf(now)}
-        </p>
+      </div>
+      <div className="flex items-center gap-3 border-border md:border-l md:pl-5">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-royal/8 text-royal">
+          <CalendarDays aria-hidden className="size-4" />
+        </span>
+        <div className="text-xs text-muted-foreground">
+          <p className="font-medium text-foreground">{date.date}</p>
+          <p className="mt-0.5">{date.week}</p>
+        </div>
       </div>
     </header>
   );
