@@ -8,7 +8,7 @@
  * status, only titles and actions are hidden elsewhere.
  */
 
-import { Flame, Sparkles, CheckCircle2, Clock } from "lucide-react";
+import { ChevronRight, Flame, BarChart3, CheckCircle2, Clock } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { LevelInfo, TasksCompleted } from "@/domain/steward-dashboard-stats";
@@ -26,13 +26,16 @@ function StatCard({
   detail?: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center gap-2 text-muted-foreground">
+    <div className="flex min-h-20 items-center gap-3 rounded-xl border border-border bg-card p-3">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-royal/8 text-royal">
         {icon}
-        <p className="tt-eyebrow">{label}</p>
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-base font-semibold text-foreground">{value}</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
+        {detail ? <div className="mt-1.5">{detail}</div> : null}
       </div>
-       <p className="mt-2 font-display text-xl text-foreground">{value}</p>
-      {detail ? <div className="mt-2">{detail}</div> : null}
+      <ChevronRight aria-hidden className="size-4 shrink-0 text-royal" />
     </div>
   );
 }
@@ -48,7 +51,7 @@ function XpBar({ level }: { level: LevelInfo }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="mt-1.5 text-xs text-muted-foreground">
+      <p className="mt-1 text-[10px] text-muted-foreground">
         {level.xpIntoLevel} / {level.xpForLevel} XP
       </p>
     </div>
@@ -77,23 +80,23 @@ export function StatRow({
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
-        icon={<Flame aria-hidden className="size-4" />}
+        icon={<Flame aria-hidden className="size-5" />}
         label="Current streak"
         value={`${streakDays} day${streakDays === 1 ? "" : "s"}`}
       />
       <StatCard
-        icon={<Sparkles aria-hidden className="size-4" />}
-        label={`Level ${level.level} · ${level.label}`}
-        value={level.label}
+        icon={<BarChart3 aria-hidden className="size-5" />}
+        label={level.label}
+        value={`Level ${level.level}`}
         detail={<XpBar level={level} />}
       />
       <StatCard
-        icon={<CheckCircle2 aria-hidden className="size-4" />}
+        icon={<CheckCircle2 aria-hidden className="size-5" />}
         label="Tasks completed"
         value={`${tasksCompleted.done}/${tasksCompleted.total}`}
       />
       <StatCard
-        icon={<Clock aria-hidden className="size-4" />}
+        icon={<Clock aria-hidden className="size-5" />}
         label="Time saved by AI"
         value={timeSavedLabel}
         detail={

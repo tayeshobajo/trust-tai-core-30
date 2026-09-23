@@ -11,6 +11,8 @@
  * confirms."
  */
 
+import { Sparkles } from "lucide-react";
+
 import { TTButton } from "@/components/tt/primitives";
 import type { WeeklyGoalProgress, WeeklyGoalRecord } from "@/domain/steward-weekly-goal";
 
@@ -53,8 +55,11 @@ function ProgressRing({ pct }: { pct: number }) {
           className="stroke-royal transition-[stroke-dashoffset] duration-500"
         />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-display text-2xl text-foreground">{clamped}%</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-display text-2xl font-semibold text-foreground">{clamped}%</span>
+        <span className="mt-0.5 max-w-14 text-center text-[10px] leading-tight text-muted-foreground">
+          Weekly progress
+        </span>
       </div>
     </div>
   );
@@ -82,7 +87,7 @@ export function GoalHeroBand({
 }) {
   if (!goal) {
     return (
-      <div className="rounded-2xl border border-border bg-card px-6 py-5">
+      <div className="rounded-xl border border-border bg-card px-5 py-4">
         <p className="tt-eyebrow">Goal for the week</p>
         <p className="mt-2 text-sm text-muted-foreground">No goal set for this week yet.</p>
       </div>
@@ -92,43 +97,46 @@ export function GoalHeroBand({
   const proposed = goal.status === "proposed" && canConfirm;
 
   return (
-    <div className="rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
-      <div className="flex flex-wrap items-center gap-6">
+    <div className="rounded-xl border border-border bg-card px-5 py-4 sm:px-6">
+      <div className="grid gap-5 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
         <ProgressRing pct={progress?.pct ?? 0} />
         <div className="min-w-0 flex-1">
           <p className="tt-eyebrow">Goal for the week</p>
-          <h2 className="mt-2 font-display text-2xl leading-tight text-foreground">{goal.title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h2 className="mt-1.5 max-w-3xl font-display text-xl font-semibold leading-tight text-foreground">{goal.title}</h2>
+          <p className="mt-2 text-sm font-semibold text-foreground">
             {progress ? clearedLine(progress.agentCleared) : clearedLine(0)}
           </p>
-        </div>
-
-        {progress ? (
-          <div className="text-sm text-muted-foreground">
-            <p className="font-display text-foreground">
-              {progress.linkedComplete} of {progress.linkedTotal} done
-            </p>
-            <p className="mt-1 text-[13px]">{progress.humanRemaining} still on you</p>
-          </div>
-        ) : null}
-      </div>
-
-      {proposed ? (
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-royal/25 bg-royal/8 px-4 py-3">
-          <p className="text-sm text-foreground">
-            Captain suggests this week's goal. Confirm to make it yours.
+          <p className="mt-1 text-xs text-muted-foreground">
+            Your Captain proposed this goal based on your priorities. Review and confirm to get started.
           </p>
-          <TTButton
-            type="button"
-            size="sm"
-            onClick={onConfirm}
-            pending={pending}
-            pendingLabel="Confirming"
-          >
-            Confirm goal
-          </TTButton>
         </div>
-      ) : null}
+
+        <div className="flex items-start justify-between gap-3 md:flex-col md:items-stretch">
+          <span className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-royal/8 px-3 text-xs font-medium text-royal">
+            <Sparkles aria-hidden className="size-3.5" />
+            {proposed ? "Proposed by Captain" : "Weekly goal"}
+          </span>
+          {proposed ? (
+            <TTButton
+              type="button"
+              size="sm"
+              onClick={onConfirm}
+              pending={pending}
+              pendingLabel="Confirming"
+              className="min-w-32"
+            >
+              Confirm this goal
+            </TTButton>
+          ) : progress ? (
+            <p className="text-right text-xs text-muted-foreground">
+              <span className="block font-semibold text-foreground">
+                {progress.linkedComplete} of {progress.linkedTotal} done
+              </span>
+              {progress.humanRemaining} still on you
+            </p>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
