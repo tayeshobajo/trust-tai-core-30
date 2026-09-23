@@ -2,6 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { classifyAgentTask, safeAgentArtifact } from "@/domain/steward-agent-execution";
 import type { ManualTaskRecord } from "@/domain/steward-accountability";
+import {
+  linkedProspectId,
+  MAX_AGENT_PEOPLE,
+  toPeopleEvidence,
+  validatePeopleUse,
+  type AgentPersonEvidence,
+  type AgentPersonRow,
+} from "@/domain/steward-agent-people";
 import { extractJsonObject, runtimeModelCaller } from "@/lib/intelligence-runtime.server";
 
 type Row = Record<string, unknown>;
@@ -27,6 +35,14 @@ function taskFromRow(row: Row): ManualTaskRecord {
       ? (row["context_links"] as ManualTaskRecord["contextLinks"])
       : [],
     ...(typeof row["notes"] === "string" ? { notes: row["notes"] } : {}),
+    ...(typeof row["correlation_id"] === "string" ? { correlationId: row["correlation_id"] } : {}),
+    ...(typeof row["source_app"] === "string" ? { sourceApp: row["source_app"] } : {}),
+    ...(typeof row["source_entity_type"] === "string"
+      ? { sourceEntityType: row["source_entity_type"] }
+      : {}),
+    ...(typeof row["source_entity_id"] === "string"
+      ? { sourceEntityId: row["source_entity_id"] }
+      : {}),
     createdAt: String(row["created_at"]),
     updatedAt: String(row["updated_at"]),
   };
@@ -34,9 +50,37 @@ function taskFromRow(row: Row): ManualTaskRecord {
 
 export type StewardAgentModelCall = (
   task: ManualTaskRecord,
-) => Promise<{ artifact: string; evidenceRefs: string[]; model: string; runId: string | null }>;
+  people?: AgentPersonEvidence[],
+) => Promise<{
+  artifact: string;
+  evidenceRefs: string[];
+  peopleNamed?: string[];
+  model: string;
+  runId: string | null;
+}>;
 
-export const callStewardAgentModel: StewardAgentModelCall = async (task) => {
+/** Saved Scout People for the task's exactly-linked prospect, read as the caller (RLS). */
+export async function loadAgentPeople(
+  client: SupabaseClient,
+  organizationId: string,
+  task: ManualTaskRecord,
+): Promise<AgentPersonEvidence[]> {
+  const prospectId = linkedProspectId(task);
+  if (!prospectId) return [];
+  const { data, error } = await client
+    .from("scout_people")
+    .select(
+      "id, full_name, title, company_name, email_status, work_email, buying_role, why_this_person",
+    )
+    .eq("organization_id", organizationId)
+    .eq("prospect_id", prospectId)
+    .order("discovered_at", { ascending: true })
+    .limit(MAX_AGENT_PEOPLE);
+  if (error) return [];
+  return toPeopleEvidence((data ?? []) as AgentPersonRow[]);
+}
+
+export const callStewardAgentModel: StewardAgentModelCall = async (task, people = []) => {
   const token = task.correlationId?.startsWith("runtime-token:")
     ? task.correlationId.slice("runtime-token:".length)
     : "";
@@ -52,7 +96,7 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task) => {
   const response = await call({
     model: MODEL,
     instructions:
-      "You are a bounded internal preparation agent. Use only supplied context. Never send, publish, approve, promise, price, change scope or dates, or claim unsupported facts. Return JSON only with artifact and evidence_refs. Every claim must be grounded in a supplied evidence ref.",
+      "You are a bounded internal preparation agent. Use only supplied context. Never send, publish, approve, promise, price, change scope or dates, or claim unsupported facts. Return JSON only with artifact, evidence_refs and people_named. Every claim must be grounded in a supplied evidence ref. When people are supplied, refer to them by their exact saved name and title and cite their person ref; list every person you name in people_named. Never name anyone not supplied. If no people are supplied and the task asks about people, say no saved Scout people exist yet.",
     input: `Return json only. ${JSON.stringify({
       title: task.title,
       notes: task.notes ?? null,
@@ -61,6 +105,15 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task) => {
         ref: `context:${index + 1}`,
         label: link.label,
         url: link.url,
+      })),
+      scout_people: people.map((p) => ({
+        ref: p.ref,
+        name: p.name,
+        title: p.title,
+        company: p.company,
+        work_email: p.email,
+        buying_role: p.buyingRole,
+        why: p.why,
       })),
     })}`,
     webSearch: false,
@@ -71,10 +124,11 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task) => {
       schema: {
         type: "object",
         additionalProperties: false,
-        required: ["artifact", "evidence_refs"],
+        required: ["artifact", "evidence_refs", "people_named"],
         properties: {
           artifact: { type: "string" },
           evidence_refs: { type: "array", items: { type: "string" } },
+          people_named: { type: "array", items: { type: "string" } },
         },
       },
     },
@@ -89,7 +143,9 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task) => {
   if (!safe) {
     throw new AgentRunUnavailable("The AI result had no usable evidence. The task stayed open.");
   }
-  return { ...safe, model: response.model, runId: null };
+  const named = (parsed as { people_named?: unknown }).people_named;
+  const peopleNamed = Array.isArray(named) ? named.filter((n): n is string => typeof n === "string") : [];
+  return { ...safe, peopleNamed, model: response.model, runId: null };
 };
 
 export async function executeStewardAgentTask(input: {
@@ -179,7 +235,15 @@ export async function executeStewardAgentTask(input: {
   }
   try {
     const runtimeTask: ManualTaskRecord = { ...task, correlationId: `runtime-token:${input.token}` };
-    const result = await (input.callModel ?? callStewardAgentModel)(runtimeTask);
+    const people = await loadAgentPeople(input.client, input.organizationId, task);
+    const result = await (input.callModel ?? callStewardAgentModel)(runtimeTask, people);
+    const peopleCheck = validatePeopleUse({
+      artifact: result.artifact,
+      evidenceRefs: result.evidenceRefs,
+      peopleNamed: result.peopleNamed ?? [],
+      people,
+    });
+    if (!peopleCheck.ok) throw new AgentRunUnavailable(peopleCheck.because);
     const settledAt = new Date().toISOString();
     const settled = await input.writer
       .from("steward_agent_runs")

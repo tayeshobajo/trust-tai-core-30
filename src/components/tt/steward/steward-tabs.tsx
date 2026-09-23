@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
 
-export type StewardSection = "team" | "meetings" | "tasks" | "agents" | "memory";
+export type StewardSection = "team" | "meetings" | "tasks" | "agents" | "ai" | "timeline" | "memory";
 
 function tabClass(active: boolean) {
   return cn(
@@ -50,6 +50,20 @@ export function StewardTabs({ active }: { active: StewardSection }) {
         className={tabClass(active === "agents")}
       >
         Agents
+      </Link>
+      <Link
+        to="/modules/steward/ai"
+        aria-current={active === "ai" ? "page" : undefined}
+        className={tabClass(active === "ai")}
+      >
+        Trust Tai AI
+      </Link>
+      <Link
+        to="/modules/steward/timeline"
+        aria-current={active === "timeline" ? "page" : undefined}
+        className={tabClass(active === "timeline")}
+      >
+        Timeline
       </Link>
       <Link
         to="/modules/steward/memory"
