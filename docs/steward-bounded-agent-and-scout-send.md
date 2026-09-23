@@ -53,3 +53,10 @@ The implementation verification completed with 319 test files / 3,520 tests pass
 | Q1–Q5 Trust Tai AI page | `/modules/steward/ai` queue, status, response/evidence, retry; owners/admins queue | CODE pass; honest unavailable state when run storage absent | Signed-in visual check |
 
 Full suite: 321 files / 3,526 tests; typecheck clean. No SQL applied, no model call, no send, no publish.
+
+### Signed-in run, 2026-09-23 23:00 UTC (Tai's own session via one-time sign-in link, localhost preview)
+- H1 PASS signed in as the workspace owner. H2 PASS task created and shown on Home; completion showed check + line-through, checkbox locked, still complete after reload (H4 PASS).
+- Defect found and fixed: teammate list read selected a non-existent `organization_memberships.id`, so every people list (assign panel, timeline names) was empty. Assign panel now lists members; other members' names show "A colleague" because profiles are not readable to this user (RLS, left unchanged).
+- T1 PASS Timeline lists the task after making names optional. Q1 PASS task queued on Trust Tai AI page; AI run did not start: preview server lacks its server write access and `steward_agent_runs` is absent. Error copy no longer exposes setup names.
+- H3 (Scout row crosses after a Comms send) NOT RUN: needs a real sent message; no send was made.
+- QA rows (`QA-` prefix) deleted; session file removed.
