@@ -32,8 +32,8 @@ describe("personal dashboard placement", () => {
   it("keeps Steward focused on its team and accountability sections", () => {
     expect(stewardTabs).not.toContain("Your dashboard");
     expect(stewardTabs).not.toContain('active === "dashboard"');
-    expect(stewardTabs).toContain(">Team<");
-    expect(stewardTabs).toContain(">Meetings<");
-    expect(stewardTabs).toContain(">Tasks<");
+    expect(stewardTabs).toContain('to="/modules/steward"');
+    expect(stewardTabs).toContain('to="/modules/steward/meetings"');
+    expect(stewardTabs).toContain('to="/modules/steward/tasks"');
   });
 });
