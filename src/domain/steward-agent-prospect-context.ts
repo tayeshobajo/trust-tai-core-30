@@ -39,7 +39,7 @@ function text(v: unknown): string | null {
 export function toProspectContext(row: Record<string, unknown> | null): ProspectContext | null {
   if (!row || typeof row["id"] !== "string") return null;
   const id = row["id"];
-  const name = text(row["name"]) ?? "Company name not recorded";
+  const name = text(row["name"]) ?? text(row["company_name"]) ?? "Company name not recorded";
   const facts: ProspectFact[] = [];
   const unknown: string[] = [];
   for (const f of FIELDS) {
