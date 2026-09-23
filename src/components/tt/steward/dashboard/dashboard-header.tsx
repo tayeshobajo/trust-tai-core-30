@@ -31,7 +31,7 @@ export function DashboardHeader({
   scope: "self" | "team";
 }) {
   return (
-    <header className="tt-rise flex flex-wrap items-start justify-between gap-6 border-b border-border pb-8">
+    <header className="tt-rise flex flex-wrap items-center justify-between gap-6 rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
       <div className="flex items-center gap-4">
         <span
           aria-hidden
@@ -45,7 +45,7 @@ export function DashboardHeader({
         </span>
         <div>
           <p className="tt-eyebrow">Your dashboard</p>
-          <h1 className="mt-1 font-display text-3xl leading-tight text-foreground">
+          <h1 className="mt-1 font-display text-2xl leading-tight text-foreground">
             {identity.name}
           </h1>
           {identity.role ? (
@@ -54,7 +54,7 @@ export function DashboardHeader({
         </div>
       </div>
 
-      <div className="text-right">
+      <div className="border-l border-border pl-6 text-left sm:text-right">
         <p className="text-sm text-muted-foreground">
           {scope === "self"
             ? "Your operating view for this week."

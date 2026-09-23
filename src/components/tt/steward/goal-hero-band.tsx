@@ -16,7 +16,7 @@ import type { WeeklyGoalProgress, WeeklyGoalRecord } from "@/domain/steward-week
 
 /** The progress ring. Track is the border token, sweep is the royal token. */
 function ProgressRing({ pct }: { pct: number }) {
-  const size = 84;
+  const size = 108;
   const stroke = 8;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -54,7 +54,7 @@ function ProgressRing({ pct }: { pct: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-display text-lg text-foreground">{clamped}%</span>
+        <span className="font-display text-2xl text-foreground">{clamped}%</span>
       </div>
     </div>
   );
@@ -92,9 +92,10 @@ export function GoalHeroBand({
   const proposed = goal.status === "proposed" && canConfirm;
 
   return (
-    <div className="rounded-2xl border border-border bg-card px-6 py-5">
-      <div className="flex flex-wrap items-center justify-between gap-6">
-        <div className="min-w-0">
+    <div className="rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
+      <div className="flex flex-wrap items-center gap-6">
+        <ProgressRing pct={progress?.pct ?? 0} />
+        <div className="min-w-0 flex-1">
           <p className="tt-eyebrow">Goal for the week</p>
           <h2 className="mt-2 font-display text-2xl leading-tight text-foreground">{goal.title}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -102,19 +103,14 @@ export function GoalHeroBand({
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <ProgressRing pct={progress?.pct ?? 0} />
-          {progress ? (
-            <div className="text-sm text-muted-foreground">
-              <p className="font-display text-foreground">
-                {progress.linkedComplete} of {progress.linkedTotal} done
-              </p>
-              <p className="mt-1 text-[13px]">
-                {progress.humanRemaining} still on you
-              </p>
-            </div>
-          ) : null}
-        </div>
+        {progress ? (
+          <div className="text-sm text-muted-foreground">
+            <p className="font-display text-foreground">
+              {progress.linkedComplete} of {progress.linkedTotal} done
+            </p>
+            <p className="mt-1 text-[13px]">{progress.humanRemaining} still on you</p>
+          </div>
+        ) : null}
       </div>
 
       {proposed ? (

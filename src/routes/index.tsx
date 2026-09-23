@@ -1,25 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CircleCheck, Gauge, ScrollText, SquareStack } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { ContinueSection, type ContinueItem } from "@/components/tt/home/continue-section";
-import { GuidanceCard } from "@/components/tt/home/guidance-card";
-import { HomeHero } from "@/components/tt/home/home-hero";
-import { MyWork } from "@/components/tt/home/my-work";
-import { SuiteRoomsGrid } from "@/components/tt/home/suite-rooms-grid";
-import { ThisWeek } from "@/components/tt/home/this-week";
-import { TodaySummary, type TodayItem } from "@/components/tt/home/today-summary";
+import { PersonalDashboard } from "@/components/tt/home/personal-dashboard";
 import { memorySource } from "@/data/memory-source";
-import { readWeeklySnapshot, weeklySnapshotKey } from "@/data/weekly-snapshot";
-import { orderToday, type TodayCandidate } from "@/domain/today-ordering";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Trust Tai OS · one operating system for how Trust Tai works";
+const TITLE = "Your dashboard · Trust Tai OS";
 const DESCRIPTION =
-  "Welcome home: one shared foundation for clients, projects, conversations, operations, and intelligence across the Trust Tai suite.";
+  "Your weekly goal, tasks, progress, AI teammate activity, and blockers in one operating view.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -41,7 +32,7 @@ function HomeRoute() {
     <WorkspaceGate appId="home">
       {(identity) => (
         <AppShell identity={identity} sidebar={<SystemStatus identity={identity} />}>
-          <Home identity={identity} />
+          <PersonalDashboard identity={identity} />
         </AppShell>
       )}
     </WorkspaceGate>
@@ -71,120 +62,3 @@ function SystemStatus({ identity }: { identity: WorkspaceIdentity }) {
   );
 }
 
-function Home({ identity }: { identity: WorkspaceIdentity }) {
-  const { organizationId, userId } = identity;
-
-  const { data } = useQuery({
-    queryKey: ["home", organizationId, userId],
-    queryFn: async () => {
-      const [decisions, projects, activity] = await Promise.all([
-        memorySource.decisions.list(organizationId),
-        memorySource.projects.list(organizationId),
-        memorySource.activity.list({ organizationId, limit: 8 }),
-      ]);
-      return { decisions, projects, activity };
-    },
-  });
-
-  /**
-   * The one canonical weekly snapshot every room reads, composed once by the
-   * shared adapter. Home derives nothing of its own from the week, so Home,
-   * Clients and any later room cannot disagree about the same seven days.
-   */
-  const week = useQuery({
-    queryKey: weeklySnapshotKey(organizationId),
-    queryFn: () => readWeeklySnapshot(organizationId),
-  });
-
-  const snapshot = week.data ?? null;
-
-  const todayItems = useMemo<TodayItem[]>(() => {
-    /**
-     * Today obeys one order (P2-05): an obligation already at risk, then a
-     * breached weekly floor, then a decision worth making. Nothing is invented,
-     * an absence produces no card at all, and a source that could not be read
-     * produces no card either, because unknown is not a breach.
-     */
-    const candidates: TodayCandidate[] = [];
-
-    const blocked = (data?.projects ?? []).filter((p) => p.status === "blocked").length;
-    if (blocked > 0) {
-      candidates.push({
-        key: "blocked-projects",
-        kind: "obligation_at_risk",
-        count: blocked,
-        label: blocked === 1 ? "promise blocked in delivery" : "promises blocked in delivery",
-        slug: "projects",
-      });
-    }
-
-    if (snapshot) candidates.push(...snapshot.floorCandidates);
-
-    const openDecisions = (data?.decisions ?? []).filter((d) => d.status === "open").length;
-    if (openDecisions > 0) {
-      candidates.push({
-        key: "decisions",
-        kind: "decision_opportunity",
-        count: openDecisions,
-        label: openDecisions === 1 ? "decision waiting on you" : "decisions waiting on you",
-        slug: "approvals",
-      });
-    }
-
-    const icons: Record<string, typeof ScrollText> = {
-      "blocked-projects": SquareStack,
-      decisions: ScrollText,
-    };
-
-    return orderToday(candidates)
-      .slice(0, 3)
-      .map((entry) => ({
-        key: entry.key,
-        count: entry.count,
-        label: entry.label,
-        icon: icons[entry.key] ?? Gauge,
-        slug: entry.slug,
-      }));
-  }, [data, snapshot]);
-
-  const continueItems = useMemo<ContinueItem[]>(
-    () =>
-      (data?.activity ?? []).slice(0, 4).map((event) => ({
-        id: event.id,
-        appId: event.provenance.appId,
-        title: event.summary,
-        meta: event.name,
-      })),
-    [data],
-  );
-
-  return (
-    <div className="w-full space-y-16 pb-8">
-      <HomeHero firstName={identity.firstName} />
-
-      <MyWork identity={identity} />
-
-      <TodaySummary
-        items={todayItems}
-        empty={
-          week.isSuccess && data
-            ? "Nothing is at risk, no floor is breached and no decision is waiting. Open Clients to pick the next move."
-            : undefined
-        }
-      />
-
-      <ThisWeek
-        numbers={snapshot?.numbers ?? []}
-        note={snapshot?.note ?? null}
-        loading={week.isPending}
-      />
-
-      <SuiteRoomsGrid />
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <ContinueSection items={continueItems} />
-        <GuidanceCard />
-      </div>
-    </div>
-  );
-}

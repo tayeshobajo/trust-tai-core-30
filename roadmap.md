@@ -6,6 +6,12 @@ The canonical plan is `docs/production-plan.md`. The canon in
 Status vocabulary: Not started, Implemented, Code/Test Verified, Runtime Verified,
 Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
+## Active correction
+
+- [x] Make Home the personal user dashboard shown in the approved reference.
+- [x] Keep the existing welcome overview and make the Trust Tai logo open it.
+- [x] Remove the personal dashboard from Steward while preserving its old URL as a redirect.
+
 ## Progress
 
 **Production Readiness: 27%** (P0 to P7)

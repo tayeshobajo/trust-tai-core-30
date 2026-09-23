@@ -52,7 +52,7 @@ function statusNote(app: AppRegistration) {
 
 /** A room is current when you are anywhere inside it, not only on its index. */
 function isCurrent(pathname: string, route: string) {
-  if (route === "/") return pathname === "/";
+  if (route === "/") return pathname === "/" || pathname === "/welcome";
   return pathname === route || pathname.startsWith(`${route}/`);
 }
 
@@ -162,7 +162,7 @@ export function AppShell({
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
 
-        <Link to="/" className="flex items-center gap-3" aria-label="Trust Tai OS · home">
+        <Link to="/welcome" className="flex items-center gap-3" aria-label="Trust Tai OS · welcome">
           <BrandLogo height={26} className="sm:h-[30px] sm:w-auto" />
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:inline">
             OS
