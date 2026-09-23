@@ -65,6 +65,11 @@ export interface StewardWriteDeps {
     sourceEntityType?: string | null;
     sourceApp?: string | null;
   }): Promise<{ issueId: string; bindingId: string; isNew: boolean }>;
+  runInternalAgentTask(input: {
+    organizationId: string;
+    taskId: string;
+    agentId: string;
+  }): Promise<{ runId: string; status: string; note: string }>;
   now(): string;
 }
 
@@ -276,6 +281,31 @@ export async function requestAgentAssignment(
     throw new StewardRefusal(`${agent.name} has no published capability for this work.`);
   }
 
+  if (task.origin === "manual") {
+    await writer.deps.updateManualTask(task.id, {
+      ownerUserId: null,
+      ownerLabel: agent.name,
+      assigneeKind: "agent",
+      aiMode: "safe_internal",
+    });
+    const run = await writer.deps.runInternalAgentTask({
+      organizationId: writer.identity.organizationId,
+      taskId: task.id,
+      agentId: agent.paperclipAgentId,
+    });
+    await audit(writer, {
+      name: "task.assigned",
+      task,
+      summary: `${task.title} assigned to ${agent.name}. ${run.note}`,
+      payload: {
+        agent_id: agent.paperclipAgentId,
+        agent_run_id: run.runId,
+        run_status: run.status,
+        previous_owner_key: task.owner.key,
+      },
+    });
+    return;
+  }
   const receipt = await writer.deps.assignAgentTask({
     organizationId: writer.identity.organizationId,
     agentId: agent.paperclipAgentId,
@@ -285,20 +315,14 @@ export async function requestAgentAssignment(
     sourceEntityType: task.origin === "commitment" ? "commitment" : "task",
     sourceApp: "steward",
   });
-  if (task.origin === "manual") {
-    await writer.deps.updateManualTask(task.id, {
-      ownerUserId: null,
-      ownerLabel: agent.name,
-      assigneeKind: "agent",
-      aiMode: "safe_internal",
-      paperclipTaskId: receipt.issueId,
-      correlationId: receipt.bindingId,
-    });
-  }
   await audit(writer, {
     name: "task.assigned",
     task,
     summary: `${task.title} sent to ${agent.name} in Paperclip.`,
-    payload: { agent_id: agent.paperclipAgentId, previous_owner_key: task.owner.key },
+    payload: {
+      agent_id: agent.paperclipAgentId,
+      binding_id: receipt.bindingId,
+      previous_owner_key: task.owner.key,
+    },
   });
 }
