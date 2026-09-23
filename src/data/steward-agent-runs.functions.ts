@@ -15,7 +15,14 @@ export const runStewardAgentTask = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => RunInput.parse(input))
   .handler(async ({ context, data }) => {
     const { executeStewardAgentTask } = await import("@/lib/steward-agent-runner.server");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let supabaseAdmin: Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"];
+    try {
+      ({ supabaseAdmin } = await import("@/integrations/supabase/client.server"));
+      void supabaseAdmin.from;
+    } catch {
+      // Never surface configuration or credential names to people.
+      throw new Error("AI work can't start here yet because its server access isn't set up.");
+    }
     const { getRequest } = await import("@tanstack/react-start/server");
     const authorization = getRequest()?.headers.get("authorization") ?? "";
     const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";

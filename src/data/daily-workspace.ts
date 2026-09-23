@@ -61,15 +61,19 @@ function role(value: unknown): WorkspaceRole {
 export async function loadWorkspacePeople(
   organizationId: ID,
 ): Promise<{ people: MembershipRecord[]; userIdByMembershipId: Map<string, ID> }> {
+  // The live table has no surrogate `id` column (verified signed-in, 42703),
+  // so selecting it failed the whole read and left every people list empty.
   const memberships = await supabase
     .from("organization_memberships")
-    .select("id, user_id, organization_id, role, status")
+    .select("*")
     .eq("organization_id", organizationId);
   if (memberships.error) throw new Error(memberships.error.message);
 
   const rows = (memberships.data ?? []) as Row[];
   const userIdByMembershipId = new Map<string, ID>(
-    rows.map((row) => [str(row["id"]), str(row["user_id"])]),
+    rows
+      .filter((row) => str(row["id"]))
+      .map((row) => [str(row["id"]), str(row["user_id"])]),
   );
   const ids = rows.map((row) => str(row["user_id"])).filter(Boolean);
   if (ids.length === 0) return { people: [], userIdByMembershipId };

@@ -64,7 +64,10 @@ function Timeline({ identity }: { identity: WorkspaceIdentity }) {
   const read = useQuery({
     queryKey: ["steward", "timeline", identity.organizationId],
     queryFn: async () => {
-      const { people } = await loadWorkspacePeople(identity.organizationId);
+      // A names failure must not hide task history; unknown names show as "Unknown".
+      const people = await loadWorkspacePeople(identity.organizationId)
+        .then((r) => r.people)
+        .catch(() => []);
       return readTaskTimelines(
         identity.organizationId,
         new Map(people.map((p) => [p.userId, p.displayName])),
