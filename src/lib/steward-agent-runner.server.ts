@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { classifyAgentTask, safeAgentArtifact } from "@/domain/steward-agent-execution";
 import type { ManualTaskRecord } from "@/domain/steward-accountability";
-import { createLovableAiGatewayRunIdFetch } from "@/lib/ai-gateway.server";
+import { extractJsonObject, runtimeModelCaller } from "@/lib/intelligence-runtime.server";
 
 type Row = Record<string, unknown>;
 const MODEL = "openai/gpt-6-astra";
@@ -37,82 +37,51 @@ export type StewardAgentModelCall = (
 ) => Promise<{ artifact: string; evidenceRefs: string[]; model: string; runId: string | null }>;
 
 export const callStewardAgentModel: StewardAgentModelCall = async (task) => {
-  const key = process.env["LOVABLE_API_KEY"]?.trim();
-  if (!key) throw new AgentRunUnavailable("AI is not configured, so the task stayed open.");
-  const gateway = createLovableAiGatewayRunIdFetch();
-  const response = await gateway.fetch("https://ai.gateway.lovable.dev/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": key,
-      "X-Lovable-AIG-SDK": "fetch",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      stream: true,
-      store: false,
-      reasoning: { effort: "medium", summary: "auto" },
-      include: ["reasoning.encrypted_content"],
-      instructions:
-        "You are a bounded internal preparation agent. Use only supplied context. Never send, publish, approve, promise, price, change scope or dates, or claim unsupported facts. Return JSON only with artifact and evidence_refs. Every claim must be grounded in a supplied evidence ref.",
-      input: `Return json only. ${JSON.stringify({
-        title: task.title,
-        notes: task.notes ?? null,
-        acceptance_criteria: task.acceptanceCriteria,
-        context: task.contextLinks.map((link, index) => ({
-          ref: `context:${index + 1}`,
-          label: link.label,
-          url: link.url,
-        })),
-      })}`,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "steward_artifact",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            required: ["artifact", "evidence_refs"],
-            properties: {
-              artifact: { type: "string" },
-              evidence_refs: { type: "array", items: { type: "string" } },
-            },
-          },
+  const token = task.correlationId?.startsWith("runtime-token:")
+    ? task.correlationId.slice("runtime-token:".length)
+    : "";
+  if (!token) {
+    throw new AgentRunUnavailable("AI access could not be verified, so the task stayed open.");
+  }
+  const call = await runtimeModelCaller({
+    token,
+    organizationId: task.organizationId,
+    room: "steward",
+    purpose: "bounded_agent_task",
+  });
+  const response = await call({
+    model: MODEL,
+    instructions:
+      "You are a bounded internal preparation agent. Use only supplied context. Never send, publish, approve, promise, price, change scope or dates, or claim unsupported facts. Return JSON only with artifact and evidence_refs. Every claim must be grounded in a supplied evidence ref.",
+    input: `Return json only. ${JSON.stringify({
+      title: task.title,
+      notes: task.notes ?? null,
+      acceptance_criteria: task.acceptanceCriteria,
+      context: task.contextLinks.map((link, index) => ({
+        ref: `context:${index + 1}`,
+        label: link.label,
+        url: link.url,
+      })),
+    })}`,
+    webSearch: false,
+    responseFormat: {
+      type: "json_schema",
+      name: "steward_artifact",
+      strict: true,
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["artifact", "evidence_refs"],
+        properties: {
+          artifact: { type: "string" },
+          evidence_refs: { type: "array", items: { type: "string" } },
         },
       },
-    }),
+    },
   });
-  if (!response.ok || !response.body) {
-    const body = await response.text().catch(() => "");
-    throw new AgentRunUnavailable(body.slice(0, 240) || `AI request failed (${response.status}).`);
-  }
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let raw = "";
-  for (;;) {
-    const next = await reader.read();
-    if (next.done) break;
-    buffer += decoder.decode(next.value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data:")) continue;
-      const payload = line.slice(5).trim();
-      if (!payload || payload === "[DONE]") continue;
-      const event = JSON.parse(payload) as Row;
-      if (event["type"] === "response.output_text.delta" && typeof event["delta"] === "string") {
-        raw += event["delta"];
-      }
-      if (event["type"] === "response.refusal.delta") {
-        throw new AgentRunUnavailable("The AI declined this task. It stayed open for a person.");
-      }
-    }
-  }
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(extractJsonObject(response.raw));
   } catch {
     throw new AgentRunUnavailable("The AI returned an unreadable result. The task stayed open.");
   }
@@ -120,7 +89,7 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task) => {
   if (!safe) {
     throw new AgentRunUnavailable("The AI result had no usable evidence. The task stayed open.");
   }
-  return { ...safe, model: MODEL, runId: gateway.getRunId() ?? null };
+  return { ...safe, model: response.model, runId: null };
 };
 
 export async function executeStewardAgentTask(input: {
@@ -130,6 +99,7 @@ export async function executeStewardAgentTask(input: {
   taskId: string;
   agentId: string;
   userId: string;
+  token: string;
   callModel?: StewardAgentModelCall;
 }): Promise<{ runId: string; status: string; note: string }> {
   const membership = await input.client
@@ -208,7 +178,8 @@ export async function executeStewardAgentTask(input: {
     return { runId, status: "needs_approval", note: risk.because };
   }
   try {
-    const result = await (input.callModel ?? callStewardAgentModel)(task);
+    const runtimeTask: ManualTaskRecord = { ...task, correlationId: `runtime-token:${input.token}` };
+    const result = await (input.callModel ?? callStewardAgentModel)(runtimeTask);
     const settledAt = new Date().toISOString();
     const settled = await input.writer
       .from("steward_agent_runs")
