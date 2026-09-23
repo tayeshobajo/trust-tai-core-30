@@ -69,6 +69,9 @@ import {
   savePeople,
 } from "@/data/scout/people-research";
 import { PROVIDER_LABEL, workEmailState, type ScoutPerson } from "@/domain/scout-people";
+import { CampaignPanel } from "@/components/tt/scout/detail/campaign-panel";
+import { ProfileWork } from "@/components/tt/scout/detail/profile-work";
+import { saveCampaignRecord } from "@/data/scout/campaigns";
 import {
   fillKnownTitles,
   mergePeople,
@@ -1292,6 +1295,34 @@ function CompanyDetail({
                   onRetrySave={() => saveResearch.mutate(researched)}
                   onSaveEmail={(person) => saveEmail.mutate(person)}
                   savingEmailKey={saveEmail.isPending ? (saveEmail.variables?.key ?? null) : null}
+                />
+                <CampaignPanel
+                  people={peopleForCard.filter((p) => Boolean(p.persistedId))}
+                  companyName={prospect.name}
+                  prospectId={prospectId}
+                  onPrepare={async (person, template) => {
+                    const saved = await handOffPerson(person, template);
+                    void refresh();
+                    return {
+                      relationshipId: saved.prepared?.relationshipId ?? null,
+                      draftId: saved.prepared?.draft.id ?? null,
+                      reviewState: saved.prepared?.draft.reviewState ?? null,
+                      ...(saved.prepared && !saved.prepared.created
+                        ? { because: "A first message already existed; it was left untouched." }
+                        : saved.because
+                          ? { because: saved.because }
+                          : {}),
+                    };
+                  }}
+                  onSaveRecord={(record) =>
+                    saveCampaignRecord({ ...record, organizationId, prospectId, userId })
+                  }
+                />
+                <ProfileWork
+                  organizationId={organizationId}
+                  userId={userId}
+                  prospectId={prospectId}
+                  companyName={prospect.name}
                 />
                 <ProspectPersonCard
                   people={peopleRows}
