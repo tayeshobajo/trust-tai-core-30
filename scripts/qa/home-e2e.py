@@ -55,7 +55,7 @@ async def main():
             print("H2 BLOCKED: no New task button (task storage may be unavailable)"); await b.close(); return 1
         await new.click()
         await page.get_by_placeholder("What needs doing?").fill(title)
-        await page.get_by_role("button", name="Create task").click()
+        await page.get_by_role("button", name="Create task", exact=True).last.click()
         await page.wait_for_timeout(1500)
         row = page.get_by_text(title)
         results["H2_created"] = await row.count() > 0
