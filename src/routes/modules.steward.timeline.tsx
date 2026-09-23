@@ -161,7 +161,7 @@ function Timeline({ identity }: { identity: WorkspaceIdentity }) {
         ))}
       </ul>
       {pageItems.length < shown.length && (
-        <TTButton variant="outline" onClick={() => setPage((p) => p + 1)}>
+        <TTButton variant="secondary" onClick={() => setPage((p) => p + 1)}>
           Show more ({shown.length - pageItems.length} left)
         </TTButton>
       )}

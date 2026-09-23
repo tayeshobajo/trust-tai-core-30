@@ -2,7 +2,7 @@
  * Browser reads (RLS as the signed-in member) for agent runs and task timelines.
  * A missing run table is reported as unavailable, never as zero runs.
  */
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ManualTaskRecord, StewardAgentRun } from "@/domain/steward-accountability";
 import { buildTaskTimeline, type TaskTimeline } from "@/domain/steward-task-timeline";
 import { stewardTasks } from "@/data/supabase/steward-tasks";

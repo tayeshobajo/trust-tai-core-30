@@ -200,7 +200,7 @@ function AgentPage({ identity }: { identity: WorkspaceIdentity }) {
                     </p>
                   )}
                   {(!run || run.status === "failed") && canQueue && task.status !== "complete" && (
-                    <TTButton size="sm" variant="outline" pending={retry.isPending} onClick={() => retry.mutate(task.id)}>
+                    <TTButton size="sm" variant="secondary" pending={retry.isPending} onClick={() => retry.mutate(task.id)}>
                       {run ? "Try again" : "Start"}
                     </TTButton>
                   )}
