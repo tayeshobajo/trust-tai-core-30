@@ -58,7 +58,7 @@ function TeammateDashboard({
   targetUserId: string;
 }) {
   /* Self viewing their own people/:userId link lands on the same dashboard
-     they would see at /modules/steward/dashboard; the scope derivation below
+     they see at Home; the scope derivation below
      still gives them full self detail, never a status-only view of themselves. */
   const scope = targetUserId === identity.userId ? "self" : "team";
 
