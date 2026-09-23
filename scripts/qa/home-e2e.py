@@ -43,10 +43,18 @@ async def main():
         await page.goto(BASE)
         await page.evaluate(f"localStorage.setItem({json.dumps(key)}, {json.dumps(session)})")
         await page.goto(BASE + "/", wait_until="networkidle")
-        results["H1_signed_in"] = "Sign in" not in (await page.content())[:5000]
+        await page.wait_for_timeout(4000)
+        await page.screenshot(path=str(OUT / "0_home.png"))
+        print("url after sign-in:", page.url)
+        results["H1_signed_in"] = "/auth" not in page.url
+        if not results["H1_signed_in"]:
+            print("H1_signed_in FAIL"); await b.close(); return 1
         title = "QA-home-" + os.urandom(3).hex()
-        await page.get_by_role("button", name="New task").click()
-        await page.get_by_label("Title").fill(title)
+        new = page.get_by_role("button", name="New task").first
+        if not await new.count():
+            print("H2 BLOCKED: no New task button (task storage may be unavailable)"); await b.close(); return 1
+        await new.click()
+        await page.get_by_placeholder("What needs doing?").fill(title)
         await page.get_by_role("button", name="Create task").click()
         await page.wait_for_timeout(1500)
         row = page.get_by_text(title)
