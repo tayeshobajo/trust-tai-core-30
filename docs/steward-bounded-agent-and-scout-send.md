@@ -60,3 +60,33 @@ Full suite: 321 files / 3,526 tests; typecheck clean. No SQL applied, no model c
 - T1 PASS Timeline lists the task after making names optional. Q1 PASS task queued on Trust Tai AI page; AI run did not start: preview server lacks its server write access and `steward_agent_runs` is absent. Error copy no longer exposes setup names.
 - H3 (Scout row crosses after a Comms send) NOT RUN: needs a real sent message; no send was made.
 - QA rows (`QA-` prefix) deleted; session file removed.
+
+## Round: live queue, campaigns, Scout profiles, send-triggered agent (2026-09-23)
+
+Evidence types: CODE (unit/mocked tests), LIVE (signed-in browser), BLOCKED (named dependency).
+Build: full suite 325 files / 3,541 tests, `tsgo --noEmit` clean. Auth status `no_supabase`.
+
+| Row | Evidence | Result | Owner |
+|---|---|---|---|
+| L1 run settles Queued → In progress → Completed/Needs approval | BLOCKED | Needs a fresh sign-in link and `steward_agent_runs` applied | Tai (link), Codex (SQL) |
+| L2 run in Home AI feed as agent work | CODE (feed filters `actor_is_agent`) / LIVE BLOCKED | same | same |
+| L3 Scout row shows agent status; crossed only on evidence | CODE | runner completes only after saved artifact | — |
+| L4 reload keeps it; QA rows cleaned | BLOCKED | walkthrough `scripts/qa/home-e2e.py` extended | Tai |
+| C1 campaign: name, template, placeholders, eligible emails only | CODE `scout-campaign.test.ts` | PASS | — |
+| C2 one Comms draft per recipient, linked to Scout | CODE (reuses `prepareFirstMessageDraft`, `campaign_key` in rationale) | PASS | — |
+| C3 send queue states; nothing sends without approval | CODE | PASS | — |
+| C4 unfillable placeholders block | CODE | PASS | — |
+| C5 no duplicate drafts/sends | CODE (dedupe + existing-draft idempotency) | PASS | — |
+| Campaign storage | PROPOSED `docs/migrations/proposed/20260923230000_scout_campaigns.sql` | Unapplied; UI says campaigns can't be saved yet | Codex |
+| D1 Scouts tab, accurate counts, unknown ≠ 0 | CODE `steward-scouts.test.ts` | PASS | — |
+| D2 filters before pagination, 12/page | CODE | PASS | — |
+| D3 card opens profile | CODE | PASS | — |
+| P1 profile shows people, tasks, runs | CODE (`ProfileWork` on company People tab) | PASS; LIVE pending | Tai |
+| P2 "Ask AI" creates linked agent task; answer cites saved people/prospect refs; invented refs rejected | CODE `steward-agent-prospect-context.test.ts` | PASS | — |
+| P3 missing facts reported unknown | CODE | PASS | — |
+| S1 only recorded `sent` + exact prospect link triggers | CODE `comms-scout-follow-up.server.test.ts` | PASS | — |
+| S2 first-message task crossed; one follow-up, runs once per delivery | CODE | PASS | — |
+| S3 follow-up is internal prep only | CODE | PASS | — |
+| S4 AI start failure keeps completion | CODE | PASS | — |
+
+The follow-up agent runs as the sending person's own token (RLS); with no token it stays queued and never impersonates. No send, publish, SQL application or provider call occurred.

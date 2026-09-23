@@ -73,6 +73,26 @@ async def main():
         await page.wait_for_timeout(4000)
         results["Q1_queued"] = await page.get_by_text(ai).count() > 0
         await page.screenshot(path=str(OUT / "2_ai_queue.png"))
+        # L1: the run must settle (Completed / Needs approval), not just queue.
+        settled = False
+        for _ in range(20):
+            item = page.locator("li", has_text=ai)
+            txt = (await item.first.inner_text()) if await item.count() else ""
+            if "Completed" in txt or "Needs approval" in txt: settled = True; break
+            if "Failed" in txt or "can't start" in txt or "did not start" in txt: break
+            await page.wait_for_timeout(3000); await page.reload(wait_until="networkidle")
+        results["L1_run_settled"] = settled
+        if not settled:
+            print("L1 BLOCKED: the AI run did not settle (run storage or server access may be missing).")
+        # L2: the run appears in the Home AI feed as agent work.
+        await page.goto(BASE + "/", wait_until="networkidle")
+        results["L2_home_ai_feed"] = settled and await page.get_by_text(ai).count() > 0
+        await page.screenshot(path=str(OUT / "3_home_feed.png"))
+        # L4: persists across reload.
+        await page.reload(wait_until="networkidle")
+        results["L4_persisted"] = settled and await page.get_by_text(ai).count() > 0
+        await page.goto(BASE + "/modules/steward/scouts", wait_until="networkidle")
+        results["D1_scouts_loads"] = await page.get_by_text("companies").count() > 0
         await page.goto(BASE + "/modules/steward/timeline", wait_until="networkidle")
         results["T1_timeline_lists_task"] = await page.get_by_text(title).count() > 0
         await b.close()

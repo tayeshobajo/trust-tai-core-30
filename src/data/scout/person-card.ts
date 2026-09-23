@@ -104,6 +104,7 @@ export async function prepareFirstMessageDraft(input: {
   person: Person;
   identity: ProspectPersonIdentity;
   development?: HandoffDevelopment | undefined;
+  template?: { subject: string; body: string; campaignKey: string } | undefined;
 }): Promise<PreparedFirstMessage> {
   const existing = await findRelationship({
     organizationId: input.organizationId,
@@ -155,13 +156,16 @@ export async function prepareFirstMessageDraft(input: {
   const prepared = drafts.find((draft) => draft.rationale["kind"] === FIRST_MESSAGE_KIND);
   if (prepared) return { relationshipId: relationship.id, draft: prepared, created: false };
 
-  const content = composeFirstMessage({
-    person: input.identity,
-    companyName: input.companyName,
-    ...(developmentRead(input.development)
-      ? { development: developmentRead(input.development)! }
-      : {}),
-  });
+  // A campaign supplies already-rendered words; otherwise compose the default.
+  const content = input.template
+    ? { subject: input.template.subject, body: input.template.body }
+    : composeFirstMessage({
+        person: input.identity,
+        companyName: input.companyName,
+        ...(developmentRead(input.development)
+          ? { development: developmentRead(input.development)! }
+          : {}),
+      });
 
   const draft = await commsService.saveDraft(
     {
@@ -178,6 +182,7 @@ export async function prepareFirstMessageDraft(input: {
         full_name: input.identity.fullName,
         role_title: input.identity.roleTitle ?? null,
         company_name: input.identity.companyName ?? input.companyName,
+        campaign_key: input.template?.campaignKey ?? null,
       },
       evidence: [{ label: "Person confirmed by a Trust Tai member in Scout", kind: "human" }],
     },
@@ -200,6 +205,7 @@ export async function saveProspectPerson(input: {
   person: Person;
   identity: ProspectPersonIdentity;
   development?: HandoffDevelopment | undefined;
+  template?: { subject: string; body: string; campaignKey: string } | undefined;
 }): Promise<SavedProspectPerson> {
   const fullName = input.identity.fullName.trim();
   if (!fullName) throw new Error("A person needs a name before their card can be saved.");

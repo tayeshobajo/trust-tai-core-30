@@ -10,6 +10,11 @@ import {
   type AgentPersonEvidence,
   type AgentPersonRow,
 } from "@/domain/steward-agent-people";
+import {
+  toProspectContext,
+  validateProspectRefs,
+  type ProspectContext,
+} from "@/domain/steward-agent-prospect-context";
 import { extractJsonObject, runtimeModelCaller } from "@/lib/intelligence-runtime.server";
 
 type Row = Record<string, unknown>;
@@ -51,6 +56,7 @@ function taskFromRow(row: Row): ManualTaskRecord {
 export type StewardAgentModelCall = (
   task: ManualTaskRecord,
   people?: AgentPersonEvidence[],
+  prospect?: ProspectContext | null,
 ) => Promise<{
   artifact: string;
   evidenceRefs: string[];
@@ -80,7 +86,25 @@ export async function loadAgentPeople(
   return toPeopleEvidence((data ?? []) as AgentPersonRow[]);
 }
 
-export const callStewardAgentModel: StewardAgentModelCall = async (task, people = []) => {
+/** The exactly-linked Scout profile's recorded facts, read as the caller (RLS). */
+export async function loadAgentProspect(
+  client: SupabaseClient,
+  organizationId: string,
+  task: ManualTaskRecord,
+): Promise<ProspectContext | null> {
+  const prospectId = linkedProspectId(task);
+  if (!prospectId) return null;
+  const { data, error } = await client
+    .from("prospects")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", prospectId)
+    .maybeSingle();
+  if (error) return null;
+  return toProspectContext((data ?? null) as Row | null);
+}
+
+export const callStewardAgentModel: StewardAgentModelCall = async (task, people = [], prospect = null) => {
   const token = task.correlationId?.startsWith("runtime-token:")
     ? task.correlationId.slice("runtime-token:".length)
     : "";
@@ -96,7 +120,7 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task, people 
   const response = await call({
     model: MODEL,
     instructions:
-      "You are a bounded internal preparation agent. Use only supplied context. Never send, publish, approve, promise, price, change scope or dates, or claim unsupported facts. Return JSON only with artifact, evidence_refs and people_named. Every claim must be grounded in a supplied evidence ref. When people are supplied, refer to them by their exact saved name and title and cite their person ref; list every person you name in people_named. Never name anyone not supplied. If no people are supplied and the task asks about people, say no saved Scout people exist yet.",
+      "You are a bounded internal preparation agent. Use only supplied context. Never send, publish, approve, promise, price, change scope or dates, or claim unsupported facts. Return JSON only with artifact, evidence_refs and people_named. Every claim must be grounded in a supplied evidence ref. When people are supplied, refer to them by their exact saved name and title and cite their person ref; list every person you name in people_named. Never name anyone not supplied. If no people are supplied and the task asks about people, say no saved Scout people exist yet. When a scout_profile is supplied, cite its fact refs for company facts; for anything listed under unknown, say it is not recorded.",
     input: `Return json only. ${JSON.stringify({
       title: task.title,
       notes: task.notes ?? null,
@@ -106,6 +130,9 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task, people 
         label: link.label,
         url: link.url,
       })),
+      scout_profile: prospect
+        ? { ref: prospect.ref, name: prospect.name, facts: prospect.facts, unknown: prospect.unknown }
+        : null,
       scout_people: people.map((p) => ({
         ref: p.ref,
         name: p.name,
@@ -236,7 +263,10 @@ export async function executeStewardAgentTask(input: {
   try {
     const runtimeTask: ManualTaskRecord = { ...task, correlationId: `runtime-token:${input.token}` };
     const people = await loadAgentPeople(input.client, input.organizationId, task);
-    const result = await (input.callModel ?? callStewardAgentModel)(runtimeTask, people);
+    const prospect = await loadAgentProspect(input.client, input.organizationId, task);
+    const result = await (input.callModel ?? callStewardAgentModel)(runtimeTask, people, prospect);
+    const prospectCheck = validateProspectRefs(result.evidenceRefs, prospect);
+    if (!prospectCheck.ok) throw new AgentRunUnavailable(prospectCheck.because);
     const peopleCheck = validatePeopleUse({
       artifact: result.artifact,
       evidenceRefs: result.evidenceRefs,

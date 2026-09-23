@@ -7,3 +7,10 @@
 - [x] Add deterministic, adapter, integration, and component tests.
 - [x] Document AE1–AE11, SC1–SC9, and evidence boundaries.
 - [x] Run focused/full tests, type checks, build, and signed-in checks if available.
+
+## Scout x Steward AI round
+- [ ] L1–L4 live AI queue walkthrough — blocked: fresh sign-in link + Codex applying steward_agent_runs
+- [x] Campaigns from People rows (C1–C5); storage SQL proposed for Codex
+- [x] Steward Scouts tab (D1–D3)
+- [x] Scout profile work + Ask AI with company facts (P1–P3)
+- [x] Send creates and starts AI follow-up (S1–S4)

@@ -69,6 +69,9 @@ import {
   savePeople,
 } from "@/data/scout/people-research";
 import { PROVIDER_LABEL, workEmailState, type ScoutPerson } from "@/domain/scout-people";
+import { CampaignPanel } from "@/components/tt/scout/detail/campaign-panel";
+import { ProfileWork } from "@/components/tt/scout/detail/profile-work";
+import { saveCampaignRecord } from "@/data/scout/campaigns";
 import {
   fillKnownTitles,
   mergePeople,
@@ -524,8 +527,10 @@ function CompanyDetail({
   // preparation runs. Nothing is sent, and a warning travels with an address
   // that is unverified or past the freshness policy. Handing the same person
   // over twice returns to the same conversation.
-  const prepareOutreach = useMutation({
-    mutationFn: async (person: ScoutPerson) => {
+  const handOffPerson = async (
+    person: ScoutPerson,
+    template?: { subject: string; body: string; campaignKey: string },
+  ) => {
       if (!candidate) throw new Error("That company is no longer on your board.");
       const added = await peopleService.addManual(
         {
@@ -572,6 +577,7 @@ function CompanyDetail({
           roleTitle: person.title ?? contact.roleTitle,
           companyName: candidate.prospect.name,
         },
+        ...(template ? { template } : {}),
       });
       const relationshipId = saved.prepared?.relationshipId;
       if (person.persistedId && relationshipId) {
@@ -592,7 +598,9 @@ function CompanyDetail({
         }
       }
       return saved;
-    },
+  };
+  const prepareOutreach = useMutation({
+    mutationFn: (person: ScoutPerson) => handOffPerson(person),
     onSuccess: (_result, person) => {
       const state = workEmailState(person, new Date().toISOString());
       toast.success("Prepared in Comms", {
@@ -1287,6 +1295,34 @@ function CompanyDetail({
                   onRetrySave={() => saveResearch.mutate(researched)}
                   onSaveEmail={(person) => saveEmail.mutate(person)}
                   savingEmailKey={saveEmail.isPending ? (saveEmail.variables?.key ?? null) : null}
+                />
+                <CampaignPanel
+                  people={peopleForCard.filter((p) => Boolean(p.persistedId))}
+                  companyName={prospect.name}
+                  prospectId={prospectId}
+                  onPrepare={async (person, template) => {
+                    const saved = await handOffPerson(person, template);
+                    void refresh();
+                    return {
+                      relationshipId: saved.prepared?.relationshipId ?? null,
+                      draftId: saved.prepared?.draft.id ?? null,
+                      reviewState: saved.prepared?.draft.reviewState ?? null,
+                      ...(saved.prepared && !saved.prepared.created
+                        ? { because: "A first message already existed; it was left untouched." }
+                        : saved.because
+                          ? { because: saved.because }
+                          : {}),
+                    };
+                  }}
+                  onSaveRecord={(record) =>
+                    saveCampaignRecord({ ...record, organizationId, prospectId, userId })
+                  }
+                />
+                <ProfileWork
+                  organizationId={organizationId}
+                  userId={userId}
+                  prospectId={prospectId}
+                  companyName={prospect.name}
                 />
                 <ProspectPersonCard
                   people={peopleRows}
