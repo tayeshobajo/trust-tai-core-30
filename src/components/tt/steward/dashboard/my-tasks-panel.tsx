@@ -233,10 +233,10 @@ export function MyTasksPanel({
                       key={task.key}
                       task={task}
                       onToggle={onToggle}
-                      onReassign={onReassign}
                       actor={actor}
                       pending={completingTaskKey === task.key}
-                      onOpen={onOpen}
+                      {...(onReassign ? { onReassign } : {})}
+                      {...(onOpen ? { onOpen } : {})}
                     />
                   ))}
                 </ul>

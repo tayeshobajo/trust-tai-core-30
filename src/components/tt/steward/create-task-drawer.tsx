@@ -581,22 +581,22 @@ export function CreateTaskDrawer({
         </div>
 
         <div className="mt-8 flex flex-wrap gap-2 border-t border-border pt-4">
-          {allowAgentCreate ? <TTButton
+          <TTButton
             type="button"
             variant="secondary"
             pending={pending}
             onClick={() => void submit("draft", assignTo)}
           >
             Save draft
-          </TTButton> : null}
-          <TTButton
+          </TTButton>
+          {allowAgentCreate ? <TTButton
             type="button"
             variant="primary"
             pending={pending}
             onClick={() => void submit("open", "human")}
           >
             Create task
-          </TTButton>
+          </TTButton> : null}
           <TTButton
             type="button"
             variant="signal"

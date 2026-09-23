@@ -91,6 +91,7 @@ function writerFor(
     setCommitmentStatus: async (id, status) => calls.push(`status:${id}:${status}`),
     setCommitmentOwner: async (id, owner) => calls.push(`owner:${id}:${owner.name}:${owner.email}`),
     setCommitmentDue: async (id, dueAt) => calls.push(`due:${id}:${dueAt}`),
+    updateManualTask: async (id, patch) => calls.push(`manual:${id}:${JSON.stringify(patch)}`),
     saveTaskState: async (input) => {
       taskState.push(input);
       return input;
@@ -101,7 +102,7 @@ function writerFor(
     },
     assignAgentTask: async (input) => {
       agentTasks.push(input);
-      return input;
+      return { issueId: "issue-1", bindingId: "binding-1", isNew: true };
     },
     now: () => NOW,
     ...overrides,

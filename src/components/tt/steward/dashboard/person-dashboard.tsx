@@ -145,12 +145,12 @@ export function PersonDashboard({
           now={read.now}
           scope={scope}
           onToggle={onCompleteTask}
-          onCreate={onCreateTask}
-          onReassign={onReassignTask}
-          completingTaskKey={completingTaskKey}
           actor={actor}
-          taskStorageAvailable={taskStorageAvailable}
-          onOpen={onOpenTask}
+          {...(onCreateTask ? { onCreate: onCreateTask } : {})}
+          {...(onReassignTask ? { onReassign: onReassignTask } : {})}
+          {...(completingTaskKey !== undefined ? { completingTaskKey } : {})}
+          {...(taskStorageAvailable !== undefined ? { taskStorageAvailable } : {})}
+          {...(onOpenTask ? { onOpen: onOpenTask } : {})}
           viewAllHref={tasksHref}
         />
 
