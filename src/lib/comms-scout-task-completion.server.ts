@@ -110,6 +110,18 @@ export async function completeScoutTaskAfterSentDelivery(input: {
  * the AI only prepares a draft or plan that waits for a person's review.
  */
 async function ensureFollowUp(
+  input: Parameters<typeof ensureFollowUpUnsafe>[0],
+  prospectId: string,
+): Promise<string | null> {
+  // Follow-up creation is downstream of a recorded send; it never throws.
+  try {
+    return await ensureFollowUpUnsafe(input, prospectId);
+  } catch {
+    return null;
+  }
+}
+
+async function ensureFollowUpUnsafe(
   input: { client: SupabaseClient; organizationId: string; deliveryId: string; dispatch?: (taskId: string) => Promise<void> },
   prospectId: string,
 ): Promise<string | null> {
