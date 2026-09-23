@@ -189,7 +189,7 @@ export function CampaignPanel(props: {
                   {q.note ? ` · ${q.note}` : ""}
                 </span>
                 {q.relationshipId && (
-                  <Link to="/modules/comms/relationships/$relationshipId" params={{ relationshipId: q.relationshipId }} className="text-xs text-primary underline">
+                  <Link to="/modules/comms/relationships" search={{ relationship: q.relationshipId }} className="text-xs text-primary underline">
                     Review and approve in Comms
                   </Link>
                 )}
