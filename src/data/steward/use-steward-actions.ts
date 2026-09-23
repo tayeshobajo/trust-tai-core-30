@@ -54,6 +54,10 @@ const liveDeps: StewardWriteDeps = {
       },
     });
   },
+  runInternalAgentTask: async (input) => {
+    const { runStewardAgentTask } = await import("@/data/steward-agent-runs.functions");
+    return runStewardAgentTask({ data: input });
+  },
   now: () => new Date().toISOString(),
 };
 
@@ -154,12 +158,12 @@ export function useStewardActions({
     mutationFn: (input: { task: StewardTask; agent: StewardAgent }) =>
       requestAgentAssignment(writer, input),
     onSuccess: () => {
-      toast.success("Sent to Paperclip. Steward will show progress as it reports back.");
+      toast.success("Assigned. The AI teammate has started bounded internal work.");
       refresh();
     },
     onError: (error: unknown) =>
       toast.error("Not assigned", {
-        description: message(error, "Paperclip did not accept that task."),
+        description: message(error, "The AI teammate could not start that task."),
       }),
   });
 

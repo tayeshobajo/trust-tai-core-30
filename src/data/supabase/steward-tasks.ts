@@ -94,6 +94,13 @@ function toRecord(row: Row): ManualTaskRecord {
     ...(str(row["notes"]) ? { notes: str(row["notes"])! } : {}),
     ...(str(row["paperclip_task_id"]) ? { paperclipTaskId: str(row["paperclip_task_id"])! } : {}),
     ...(str(row["correlation_id"]) ? { correlationId: str(row["correlation_id"])! } : {}),
+    ...(str(row["source_app"]) ? { sourceApp: str(row["source_app"])! } : {}),
+    ...(str(row["source_entity_type"])
+      ? { sourceEntityType: str(row["source_entity_type"])! }
+      : {}),
+    ...(str(row["source_entity_id"])
+      ? { sourceEntityId: str(row["source_entity_id"])! }
+      : {}),
     ...(str(row["created_by"]) ? { createdBy: str(row["created_by"])! } : {}),
     createdAt: String(row["created_at"] ?? new Date().toISOString()),
     updatedAt: String(row["updated_at"] ?? row["created_at"] ?? new Date().toISOString()),
@@ -121,6 +128,9 @@ export interface CreateManualTaskInput {
   notes?: string | null;
   createdBy?: ID | null;
   correlationId?: string | null;
+  sourceApp?: string | null;
+  sourceEntityType?: string | null;
+  sourceEntityId?: string | null;
 }
 
 /** A patch for updating a manual task. Only supplied keys are written. */
@@ -196,6 +206,10 @@ export const stewardTasks = {
     if (input.notes !== undefined) payload["notes"] = input.notes;
     if (input.createdBy !== undefined) payload["created_by"] = input.createdBy;
     if (input.correlationId !== undefined) payload["correlation_id"] = input.correlationId;
+    if (input.sourceApp !== undefined) payload["source_app"] = input.sourceApp;
+    if (input.sourceEntityType !== undefined)
+      payload["source_entity_type"] = input.sourceEntityType;
+    if (input.sourceEntityId !== undefined) payload["source_entity_id"] = input.sourceEntityId;
 
     const { data, error } = await supabase
       .from("steward_tasks")

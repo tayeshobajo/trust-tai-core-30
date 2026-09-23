@@ -104,6 +104,10 @@ function writerFor(
       agentTasks.push(input);
       return { issueId: "issue-1", bindingId: "binding-1", isNew: true };
     },
+    runInternalAgentTask: async (input) => {
+      agentTasks.push({ ...input, kind: "internal" });
+      return { runId: "run-1", status: "queued", note: "Run queued." };
+    },
     now: () => NOW,
     ...overrides,
   };
@@ -248,7 +252,7 @@ describe("manual task assignment", () => {
     );
   });
 
-  it("persists the exact Paperclip receipt after the bounded agent handoff", async () => {
+  it("starts one bounded internal run for a manual task", async () => {
     const r = writerFor();
     await requestAgentAssignment(r.writer, {
       task: task({
@@ -261,8 +265,9 @@ describe("manual task assignment", () => {
     });
 
     expect(r.calls).toContain(
-      'manual:manual-3:{"ownerUserId":null,"ownerLabel":"Scout Runner","assigneeKind":"agent","aiMode":"safe_internal","paperclipTaskId":"issue-1","correlationId":"binding-1"}',
+      'manual:manual-3:{"ownerUserId":null,"ownerLabel":"Scout Runner","assigneeKind":"agent","aiMode":"safe_internal"}',
     );
+    expect(r.agentTasks[0]).toMatchObject({ taskId: "manual-3", agentId: "pc-1", kind: "internal" });
   });
 });
 
@@ -326,7 +331,7 @@ describe("reassigning", () => {
     expect(r.calls).toEqual([]);
   });
 
-  it("asks Paperclip rather than claiming the agent took it", async () => {
+  it("keeps non-manual imported work on the Paperclip path", async () => {
     const r = writerFor();
     await requestAgentAssignment(r.writer, { task: task(), agent });
 
