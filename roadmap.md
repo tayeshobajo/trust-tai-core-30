@@ -6,4 +6,4 @@
 - [x] Complete exact linked Scout task after confirmed Gmail or Resend delivery.
 - [x] Add deterministic, adapter, integration, and component tests.
 - [x] Document AE1–AE11, SC1–SC9, and evidence boundaries.
-- [ ] Run focused/full tests, type checks, build, and signed-in checks if available.
+- [x] Run focused/full tests, type checks, build, and signed-in checks if available.

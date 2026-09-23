@@ -86,9 +86,15 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
         notes: input.notes ?? null,
       });
       if (opts.assignToAI && input.status !== "draft") {
-        const { runStewardAgentTask } = await import("@/data/steward-agent-runs.functions");
-        const run = await runStewardAgentTask({ data: { organizationId: identity.organizationId, taskId: created.id, agentId: "trust-tai-internal" } });
-        toast.success(run.status === "completed" ? "AI teammate completed the task with saved evidence." : run.status === "needs_approval" ? "Task saved. It needs your approval before the AI can continue." : "Task assigned to the AI teammate.");
+        try {
+          const { runStewardAgentTask } = await import("@/data/steward-agent-runs.functions");
+          const run = await runStewardAgentTask({ data: { organizationId: identity.organizationId, taskId: created.id, agentId: "trust-tai-internal" } });
+          toast.success(run.status === "completed" ? "AI teammate completed the task with saved evidence." : run.status === "needs_approval" ? "Task saved. It needs your approval before the AI can continue." : "Task assigned to the AI teammate.");
+        } catch (error) {
+          toast.warning("Task saved, but AI work did not start", {
+            description: error instanceof Error ? error.message : "The AI runner is unavailable.",
+          });
+        }
       } else {
         toast.success(input.status === "draft" ? "Task draft saved." : "Task created.");
       }

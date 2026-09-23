@@ -303,7 +303,12 @@ export const stewardTasks = {
         notes: "Complete only after Comms records a provider-confirmed sent delivery.",
       });
     } catch (error) {
-      if (!NOT_PROVISIONED.test(error instanceof Error ? error.message : "")) throw error;
+      if (
+        !(error instanceof ManualTasksNotProvisionedError) &&
+        !NOT_PROVISIONED.test(error instanceof Error ? error.message : "")
+      ) {
+        throw error;
+      }
       // Compatibility until Codex applies the additive source-identity columns.
       return this.create({
         organizationId: input.organizationId,
