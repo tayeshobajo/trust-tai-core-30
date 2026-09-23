@@ -551,6 +551,18 @@ export async function settleDelivery(input: {
     );
   }
   if (input.state === "sent") await closeReviewAfterSend(input.organizationId, input.deliveryId);
+  if (input.state === "sent") {
+    const { completeScoutTaskAfterSentDelivery } = await import(
+      "@/lib/comms-scout-task-completion.server"
+    );
+    // The provider result and delivery receipt remain authoritative even when
+    // this downstream reconciliation cannot finish. Never invite a resend.
+    await completeScoutTaskAfterSentDelivery({
+      client: writer,
+      organizationId: input.organizationId,
+      deliveryId: input.deliveryId,
+    }).catch(() => undefined);
+  }
   return { recorded: true, note: describeDelivery(input.state, input.channel) };
 }
 

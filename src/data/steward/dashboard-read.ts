@@ -11,7 +11,7 @@
  * No new table is created; the activities stream is the ledger.
  */
 
-import { listForActor } from "@/data/supabase/activities";
+import { listForActor, supabaseActivity } from "@/data/supabase/activities";
 import { loadWorkspacePeople } from "@/data/daily-workspace";
 import { weeklyGoals } from "@/data/supabase/weekly-goals";
 import type { ActivityEvent } from "@/domain/activity";
@@ -160,7 +160,7 @@ export async function readStewardDashboard(
      legitimately span more than a week. The feed itself slices the recent rows. */
   const sinceISO = new Date(Date.parse(now) - 60 * 86_400_000).toISOString();
 
-  const [team, weeklyGoal, rawActivities, peopleRead] = await Promise.all([
+  const [team, weeklyGoal, personActivities, workspaceActivities, peopleRead] = await Promise.all([
     /* The shared checklist read is already fail-closed internally; a full
        failure is still caught so one bad source never blanks the page. */
     readStewardTeam(organizationId, targetUserId).catch(() => null),
@@ -168,12 +168,20 @@ export async function readStewardDashboard(
       .currentFor(organizationId, targetUserId, weekStart)
       .catch((): WeeklyGoalRecord | null => null),
     listForActor(organizationId, targetUserId, sinceISO, 200).catch((): ActivityEvent[] => []),
+    supabaseActivity.list({ organizationId, limit: 200 }).catch((): ActivityEvent[] => []),
     loadWorkspacePeople(organizationId).catch(() => null),
   ]);
 
   const allTasks = team?.tasks ?? [];
   const tasks = allTasks.filter((task) => task.owner.userId === targetUserId);
 
+  const agentActivities = workspaceActivities.filter((event) => {
+    const payload = event.payload ?? {};
+    return bool(payload["actor_is_agent"]) || payload["actor_kind"] === "agent";
+  });
+  const rawActivities = Array.from(
+    new Map([...personActivities, ...agentActivities].map((event) => [event.id, event])).values(),
+  ).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
   const activities = markUndone(rawActivities.map(toDashboardActivity), rawActivities);
   const people = (peopleRead?.people ?? [])
     .filter((person) => person.active)

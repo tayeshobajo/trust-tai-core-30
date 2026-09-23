@@ -95,6 +95,8 @@ export class ProviderCallFailedError extends Error {
 }
 
 export interface ProviderCallOptions {
+  /** Explicit model policy supplied by the central runtime for a bounded purpose. */
+  model?: string | undefined;
   webSearch: boolean;
   /**
    * An explicit strict response format (e.g. Scout's candidate schema). When
@@ -164,7 +166,7 @@ async function runProviderCall(
         : {}),
     },
     body: JSON.stringify({
-      model: selected.model,
+      model: options.model ?? selected.model,
       instructions,
       input: jsonObjectFormat ? inputForJsonObjectFormat(input) : input,
 
@@ -237,7 +239,7 @@ async function runProviderCall(
     }
   }
 
-  return { raw, provider: selected.provider, model: selected.model };
+  return { raw, provider: selected.provider, model: options.model ?? selected.model };
 }
 
 /* --------------------------------------------------------------- parsing */

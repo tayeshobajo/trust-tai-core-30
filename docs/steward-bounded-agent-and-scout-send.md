@@ -1,0 +1,44 @@
+# Steward bounded agent and Scout-send completion
+
+## Operating contract
+
+- Internal AI work starts only when a signed-in person explicitly assigns a task.
+- The only model for this path is `openai/gpt-6-astra`, called server-side through Trust Tai's single Intelligence Runtime.
+- Low-risk internal preparation may complete only with a durable artifact and evidence references.
+- Anything resembling sending, publication, payment, approval, a commercial commitment, pricing, scope, dates, deletion, deployment, contact, or outreach stops at **Needs approval**.
+- Paperclip remains the execution source of truth for imported Paperclip tasks. The internal runner has its own durable receipt.
+- No agent entry point can send a Comms message.
+
+## Acceptance evidence
+
+| ID | Criterion | Evidence | Result | Remaining owner |
+|---|---|---|---|---|
+| AE1 | One explicit assignment starts at most one run | CODE: deterministic organization/task idempotency key and unique proposed index | Pass in code | Codex: apply SQL |
+| AE2 | Inactive and cross-workspace callers fail closed | CODE: literal active membership and organization-scoped task reads; authenticated receives SELECT only | Pass in code | Codex: live RLS proof |
+| AE3 | High-risk work cannot execute | CODE/TEST: deterministic risk gate | Pass | — |
+| AE4 | No-context tasks do not guess | CODE/TEST | Pass | — |
+| AE5 | Low-risk work uses Astra through the server only | CODE/TEST: literal model, server-only module, and runtime fragmentation guard | Pass | Live model smoke test after schema |
+| AE6 | Completion requires a saved artifact and evidence | CODE/TEST | Pass | Live persistence proof |
+| AE7 | Failure leaves task honestly unresolved | CODE/TEST boundary | Pass in code | Live persistence proof |
+| AE8 | Agent activity requires explicit agent provenance | CODE: activity payload contains agent/run/evidence identity | Pass in code | Signed-in feed proof |
+| AE9 | Existing Steward Agents task list remains unified | CODE: agent-owned manual tasks use the existing Agents filter | Pass | Signed-in visual proof |
+| AE10 | Home can create and assign an AI task | CODE: existing drawer enabled and calls the same runner | Pass in code | Signed-in flow proof |
+| AE11 | No autonomous external action exists | CODE: runner has only model/database access; risk gate forbids external action | Pass | — |
+
+| ID | Criterion | Evidence | Result | Remaining owner |
+|---|---|---|---|---|
+| SC1 | Scout handoff creates/reuses one exact outreach task | CODE: prospect correlation key and proposed unique index | Pass in code | Codex: apply SQL |
+| SC2 | Linkage is workspace + canonical prospect, never title/name | CODE/TEST | Pass | — |
+| SC3 | Gmail and Resend share the same post-settlement hook | CODE: hook is inside shared `settleDelivery` | Pass | — |
+| SC4 | Only recorded provider-confirmed `sent` can complete | CODE/TEST | Pass | Live provider proof not run |
+| SC5 | Failed/unknown/attempting never complete | TEST | Pass | — |
+| SC6 | Retry cannot complete twice | CODE: conditional update plus idempotent activity key | Pass in code | Live concurrency proof |
+| SC7 | Downstream failure never suggests resending | CODE: send outcome remains authoritative; reconciliation is caught | Pass | — |
+| SC8 | Home shows check and crossed title | Existing component behavior for durable `complete` state | Pass in code | Signed-in visual proof |
+| SC9 | No send, publish, schema application, or production schedule action occurred | PROCESS | Pass | — |
+
+## Verification boundary
+
+The SQL in `docs/migrations/proposed/20260923190000_steward_agent_runs_and_source_links.sql` is proposed and unapplied. Until Codex applies and verifies it, durable run execution and signed-in end-to-end acceptance remain blocked. Tests use deterministic mocks; they do not prove a live model call or a real send.
+
+The implementation verification completed with 319 test files / 3,520 tests passing, a clean type check and diff check, and a healthy preview build. This includes the guard that prevents room-specific code from calling a model provider directly. No live model request, message send, schema application, publish, payment, or production mutation was performed.

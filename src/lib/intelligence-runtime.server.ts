@@ -71,7 +71,8 @@ export type RuntimePurpose =
   | "import"
   | "research"
   | "studio_generation"
-  | "studio_brief";
+  | "studio_brief"
+  | "bounded_agent_task";
 
 export interface RuntimeModelCall {
   instructions: string;
@@ -83,6 +84,7 @@ export interface RuntimeModelCall {
   onDelta?: ((delta: string) => void) | undefined;
   gateway?: ReturnType<typeof createLovableAiGatewayRunIdFetch> | undefined;
   initialRunId?: string | undefined;
+  model?: string | undefined;
 }
 
 /**
@@ -116,6 +118,7 @@ export async function runtimeModelCaller(access: {
       ...(call.onDelta ? { onDelta: call.onDelta } : {}),
       ...(call.gateway ? { gateway: call.gateway } : {}),
       ...(call.initialRunId ? { initialRunId: call.initialRunId } : {}),
+      ...(call.model ? { model: call.model } : {}),
     });
 }
 
