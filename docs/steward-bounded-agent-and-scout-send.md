@@ -42,3 +42,14 @@
 The SQL in `docs/migrations/proposed/20260923190000_steward_agent_runs_and_source_links.sql` is proposed and unapplied. Until Codex applies and verifies it, durable run execution and signed-in end-to-end acceptance remain blocked. Tests use deterministic mocks; they do not prove a live model call or a real send.
 
 The implementation verification completed with 319 test files / 3,520 tests passing, a clean type check and diff check, and a healthy preview build. This includes the guard that prevents room-specific code from calling a model provider directly. No live model request, message send, schema application, publish, payment, or production mutation was performed.
+## 2026-09-23 — Live walkthrough, AI page, timeline, Scout People context
+
+| Row | Evidence | Result | Owner |
+|---|---|---|---|
+| H1–H5 Home walkthrough | `scripts/qa/home-e2e.py` run in preview sandbox | BLOCKED: no signed-in session (`no_supabase`); nothing marked passed | Tai/Codex signed-in run |
+| A1–A5 Bounded agent live run | Code + mocks | CODE only; live run needs `steward_agent_runs` migration applied and a signed-in session | Codex (SQL), Tai |
+| P1–P5 Scout People context | `src/domain/steward-agent-people.ts` + tests; runner loads saved people for the exactly linked prospect as the caller (RLS), max four, validates every named person is cited and saved | CODE pass (3 tests) | Live answer pending signed-in run |
+| T1–T5 Timeline | `/modules/steward/timeline`, `src/domain/steward-task-timeline.ts` + tests | CODE pass; unknown actors/times show "Unknown"/"Not recorded" | Signed-in visual check |
+| Q1–Q5 Trust Tai AI page | `/modules/steward/ai` queue, status, response/evidence, retry; owners/admins queue | CODE pass; honest unavailable state when run storage absent | Signed-in visual check |
+
+Full suite: 321 files / 3,526 tests; typecheck clean. No SQL applied, no model call, no send, no publish.
