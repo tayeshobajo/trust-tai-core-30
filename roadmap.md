@@ -8,9 +8,9 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Active correction
 
-- [ ] Make Home the personal user dashboard shown in the approved reference.
-- [ ] Keep the existing welcome overview and make the Trust Tai logo open it.
-- [ ] Remove the personal dashboard from Steward while preserving its old URL as a redirect.
+- [x] Make Home the personal user dashboard shown in the approved reference.
+- [x] Keep the existing welcome overview and make the Trust Tai logo open it.
+- [x] Remove the personal dashboard from Steward while preserving its old URL as a redirect.
 
 ## Progress
 
