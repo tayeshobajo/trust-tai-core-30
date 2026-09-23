@@ -115,6 +115,7 @@ function TeammateDashboard({
         onConfirmGoal={() => {}}
         confirmingGoal={false}
         onUndoActivity={() => {}}
+        actor={{ userId: identity.userId, canManage: identity.canManage }}
       />
     </div>
   );

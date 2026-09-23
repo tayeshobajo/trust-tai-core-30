@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { supabaseActivity } from "@/data/supabase/activities";
 import { stewardService } from "@/data/supabase/steward-service";
 import { stewardTaskState } from "@/data/supabase/steward-task-state";
+import { stewardTasks } from "@/data/supabase/steward-tasks";
 import type { StewardAgent, StewardFocus, StewardTask } from "@/domain/steward-accountability";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -36,6 +37,7 @@ const liveDeps: StewardWriteDeps = {
   setCommitmentStatus: (id, status) => stewardService.setStatus(id, status),
   setCommitmentOwner: (id, owner) => stewardService.setOwner(id, owner),
   setCommitmentDue: (id, dueAt) => stewardService.setDue(id, dueAt),
+  updateManualTask: (id, patch) => stewardTasks.update(id, patch),
   saveTaskState: (input) => stewardTaskState.save(input),
   recordActivity: (event) => supabaseActivity.record(event),
   assignAgentTask: async (input) => {
@@ -81,12 +83,36 @@ export function useStewardActions({
 
   const complete = useMutation({
     mutationFn: (input: { task: StewardTask; note: string }) => completeTask(writer, input),
+    onMutate: async ({ task }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (current: unknown) => {
+        if (!current || typeof current !== "object" || !("tasks" in current)) return current;
+        const read = current as { tasks: StewardTask[] };
+        return {
+          ...read,
+          tasks: read.tasks.map((row) =>
+            row.key === task.key
+              ? {
+                  ...row,
+                  state: "complete" as const,
+                  completedBy: identity.name,
+                  completedAt: new Date().toISOString(),
+                }
+              : row,
+          ),
+        };
+      });
+      return { previous };
+    },
     onSuccess: () => {
       toast.success("Recorded as complete.");
       refresh();
     },
-    onError: (error: unknown) =>
-      toast.error("Not recorded", { description: message(error, "That could not be recorded.") }),
+    onError: (error: unknown, _input, context) => {
+      if (context?.previous !== undefined) queryClient.setQueryData(queryKey, context.previous);
+      toast.error("Not recorded", { description: message(error, "That could not be recorded.") });
+    },
   });
 
   const focus = useMutation({
@@ -168,5 +194,6 @@ export function useStewardActions({
       due.isPending ||
       rank.isPending ||
       undoClear.isPending,
+    completingTaskKey: complete.isPending ? (complete.variables?.task.key ?? null) : null,
   };
 }

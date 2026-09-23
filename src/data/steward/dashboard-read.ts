@@ -12,9 +12,11 @@
  */
 
 import { listForActor } from "@/data/supabase/activities";
+import { loadWorkspacePeople } from "@/data/daily-workspace";
 import { weeklyGoals } from "@/data/supabase/weekly-goals";
 import type { ActivityEvent } from "@/domain/activity";
 import type { StewardOwner, StewardTask } from "@/domain/steward-accountability";
+import type { StewardAgentRead } from "@/domain/steward-accountability";
 import type { WeeklyGoalRecord } from "@/domain/steward-weekly-goal";
 
 import { readStewardTeam, weekStartOf } from "./team-read";
@@ -60,6 +62,9 @@ export interface StewardDashboardRead {
   tasks: StewardTask[];
   /** This person's recent activity rows, newest first, for the feed. */
   activities: DashboardActivity[];
+  people: { key: string; name: string; initials: string; userId: string }[];
+  agents: StewardAgentRead;
+  taskStorageAvailable: boolean;
 }
 
 /**
@@ -155,7 +160,7 @@ export async function readStewardDashboard(
      legitimately span more than a week. The feed itself slices the recent rows. */
   const sinceISO = new Date(Date.parse(now) - 60 * 86_400_000).toISOString();
 
-  const [team, weeklyGoal, rawActivities] = await Promise.all([
+  const [team, weeklyGoal, rawActivities, peopleRead] = await Promise.all([
     /* The shared checklist read is already fail-closed internally; a full
        failure is still caught so one bad source never blanks the page. */
     readStewardTeam(organizationId, targetUserId).catch(() => null),
@@ -163,12 +168,21 @@ export async function readStewardDashboard(
       .currentFor(organizationId, targetUserId, weekStart)
       .catch((): WeeklyGoalRecord | null => null),
     listForActor(organizationId, targetUserId, sinceISO, 200).catch((): ActivityEvent[] => []),
+    loadWorkspacePeople(organizationId).catch(() => null),
   ]);
 
   const allTasks = team?.tasks ?? [];
   const tasks = allTasks.filter((task) => task.owner.userId === targetUserId);
 
   const activities = markUndone(rawActivities.map(toDashboardActivity), rawActivities);
+  const people = (peopleRead?.people ?? [])
+    .filter((person) => person.active)
+    .map((person) => ({
+      key: person.userId,
+      userId: person.userId,
+      name: person.displayName,
+      initials: ownerInitialsOf(undefined, person.displayName),
+    }));
 
   const ownerFromTask = tasks.find((task) => task.owner.userId === targetUserId)?.owner;
 
@@ -184,5 +198,14 @@ export async function readStewardDashboard(
     weeklyGoal,
     tasks,
     activities,
+    people,
+    agents: team?.agents ?? {
+      agents: [],
+      connected: false,
+      because: "AI teammates could not be read right now.",
+      syncHealth: null,
+      liveFailureDetail: null,
+    },
+    taskStorageAvailable: team?.manualTasksProvisioned ?? false,
   };
 }

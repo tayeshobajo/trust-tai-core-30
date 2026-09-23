@@ -104,6 +104,7 @@ export function CreateTaskDrawer({
   onGenerateSubtasks,
   onGenerateAcceptance,
   pending = false,
+  allowAgentCreate = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -115,6 +116,7 @@ export function CreateTaskDrawer({
   onGenerateSubtasks?: (title: string) => Promise<string[]>;
   onGenerateAcceptance?: (title: string) => Promise<string[]>;
   pending?: boolean;
+  allowAgentCreate?: boolean;
 }) {
   const defaultOwnerKey =
     people.find((person) => person.userId === identity.userId)?.key ?? people[0]?.key ?? "";
@@ -347,7 +349,7 @@ export function CreateTaskDrawer({
             </div>
           </div>
 
-          <div className="space-y-2">
+          {allowAgentCreate ? <div className="space-y-2">
             <span className="text-sm font-medium text-foreground">Assign to</span>
             <div className="flex flex-wrap gap-1">
               <Pill active={assignTo === "human"} onClick={() => setAssignTo("human")}>
@@ -381,7 +383,7 @@ export function CreateTaskDrawer({
                 </p>
               </div>
             ) : null}
-          </div>
+          </div> : null}
 
           {/* ---- subtasks --------------------------------------------------- */}
           <div className="space-y-2">
@@ -595,7 +597,7 @@ export function CreateTaskDrawer({
           >
             Create task
           </TTButton>
-          <TTButton
+          {allowAgentCreate ? <TTButton
             type="button"
             variant="signal"
             pending={pending}
@@ -603,7 +605,7 @@ export function CreateTaskDrawer({
             onClick={() => void submit("open", "agent")}
           >
             Create and assign to AI
-          </TTButton>
+          </TTButton> : null}
         </div>
       </aside>
     </div>

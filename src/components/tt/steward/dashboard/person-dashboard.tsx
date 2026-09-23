@@ -27,6 +27,7 @@ import {
 } from "@/domain/steward-dashboard-stats";
 import { computeWeeklyGoalProgress } from "@/domain/steward-weekly-goal";
 import type { StewardTask } from "@/domain/steward-accountability";
+import type { StewardActor } from "@/data/steward/authority";
 
 export type DashboardScope = "self" | "team";
 
@@ -39,6 +40,12 @@ export function PersonDashboard({
   onConfirmGoal,
   confirmingGoal,
   onUndoActivity,
+  onCreateTask,
+  onReassignTask,
+  completingTaskKey,
+  actor,
+  taskStorageAvailable,
+  onOpenTask,
 }: {
   read: StewardDashboardRead;
   scope: DashboardScope;
@@ -48,6 +55,12 @@ export function PersonDashboard({
   onConfirmGoal: () => void;
   confirmingGoal: boolean;
   onUndoActivity: (activity: DashboardActivity) => void;
+  onCreateTask?: () => void;
+  onReassignTask?: (task: StewardTask) => void;
+  completingTaskKey?: string | null;
+  actor: StewardActor;
+  taskStorageAvailable?: boolean;
+  onOpenTask?: (task: StewardTask) => void;
 }) {
   const streakDays = useMemo(
     () => computeStreakDays(read.activities.map((event) => event.occurredAt), read.now),
@@ -132,6 +145,12 @@ export function PersonDashboard({
           now={read.now}
           scope={scope}
           onToggle={onCompleteTask}
+          actor={actor}
+          {...(onCreateTask ? { onCreate: onCreateTask } : {})}
+          {...(onReassignTask ? { onReassign: onReassignTask } : {})}
+          {...(completingTaskKey !== undefined ? { completingTaskKey } : {})}
+          {...(taskStorageAvailable !== undefined ? { taskStorageAvailable } : {})}
+          {...(onOpenTask ? { onOpen: onOpenTask } : {})}
           viewAllHref={tasksHref}
         />
 

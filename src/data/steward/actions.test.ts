@@ -91,6 +91,7 @@ function writerFor(
     setCommitmentStatus: async (id, status) => calls.push(`status:${id}:${status}`),
     setCommitmentOwner: async (id, owner) => calls.push(`owner:${id}:${owner.name}:${owner.email}`),
     setCommitmentDue: async (id, dueAt) => calls.push(`due:${id}:${dueAt}`),
+    updateManualTask: async (id, patch) => calls.push(`manual:${id}:${JSON.stringify(patch)}`),
     saveTaskState: async (input) => {
       taskState.push(input);
       return input;
@@ -101,7 +102,7 @@ function writerFor(
     },
     assignAgentTask: async (input) => {
       agentTasks.push(input);
-      return input;
+      return { issueId: "issue-1", bindingId: "binding-1", isNew: true };
     },
     now: () => NOW,
     ...overrides,
@@ -149,6 +150,20 @@ describe("completing a task", () => {
       steward_task_key: "commitment:commitment-1",
       note: "Pack sent this morning.",
     });
+  });
+
+  it("completes a manual task in its durable task row and gives the audit a stable key", async () => {
+    const r = writerFor();
+    await completeTask(r.writer, {
+      task: task({ id: "manual-1", key: "manual:manual-1", origin: "manual" }),
+      note: "Done",
+    });
+
+    expect(r.calls).toContain('manual:manual-1:{"status":"complete"}');
+    expect(r.calls.some((call) => call.startsWith("status:"))).toBe(false);
+    expect(r.activity[0]?.payload?.["source_event_key"]).toBe(
+      "steward:task-completed:manual:manual-1",
+    );
   });
 
   it("still completes when Steward's own state table is missing", async () => {
@@ -217,6 +232,37 @@ describe("completing a task", () => {
     );
     expect(r.calls).toEqual([]);
     expect(r.activity).toEqual([]);
+  });
+});
+
+describe("manual task assignment", () => {
+  it("persists the selected teammate by stable user id", async () => {
+    const r = writerFor();
+    await reassignToPerson(r.writer, {
+      task: task({ id: "manual-2", key: "manual:manual-2", origin: "manual" }),
+      person: { key: "user-kim", userId: "user-kim", name: "Kim" },
+    });
+
+    expect(r.calls).toContain(
+      'manual:manual-2:{"ownerUserId":"user-kim","ownerLabel":"Kim","assigneeKind":"human","aiMode":null}',
+    );
+  });
+
+  it("persists the exact Paperclip receipt after the bounded agent handoff", async () => {
+    const r = writerFor();
+    await requestAgentAssignment(r.writer, {
+      task: task({
+        id: "manual-3",
+        key: "manual:manual-3",
+        origin: "manual",
+        title: "Prepare onboarding material",
+      }),
+      agent,
+    });
+
+    expect(r.calls).toContain(
+      'manual:manual-3:{"ownerUserId":null,"ownerLabel":"Scout Runner","assigneeKind":"agent","aiMode":"safe_internal","paperclipTaskId":"issue-1","correlationId":"binding-1"}',
+    );
   });
 });
 
