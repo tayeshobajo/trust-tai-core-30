@@ -235,6 +235,37 @@ describe("completing a task", () => {
   });
 });
 
+describe("manual task assignment", () => {
+  it("persists the selected teammate by stable user id", async () => {
+    const r = writerFor();
+    await reassignToPerson(r.writer, {
+      task: task({ id: "manual-2", key: "manual:manual-2", origin: "manual" }),
+      person: { key: "user-kim", userId: "user-kim", name: "Kim" },
+    });
+
+    expect(r.calls).toContain(
+      'manual:manual-2:{"ownerUserId":"user-kim","ownerLabel":"Kim","assigneeKind":"human","aiMode":null}',
+    );
+  });
+
+  it("persists the exact Paperclip receipt after the bounded agent handoff", async () => {
+    const r = writerFor();
+    await requestAgentAssignment(r.writer, {
+      task: task({
+        id: "manual-3",
+        key: "manual:manual-3",
+        origin: "manual",
+        title: "Prepare onboarding material",
+      }),
+      agent,
+    });
+
+    expect(r.calls).toContain(
+      'manual:manual-3:{"ownerUserId":null,"ownerLabel":"Scout Runner","assigneeKind":"agent","aiMode":"safe_internal","paperclipTaskId":"issue-1","correlationId":"binding-1"}',
+    );
+  });
+});
+
 describe("reprioritising by drag", () => {
   it("saves the new rank and says where it landed", async () => {
     const r = writerFor();
