@@ -52,7 +52,7 @@ function statusNote(app: AppRegistration) {
 
 /** A room is current when you are anywhere inside it, not only on its index. */
 function isCurrent(pathname: string, route: string) {
-  if (route === "/") return pathname === "/";
+  if (route === "/") return pathname === "/" || pathname === "/welcome";
   return pathname === route || pathname.startsWith(`${route}/`);
 }
 

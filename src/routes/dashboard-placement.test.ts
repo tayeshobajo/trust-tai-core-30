@@ -22,6 +22,7 @@ describe("personal dashboard placement", () => {
   it("takes the logo to the welcome overview", () => {
     expect(shell).toContain('<Link to="/welcome"');
     expect(shell).toContain('aria-label="Trust Tai OS · welcome"');
+    expect(shell).toContain('pathname === "/" || pathname === "/welcome"');
   });
 
   it("redirects the old personal Steward address to Home", () => {
