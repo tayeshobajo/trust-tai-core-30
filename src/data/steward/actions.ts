@@ -25,12 +25,25 @@ import {
 export interface AssignableTarget {
   key: string;
   name: string;
+  userId?: string;
 }
 
 export interface StewardWriteDeps {
   setCommitmentStatus(id: string, status: Commitment["status"]): Promise<unknown>;
   setCommitmentOwner(id: string, owner: { name: string; email: string | null }): Promise<unknown>;
   setCommitmentDue(id: string, dueAt: string | null): Promise<unknown>;
+  updateManualTask(
+    id: string,
+    patch: {
+      status?: "complete";
+      ownerUserId?: string | null;
+      ownerLabel?: string | null;
+      assigneeKind?: "human" | "agent";
+      aiMode?: "safe_internal" | "routine_end_to_end" | null;
+      paperclipTaskId?: string | null;
+      correlationId?: string | null;
+    },
+  ): Promise<unknown>;
   saveTaskState(input: {
     organizationId: string;
     userId: string;
@@ -40,7 +53,7 @@ export interface StewardWriteDeps {
     completedBy?: string | null;
     completedAt?: string | null;
     completionNote?: string | null;
-  }): Promise<unknown>;
+  }): Promise<{ issueId: string; bindingId: string; isNew: boolean }>;
   recordActivity(event: Omit<ActivityEvent, "id">): Promise<unknown>;
   assignAgentTask(input: {
     organizationId: string;
@@ -118,7 +131,11 @@ export async function completeTask(
   const authority = completeAuthority(task, actorOf(writer));
   if (!authority.allowed) throw new StewardRefusal(authority.because ?? "That is not allowed.");
 
-  await writer.deps.setCommitmentStatus(task.id, "kept");
+  if (task.origin === "manual") {
+    await writer.deps.updateManualTask(task.id, { status: "complete" });
+  } else {
+    await writer.deps.setCommitmentStatus(task.id, "kept");
+  }
   const at = writer.deps.now();
   try {
     await writer.deps.saveTaskState({
@@ -136,7 +153,10 @@ export async function completeTask(
     name: "task.completed",
     task,
     summary: `${writer.identity.name} completed “${task.title}”.`,
-    ...(note.trim() ? { payload: { note: note.trim() } } : {}),
+    payload: {
+      source_event_key: `steward:task-completed:${task.key}`,
+      ...(note.trim() ? { note: note.trim() } : {}),
+    },
   });
 }
 
@@ -195,10 +215,19 @@ export async function reassignToPerson(
   const authority = reassignAuthority(task, actorOf(writer));
   if (!authority.allowed) throw new StewardRefusal(authority.because ?? "That is not allowed.");
 
-  await writer.deps.setCommitmentOwner(task.id, {
-    name: person.name,
-    email: person.key.includes("@") ? person.key : null,
-  });
+  if (task.origin === "manual") {
+    await writer.deps.updateManualTask(task.id, {
+      ownerUserId: person.userId ?? null,
+      ownerLabel: person.name,
+      assigneeKind: "human",
+      aiMode: null,
+    });
+  } else {
+    await writer.deps.setCommitmentOwner(task.id, {
+      name: person.name,
+      email: person.key.includes("@") ? person.key : null,
+    });
+  }
   await audit(writer, {
     name: "task.assigned",
     task,
@@ -247,7 +276,7 @@ export async function requestAgentAssignment(
     throw new StewardRefusal(`${agent.name} has no published capability for this work.`);
   }
 
-  await writer.deps.assignAgentTask({
+  const receipt = await writer.deps.assignAgentTask({
     organizationId: writer.identity.organizationId,
     agentId: agent.paperclipAgentId,
     title: task.title,
@@ -256,6 +285,16 @@ export async function requestAgentAssignment(
     sourceEntityType: task.origin === "commitment" ? "commitment" : "task",
     sourceApp: "steward",
   });
+  if (task.origin === "manual") {
+    await writer.deps.updateManualTask(task.id, {
+      ownerUserId: null,
+      ownerLabel: agent.name,
+      assigneeKind: "agent",
+      aiMode: "safe_internal",
+      paperclipTaskId: receipt.issueId,
+      correlationId: receipt.bindingId,
+    });
+  }
   await audit(writer, {
     name: "task.assigned",
     task,

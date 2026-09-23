@@ -39,6 +39,9 @@ export function PersonDashboard({
   onConfirmGoal,
   confirmingGoal,
   onUndoActivity,
+  onCreateTask,
+  onReassignTask,
+  completingTaskKey,
 }: {
   read: StewardDashboardRead;
   scope: DashboardScope;
@@ -48,6 +51,9 @@ export function PersonDashboard({
   onConfirmGoal: () => void;
   confirmingGoal: boolean;
   onUndoActivity: (activity: DashboardActivity) => void;
+  onCreateTask?: () => void;
+  onReassignTask?: (task: StewardTask) => void;
+  completingTaskKey?: string | null;
 }) {
   const streakDays = useMemo(
     () => computeStreakDays(read.activities.map((event) => event.occurredAt), read.now),
@@ -132,6 +138,9 @@ export function PersonDashboard({
           now={read.now}
           scope={scope}
           onToggle={onCompleteTask}
+          onCreate={onCreateTask}
+          onReassign={onReassignTask}
+          completingTaskKey={completingTaskKey}
           viewAllHref={tasksHref}
         />
 

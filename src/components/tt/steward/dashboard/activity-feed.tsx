@@ -54,8 +54,15 @@ export function ActivityFeed({
   viewAllHref: string;
 }) {
   const hours = minutesSaved > 0 ? Math.round((minutesSaved / 60) * 10) / 10 : 0;
+  const agentActivities = useMemo(
+    () => activities.filter((activity) => activity.actorIsAgent),
+    [activities],
+  );
   const [page, setPage] = useState(1);
-  const view = useMemo(() => paginate(activities, page, ACTIVITIES_PER_PAGE), [activities, page]);
+  const view = useMemo(
+    () => paginate(agentActivities, page, ACTIVITIES_PER_PAGE),
+    [agentActivities, page],
+  );
 
   useEffect(() => {
     if (view.page !== page) setPage(view.page);
@@ -86,8 +93,10 @@ export function ActivityFeed({
           View all activity →
         </Link>
       </div>
-      {activities.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nothing recorded yet.</p>
+      {agentActivities.length === 0 ? (
+        <p className="px-1 py-4 text-sm text-muted-foreground">
+          No verified AI teammate work has been recorded yet.
+        </p>
       ) : (
         <ul>
           {view.rows.map((activity) => (

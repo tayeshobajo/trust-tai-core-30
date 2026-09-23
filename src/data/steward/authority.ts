@@ -51,7 +51,7 @@ export function reassignAuthority(task: StewardTask, actor: StewardActor): Autho
   if (!actor.canManage) {
     return refuse("Only an owner or admin can change who carries work.");
   }
-  if (task.origin !== "commitment") {
+  if (task.origin !== "commitment" && task.origin !== "manual") {
     return refuse(
       "This task is owned by another room. Change its owner there and Steward will follow.",
     );

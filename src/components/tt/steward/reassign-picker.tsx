@@ -9,6 +9,7 @@ export interface AssignablePerson {
   key: string;
   name: string;
   initials: string;
+  userId?: string;
 }
 
 /**
