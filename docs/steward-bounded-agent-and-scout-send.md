@@ -3,7 +3,7 @@
 ## Operating contract
 
 - Internal AI work starts only when a signed-in person explicitly assigns a task.
-- The only model for this path is `openai/gpt-6-astra`, called server-side.
+- The only model for this path is `openai/gpt-6-astra`, called server-side through Trust Tai's single Intelligence Runtime.
 - Low-risk internal preparation may complete only with a durable artifact and evidence references.
 - Anything resembling sending, publication, payment, approval, a commercial commitment, pricing, scope, dates, deletion, deployment, contact, or outreach stops at **Needs approval**.
 - Paperclip remains the execution source of truth for imported Paperclip tasks. The internal runner has its own durable receipt.
@@ -17,7 +17,7 @@
 | AE2 | Inactive and cross-workspace callers fail closed | CODE: literal active membership and organization-scoped task reads; authenticated receives SELECT only | Pass in code | Codex: live RLS proof |
 | AE3 | High-risk work cannot execute | CODE/TEST: deterministic risk gate | Pass | — |
 | AE4 | No-context tasks do not guess | CODE/TEST | Pass | — |
-| AE5 | Low-risk work uses Astra through the server only | CODE: literal model and server-only module | Pass | Live model smoke test after schema |
+| AE5 | Low-risk work uses Astra through the server only | CODE/TEST: literal model, server-only module, and runtime fragmentation guard | Pass | Live model smoke test after schema |
 | AE6 | Completion requires a saved artifact and evidence | CODE/TEST | Pass | Live persistence proof |
 | AE7 | Failure leaves task honestly unresolved | CODE/TEST boundary | Pass in code | Live persistence proof |
 | AE8 | Agent activity requires explicit agent provenance | CODE: activity payload contains agent/run/evidence identity | Pass in code | Signed-in feed proof |
@@ -40,3 +40,5 @@
 ## Verification boundary
 
 The SQL in `docs/migrations/proposed/20260923190000_steward_agent_runs_and_source_links.sql` is proposed and unapplied. Until Codex applies and verifies it, durable run execution and signed-in end-to-end acceptance remain blocked. Tests use deterministic mocks; they do not prove a live model call or a real send.
+
+The implementation verification completed with 319 test files / 3,520 tests passing, a clean type check and diff check, and a healthy preview build. This includes the guard that prevents room-specific code from calling a model provider directly. No live model request, message send, schema application, publish, payment, or production mutation was performed.
