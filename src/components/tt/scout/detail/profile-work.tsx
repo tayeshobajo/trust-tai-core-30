@@ -35,7 +35,7 @@ export function ProfileWork(props: { organizationId: string; userId: string; pro
     queryFn: async () => {
       const [tasks, runs] = await Promise.all([
         stewardTasks.list(props.organizationId),
-        readAgentRuns(props.organizationId).catch(() => ({ available: false, runs: [] as StewardAgentRun[] })),
+        readAgentRuns(props.organizationId, { detail: true }).catch(() => ({ available: false, runs: [] as StewardAgentRun[] })),
       ]);
       return { tasks: tasksForProspect(tasks, props.prospectId), ...runs };
     },

@@ -38,9 +38,16 @@ export async function dispatchAgentFromRequest(input: {
   if (!userId) return { started: false, note: "AI work did not start." };
   const { executeStewardAgentTask } = await import("@/lib/steward-agent-runner.server");
   try {
+    let writer = input.writer;
+    try {
+      const { trustTaiWriter } = await import("@/lib/trust-tai-writer.server");
+      writer = trustTaiWriter();
+    } catch {
+      /* keep the caller's writer; the run fails closed if it lacks access */
+    }
     const r = await executeStewardAgentTask({
       client,
-      writer: input.writer,
+      writer,
       organizationId: input.organizationId,
       taskId: input.taskId,
       agentId: "trust-tai-internal",
