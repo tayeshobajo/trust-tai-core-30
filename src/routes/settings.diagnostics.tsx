@@ -74,6 +74,23 @@ function DiagnosticsSettings() {
           {...(data?.supabase.detail ? { note: data.supabase.detail } : {})}
         />
         <Row
+          label="AI server access"
+          value={
+            pending
+              ? "…"
+              : !data
+                ? unknown
+                : !data.agentServerAccess.configured
+                  ? "Not set up"
+                  : data.agentServerAccess.runStorage
+                    ? "Connected"
+                    : data.agentServerAccess.reachable === false
+                      ? "Set up, not reachable"
+                      : "Set up, run storage missing"
+          }
+          note="Shows only whether the key is present and working. The key itself is never shown."
+        />
+        <Row
           label="Paperclip mode"
           value={pending ? "…" : data ? PAPERCLIP_MODE_LABEL[data.paperclip.mode] : unknown}
           note={
