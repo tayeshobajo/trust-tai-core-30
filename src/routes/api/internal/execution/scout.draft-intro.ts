@@ -40,6 +40,7 @@ import {
   shouldDraft,
   type TouchFact,
 } from "@/domain/tai-decide";
+import { buildDimensionalRecord } from "@/domain/dimensional-record";
 
 interface DraftIntroPayload {
   prospect_id?: unknown;
@@ -235,7 +236,18 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
 
           if (!shouldDraft(decision)) {
             // NO ACTION is a successful outcome. The verdict is recorded and
-            // the request ends cleanly with no draft anywhere.
+            // the request ends cleanly with no draft anywhere. The
+            // dimensional record is the judgment memory's entry for this
+            // decision (four-memories model): no words exist here, so the
+            // voice and truth dimensions honestly stay null.
+            const dimensional = buildDimensionalRecord({
+              register: "scout_intro",
+              decideAction: decision.action,
+              relationshipStage: existingRel?.stage ?? null,
+              confidence: decision.confidence,
+              escalated: decision.action === "escalate_to_tai",
+              now: decidedAt,
+            });
             await supabase.from("activities").insert({
               organization_id: agent.organization_id,
               app_key: "scout",
@@ -248,6 +260,7 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
                 prospect_id: prospect.id,
                 relationship_id: existingRel?.id ?? null,
                 world_card_summary: worldCardSummary(worldCard),
+                dimensional,
               },
               occurred_at: decidedAt,
             });
@@ -407,6 +420,21 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
                   summary: worldCardSummary(worldCard),
                 },
                 truth_check: { passes: truth.passes, violations: truth.violations },
+                // Judgment-memory entry for this draft (four-memories model).
+                // Voice and truth passed to get here; judgment and outcome
+                // stay null until a review and a result exist. This is a
+                // dimensional log, never a licence to mimic phrasing: the
+                // standard is that the decision reads as what Tai would do,
+                // not that recognizable language appears.
+                dimensional: buildDimensionalRecord({
+                  register: "scout_intro",
+                  decideAction: decision.action,
+                  relationshipStage: existingRel?.stage ?? null,
+                  confidence: decision.confidence,
+                  voice: "pass",
+                  truth: "pass",
+                  now: decidedAt,
+                }),
                 // The exact words the engine drafted, kept so a later human
                 // approval can be compared against them for edit-learning.
                 drafted_body: verdict.text,

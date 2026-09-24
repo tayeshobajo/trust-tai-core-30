@@ -43,6 +43,7 @@ import {
   readGateSnapshot,
 } from "@/domain/voice-gate-feedback";
 import { buildEditCorrection, correctionLesson } from "@/domain/edit-correction";
+import { withIntervention } from "@/domain/dimensional-record";
 import type { MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
 
@@ -847,15 +848,29 @@ export const commsService = {
               decision: reviewState,
             })
           : null;
-        if (correction) {
+
+        /* Dimensional capture (four-memories model): the human decision
+           stamps tai_intervention onto the draft's dimensional record.
+           Approving unchanged words is agreement, so it is written even
+           when no correction record exists. */
+        const editedWords = Boolean(draftedBody) && updated.body.trim() !== draftedBody.trim();
+        const dimensional = withIntervention(rationale["dimensional"], reviewState, editedWords);
+
+        if (correction || dimensional) {
           await supabase
             .from("comms_drafts")
             .update({
-              rationale: { ...rationale, correction },
+              rationale: {
+                ...rationale,
+                ...(correction ? { correction } : {}),
+                ...(dimensional ? { dimensional } : {}),
+              },
               updated_at: new Date().toISOString(),
             })
             .eq("id", draft.id)
             .eq("organization_id", context.organizationId);
+        }
+        if (correction) {
           await supabase.from("activities").insert({
             organization_id: context.organizationId,
             app_key: "comms",

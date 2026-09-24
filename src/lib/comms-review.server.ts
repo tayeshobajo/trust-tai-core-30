@@ -40,6 +40,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { outboundFingerprint, type DeliveryChannel } from "@/domain/comms-delivery";
 import { buildEditCorrection } from "@/domain/edit-correction";
+import { withIntervention } from "@/domain/dimensional-record";
 import { recordEditCorrection } from "@/lib/edit-corrections.server";
 import {
   activeLessons,
@@ -2004,15 +2005,27 @@ export async function approveVersion(
               decision: "approved",
             })
           : null;
-        if (correction) {
+        /* Dimensional capture: the approval stamps tai_intervention onto
+           the draft's dimensional record, approved_unedited included. */
+        const editedWords =
+          Boolean(draftedBody) &&
+          String((draftRow as Row)["body"] ?? "").trim() !== draftedBody.trim();
+        const dimensional = withIntervention(rationale["dimensional"], "approved", editedWords);
+        if (correction || dimensional) {
           await writer
             .from("comms_drafts")
             .update({
-              rationale: { ...rationale, correction },
+              rationale: {
+                ...rationale,
+                ...(correction ? { correction } : {}),
+                ...(dimensional ? { dimensional } : {}),
+              },
               updated_at: new Date().toISOString(),
             })
             .eq("id", session.draftId)
             .eq("organization_id", input.organizationId);
+        }
+        if (correction) {
           await recordEditCorrection(writer, {
             organizationId: input.organizationId,
             relationshipId:
