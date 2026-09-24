@@ -13,6 +13,7 @@ import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { readStewardDashboard, type DashboardActivity } from "@/data/steward/dashboard-read";
 import { reassignAuthority } from "@/data/steward/authority";
 import { useStewardActions } from "@/data/steward/use-steward-actions";
+import { useTaskChoices } from "@/data/steward/task-choices";
 import { stewardTasks } from "@/data/supabase/steward-tasks";
 import { weeklyGoals } from "@/data/supabase/weekly-goals";
 import type { StewardTask } from "@/domain/steward-accountability";
@@ -35,6 +36,7 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
   });
 
   const actions = useStewardActions({ identity, queryKey });
+  const choices = useTaskChoices(identity.organizationId, { userId: identity.userId, name: identity.name });
 
   async function handleConfirmGoal(): Promise<void> {
     const goal = read.data?.weeklyGoal;
@@ -173,9 +175,9 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
       open={creating}
       onClose={() => setCreating(false)}
       identity={identity}
-      clients={Array.from(new Map(read.data.tasks.filter((task) => task.companyLabel).map((task) => [task.companyLabel!, task.companyLabel!])).entries()).map(([id, label]) => ({ id, label }))}
-      projects={Array.from(new Map(read.data.tasks.filter((task) => task.projectId && task.projectName).map((task) => [task.projectId!, task.projectName!])).entries()).map(([id, label]) => ({ id, label }))}
-      people={read.data.people}
+      clients={choices.data?.clients ?? []}
+      projects={choices.data?.projects ?? []}
+      people={choices.data?.people ?? read.data.people}
       onCreate={handleCreate}
       pending={creatingTask}
       allowAgentCreate
