@@ -14,7 +14,7 @@
  * retried.
  */
 
-import { providerBody, providerSubject } from "@/domain/comms-delivery";
+import { providerBody, providerSubject, type OutboundPayload } from "@/domain/comms-delivery";
 import {
   loadDraftForSend,
   outboundPayloadForDraft,
@@ -34,6 +34,59 @@ export interface ResendSendResult {
   state: "sent" | "failed" | "unknown" | "duplicate";
   note: string;
   providerMessageId?: string;
+}
+
+/** The Resend account this server sends from, or null when unconfigured. */
+export function resendCredentials(): { apiKey: string; from: string } | null {
+  const apiKey = process.env["RESEND_API_KEY"];
+  const from = process.env["RESEND_FROM_EMAIL"];
+  if (!apiKey || !from) return null;
+  return { apiKey, from };
+}
+
+/**
+ * The one provider call, shared by the human send path and the graduated
+ * auto-send path so neither can drift from the other in how it normalises or
+ * how it reads an outcome. It calls Resend and reports exactly one of sent /
+ * failed / unknown, where unknown means the request left and the answer never
+ * came back — that case is never retried on its own.
+ *
+ * It decides nothing about permission. The caller must already have proved the
+ * message may go out and claimed the attempt before this is called.
+ */
+export async function postToResend(
+  creds: { apiKey: string; from: string },
+  payload: OutboundPayload,
+): Promise<{ state: "sent" | "failed" | "unknown"; providerMessageId: string | null; detail: string | null }> {
+  let providerMessageId: string | null = null;
+  let state: "sent" | "failed" | "unknown" = "unknown";
+  let detail: string | null = null;
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${creds.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: creds.from,
+        to: [payload.recipient],
+        ...(payload.cc && payload.cc.length > 0 ? { cc: payload.cc } : {}),
+        ...(payload.bcc && payload.bcc.length > 0 ? { bcc: payload.bcc } : {}),
+        subject: providerSubject(payload),
+        text: providerBody(payload),
+      }),
+    });
+    if (response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { id?: string };
+      providerMessageId = body.id ?? null;
+      state = "sent";
+    } else {
+      detail = await response.text().catch(() => `HTTP ${response.status}`);
+      state = response.status >= 400 && response.status < 500 ? "failed" : "unknown";
+    }
+  } catch (error) {
+    detail = (error as Error).message;
+    state = "unknown";
+  }
+  return { state, providerMessageId, detail };
 }
 
 export async function sendDraftViaResend(input: {
@@ -111,37 +164,7 @@ export async function sendDraftViaResend(input: {
   /* From here a real message may exist in the world. Every branch below has
      to be honest about whether it does. The provider is handed exactly the
      normalisation the approval was computed over. */
-  let providerMessageId: string | null = null;
-  let state: "sent" | "failed" | "unknown" = "unknown";
-  let detail: string | null = null;
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from,
-        to: [payload.recipient],
-        ...(payload.cc && payload.cc.length > 0 ? { cc: payload.cc } : {}),
-        ...(payload.bcc && payload.bcc.length > 0 ? { bcc: payload.bcc } : {}),
-        subject: providerSubject(payload),
-        text: providerBody(payload),
-      }),
-    });
-    if (response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { id?: string };
-      providerMessageId = body.id ?? null;
-      state = "sent";
-    } else {
-      /* A refusal we can read is a refusal: nothing went out. */
-      detail = await response.text().catch(() => `HTTP ${response.status}`);
-      state = response.status >= 400 && response.status < 500 ? "failed" : "unknown";
-    }
-  } catch (error) {
-    /* The request left and the answer never came back. It may or may not have
-       arrived. It is not retried. */
-    detail = (error as Error).message;
-    state = "unknown";
-  }
+  const { state, providerMessageId, detail } = await postToResend({ apiKey, from }, payload);
 
   const settled = await settleDelivery({
     organizationId: input.organizationId,

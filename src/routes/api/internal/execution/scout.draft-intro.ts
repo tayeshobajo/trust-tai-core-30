@@ -25,6 +25,10 @@ import {
 } from "@/lib/execution-bridge.server";
 import { paperclipClient } from "@/lib/paperclip-client.server";
 import { checkVoice } from "@/data/voice-policy";
+import {
+  considerAutoSend,
+  SCOUT_FIRST_INTRO_MESSAGE_TYPE,
+} from "@/lib/comms-autosend.server";
 
 interface DraftIntroPayload {
   prospect_id?: unknown;
@@ -216,6 +220,18 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
                 voice_checked: true,
                 voice_flags: verdict.violations,
                 idempotency_key: idempotencyKey,
+                // The gate snapshot the learning loop and the auto-send
+                // orchestrator both read. The deterministic checkVoice is a
+                // clean pass with no confidence score; message_type keys the
+                // graduated authority (distinct from the draft register).
+                gate_verdict: "pass",
+                gate_reasons: verdict.violations.map((flag) => flag.ruleId),
+                gate: {
+                  message_type: SCOUT_FIRST_INTRO_MESSAGE_TYPE,
+                  verdict: "pass",
+                  grade: null,
+                  confidence: null,
+                },
               },
             })
             .select("id")
@@ -238,15 +254,41 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
             prospectStatus = "ready_for_comms";
           }
 
+          // Graduated auto-send. The Scout agent still never sends: this runs
+          // with the server's own service role, and only ever sends when the
+          // graduation gate, the confident pass and the never-replied-before
+          // failsafe ALL hold. Any hold leaves the draft exactly as it is —
+          // needs_human_review — which is the existing behaviour. It can never
+          // break the draft path (it swallows its own errors into a hold).
+          const autoSend = await considerAutoSend(supabase, {
+            organizationId: agent.organization_id,
+            draftId: draft.id,
+            relationshipId,
+            gate: {
+              verdict: "pass",
+              confidence: null,
+              grade: null,
+              hardOverride: false,
+              reasons: verdict.violations.map((flag) => flag.ruleId),
+            },
+          });
+          const reviewState =
+            autoSend.attempted && autoSend.state === "sent" ? "sent" : "needs_human_review";
+
           await completeBinding(binding.id, {
             status: "completed",
-            resultSummary: `Drafted an intro to ${prospect.company_name}; waiting for human review.`,
+            resultSummary:
+              reviewState === "sent"
+                ? `Drafted and auto-sent an intro to ${prospect.company_name} under graduated authority.`
+                : `Drafted an intro to ${prospect.company_name}; waiting for human review.`,
             businessOutputs: {
               draft_id: draft.id,
               relationship_id: relationshipId,
               prospect_id: prospect.id,
               template_id: template.id,
-              review_state: "needs_human_review",
+              review_state: reviewState,
+              auto_sent: reviewState === "sent",
+              auto_send_hold: autoSend.hold ?? null,
             },
           });
 
@@ -255,8 +297,11 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
             relationship_id: relationshipId,
             prospect_id: prospect.id,
             prospect_status: prospectStatus,
-            review_state: "needs_human_review",
+            review_state: reviewState,
             voice_flags: verdict.violations,
+            auto_sent: reviewState === "sent",
+            ...(autoSend.hold ? { auto_send_hold: autoSend.hold } : {}),
+            message_type: SCOUT_FIRST_INTRO_MESSAGE_TYPE,
           });
         } catch (error) {
           return Response.json(
