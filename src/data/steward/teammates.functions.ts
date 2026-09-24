@@ -19,7 +19,7 @@ export const getTeammateNames = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => Input.parse(input))
   .handler(async ({ context, data }) => {
-    const own = await context.supabase
+    const own = await (context.supabase as unknown as import("@supabase/supabase-js").SupabaseClient)
       .from("organization_memberships")
       .select("status")
       .eq("organization_id", data.organizationId)
