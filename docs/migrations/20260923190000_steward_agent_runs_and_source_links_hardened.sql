@@ -1,4 +1,7 @@
--- PROPOSED ONLY — Codex must review and apply. Never reapply after archival.
+-- APPLIED by Codex to the external Trust Tai OS database as
+-- steward_agent_runs_and_source_links_hardened. ARCHIVE ONLY — never reapply.
+-- Codex amendments: revoke all table privileges first; authenticated SELECT only;
+-- service_role SELECT, INSERT, UPDATE only; SELECT policy requires requested_by = auth.uid().
 -- Trust Tai OS: canonical task source identity and bounded internal-agent receipts.
 
 alter table public.steward_tasks
@@ -39,15 +42,17 @@ create table if not exists public.steward_agent_runs (
   constraint steward_agent_runs_org_idempotency_unique unique (organization_id, idempotency_key)
 );
 
+revoke all on public.steward_agent_runs from public, anon, authenticated, service_role;
 grant select on public.steward_agent_runs to authenticated;
-grant all on public.steward_agent_runs to service_role;
+grant select, insert, update on public.steward_agent_runs to service_role;
 
 alter table public.steward_agent_runs enable row level security;
 
 create policy "Active members read bounded agent runs"
   on public.steward_agent_runs for select to authenticated
   using (
-    exists (
+    requested_by = auth.uid()
+    and exists (
       select 1 from public.organization_memberships m
       where m.organization_id = steward_agent_runs.organization_id
         and m.user_id = auth.uid()

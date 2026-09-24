@@ -33,10 +33,20 @@ function toRun(row: Row): StewardAgentRun {
   };
 }
 
-export async function readAgentRuns(organizationId: string): Promise<RunsRead> {
+/** Status-only columns for team views: no artifact, evidence or model detail. */
+const STATUS_COLUMNS = "id, organization_id, task_id, agent_id, status, risk, created_at, started_at, settled_at";
+
+/**
+ * Detailed runs are visible only to the person who requested them (RLS).
+ * Pass `detail: false` for any aggregate or team surface.
+ */
+export async function readAgentRuns(
+  organizationId: string,
+  opts: { detail?: boolean } = {},
+): Promise<RunsRead> {
   const { data, error } = await supabase
     .from("steward_agent_runs")
-    .select("*")
+    .select(opts.detail ? "*" : STATUS_COLUMNS)
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -44,13 +54,13 @@ export async function readAgentRuns(organizationId: string): Promise<RunsRead> {
     if (MISSING.test(`${error.code} ${error.message}`)) return { available: false, runs: [] };
     throw new Error(error.message);
   }
-  return { available: true, runs: (data ?? []).map((r) => toRun(r as Row)) };
+  return { available: true, runs: (data ?? []).map((r) => toRun(r as unknown as Row)) };
 }
 
 export async function readAgentQueue(organizationId: string) {
   const [tasks, runs] = await Promise.all([
     stewardTasks.list(organizationId),
-    readAgentRuns(organizationId),
+    readAgentRuns(organizationId, { detail: true }),
   ]);
   return { tasks: tasks.filter((t) => t.assigneeKind === "agent"), ...runs };
 }
