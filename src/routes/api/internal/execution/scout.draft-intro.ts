@@ -29,6 +29,17 @@ import {
   considerAutoSend,
   SCOUT_FIRST_INTRO_MESSAGE_TYPE,
 } from "@/lib/comms-autosend.server";
+import { composeWorldCard, worldCardForStorage, worldCardSummary } from "@/data/world-card";
+import { evaluateScoutFit, storedEvaluation, withOverride } from "@/data/scout-fit-evaluator";
+import { gapIntelFromMetadata } from "@/data/scout-opportunity-gap";
+import { checkIntroTruth } from "@/domain/world-card";
+import {
+  decideAction,
+  decideVerdictForStorage,
+  historyFromTouches,
+  shouldDraft,
+  type TouchFact,
+} from "@/domain/tai-decide";
 
 interface DraftIntroPayload {
   prospect_id?: unknown;
@@ -75,7 +86,9 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
           // outside that organization simply does not exist here.
           const { data: prospect, error: prospectError } = await supabase
             .from("prospects")
-            .select("id, organization_id, company_name, website_url, status")
+            .select(
+              "id, organization_id, company_name, website_url, status, observed, inferred, suggested, metadata",
+            )
             .eq("id", prospectId)
             .eq("organization_id", agent.organization_id)
             .maybeSingle();
@@ -110,6 +123,164 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
             return Response.json({ error: "The draft body is empty." }, { status: 400 });
           }
 
+          /* ---------------------------------------- World Card + DECIDE.
+             Before anything is written, compose what is honestly known and
+             predict what Tai would DO. A non-writing verdict ends the
+             request here with the verdict on record; no draft exists. */
+
+          const prospectMetadata =
+            prospect.metadata && typeof prospect.metadata === "object" ? prospect.metadata : {};
+
+          const evaluation = withOverride(
+            storedEvaluation(prospectMetadata) ??
+              evaluateScoutFit({
+                observed: prospect.observed,
+                inferred: prospect.inferred,
+                suggested: prospect.suggested,
+                scoreable: Array.isArray(prospect.observed) && prospect.observed.length > 0,
+                icpVersion: null,
+                intel: gapIntelFromMetadata(prospectMetadata),
+              }),
+            prospectMetadata,
+          );
+
+          const worldCard = composeWorldCard({
+            metadata: prospectMetadata,
+            observed: prospect.observed,
+            evaluation,
+          });
+
+          // Relationship history, when a relationship already carries this
+          // prospect. The same row is reused further down for the draft.
+          const { data: existingRel, error: relReadError } = await supabase
+            .from("comms_relationships")
+            .select("id, stage, metadata")
+            .eq("organization_id", agent.organization_id)
+            .eq("prospect_id", prospect.id)
+            .maybeSingle();
+          if (relReadError) throw new Error(relReadError.message);
+
+          let touches: TouchFact[] = [];
+          if (existingRel) {
+            const { data: touchRows, error: touchError } = await supabase
+              .from("comms_touches")
+              .select("direction, occurred_at")
+              .eq("organization_id", agent.organization_id)
+              .eq("relationship_id", existingRel.id)
+              .order("occurred_at", { ascending: false })
+              .limit(100);
+            if (touchError) throw new Error(touchError.message);
+            touches = (touchRows ?? []).map((row) => ({
+              direction: row.direction === "inbound" ? ("inbound" as const) : ("outbound" as const),
+              occurredAt: row.occurred_at,
+            }));
+          }
+
+          const { data: peopleRows, error: peopleError } = await supabase
+            .from("scout_people")
+            .select("id, full_name, work_email, email_status")
+            .eq("organization_id", agent.organization_id)
+            .eq("prospect_id", prospect.id);
+          if (peopleError && !/does not exist|relation/i.test(peopleError.message)) {
+            throw new Error(peopleError.message);
+          }
+          const people = peopleRows ?? [];
+          const verifiedOwnerEmail = people.some(
+            (person) => Boolean(person.work_email) && person.email_status === "verified",
+          );
+          const anyEmailRoute = people.some((person) => Boolean(person.work_email));
+
+          const decision = decideAction({
+            worldCard,
+            fit: {
+              light: evaluation.light,
+              score: evaluation.score,
+              scoreable: evaluation.scoreable,
+            },
+            gap: evaluation.opportunityGap?.gap ?? "unknown",
+            contact: { verifiedOwnerEmail, anyEmailRoute },
+            history: historyFromTouches(existingRel?.stage ?? null, touches),
+          });
+          const decisionStored = decideVerdictForStorage(decision);
+          const decidedAt = new Date().toISOString();
+
+          // The card and the verdict persist on the prospect either way, so
+          // the next look at this company starts from what was decided.
+          const nextProspectMetadata = {
+            ...prospectMetadata,
+            world_card: worldCardForStorage(worldCard),
+            last_decide: { ...decisionStored, decided_at: decidedAt },
+          };
+          const { error: metadataError } = await supabase
+            .from("prospects")
+            .update({ metadata: nextProspectMetadata, updated_at: decidedAt })
+            .eq("id", prospect.id)
+            .eq("organization_id", agent.organization_id);
+          if (metadataError) throw new Error(metadataError.message);
+
+          if (existingRel) {
+            const relMetadata =
+              existingRel.metadata && typeof existingRel.metadata === "object"
+                ? existingRel.metadata
+                : {};
+            await supabase
+              .from("comms_relationships")
+              .update({
+                metadata: { ...relMetadata, world_card: worldCardForStorage(worldCard) },
+                updated_at: decidedAt,
+              })
+              .eq("id", existingRel.id)
+              .eq("organization_id", agent.organization_id);
+          }
+
+          if (!shouldDraft(decision)) {
+            // NO ACTION is a successful outcome. The verdict is recorded and
+            // the request ends cleanly with no draft anywhere.
+            await supabase.from("activities").insert({
+              organization_id: agent.organization_id,
+              app_key: "scout",
+              event_type: "relationship.decide",
+              entity_type: "prospect",
+              entity_id: prospect.id,
+              summary: `DECIDE read ${prospect.company_name} and chose ${decision.action} (${decision.outcome}).`,
+              payload: {
+                ...decisionStored,
+                prospect_id: prospect.id,
+                relationship_id: existingRel?.id ?? null,
+                world_card_summary: worldCardSummary(worldCard),
+              },
+              occurred_at: decidedAt,
+            });
+            return Response.json({
+              decided: true,
+              drafted: false,
+              action: decision.action,
+              outcome: decision.outcome,
+              rationale: decision.rationale,
+              confidence: decision.confidence,
+              escalation: decision.escalation,
+              prospect_id: prospect.id,
+              world_card_summary: worldCardSummary(worldCard),
+            });
+          }
+
+          /* ------------------------------------------- truth discipline.
+             SEE, CONNECT, OFFER, LEAVE ROOM: the words about the prospect
+             must be traceable to World Card evidence. Phase A heuristic;
+             its limits are documented on checkIntroTruth. */
+          const truth = checkIntroTruth(rawBody, worldCard);
+          if (!truth.passes) {
+            return Response.json(
+              {
+                error:
+                  "The draft makes claims the World Card evidence does not back, so it was refused.",
+                truth_violations: truth.violations,
+                action: decision.action,
+              },
+              { status: 422 },
+            );
+          }
+
           // Deterministic Voice DNA pass. Mechanical repairs are applied to
           // the stored text; blocking violations refuse the draft outright.
           const verdict = checkVoice(rawBody, { register: "warm_intro" });
@@ -138,15 +309,8 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
 
           // Find or create the relationship carrying this prospect in Comms.
           // The same seam the Scout handoff uses: one relationship per
-          // prospect per organization.
-          const { data: existingRel, error: relError } = await supabase
-            .from("comms_relationships")
-            .select("id")
-            .eq("organization_id", agent.organization_id)
-            .eq("prospect_id", prospect.id)
-            .maybeSingle();
-          if (relError) throw new Error(relError.message);
-
+          // prospect per organization. The DECIDE read above already loaded
+          // any existing row.
           let relationshipId = existingRel?.id ?? null;
           if (!relationshipId) {
             const { data: createdRel, error: createRelError } = await supabase
@@ -164,6 +328,7 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
                     prospect_id: prospect.id,
                     created_by_agent: agent.paperclip_agent_id,
                   },
+                  world_card: worldCardForStorage(worldCard),
                 },
               })
               .select("id")
@@ -232,6 +397,19 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
                   grade: null,
                   confidence: null,
                 },
+                // The DECIDE verdict and World Card reference travel with
+                // the draft, so the reviewer and the learning loop both see
+                // why the engine chose to write at all.
+                decide: { ...decisionStored, decided_at: decidedAt },
+                world_card: {
+                  composed_at: worldCard.composedAt,
+                  evaluator_version: worldCard.evaluatorVersion,
+                  summary: worldCardSummary(worldCard),
+                },
+                truth_check: { passes: truth.passes, violations: truth.violations },
+                // The exact words the engine drafted, kept so a later human
+                // approval can be compared against them for edit-learning.
+                drafted_body: verdict.text,
               },
             })
             .select("id")
@@ -293,6 +471,10 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
           });
 
           return Response.json({
+            decided: true,
+            drafted: true,
+            action: decision.action,
+            decide_confidence: decision.confidence,
             draft_id: draft.id,
             relationship_id: relationshipId,
             prospect_id: prospect.id,
