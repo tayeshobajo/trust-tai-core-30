@@ -108,6 +108,12 @@ create index if not exists comms_autosend_approvals_draft_idx
 create index if not exists comms_autosend_approvals_type_idx
   on public.comms_autosend_approvals (organization_id, message_type);
 
+-- The approval_id + organization_id pair must be unique BEFORE the deliveries
+-- table below can declare its composite FK against it (Postgres requires the
+-- referenced unique constraint to already exist).
+create unique index if not exists comms_autosend_approvals_id_org_key
+  on public.comms_autosend_approvals (id, organization_id);
+
 -- ---------------------------------------------------------------------------
 -- comms_autosend_deliveries — the system-send ledger
 -- ---------------------------------------------------------------------------
@@ -143,10 +149,6 @@ create table if not exists public.comms_autosend_deliveries (
   constraint comms_autosend_deliveries_payload_once
     unique (organization_id, draft_id, payload_fingerprint)
 );
-
--- The approval_id + organization_id pair must be unique for the FK above.
-create unique index if not exists comms_autosend_approvals_id_org_key
-  on public.comms_autosend_approvals (id, organization_id);
 
 create index if not exists comms_autosend_deliveries_draft_idx
   on public.comms_autosend_deliveries (organization_id, draft_id, attempted_at desc);
