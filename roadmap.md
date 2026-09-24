@@ -14,3 +14,11 @@
 - [x] Steward Scouts tab (D1–D3)
 - [x] Scout profile work + Ask AI with company facts (P1–P3)
 - [x] Send creates and starts AI follow-up (S1–S4)
+
+## AI execution setup (2026-09-24)
+- [x] Archive Codex-applied `steward_agent_runs_and_source_links_hardened` (do not reapply)
+- [x] AI runs write via TRUST_TAI_SUPABASE_SERVICE_KEY (external DB only); presence/health on Diagnostics
+- [x] Execute authority: no view-only roles; creator/owner or owner/admin only
+- [x] Feed write checked; retry reconciles task + feed without rerunning the model
+- [x] Team views read status-only run columns
+- [ ] Live signed-in synthetic run (blocked: needs a fresh sign-in link)
