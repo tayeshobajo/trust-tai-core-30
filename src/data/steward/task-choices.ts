@@ -10,6 +10,7 @@ import { loadWorkspacePeople } from "@/data/daily-workspace";
 import { listClientCommercialState } from "@/data/supabase/commercial-service";
 import { projectsService } from "@/data/supabase/projects-service";
 import { readMemberDirectory } from "@/data/supabase/settings-service";
+import { getTeammateNames } from "@/data/steward/teammates.functions";
 
 export interface TaskChoices {
   people: { key: string; name: string; userId: string }[];
@@ -21,7 +22,8 @@ export async function readTaskChoices(
   organizationId: string,
   viewer: { userId: string; name: string },
 ): Promise<TaskChoices> {
-  const [workspace, directory, clients, projects] = await Promise.all([
+  const [team, workspace, directory, clients, projects] = await Promise.all([
+    getTeammateNames({ data: { organizationId } }).catch(() => [] as { userId: string; name: string }[]),
     loadWorkspacePeople(organizationId).catch(() => null),
     // Owner/admin-only governed read; profile RLS hides other names otherwise.
     readMemberDirectory(organizationId).catch(() => new Map()),
@@ -36,6 +38,10 @@ export async function readTaskChoices(
     const name = (named?.name || person.displayName || named?.email || "").trim();
     if (!name) continue;
     people.set(person.userId, { key: person.userId, name, userId: person.userId });
+  }
+  for (const mate of team) {
+    if (!people.has(mate.userId)) people.set(mate.userId, { key: mate.userId, name: mate.name, userId: mate.userId });
+    else people.get(mate.userId)!.name ||= mate.name;
   }
   people.set(viewer.userId, { key: viewer.userId, name: viewer.name, userId: viewer.userId });
 
