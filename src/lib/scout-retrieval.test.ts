@@ -116,3 +116,46 @@ describe("scoutRetrievalPacket", () => {
     expect(packet["room"]).toBe("scout");
   });
 });
+
+describe("edit-learning corrections in retrieval", () => {
+  it("surfaces stored edit corrections in the corrections lane, ahead of inference", () => {
+    const bundle = composeScoutRetrieval({
+      ...base,
+      editCorrections: [
+        {
+          id: "act-1",
+          organizationId: "org-1",
+          lesson:
+            "A human edited a scout_intro, decide:begin_conversation draft before approving it. 1 sentence(s) added or rewritten.",
+          capturedAt: NOW,
+          capturedBy: "user-1",
+        },
+      ],
+    });
+    const lifted = bundle.corrections.find((entry) => entry.id === "act-1");
+    expect(lifted).toBeTruthy();
+    expect(lifted?.correction).toContain("edited a scout_intro");
+
+    const packet = scoutRetrievalPacket(bundle);
+    const corrections = packet["humanCorrections"] as { id: string; correction: string }[];
+    expect(corrections.some((entry) => entry.id === "act-1")).toBe(true);
+  });
+
+  it("merges edit corrections with the case ledger instead of replacing it", () => {
+    const bundle = composeScoutRetrieval({
+      ...base,
+      cases: [correction()],
+      editCorrections: [
+        {
+          id: "act-2",
+          organizationId: "org-1",
+          lesson: "A scout_intro draft was discarded by a human after review.",
+          capturedAt: NOW,
+        },
+      ],
+    });
+    const ids = bundle.corrections.map((entry) => entry.id);
+    expect(ids).toContain("case-1");
+    expect(ids).toContain("act-2");
+  });
+});

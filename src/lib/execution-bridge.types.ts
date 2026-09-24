@@ -74,8 +74,48 @@ export type ProspectRow = {
   inferred: unknown;
   suggested: unknown;
   provenance: unknown;
+  metadata: ExecutionJson | null;
   created_at: string;
   updated_at: string;
+};
+
+export type ScoutPersonRow = {
+  id: string;
+  organization_id: string;
+  prospect_id: string;
+  full_name: string;
+  role_title: string | null;
+  work_email: string | null;
+  email_status: string | null;
+  decision_maker_likelihood: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CommsTouchRow = {
+  id: string;
+  organization_id: string;
+  relationship_id: string;
+  thread_id: string | null;
+  channel: string;
+  direction: string;
+  occurred_at: string;
+  summary: string;
+  created_at: string;
+};
+
+export type ActivityRow = {
+  id: string;
+  organization_id: string;
+  app_key: string | null;
+  event_type: string;
+  actor_user_id: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  summary: string | null;
+  payload: ExecutionJson | null;
+  occurred_at: string | null;
+  created_at: string;
 };
 
 export type IcpProfileRow = {
@@ -155,6 +195,9 @@ export type ExecutionDatabase = {
       comms_relationships: TableContract<CommsRelationshipRow>;
       comms_drafts: TableContract<CommsDraftRow>;
       scout_intro_templates: TableContract<ScoutIntroTemplateRow>;
+      scout_people: TableContract<ScoutPersonRow>;
+      comms_touches: TableContract<CommsTouchRow>;
+      activities: TableContract<ActivityRow>;
     };
     Views: Record<never, never>;
     Functions: Record<never, never>;

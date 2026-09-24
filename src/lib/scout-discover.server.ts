@@ -43,6 +43,7 @@ import {
   type RuntimeModelCaller,
 } from "@/lib/intelligence-runtime.server";
 import { readIntelligenceCases } from "@/lib/intelligence-cases.server";
+import { readEditCorrections } from "@/lib/edit-corrections.server";
 import {
   composeScoutRetrieval,
   scoutRetrievalPacket,
@@ -257,10 +258,14 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
      the ICP as decided truth, human decisions as corrections, unread sources
      named. Grounding, scoring and the save path are unchanged. */
   const ledger = await readIntelligenceCases(input.token, orgId);
+  /* Human edit-learning corrections join the same corrections lane the case
+     ledger feeds: an edit Tai made to a draft outranks inference here too. */
+  const editCorrections = await readEditCorrections(supabase, orgId);
   const retrieval = scoutRetrievalPacket(
     composeScoutRetrieval({
       organizationId: orgId,
       subject: query,
+      editCorrections,
       ...(icp ? { decided: [`Active ICP (version ${icpVersion}) governs fit.`] } : {}),
       derived: (feedbackRows ?? []).length
         ? ["Recent human fit decisions are calibration only; they never replace the ICP."]

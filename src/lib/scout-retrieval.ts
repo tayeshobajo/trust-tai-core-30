@@ -31,6 +31,40 @@ import {
 
 const TIER_ORDER: Record<string, number> = { decided: 0, observed: 1, derived: 2 };
 
+/**
+ * An edit-learning correction as read back from its activities row. It is
+ * mapped into an `IntelligenceCase`-shaped entry whose `correction` field is
+ * set, which is exactly what `composeRetrieval` lifts into the corrections
+ * lane that outranks inference.
+ */
+export interface StoredEditCorrection {
+  id: string;
+  organizationId: string;
+  /** The one-line lesson text (see correctionLesson in edit-correction.ts). */
+  lesson: string;
+  capturedAt: string;
+  capturedBy?: string | null;
+}
+
+function correctionAsCase(entry: StoredEditCorrection): IntelligenceCase {
+  return {
+    id: entry.id,
+    organizationId: entry.organizationId,
+    patternId: "edit-correction",
+    patternVersion: 1,
+    entities: [],
+    evidenceRefs: [],
+    hypothesis: entry.lesson,
+    humanDecision: "A human edited or discarded a drafted message.",
+    decidedBy: entry.capturedBy ?? "",
+    decidedAt: entry.capturedAt,
+    diagnosisVerdict: "unknown",
+    correction: entry.lesson,
+    lesson: entry.lesson,
+    createdAt: entry.capturedAt,
+  };
+}
+
 /** A company this workspace already knows about, by canonical record. */
 export interface KnownCompany {
   name: string;
@@ -63,6 +97,13 @@ export interface ScoutRetrievalInput {
   derived?: string[];
   /** Case ledger for this workspace; corrections are lifted out of it. */
   cases?: IntelligenceCase[];
+  /**
+   * Edit-learning corrections captured when a human edited or discarded a
+   * drafted message (see src/domain/edit-correction.ts). They enter the same
+   * corrections lane the case ledger feeds, so a human's edit outranks
+   * inference in every later Scout reasoning pass.
+   */
+  editCorrections?: StoredEditCorrection[];
   /** Sources that could not be read. They stay unknown, never zero. */
   withheld?: WithheldSource[];
 }
@@ -117,13 +158,18 @@ export function composeScoutRetrieval(input: ScoutRetrievalInput): RetrievalBund
     });
   });
 
+  const cases = [
+    ...(input.cases ?? []),
+    ...(input.editCorrections ?? []).map(correctionAsCase),
+  ];
+
   return composeRetrieval({
     organizationId: input.organizationId,
     room: "scout",
     now: input.now ?? new Date().toISOString(),
     evidence,
     decided: input.decided ?? [],
-    ...(input.cases ? { cases: input.cases } : {}),
+    ...(cases.length > 0 ? { cases } : {}),
     ...(input.withheld && input.withheld.length > 0 ? { withheld: input.withheld } : {}),
     contextPacket: null,
   });
