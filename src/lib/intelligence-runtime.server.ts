@@ -72,7 +72,9 @@ export type RuntimePurpose =
   | "research"
   | "studio_generation"
   | "studio_brief"
-  | "bounded_agent_task";
+  | "bounded_agent_task"
+  /** Learning engine: reflecting on one learning unit's chain (Step 5). */
+  | "reflection";
 
 export interface RuntimeModelCall {
   instructions: string;
