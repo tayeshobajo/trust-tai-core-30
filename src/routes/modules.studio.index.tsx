@@ -25,6 +25,7 @@ import {
 import { StudioOpportunities } from "@/components/tt/studio/opportunities";
 import { StudioBrief } from "@/components/tt/studio/brief";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import { StudioNav } from "@/components/tt/studio/studio-nav";
 import { submitContentBatchForApproval, submitContentBatchQuietly } from "@/data/content/intake";
 import { deriveOpportunities } from "@/data/content/opportunity-read";
 import { studioOpportunitiesView, type OpportunityRowView } from "@/data/content/opportunity-view";
@@ -425,6 +426,9 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
 
   return (
     <AppShell identity={identity}>
+      <div className="mb-6">
+        <StudioNav current="content" />
+      </div>
       <RoomHero
         eyebrow="Studio"
         title="Say what the market is asking about."
