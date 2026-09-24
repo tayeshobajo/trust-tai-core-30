@@ -12,7 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { PrincipleDomain } from "@/domain/learning-unit";
 import type { Principle, PrincipleStatus } from "@/domain/principle-lifecycle";
-import type { RetrievalPrinciple } from "@/lib/scout-retrieval";
+import { principlesForScope, type RetrievalPrinciple } from "@/lib/scout-retrieval";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>;
@@ -101,6 +101,55 @@ export function asRetrievalPrinciples(principles: Principle[]): RetrievalPrincip
       confidence: p.confidence,
       lastValidatedAt: p.lastValidatedAt,
     }));
+}
+
+/**
+ * The one-line read live call sites use to bring learned principles into a
+ * retrieval compose: fetch, keep active/strengthened only, filter to the
+ * caller's honest scope. Best-effort by contract: a failed principles read
+ * never breaks discovery or drafting, it is an empty list. Missing data is
+ * preferable to false attribution.
+ */
+export async function readRetrievalPrinciples(
+  client: Client,
+  organizationId: string,
+  scope: { domain: string; contextTags: string[] },
+): Promise<RetrievalPrinciple[]> {
+  try {
+    return principlesForScope(
+      asRetrievalPrinciples(await readPrinciples(client, organizationId)),
+      scope,
+    );
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The same best-effort read for call sites that hold only the caller's JWT
+ * (smart import). The client is built exactly like the other caller-token
+ * reads (see readIntelligenceCases), so RLS and the workspace boundary
+ * still decide what is visible.
+ */
+export async function readRetrievalPrinciplesAsCaller(
+  token: string,
+  organizationId: string,
+  scope: { domain: string; contextTags: string[] },
+): Promise<RetrievalPrinciple[]> {
+  try {
+    const { trustTaiSupabaseKey, trustTaiSupabaseUrl } = await import(
+      "@/lib/trust-tai-backend.server"
+    );
+    const { createClient } = await import("@supabase/supabase-js");
+    const key = trustTaiSupabaseKey();
+    const client = createClient(trustTaiSupabaseUrl(), key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}`, apikey: key } },
+    });
+    return readRetrievalPrinciples(client, organizationId, scope);
+  } catch {
+    return [];
+  }
 }
 
 /**

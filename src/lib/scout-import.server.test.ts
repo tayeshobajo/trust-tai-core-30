@@ -11,6 +11,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const runtimeModelCaller = vi.fn();
+const readRetrievalPrinciplesAsCaller = vi.fn(async () => [] as unknown[]);
+
+vi.mock("@/lib/organizational-principles.server", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>(
+    "@/lib/organizational-principles.server",
+  );
+  return {
+    ...actual,
+    readRetrievalPrinciplesAsCaller: (...args: unknown[]) =>
+      readRetrievalPrinciplesAsCaller(...(args as [])),
+  };
+});
 
 vi.mock("@/lib/intelligence-runtime.server", async () => {
   const actual = await vi.importActual<Record<string, unknown>>(
@@ -35,6 +47,8 @@ function respond(body: string, init: { status?: number; type?: string } = {}) {
 afterEach(() => {
   vi.unstubAllGlobals();
   runtimeModelCaller.mockReset();
+  readRetrievalPrinciplesAsCaller.mockReset();
+  readRetrievalPrinciplesAsCaller.mockResolvedValue([]);
 });
 
 describe("fetching a source", () => {
@@ -183,6 +197,38 @@ describe("extracting companies", () => {
     /* The source text is still verbatim, so grounding is unchanged. */
     expect(body.source).toContain("Northfield Dental is worth a look.");
     expect(String(sent?.instructions)).toContain("retrieval.humanCorrections");
+  });
+
+  it("passes fetched principles into the retrieval compose the model reads", async () => {
+    readRetrievalPrinciplesAsCaller.mockResolvedValue([
+      {
+        id: "p-1",
+        organizationId: "org-1",
+        principle: "Never infer a domain from a company name.",
+        scope: { domain: "sales", contextTags: [] },
+        status: "active",
+        confidence: 0.8,
+        lastValidatedAt: "2026-09-24T00:00:00.000Z",
+      },
+    ]);
+    const call = vi.fn(async () => ({
+      raw: JSON.stringify({ companies: [] }),
+      provider: "openai",
+      model: "test",
+    }));
+    runtimeModelCaller.mockResolvedValue(call);
+
+    await extractCompanies({ ...input, text: "Northfield Dental is worth a look." });
+
+    const sent = (call.mock.calls as unknown as { input: string }[][])[0]?.[0];
+    const body = JSON.parse(String(sent?.input)) as { retrieval: Record<string, unknown> };
+    const corrections = body.retrieval["humanCorrections"] as { id: string; lesson: string }[];
+    expect(corrections.some((c) => c.id === "p-1" && c.lesson.includes("Never infer"))).toBe(true);
+    /* The scope handed to the read is the sourcing scope, nothing wider. */
+    expect(readRetrievalPrinciplesAsCaller).toHaveBeenCalledWith("t", "org-1", {
+      domain: "sales",
+      contextTags: [],
+    });
   });
 });
 

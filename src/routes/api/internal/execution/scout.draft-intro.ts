@@ -41,6 +41,12 @@ import {
   type TouchFact,
 } from "@/domain/tai-decide";
 import { buildDimensionalRecord } from "@/domain/dimensional-record";
+import {
+  composeScoutRetrieval,
+  draftIntroPrincipleScope,
+  scoutRetrievalPacket,
+} from "@/lib/scout-retrieval";
+import { readRetrievalPrinciples } from "@/lib/organizational-principles.server";
 
 interface DraftIntroPayload {
   prospect_id?: unknown;
@@ -151,6 +157,33 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
             evaluation,
           });
 
+          /* Learned principles for this DECIDE/draft read: the primary
+             consumer. Domain relationship_nurture; the milestone_event
+             context is claimed only when the World Card actually observed
+             a recent change (see draftIntroPrincipleScope). Composed
+             through the same retrieval lane every Scout read uses, so an
+             active or strengthened principle outranks inference here, and
+             a provisional, challenged or retired one never appears.
+             Best-effort by contract: an unreadable principles store never
+             blocks DECIDE or the draft, it is simply absent. */
+          const principleScope = draftIntroPrincipleScope(worldCard);
+          const principles = await readRetrievalPrinciples(
+            supabase,
+            agent.organization_id,
+            principleScope,
+          );
+          const principleRetrieval = scoutRetrievalPacket(
+            composeScoutRetrieval({
+              organizationId: agent.organization_id,
+              subject: prospect.company_name,
+              principles,
+            }),
+            prospect.company_name,
+          );
+          const learnedPrinciples = (
+            (principleRetrieval["humanCorrections"] as { id: string; lesson: string }[]) ?? []
+          ).map((entry) => ({ id: entry.id, lesson: entry.lesson }));
+
           // Relationship history, when a relationship already carries this
           // prospect. The same row is reused further down for the draft.
           const { data: existingRel, error: relReadError } = await supabase
@@ -260,6 +293,8 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
                 prospect_id: prospect.id,
                 relationship_id: existingRel?.id ?? null,
                 world_card_summary: worldCardSummary(worldCard),
+                learned_principles: learnedPrinciples,
+                principle_scope: principleScope,
                 dimensional,
               },
               occurred_at: decidedAt,
@@ -414,6 +449,11 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
                 // the draft, so the reviewer and the learning loop both see
                 // why the engine chose to write at all.
                 decide: { ...decisionStored, decided_at: decidedAt },
+                // The learned principles that were in front of this read,
+                // with the scope they were filtered to, so the reviewer and
+                // the learning loop see exactly what colored the draft.
+                learned_principles: learnedPrinciples,
+                principle_scope: principleScope,
                 world_card: {
                   composed_at: worldCard.composedAt,
                   evaluator_version: worldCard.evaluatorVersion,
