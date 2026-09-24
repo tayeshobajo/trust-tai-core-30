@@ -139,7 +139,7 @@ export function PersonDashboard({
         minutesSaved={minutesSaved}
       />
 
-      <div className="grid items-start gap-3 xl:grid-cols-[1.08fr_1fr]">
+      <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)]">
         <MyTasksPanel
           tasks={read.tasks}
           now={read.now}
