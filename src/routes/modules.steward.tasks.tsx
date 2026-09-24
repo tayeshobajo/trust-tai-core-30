@@ -35,6 +35,7 @@ import {
   type TasksFilter,
 } from "@/data/steward/accountability";
 import { fathomStatusLine, readStewardTeam, weekStartOf } from "@/data/steward/team-read";
+import { useTaskChoices } from "@/data/steward/task-choices";
 import { stewardTasks } from "@/data/supabase/steward-tasks";
 import { weeklyGoals } from "@/data/supabase/weekly-goals";
 import { computeWeeklyGoalProgress } from "@/domain/steward-weekly-goal";
@@ -291,6 +292,7 @@ function StewardTasks({
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [tasks, viewerKey, identity.name, identity.userId]);
 
+  const choices = useTaskChoices(identity.organizationId, { userId: identity.userId, name: identity.name });
   const clients = useMemo<{ id: string; label: string }[]>(() => {
     const map = new Map<string, string>();
     for (const task of tasks) {
@@ -580,9 +582,9 @@ function StewardTasks({
         open={creating}
         onClose={() => setCreating(false)}
         identity={identity}
-        clients={clients}
-        projects={projects}
-        people={drawerPeople}
+        clients={choices.data?.clients ?? clients}
+        projects={choices.data?.projects ?? projects}
+        people={choices.data?.people ?? drawerPeople}
         onCreate={handleCreate}
       />
 
