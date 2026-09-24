@@ -70,14 +70,14 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
   const result = q.data;
   return (
     <AppShell identity={identity}>
+      <div className="mb-6">
+        <StudioNav current="audience" />
+      </div>
       <RoomHero
         eyebrow="Studio"
         title="Who is listening."
         supporting="The trusttai.com newsletter list, read straight from the website. Studio keeps no copy, changes no one's consent and sends nothing."
       />
-      <div className="mt-6">
-        <StudioNav current="audience" />
-      </div>
 
       {q.isPending ? (
         <TTCard className="mt-6 bg-card" aria-busy="true">
@@ -122,7 +122,7 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
           </section>
           <p className="mt-2 text-xs text-muted-foreground">
             {filter === "all"
-              ? scopeNote({ ...result.feed, subscribers: { length: result.returned } as never })
+              ? scopeNote(result.feed, result.returned)
               : `Counts reflect the ${FILTERS.find((f) => f.id === filter)?.label.toLowerCase()} view the website returned, not the whole audience.`}{" "}
             Read {when(result.fetchedAt)}.
           </p>

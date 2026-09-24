@@ -145,11 +145,14 @@ export function describeCount(value: number | null, scope: CountScope, capped: b
   return capped ? `${value.toLocaleString("en-US")}+` : value.toLocaleString("en-US");
 }
 
-export function scopeNote(feed: Pick<AudienceFeed, "scope" | "likelyCapped" | "subscribers">): string {
+export function scopeNote(
+  feed: Pick<AudienceFeed, "scope" | "likelyCapped">,
+  returned: number,
+): string {
   if (feed.scope === "whole_audience") return "Counts cover the whole audience.";
   if (feed.likelyCapped)
     return `The website returned its maximum of ${KNOWN_SOURCE_CAP.toLocaleString("en-US")} people, so these counts are a floor, not the whole audience.`;
-  return `Counted from the ${feed.subscribers.length.toLocaleString("en-US")} people the website returned. The website hasn't confirmed these are everyone yet.`;
+  return `Counted from the ${returned.toLocaleString("en-US")} people the website returned. The website hasn't confirmed these are everyone yet.`;
 }
 
 /** Why the list could not be read, in words a person can act on. */

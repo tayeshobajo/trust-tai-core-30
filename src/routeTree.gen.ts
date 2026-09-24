@@ -81,6 +81,7 @@ import { Route as ModulesStewardTasksRouteImport } from './routes/modules.stewar
 import { Route as ModulesStewardTimelineRouteImport } from './routes/modules.steward.timeline'
 import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.index'
 import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
+import { Route as ModulesStudioAudienceRouteImport } from './routes/modules.studio.audience'
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/clients.ask'
 import { Route as ApiPublicClientsFilesRouteImport } from './routes/api/public/clients.files'
@@ -498,6 +499,11 @@ const ModulesStudioItemIdRoute = ModulesStudioItemIdRouteImport.update({
   path: '/$itemId',
   getParentRoute: () => ModulesStudioRoute,
 } as any)
+const ModulesStudioAudienceRoute = ModulesStudioAudienceRouteImport.update({
+  id: '/audience',
+  path: '/audience',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
 const ModulesWebsitePageRoute = ModulesWebsitePageRouteImport.update({
   id: '/modules/website_/page',
   path: '/modules/website/page',
@@ -851,6 +857,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
+  '/modules/studio/audience': typeof ModulesStudioAudienceRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/clients/': typeof ModulesClientsIndexRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
@@ -968,6 +975,7 @@ export interface FileRoutesByTo {
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
+  '/modules/studio/audience': typeof ModulesStudioAudienceRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/clients': typeof ModulesClientsIndexRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
@@ -1095,6 +1103,7 @@ export interface FileRoutesById {
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
+  '/modules/studio/audience': typeof ModulesStudioAudienceRoute
   '/modules/website_/page': typeof ModulesWebsitePageRoute
   '/modules/clients/': typeof ModulesClientsIndexRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
@@ -1223,6 +1232,7 @@ export interface FileRouteTypes {
     | '/modules/steward/tasks'
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
+    | '/modules/studio/audience'
     | '/modules/website/page'
     | '/modules/clients/'
     | '/modules/comms/'
@@ -1340,6 +1350,7 @@ export interface FileRouteTypes {
     | '/modules/steward/tasks'
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
+    | '/modules/studio/audience'
     | '/modules/website/page'
     | '/modules/clients'
     | '/modules/comms'
@@ -1466,6 +1477,7 @@ export interface FileRouteTypes {
     | '/modules/steward/tasks'
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
+    | '/modules/studio/audience'
     | '/modules/website_/page'
     | '/modules/clients/'
     | '/modules/comms/'
@@ -2110,6 +2122,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStudioItemIdRouteImport
       parentRoute: typeof ModulesStudioRoute
     }
+    '/modules/studio/audience': {
+      id: '/modules/studio/audience'
+      path: '/audience'
+      fullPath: '/modules/studio/audience'
+      preLoaderRoute: typeof ModulesStudioAudienceRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
     '/modules/website_/page': {
       id: '/modules/website_/page'
       path: '/modules/website/page'
@@ -2666,11 +2685,13 @@ const ModulesStewardRouteWithChildren = ModulesStewardRoute._addFileChildren(
 
 interface ModulesStudioRouteChildren {
   ModulesStudioItemIdRoute: typeof ModulesStudioItemIdRoute
+  ModulesStudioAudienceRoute: typeof ModulesStudioAudienceRoute
   ModulesStudioIndexRoute: typeof ModulesStudioIndexRoute
 }
 
 const ModulesStudioRouteChildren: ModulesStudioRouteChildren = {
   ModulesStudioItemIdRoute: ModulesStudioItemIdRoute,
+  ModulesStudioAudienceRoute: ModulesStudioAudienceRoute,
   ModulesStudioIndexRoute: ModulesStudioIndexRoute,
 }
 
