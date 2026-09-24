@@ -926,29 +926,6 @@ function CompanyDetail({
   /* Scout owns the prospect; Approvals owns the decision. When the brief is
      ready and nothing has been handed over yet, whether this company becomes
      a relationship is a human judgment, so it joins the queue by itself. */
-  const submittedForApproval = useRef<string | null>(null);
-  useEffect(() => {
-    if (!firstMessageDraft.ready) return;
-    if (prospect.status === "ready_for_comms") return;
-    if (submittedForApproval.current === prospect.id) return;
-    submittedForApproval.current = prospect.id;
-    void submitScoutHandoffQuietly(
-      {
-        handoff: firstMessageDraft,
-        fitScore: candidate.evaluation.score ?? 0,
-        fitReasons: [candidate.fit.whyItFits].filter(Boolean),
-      },
-      { organizationId, userId },
-    );
-  }, [
-    firstMessageDraft,
-    prospect.id,
-    prospect.status,
-    candidate.evaluation.score,
-    candidate.fit.whyItFits,
-    organizationId,
-    userId,
-  ]);
 
   // The guided flow behind "Resolve N blockers": the same structured blockers
   // the handoff draft lists, each carrying its own governed next action.
@@ -1074,6 +1051,15 @@ function CompanyDetail({
 
   return (
     <AppShell identity={identity}>
+      <AutoSubmitHandoff
+        draft={firstMessageDraft}
+        prospectId={prospect.id}
+        prospectStatus={prospect.status}
+        fitScore={candidate.evaluation.score ?? 0}
+        whyItFits={candidate.fit.whyItFits}
+        organizationId={organizationId}
+        userId={userId}
+      />
       <div className="space-y-6">
         <DetailUtilityRow
           companyName={prospect.name}
@@ -1450,4 +1436,32 @@ function CompanyDetail({
       </div>
     </AppShell>
   );
+}
+
+
+/* Scout owns the prospect; Approvals owns the decision. When the brief is
+   ready and nothing has been handed over yet, it joins the queue by itself.
+   A child component so its hooks never sit behind the page's early returns. */
+function AutoSubmitHandoff(props: {
+  draft: Parameters<typeof submitScoutHandoffQuietly>[0]["handoff"];
+  prospectId: string;
+  prospectStatus: string;
+  fitScore: number;
+  whyItFits: string | undefined;
+  organizationId: Parameters<typeof submitScoutHandoffQuietly>[1]["organizationId"];
+  userId: Parameters<typeof submitScoutHandoffQuietly>[1]["userId"];
+}) {
+  const submitted = useRef<string | null>(null);
+  const { draft, prospectId, prospectStatus, fitScore, whyItFits, organizationId, userId } = props;
+  useEffect(() => {
+    if (!draft.ready) return;
+    if (prospectStatus === "ready_for_comms") return;
+    if (submitted.current === prospectId) return;
+    submitted.current = prospectId;
+    void submitScoutHandoffQuietly(
+      { handoff: draft, fitScore, fitReasons: [whyItFits].filter(Boolean) as string[] },
+      { organizationId, userId },
+    );
+  }, [draft, prospectId, prospectStatus, fitScore, whyItFits, organizationId, userId]);
+  return null;
 }
