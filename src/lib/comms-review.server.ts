@@ -39,6 +39,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { outboundFingerprint, type DeliveryChannel } from "@/domain/comms-delivery";
+import { buildEditCorrection } from "@/domain/edit-correction";
+import { recordEditCorrection } from "@/lib/edit-corrections.server";
 import {
   activeLessons,
   canPromoteLesson,
@@ -1966,6 +1968,68 @@ export async function approveVersion(
     .update({ status: "approved", updated_at: new Date().toISOString() })
     .eq("id", input.sessionId)
     .eq("organization_id", input.organizationId);
+
+  /*
+   * Edit-learning capture on the review-approval path. When the approved
+   * words differ from what the engine originally drafted (kept at
+   * rationale.drafted_body), the difference is recorded as a correction so
+   * the retrieval layer reads the human's edit ahead of inference next
+   * time. Best-effort: a capture failure never touches the approval above.
+   */
+  if (session.draftId) {
+    try {
+      const { data: draftRow } = await writer
+        .from("comms_drafts")
+        .select("id, relationship_id, register, intent, body, rationale")
+        .eq("id", session.draftId)
+        .eq("organization_id", input.organizationId)
+        .maybeSingle();
+      if (draftRow) {
+        const rationale = ((draftRow as Row)["rationale"] ?? {}) as Record<string, unknown>;
+        const draftedBody =
+          typeof rationale["drafted_body"] === "string" ? rationale["drafted_body"] : "";
+        const decide = rationale["decide"] as Record<string, unknown> | undefined;
+        const worldCardRef = rationale["world_card"] as Record<string, unknown> | undefined;
+        const correction = draftedBody
+          ? buildEditCorrection({
+              situation: {
+                register: String((draftRow as Row)["register"] ?? ""),
+                intent: String((draftRow as Row)["intent"] ?? ""),
+                decideAction: typeof decide?.["action"] === "string" ? decide["action"] : null,
+                worldCardSummary:
+                  typeof worldCardRef?.["summary"] === "string" ? worldCardRef["summary"] : null,
+              },
+              draftedBody,
+              approvedBody: String((draftRow as Row)["body"] ?? ""),
+              decision: "approved",
+            })
+          : null;
+        if (correction) {
+          await writer
+            .from("comms_drafts")
+            .update({
+              rationale: { ...rationale, correction },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", session.draftId)
+            .eq("organization_id", input.organizationId);
+          await recordEditCorrection(writer, {
+            organizationId: input.organizationId,
+            relationshipId:
+              typeof (draftRow as Row)["relationship_id"] === "string"
+                ? ((draftRow as Row)["relationship_id"] as string)
+                : null,
+            draftId: session.draftId,
+            record: correction,
+            actorId: caller.userId,
+          });
+        }
+      }
+    } catch {
+      /* Capture is downstream of the approval; never let it interfere. */
+    }
+  }
+
   return toApproval(attempt.data as Row);
 }
 

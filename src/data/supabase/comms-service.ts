@@ -42,6 +42,7 @@ import {
   buildFeedbackRow,
   readGateSnapshot,
 } from "@/domain/voice-gate-feedback";
+import { buildEditCorrection, correctionLesson } from "@/domain/edit-correction";
 import type { MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
 
@@ -814,6 +815,66 @@ export const commsService = {
       }
     } catch {
       /* Learning is downstream of the human's decision; never let it interfere. */
+    }
+
+    /*
+     * Edit-learning capture. When the human approved different words than
+     * the engine drafted, or discarded the draft outright, the difference is
+     * a correction record: it lands on the draft's rationale and as an
+     * activities row ("relationship.correction") the Scout retrieval layer
+     * reads back, so a human edit outranks inference next time. Only drafts
+     * that carry `rationale.drafted_body` (engine-drafted) are compared;
+     * best-effort by the same contract as the gate feedback above.
+     */
+    try {
+      if (reviewState === "approved" || reviewState === "discarded") {
+        const rationale = (draft.rationale ?? {}) as Record<string, unknown>;
+        const draftedBody =
+          typeof rationale["drafted_body"] === "string" ? rationale["drafted_body"] : "";
+        const decide = rationale["decide"] as Record<string, unknown> | undefined;
+        const worldCardRef = rationale["world_card"] as Record<string, unknown> | undefined;
+        const correction = draftedBody
+          ? buildEditCorrection({
+              situation: {
+                register: draft.register,
+                intent: draft.intent,
+                decideAction: typeof decide?.["action"] === "string" ? decide["action"] : null,
+                worldCardSummary:
+                  typeof worldCardRef?.["summary"] === "string" ? worldCardRef["summary"] : null,
+              },
+              draftedBody,
+              approvedBody: reviewState === "approved" ? updated.body : null,
+              decision: reviewState,
+            })
+          : null;
+        if (correction) {
+          await supabase
+            .from("comms_drafts")
+            .update({
+              rationale: { ...rationale, correction },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", draft.id)
+            .eq("organization_id", context.organizationId);
+          await supabase.from("activities").insert({
+            organization_id: context.organizationId,
+            app_key: "comms",
+            event_type: "relationship.correction",
+            entity_type: "comms_draft",
+            entity_id: draft.id,
+            summary: correctionLesson(correction),
+            payload: {
+              relationship_id: relationship.id,
+              draft_id: draft.id,
+              correction,
+            },
+            occurred_at: correction.captured_at,
+            actor_user_id: context.userId,
+          });
+        }
+      }
+    } catch {
+      /* Capture must never interfere with the approve or discard itself. */
     }
 
     /* Sending back for review is the same boundary, reached later. */
