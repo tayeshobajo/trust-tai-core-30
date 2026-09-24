@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { evaluateScoutFit } from "./scout-fit-evaluator";
+import { evaluateScoutFit, withOverride } from "./scout-fit-evaluator";
 
 type Obs = { key: string; label: string; value: unknown; evidence?: string; source_url?: string };
 
@@ -234,6 +234,29 @@ describe("scout fit evaluator v3, v4 absence discipline", () => {
     expect(result.criteria.find((c) => c.key === "roadmap_depth")?.state).toBe("missing");
   });
 
+  it("keeps a green-scoring row yellow when no decision maker or route was read", () => {
+    const result = evaluateScoutFit({
+      ...base,
+      observed: [
+        obs("active_business_signals", 4, "Services, hours, classes, client work"),
+        obs("proof_signals", 3, "Three named case studies"),
+        obs("clear_offer_signals", true, "Offer described"),
+        obs("decision_maker_signals", 0),
+        obs("contact_routes", 0),
+        obs("contact_page_checked", true),
+        obs("offer_page_checked", true),
+        obs("booking_signal", false),
+        obs("latest_visible_year", 2021),
+        obs("milestone_opportunities", ["Add a booking path", "Add lead capture"]),
+        obs("pages_researched", 5),
+      ],
+      pagesResearched: 5,
+      researchVersion: 4,
+    });
+    expect(result.light).toBe("yellow");
+    expect(result.explanation).toMatch(/decision maker/i);
+  });
+
   it("satisfies roadmap depth with two supported concrete opportunities", () => {
     const result = evaluateScoutFit({
       ...base,
@@ -248,5 +271,144 @@ describe("scout fit evaluator v3, v4 absence discipline", () => {
     });
     expect(result.criteria.find((c) => c.key === "roadmap_depth")?.state).toBe("met");
     expect(result.criteria.find((c) => c.key === "first_milestone")?.state).toBe("met");
+  });
+});
+
+/**
+ * Canonical opportunity-gap fixtures. Mental Dental is the positive shape: a
+ * healthy founder-led business in motion whose site has fallen behind.
+ * Soundstripe is the negative shape: funded, technically mature, in-house
+ * engineering, no gap Trust Tai can close.
+ */
+describe("scout fit evaluator v5, opportunity gap", () => {
+  const mentalDentalLike = {
+    ...base,
+    observed: [
+      obs("active_business_signals", 4, "New patient intake open, weekly education videos, active social channels, course waitlist"),
+      obs("proof_signals", 3, "Student results and patient reviews are published"),
+      obs("testimonial_signals", true),
+      obs("clear_offer_signals", true, "Exam prep courses and practice services described"),
+      obs("decision_maker_signals", 1, "Founder dentist is named across the site"),
+      obs("contact_routes", 1, "Contact form"),
+      obs("contact_page_checked", true),
+      obs("offer_page_checked", true),
+      obs("booking_signal", false),
+      obs("latest_visible_year", 2023),
+      obs(
+        "milestone_opportunities",
+        ["Add online booking and lead capture", "Package the education content into an LMS"],
+        "Services and courses exist with no booking or capture path",
+      ),
+      obs("pages_researched", 5),
+    ],
+    pagesResearched: 5,
+    researchVersion: 4,
+    intel: {
+      buying_signals: [
+        { type: "hiring", statement: "Hiring an associate dentist", source_url: null, observed_at: "2025-11-01" },
+        { type: "expansion", statement: "Announced a second course cohort", source_url: null, observed_at: "2025-12-01" },
+      ],
+      opportunities: [
+        { area: "conversion", statement: "No lead capture anywhere on the site", evidence: "Checked contact and course pages", source_url: null },
+        { area: "content_freshness", statement: "Site footer year reads 2023", evidence: "Footer on every page", source_url: null },
+      ],
+    },
+  };
+
+  const soundstripeLike = {
+    ...base,
+    observed: [
+      obs("active_business_signals", 5, "Product releases, blog, active customers"),
+      obs("proof_signals", 4, "Case studies and press are published"),
+      obs("clear_offer_signals", true, "SaaS subscription described"),
+      obs("pricing_signal", true),
+      obs("decision_maker_signals", 2, "CEO and CTO listed on leadership page"),
+      obs("contact_routes", 2, "Form and email"),
+      obs(
+        "self_sufficiency_signals",
+        [
+          "Careers page lists senior backend and frontend engineer roles",
+          "In-house engineering team shown on the about page",
+        ],
+        "Engineering roles and team read directly from public pages",
+      ),
+      {
+        key: "funding_note",
+        label: "Funding",
+        value: "Raised $20M Series B from venture investors",
+        evidence: "Press release on the company blog",
+        source_url: "https://example.com/press",
+      },
+      obs("pages_researched", 6),
+    ],
+    pagesResearched: 6,
+    researchVersion: 4,
+  };
+
+  it("mental-dental-like reads green with a high opportunity gap", () => {
+    const result = evaluateScoutFit(mentalDentalLike);
+    expect(result.light).toBe("green");
+    expect(result.score).toBeGreaterThanOrEqual(75);
+    expect(result.opportunityGap?.gap).toBe("high");
+    expect(result.opportunityGap?.momentumEvidence.length).toBeGreaterThanOrEqual(2);
+    expect(result.opportunityGap?.maturityEvidence.length).toBeGreaterThanOrEqual(2);
+    expect(result.criteria.find((c) => c.key === "disqualifier")).toBeUndefined();
+  });
+
+  it("soundstripe-like reads red via the self-sufficiency disqualifier with a low gap", () => {
+    const result = evaluateScoutFit(soundstripeLike);
+    expect(result.light).toBe("red");
+    expect(result.score).toBeLessThanOrEqual(25);
+    const disqualifier = result.criteria.find((c) => c.key === "disqualifier");
+    expect(disqualifier?.state).toBe("mismatch");
+    expect(disqualifier?.reason).toMatch(/self-sufficient/i);
+    expect(result.opportunityGap?.gap).toBe("low");
+  });
+
+  it("does not fire the disqualifier on absence of self-sufficiency evidence", () => {
+    const result = evaluateScoutFit({
+      ...base,
+      observed: [
+        obs("clear_offer_signals", true, "Services listed"),
+        obs("contact_routes", 1, "Contact form"),
+        obs("pages_researched", 2),
+      ],
+      pagesResearched: 2,
+      researchVersion: 4,
+    });
+    expect(result.light).toBe("yellow");
+    expect(result.criteria.find((c) => c.key === "disqualifier")).toBeUndefined();
+    expect(result.opportunityGap?.gap).toBe("unknown");
+  });
+
+  it("does not fire the disqualifier when self-sufficiency reads are confirmed false", () => {
+    const result = evaluateScoutFit({
+      ...base,
+      observed: [
+        obs("self_sufficiency_signals", []),
+        obs("clear_offer_signals", true),
+        obs("contact_routes", 1),
+      ],
+      researchVersion: 4,
+    });
+    expect(result.criteria.find((c) => c.key === "disqualifier")).toBeUndefined();
+    expect(result.light).not.toBe("red");
+  });
+
+  it("keeps a manual override winning over the disqualifier", () => {
+    const evaluation = evaluateScoutFit(soundstripeLike);
+    const overridden = withOverride(evaluation, {
+      scout_fit_override: { light: "green", by: "tai", at: "2026-01-02T00:00:00.000Z" },
+    });
+    expect(overridden.light).toBe("green");
+    expect(overridden.explanation).toMatch(/set manually/i);
+  });
+
+  it("keeps the criterion weights totalling 100", () => {
+    const result = evaluateScoutFit(mentalDentalLike);
+    const total = result.criteria
+      .filter((c) => c.key !== "disqualifier")
+      .reduce((sum, c) => sum + c.maxScore, 0);
+    expect(total).toBe(100);
   });
 });
