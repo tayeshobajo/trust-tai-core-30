@@ -19,6 +19,8 @@ export interface RuntimeDiagnostics {
     /** Metadata about the configured host. Never a credential. */
     host: { origin: string; tls: boolean; loopback: boolean; configured: boolean };
   };
+  /** AI server access to the external workspace database. Presence only. */
+  agentServerAccess: { configured: boolean; reachable: boolean | null; runStorage: boolean | null };
   serverTime: string;
 }
 
@@ -65,7 +67,11 @@ export const getRuntimeDiagnostics = createServerFn({ method: "GET" })
       liveReachable = false;
     }
 
+    const { trustTaiWriterHealth } = await import("@/lib/trust-tai-writer.server");
+    const agentServerAccess = await trustTaiWriterHealth();
+
     return {
+      agentServerAccess,
       supabase: { reachable: supabaseReachable, detail: supabaseDetail },
       paperclip: {
         mode: paperclipConnection({ liveReachable, lastSuccessAt }).mode,
