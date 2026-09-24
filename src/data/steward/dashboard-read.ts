@@ -183,14 +183,26 @@ export async function readStewardDashboard(
     new Map([...personActivities, ...agentActivities].map((event) => [event.id, event])).values(),
   ).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
   const activities = markUndone(rawActivities.map(toDashboardActivity), rawActivities);
-  const people = (peopleRead?.people ?? [])
-    .filter((person) => person.active)
+  const peopleById = new Map(
+    (peopleRead?.people ?? [])
+      .filter((person) => person.active && person.displayName.trim())
     .map((person) => ({
       key: person.userId,
       userId: person.userId,
       name: person.displayName,
       initials: ownerInitialsOf(undefined, person.displayName),
-    }));
+    }))
+      .map((person) => [person.userId, person]),
+  );
+  // The signed-in person's identity is already verified by WorkspaceGate and
+  // remains assignable even when profile RLS hides the wider directory.
+  peopleById.set(targetUserId, {
+    key: targetUserId,
+    userId: targetUserId,
+    name: targetName,
+    initials: ownerInitialsOf(undefined, targetName),
+  });
+  const people = Array.from(peopleById.values()).sort((a, b) => a.name.localeCompare(b.name));
 
   const ownerFromTask = tasks.find((task) => task.owner.userId === targetUserId)?.owner;
 

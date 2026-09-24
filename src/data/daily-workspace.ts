@@ -91,8 +91,10 @@ export async function loadWorkspacePeople(
       organizationId,
       role: role(row["role"]),
       active: str(row["status"]) === "active",
-      // The name is how they are written today; the id is who they are.
-      displayName: str(profile["full_name"]) || str(profile["email"]) || "A colleague",
+      // The name is how they are written today; the id is who they are. Keep
+      // an unreadable identity unnamed rather than turning several distinct
+      // memberships into repeated, apparently real "A colleague" entries.
+      displayName: str(profile["full_name"]) || str(profile["email"]),
     };
   });
 
