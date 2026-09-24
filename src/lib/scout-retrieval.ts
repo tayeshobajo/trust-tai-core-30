@@ -101,6 +101,35 @@ export function principlesForScope(
   });
 }
 
+/**
+ * The honest scope for market sourcing reads (discovery, smart import).
+ * Sourcing is a sales-lane judgment about which companies fit, so only
+ * untagged sales-domain principles apply: a tag-scoped principle (for
+ * example milestone_event) belongs to a specific relationship moment and
+ * must never color cold sourcing. Fewer principles is the safe direction;
+ * scope leakage is worse than absence.
+ */
+export const SOURCING_PRINCIPLE_SCOPE: { domain: string; contextTags: string[] } = {
+  domain: "sales",
+  contextTags: [],
+};
+
+/**
+ * The honest scope for the DECIDE/draft-intro read. Drafting a relationship
+ * touch is the relationship_nurture lane; the milestone_event context is
+ * claimed only when the World Card actually observed a recent change, so a
+ * milestone-scoped principle never colors a read with no milestone.
+ */
+export function draftIntroPrincipleScope(worldCard: { recentChanges: string[] }): {
+  domain: string;
+  contextTags: string[];
+} {
+  return {
+    domain: "relationship_nurture",
+    contextTags: worldCard.recentChanges.length > 0 ? ["milestone_event"] : [],
+  };
+}
+
 function principleAsCase(entry: RetrievalPrinciple): IntelligenceCase {
   const lesson = `Learned principle (${entry.scope.domain}${
     entry.scope.contextTags.length > 0 ? `, ${entry.scope.contextTags.join("/")}` : ""

@@ -159,3 +159,101 @@ describe("edit-learning corrections in retrieval", () => {
     expect(ids).toContain("act-2");
   });
 });
+
+describe("learned principles at live call sites", () => {
+  const row = (over: Record<string, unknown>) => ({
+    id: "p-1",
+    organization_id: "org-1",
+    principle: "Stay with the moment; congratulate before pitching.",
+    scope_domain: "relationship_nurture",
+    scope_context_tags: ["milestone_event"],
+    status: "active",
+    source: "inferred",
+    confidence: 0.8,
+    supporting_evidence: [],
+    contradicting_evidence: [],
+    contexts_observed: [],
+    relationships_observed: [],
+    last_validated_at: NOW,
+    superseded_by: null,
+    transition_reason: null,
+    ...over,
+  });
+
+  function fakeClient(rows: Record<string, unknown>[]) {
+    return {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            order: async () => ({ data: rows, error: null }),
+          }),
+        }),
+      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+  }
+
+  it("draft-intro claims milestone_event only when the World Card observed a change", async () => {
+    const { draftIntroPrincipleScope } = await import("./scout-retrieval");
+    expect(draftIntroPrincipleScope({ recentChanges: ["Opened a second studio"] })).toEqual({
+      domain: "relationship_nurture",
+      contextTags: ["milestone_event"],
+    });
+    expect(draftIntroPrincipleScope({ recentChanges: [] })).toEqual({
+      domain: "relationship_nurture",
+      contextTags: [],
+    });
+  });
+
+  it("the call-site read passes only active/strengthened, in-scope principles", async () => {
+    const { readRetrievalPrinciples } = await import("./organizational-principles.server");
+    const { draftIntroPrincipleScope, composeScoutRetrieval: compose, scoutRetrievalPacket: packetOf } =
+      await import("./scout-retrieval");
+    const principles = await readRetrievalPrinciples(
+      fakeClient([
+        row({}),
+        row({ id: "p-2", status: "provisional" }),
+        row({ id: "p-3", status: "challenged" }),
+        row({ id: "p-4", status: "retired" }),
+        row({ id: "p-5", status: "strengthened" }),
+        row({ id: "p-6", scope_domain: "sales" }),
+      ]),
+      "org-1",
+      draftIntroPrincipleScope({ recentChanges: ["announced expansion"] }),
+    );
+    expect(principles.map((p) => p.id).sort()).toEqual(["p-1", "p-5"]);
+
+    /* And the packet the DECIDE/draft read consumes carries exactly those. */
+    const packet = packetOf(compose({ ...base, principles }));
+    const corrections = packet["humanCorrections"] as { id: string }[];
+    expect(corrections.map((c) => c.id).sort()).toEqual(["p-1", "p-5"]);
+  });
+
+  it("a tag-scoped principle never leaks into the sourcing scope", async () => {
+    const { readRetrievalPrinciples } = await import("./organizational-principles.server");
+    const { SOURCING_PRINCIPLE_SCOPE } = await import("./scout-retrieval");
+    const principles = await readRetrievalPrinciples(
+      fakeClient([
+        row({}), // relationship_nurture, tag-scoped: out of domain
+        row({ id: "p-7", scope_domain: "sales", scope_context_tags: ["milestone_event"] }),
+        row({ id: "p-8", scope_domain: "sales", scope_context_tags: [] }),
+      ]),
+      "org-1",
+      SOURCING_PRINCIPLE_SCOPE,
+    );
+    expect(principles.map((p) => p.id)).toEqual(["p-8"]);
+  });
+
+  it("a failed principles read degrades to an empty list, never an error", async () => {
+    const { readRetrievalPrinciples } = await import("./organizational-principles.server");
+    const broken = {
+      from: () => {
+        throw new Error("store unreachable");
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+    await expect(
+      readRetrievalPrinciples(broken, "org-1", { domain: "sales", contextTags: [] }),
+    ).resolves.toEqual([]);
+  });
+});

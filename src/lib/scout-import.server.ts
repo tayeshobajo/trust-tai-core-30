@@ -26,8 +26,10 @@ import {
   composeScoutRetrieval,
   scoutRetrievalPacket,
   SCOUT_RETRIEVAL_LAWS,
+  SOURCING_PRINCIPLE_SCOPE,
   type KnownCompany,
 } from "@/lib/scout-retrieval";
+import { readRetrievalPrinciplesAsCaller } from "@/lib/organizational-principles.server";
 import { parseDelimitedRows, looksLikeHeader } from "@/data/scout/watchlist";
 import type { ExtractedCompany } from "@/domain/scout-smart-import";
 import { normalizeWebsiteUrl } from "@/lib/website-url";
@@ -152,10 +154,19 @@ export async function extractCompanies(input: {
 
   /* One governed read of what the workspace already knows, composed once. */
   const ledger = await readIntelligenceCases(input.token, input.organizationId);
+  /* Learned principles, read as the caller and filtered to the sourcing
+     scope (untagged sales-domain only). Best-effort by contract: an
+     unreadable store is an empty list and the import proceeds unchanged. */
+  const principles = await readRetrievalPrinciplesAsCaller(
+    input.token,
+    input.organizationId,
+    SOURCING_PRINCIPLE_SCOPE,
+  );
   const retrieval = scoutRetrievalPacket(
     composeScoutRetrieval({
       organizationId: input.organizationId,
       subject: "One imported source document",
+      principles,
       ...(input.known ? { known: input.known } : {}),
       cases: ledger.cases,
       withheld: ledger.withheld,

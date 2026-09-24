@@ -48,7 +48,9 @@ import {
   composeScoutRetrieval,
   scoutRetrievalPacket,
   SCOUT_RETRIEVAL_LAWS,
+  SOURCING_PRINCIPLE_SCOPE,
 } from "@/lib/scout-retrieval";
+import { readRetrievalPrinciples } from "@/lib/organizational-principles.server";
 
 const DEFAULT_LIMIT = 25;
 
@@ -261,11 +263,17 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   /* Human edit-learning corrections join the same corrections lane the case
      ledger feeds: an edit Tai made to a draft outranks inference here too. */
   const editCorrections = await readEditCorrections(supabase, orgId);
+  /* Learned principles join the same corrections lane, read as the caller
+     under RLS and filtered to the sourcing scope (untagged sales-domain
+     only; see SOURCING_PRINCIPLE_SCOPE). Best-effort by contract: an
+     unreadable principles store is an empty list, never a failed run. */
+  const principles = await readRetrievalPrinciples(supabase, orgId, SOURCING_PRINCIPLE_SCOPE);
   const retrieval = scoutRetrievalPacket(
     composeScoutRetrieval({
       organizationId: orgId,
       subject: query,
       editCorrections,
+      principles,
       ...(icp ? { decided: [`Active ICP (version ${icpVersion}) governs fit.`] } : {}),
       derived: (feedbackRows ?? []).length
         ? ["Recent human fit decisions are calibration only; they never replace the ICP."]
