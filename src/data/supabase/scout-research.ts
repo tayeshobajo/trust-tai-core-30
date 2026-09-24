@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ID } from "@/domain/entities";
 import type { CandidateSource, ProspectCandidate, ScoutSignal } from "@/domain/scout";
 import { evaluateScoutFit, storedEvaluation, withOverride } from "@/data/scout-fit-evaluator";
+import { gapIntelFromMetadata } from "@/data/scout-opportunity-gap";
 import type { ProspectRow, Row } from "./schema";
 import { toProspect } from "./prospects";
 import { readCompanyIdentity } from "@/lib/company-identity";
@@ -259,6 +260,7 @@ export function candidateFromResearchRow(
               : null),
           at: researchedAt,
           pagesResearched: pages.length,
+          intel: gapIntelFromMetadata(row.metadata),
           researchVersion:
             typeof provenance["research_version"] === "number"
               ? (provenance["research_version"] as number)
