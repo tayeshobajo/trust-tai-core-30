@@ -73,6 +73,7 @@ import {
   type IntakeException,
 } from "@/domain/comms-intake";
 import { ensureLabeledRelationship } from "@/lib/comms-intake.server";
+import { fillRepliedOutcomes, fillSilenceOutcomes } from "@/lib/comms-outcome-fill.server";
 import { SUITE_EVENTS } from "@/domain/events";
 import {
   planDraftVerifications,
@@ -1658,6 +1659,20 @@ async function runSyncPass(input: {
 
   const eventsEmitted = await emitInboundEvents(client, organizationId, newInbound);
 
+  // The outcome leg of the judgment memory: a reply that just landed closes
+  // the open dimensional records on that relationship's sent drafts. Purely
+  // observational, verification and reconciliation below are untouched.
+  let outcomesFilled = 0;
+  for (const { relationship, message } of newInbound) {
+    outcomesFilled += await fillRepliedOutcomes(client, {
+      organizationId,
+      relationshipId: relationship.id,
+      channel: "email",
+      messageRef: message.providerMessageId,
+      repliedAt: message.occurredAt,
+    });
+  }
+
   let draftsVerified = 0;
   let externalSendsReconciled = 0;
   for (const bucket of perRelationship.values()) {
@@ -1699,6 +1714,7 @@ async function runSyncPass(input: {
       at: nowIso,
       messages_read: messagesRead,
       messages_stored: messagesStored,
+      outcomes_filled: outcomesFilled,
       relationships_touched: perRelationship.size,
       skipped_unknown_people: skippedUnknownPeople,
       people_added: peopleAdded,
@@ -1916,6 +1932,23 @@ export async function syncAllConnectedMailboxes(input?: {
           .eq("id", row.id);
       }
       results.push({ ...base, error: message });
+    }
+  }
+
+  // Silence is also an outcome. The daily pass is the one scheduled moment
+  // this codebase already has, so the thirty-day no-response fill rides it:
+  // once per workspace, observational only, and a failure here never marks
+  // a mailbox unhealthy.
+  const organizationIds = new Set(
+    ((rows ?? []) as { organization_id: string }[]).map((row) => row.organization_id),
+  );
+  for (const organizationId of organizationIds) {
+    try {
+      await fillSilenceOutcomes(client, organizationId);
+    } catch (silenceError) {
+      const message =
+        silenceError instanceof Error ? silenceError.message : "The silence pass failed.";
+      console.warn(`[comms-outcome] silence pass failed for ${organizationId}: ${message}`);
     }
   }
 

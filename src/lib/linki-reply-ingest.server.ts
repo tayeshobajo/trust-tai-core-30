@@ -29,6 +29,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { SUITE_EVENTS } from "@/domain/events";
 import type { ThreadChannel } from "@/domain/comms";
+import { fillRepliedOutcomes } from "@/lib/comms-outcome-fill.server";
 
 /** How much of the observed body is kept on the touch summary line. */
 export const SUMMARY_MAX_CHARS = 140;
@@ -381,6 +382,17 @@ export async function ingestLinkedInReply(
     );
   }
   const touchId = (touch as { id: string }).id;
+
+  // The outcome leg of the judgment memory: this observed reply closes the
+  // open dimensional records on the relationship's sent drafts. Observation
+  // only; a fill failure is logged inside and never blocks the ingest.
+  await fillRepliedOutcomes(client, {
+    organizationId: input.organizationId,
+    relationshipId: resolution.relationshipId,
+    channel: "linkedin",
+    messageRef: touchId,
+    repliedAt: input.observedAt,
+  });
 
   // Inbound touches start the reply clock, exactly like email ingestion.
   const responseDueAt = new Date(Date.parse(input.observedAt) + 2 * 86_400_000).toISOString();
