@@ -19,7 +19,6 @@ import { normalizeRole } from "@/domain/access";
 import { extractJsonObject, runtimeModelCaller } from "@/lib/intelligence-runtime.server";
 
 type Row = Record<string, unknown>;
-const MODEL = "openai/gpt-6-astra";
 
 export class AgentRunUnavailable extends Error {}
 
@@ -225,7 +224,6 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task, people 
     purpose: "bounded_agent_task",
   });
   const response = await call({
-    model: MODEL,
     instructions:
       "You are a bounded internal preparation agent. Use only supplied context. Never send, publish, approve, promise, price, change scope or dates, or claim unsupported facts. Return JSON only with artifact, evidence_refs and people_named. Every claim must be grounded in a supplied evidence ref. When people are supplied, refer to them by their exact saved name and title and cite their person ref; list every person you name in people_named. Never name anyone not supplied. If no people are supplied and the task asks about people, say no saved Scout people exist yet. When a scout_profile is supplied, cite its fact refs for company facts; for anything listed under unknown, say it is not recorded.",
     input: `Return json only. ${JSON.stringify({
@@ -475,6 +473,7 @@ async function runModelAndSettle(
       runId,
       kind: error instanceof Error ? error.constructor.name : typeof error,
       reason: safe,
+      providerStatus: (error as { status?: number } | null)?.status ?? null,
     });
     await input.writer
       .from("steward_agent_runs")
