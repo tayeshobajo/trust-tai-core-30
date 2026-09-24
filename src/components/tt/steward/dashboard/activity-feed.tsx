@@ -82,9 +82,9 @@ export function ActivityFeed({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card p-3">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2 border-b border-border px-1 pb-2">
-        <div className="flex items-center gap-2">
+        <div className="min-w-0 flex items-center gap-2">
           <h2 className="font-display text-base font-semibold text-foreground">AI teammate activity</h2>
           <Info aria-hidden className="size-3.5 text-muted-foreground" />
           <span className="text-[10px] text-muted-foreground">Internal and reversible only</span>
@@ -98,7 +98,7 @@ export function ActivityFeed({
           No verified AI teammate work has been recorded yet.
         </p>
       ) : (
-        <ul>
+        <ul className="min-w-0">
           {view.rows.map((activity) => (
             <li
               key={activity.id}
