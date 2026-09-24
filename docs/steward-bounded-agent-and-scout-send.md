@@ -95,3 +95,25 @@ The follow-up agent runs as the sending person's own token (RLS); with no token 
 - LIVE PASS: H1 signed in, H2 create, H2 complete shows check + crossed + locked, H4 persists after reload, Q1 queued on Trust Tai AI page, D1 Scouts tab loads, T1 Timeline lists task.
 - LIVE BLOCKED: L1/L2/L4. The page reported "AI run history is not stored in this workspace yet" and "AI work can't start here yet because its server access isn't set up." Dependencies: Codex applying `20260923190000_steward_agent_runs_and_source_links.sql`, and server write access in the preview.
 - The 2 QA tasks were deleted with the user's own session (RLS), and the session file was removed.
+
+## Round: bounded AI execution verification — 2026-09-24T00:20Z
+
+Schema `steward_agent_runs_and_source_links_hardened`: APPLIED, Codex verified (archived at
+`docs/migrations/20260923190000_steward_agent_runs_and_source_links_hardened.sql`; never reapply).
+Build: `build OK` 2026-09-24T00:19:24Z. Unit suite: 326 files / 3,546 tests passed.
+
+| ID | Check | Result | Evidence level |
+|----|-------|--------|----------------|
+| X1a | `TRUST_TAI_SUPABASE_SERVICE_KEY` present on server | PASS (presence only) | LIVE config |
+| X1b | Service writer reads `steward_agent_runs` on external project | PASS (HTTP 200) | LIVE |
+| X1c | Service writer INSERT reaches the identity guard (no row created) | PASS (P0001 guard, not 42501) | LIVE |
+| X1d | Service writer DELETE denied per Codex grants | PASS (HTTP 403) | LIVE |
+| X2 | Synthetic task leaves Queued, model artifact + evidence, receipt saved | BLOCKED — no signed-in session | — |
+| X3 | Same run on Home AI feed and Scout-linked task; no leak to others | BLOCKED — no signed-in session; status-only team reads | CODE |
+| X4 | Reload persists; retry reuses run, no second model call | BLOCKED live; idempotency key + recovery path | CODE + UNIT |
+| X5 | Feed-write failure reported, reconciled without rerun, no false completion | PASS in unit tests | UNIT |
+| X6 | Execute authority: viewer denied, non-owner member denied | PASS in unit tests | UNIT |
+
+Missing dependency (recorded once): a signed-in session for the requesting person. Sign-in status
+was `no_supabase`, no session file. No task was created, no model was called, nothing was sent.
+Historical rounds above are unchanged.
