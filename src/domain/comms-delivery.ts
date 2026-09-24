@@ -134,12 +134,50 @@ export type SendRefusal =
   | "ambiguous_review";
 
 export type SendDecision =
-  | { allowed: true; approvalId: string; runId: string; versionId: string; fingerprint: string }
+  | {
+      allowed: true;
+      /** Which approval source cleared this send. */
+      source: "human_review" | "system_autosend";
+      approvalId: string;
+      /** Empty on the system path: a system approval has no review run/version. */
+      runId: string;
+      versionId: string;
+      fingerprint: string;
+    }
   | { allowed: false; code: SendRefusal; message: string; blockers: string[] };
+
+/**
+ * A graduated auto-send approval, written by the server (never a browser) into
+ * comms_autosend_approvals. It is a SECOND, equally-provable approval source,
+ * read here in parallel to a human review and never in place of the human
+ * review's discipline. The migration is explicit: for a system approval the
+ * payload fingerprint IS the whole binding — there is no review session, run or
+ * context chain to compare, because the system never ran one. So the only thing
+ * this rule checks is the same thing it checks for a human approval: the exact
+ * message that is about to go out is byte-for-byte the message that was
+ * approved, the approval is for auto-send and is not revoked, and the caller is
+ * allowed to send. It is never a bypass: no fingerprint match, no send.
+ */
+export interface SystemApprovalFacts {
+  id: string;
+  /** Must be exactly the payload about to be handed to the provider. */
+  approvedPayloadFingerprint: string;
+  /** 'auto_send' is the only state that authorises a send; anything else holds. */
+  authorityState: "bounce_only" | "auto_send" | null;
+  /** A set revocation timestamp means this approval no longer authorises anything. */
+  revokedAt: string | null;
+}
 
 export interface SendDecisionInput {
   /** Empty when the database can answer every question this rule asks. */
   missingCapability: string[];
+  /**
+   * A graduated system approval covering this exact payload, if one is on
+   * record. When present and valid it clears the send on its own terms, exactly
+   * as a human approval does, with the same payload-fingerprint discipline.
+   * Absent (the default) leaves the human-review path unchanged.
+   */
+  systemApproval?: SystemApprovalFacts | null;
   /** The approval on record for this draft, if any. */
   approval: {
     id: string;
@@ -195,6 +233,62 @@ export function decideSend(input: SendDecisionInput): SendDecision {
       blockers: ["The person sending must be an owner or an admin here."],
     };
   }
+
+  /* The graduated system-approval path. It is a second, equally-provable
+     source, decided here on its own terms rather than squeezed into the
+     human-review shape it does not have. When a system approval is on record it
+     is the ONLY thing that can clear this send: it never falls through to the
+     human-review checks, and it never bypasses the fingerprint match. */
+  if (input.systemApproval) {
+    const sys = input.systemApproval;
+    if (sys.revokedAt) {
+      return {
+        allowed: false,
+        code: "not_approved",
+        message: "The auto-send approval for this message was revoked, so nothing was sent.",
+        blockers: ["The system approval on record is revoked."],
+      };
+    }
+    if (sys.authorityState !== "auto_send") {
+      return {
+        allowed: false,
+        code: "not_approved",
+        message:
+          "This message type is not graduated for auto-send, so nothing was sent by the system.",
+        blockers: ["The system approval does not rest on an auto_send authority."],
+      };
+    }
+    if (!sys.approvedPayloadFingerprint) {
+      return {
+        allowed: false,
+        code: "not_approved",
+        message:
+          "The auto-send approval on record does not say which exact message it approved, so nothing was sent.",
+        blockers: ["The system approval carries no payload fingerprint."],
+      };
+    }
+    if (sys.approvedPayloadFingerprint !== input.payloadFingerprint) {
+      return {
+        allowed: false,
+        code: "payload_changed",
+        message:
+          "What would go out is not what the system approved. Nothing was sent. It must be approved again as it now stands.",
+        blockers: ["The message about to be sent differs from the auto-send approved one."],
+      };
+    }
+    return {
+      allowed: true,
+      source: "system_autosend",
+      approvalId: sys.id,
+      /* A system approval has no review run or draft version: the payload
+         fingerprint is the whole binding. These are empty by design and are
+         never used to claim on the human delivery ledger. */
+      runId: "",
+      versionId: "",
+      fingerprint: input.payloadFingerprint,
+    };
+  }
+
   if (input.ambiguousReview) {
     return {
       allowed: false,
@@ -294,6 +388,7 @@ export function decideSend(input: SendDecisionInput): SendDecision {
   }
   return {
     allowed: true,
+    source: "human_review",
     approvalId: input.approval.id,
     runId: input.approval.runId,
     versionId: input.approval.versionId,
