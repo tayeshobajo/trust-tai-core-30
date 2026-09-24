@@ -19,7 +19,6 @@ import { normalizeRole } from "@/domain/access";
 import { extractJsonObject, runtimeModelCaller } from "@/lib/intelligence-runtime.server";
 
 type Row = Record<string, unknown>;
-const MODEL = "openai/gpt-6-astra";
 
 export class AgentRunUnavailable extends Error {}
 
@@ -225,7 +224,6 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task, people 
     purpose: "bounded_agent_task",
   });
   const response = await call({
-    model: MODEL,
     instructions:
       "You are a bounded internal preparation agent. Use only supplied context. Never send, publish, approve, promise, price, change scope or dates, or claim unsupported facts. Return JSON only with artifact, evidence_refs and people_named. Every claim must be grounded in a supplied evidence ref. When people are supplied, refer to them by their exact saved name and title and cite their person ref; list every person you name in people_named. Never name anyone not supplied. If no people are supplied and the task asks about people, say no saved Scout people exist yet. When a scout_profile is supplied, cite its fact refs for company facts; for anything listed under unknown, say it is not recorded.",
     input: `Return json only. ${JSON.stringify({
@@ -369,6 +367,19 @@ export async function executeStewardAgentTask(input: {
             note: rec.note,
           };
         }
+        // A failed run never produced a saved result, so the requester may retry it.
+        if (status === "failed" && row["requested_by"] === input.userId && risk.executable) {
+          const reopened = await input.writer
+            .from("steward_agent_runs")
+            .update({ status: "working", safe_error: null, settled_at: null, started_at: new Date().toISOString() })
+            .eq("organization_id", input.organizationId)
+            .eq("id", existingId)
+            .eq("status", "failed")
+            .select("id");
+          if (!reopened.error && (reopened.data ?? []).length === 1) {
+            return runModelAndSettle(input, task, existingId);
+          }
+        }
         return { runId: existingId, status, note: "This task already has an AI run." };
       }
     }
@@ -391,6 +402,24 @@ export async function executeStewardAgentTask(input: {
       .eq("assignee_kind", "agent");
     return { runId, status: "needs_approval", note: risk.because };
   }
+  return runModelAndSettle(input, task, runId);
+}
+
+function safeFailureReason(error: unknown): string {
+  if (error instanceof AgentRunUnavailable) return error.message;
+  const name = error instanceof Error ? error.constructor.name : "";
+  const message = error instanceof Error ? error.message : "";
+  if (message === "forbidden") return "AI access could not be verified for this workspace. The task stayed open.";
+  if (name === "ProviderNotConfiguredError") return "The AI model isn't set up on the server yet. The task stayed open.";
+  if (name === "ProviderCallFailedError") return "The AI model didn't respond successfully. The task stayed open; run it again.";
+  return "The AI task failed safely. The task stayed open.";
+}
+
+async function runModelAndSettle(
+  input: Parameters<typeof executeStewardAgentTask>[0],
+  task: ManualTaskRecord,
+  runId: string,
+): Promise<AgentRunOutcome> {
   try {
     const runtimeTask: ManualTaskRecord = { ...task, correlationId: `runtime-token:${input.token}` };
     const people = await loadAgentPeople(input.client, input.organizationId, task);
@@ -439,10 +468,13 @@ export async function executeStewardAgentTask(input: {
       note: rec.note,
     };
   } catch (error) {
-    const safe =
-      error instanceof AgentRunUnavailable
-        ? error.message
-        : "The AI task failed safely. The task stayed open.";
+    const safe = safeFailureReason(error);
+    console.error("[steward-agent] run failed", {
+      runId,
+      kind: error instanceof Error ? error.constructor.name : typeof error,
+      reason: safe,
+      providerStatus: (error as { status?: number } | null)?.status ?? null,
+    });
     await input.writer
       .from("steward_agent_runs")
       .update({ status: "failed", safe_error: safe, settled_at: new Date().toISOString() })

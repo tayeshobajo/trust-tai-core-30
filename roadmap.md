@@ -21,4 +21,4 @@
 - [x] Execute authority: no view-only roles; creator/owner or owner/admin only
 - [x] Feed write checked; retry reconciles task + feed without rerunning the model
 - [x] Team views read status-only run columns
-- [ ] Live signed-in synthetic run (blocked: needs a fresh sign-in link)
+- [x] Live signed-in synthetic run (run fa85bfa4, 2026-09-24)

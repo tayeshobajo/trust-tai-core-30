@@ -70,6 +70,7 @@ async function startRun(organizationId: string, taskId: string) {
 function AgentPage({ identity }: { identity: WorkspaceIdentity }) {
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
+  const [context, setContext] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const key = ["steward", "ai-queue", identity.organizationId];
   const read = useQuery({
@@ -84,6 +85,7 @@ function AgentPage({ identity }: { identity: WorkspaceIdentity }) {
       const task = await stewardTasks.create({
         organizationId: identity.organizationId,
         title: text,
+        ...(context.trim() ? { notes: context.trim() } : {}),
         assigneeKind: "agent",
         status: "open",
         ...(identity.userId ? { createdBy: identity.userId } : {}),
@@ -97,6 +99,7 @@ function AgentPage({ identity }: { identity: WorkspaceIdentity }) {
     },
     onSuccess: (r) => {
       setTitle("");
+      setContext("");
       if (r.started) toast.success("Queued for Trust Tai AI.");
       else toast.warning(`Task saved, but AI work did not start. ${r.because ?? ""}`.trim());
     },
@@ -143,6 +146,16 @@ function AgentPage({ identity }: { identity: WorkspaceIdentity }) {
           placeholder={canQueue ? "e.g. Summarise who to contact at Acumen and why" : "Only owners and admins can queue work"}
           className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           maxLength={300}
+        />
+        <label htmlFor="ai-context" className="sr-only">Context for the AI</label>
+        <input
+          id="ai-context"
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+          disabled={!canQueue || queue.isPending}
+          placeholder="Context the AI may use (optional)"
+          className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          maxLength={2000}
         />
         <TTButton type="submit" disabled={!canQueue || !title.trim()} pending={queue.isPending} pendingLabel="Queuing…">
           Queue

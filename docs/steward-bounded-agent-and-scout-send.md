@@ -117,3 +117,30 @@ Build: `build OK` 2026-09-24T00:19:24Z. Unit suite: 326 files / 3,546 tests pass
 Missing dependency (recorded once): a signed-in session for the requesting person. Sign-in status
 was `no_supabase`, no session file. No task was created, no model was called, nothing was sent.
 Historical rounds above are unchanged.
+
+## Round: signed-in live AI run — 2026-09-24T00:24–00:30Z
+
+Session: user-supplied sign-in link, exchanged in sandbox, session discarded after the run.
+Task: one synthetic internal question on the Scout company page (Talk Python Training), title
+prefixed "QA synthetic internal check". Run ID `fa85bfa4-6692-4509-b7ac-5f39596c9249`.
+Model: `openai/gpt-5-mini` (workspace-configured default). Nothing sent, published or enriched.
+
+Defects found and fixed during the run:
+- Company page crashed ("Rendered more hooks") — handoff auto-submit hook sat after early returns; moved to a child component.
+- Runner requested a non-existent model id (`openai/gpt-6-astra`) → provider call failed; now uses the configured default.
+- A failed run could never be retried (idempotency key); the requester can now retry a failed run.
+- Generic failure message; failures now map to safe reasons (access, model not configured, model call failed) and log run ID + provider status only.
+- AI page: added optional context box so title-only tasks aren't the only option.
+
+| ID | Check | Result | Evidence level |
+|----|-------|--------|----------------|
+| X2 | Task left Queued; real model artifact + 3 evidence refs; receipt saved; status Completed | PASS | LIVE |
+| X3a | Same run on Home "AI teammate activity" and the Scout-linked task (checked, struck through, answer shown) | PASS | LIVE |
+| X3b | Other members can't read run detail (RLS requested_by) | PASS by policy; Home feed summary includes the task title (org-visible activity) | CODE + DB policy |
+| X4a | Reload keeps result on Scout page, AI page, Home | PASS | LIVE |
+| X4b | Two simultaneous retries through the real server function reuse the same run; settled_at unchanged; 1 run, 1 feed entry | PASS | LIVE |
+| X5 | Feed-write failure reported + reconciled without rerun | PASS | UNIT (not forced live) |
+| X1 | Service writer read/insert-guard/delete-denied | PASS (prior round) | LIVE |
+
+The first attempt failed safely (bad model id) and the failure was recorded on the same run before the successful retry.
+The synthetic task is left in place as evidence.
