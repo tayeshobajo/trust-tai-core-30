@@ -26,6 +26,7 @@ export const CANDIDATE_SCHEMA = {
           "observed_evidence",
           "buying_signals",
           "digital_opportunities",
+          "self_sufficiency_signals",
           "people",
           "source_urls",
           "unknowns",
@@ -101,6 +102,29 @@ export const CANDIDATE_SCHEMA = {
                 },
                 statement: { type: "string" },
                 evidence: { type: "string" },
+                source_url: { type: ["string", "null"] },
+              },
+            },
+          },
+          // Positive evidence the company can already do this work itself.
+          self_sufficiency_signals: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["type", "statement", "source_url"],
+              properties: {
+                type: {
+                  type: "string",
+                  enum: [
+                    "in_house_engineering",
+                    "modern_digital_presence",
+                    "funded_technical_leadership",
+                    "technical_product_company",
+                    "other",
+                  ],
+                },
+                statement: { type: "string" },
                 source_url: { type: ["string", "null"] },
               },
             },
@@ -206,6 +230,7 @@ export function discoveryInstructions(icp: string, calibration: string, limit: n
     "11. DIGITAL OPPORTUNITIES: state problems Trust Tai could fix that you actually observed on their public site, dated design, weak conversion path, broken functionality, thin or stale content, obviously old technology, missing accessibility basics. `evidence` must describe what you saw, not what you assume. Never claim a performance or security audit you did not run.",
     "12. PEOPLE: only name people who appear on public pages (team, about, leadership, press). Include their role and the page you read them from, and set `decision_maker_likelihood` from the role's relationship to a website or technology decision. NEVER guess or pattern-build an email address; leave email null unless the address is published.",
     "13. Every one of these arrays may be empty. An empty array means 'not established', which is materially more useful than an invented entry.",
+    "14. SELF-SUFFICIENCY: record positive evidence that the company can already build and run its own digital work, an in-house engineering or product team, engineering job postings, a clearly modern and well-executed website or product, or venture funding paired with technical leadership (CTO, VP of Engineering). This evidence disqualifies a company from being a strong fit: the ideal client is a healthy business whose digital presence has fallen behind, not one that can fix it themselves. Only record what you actually saw; an empty array means nothing was established, never that the company lacks a team.",
   ].join("\n");
 }
 

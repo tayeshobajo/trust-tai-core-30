@@ -284,6 +284,32 @@ export function CompanyHero({
         <HeroStat label="Added" value={formatDate(prospect.createdAt)} />
         <HeroStat label="Source" value={candidate.source.label} />
       </div>
+      {evaluation.opportunityGap && evaluation.opportunityGap.gap !== "unknown" ? (
+        <div className="border-t border-border px-5 py-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            Opportunity gap · {GAP_LABEL[evaluation.opportunityGap.gap]}
+          </p>
+          <ul className="mt-2 space-y-1">
+            {[
+              ...evaluation.opportunityGap.momentumEvidence.slice(0, 2),
+              ...evaluation.opportunityGap.maturityEvidence.slice(0, 2),
+            ].map((item) => (
+              <li key={item} className="flex gap-2 text-[13px] text-muted-foreground">
+                <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-royal" />
+                <span className="min-w-0">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }
+
+/** Plain-language reading of the momentum-vs-maturity distance. */
+const GAP_LABEL: Record<string, string> = {
+  high: "High. The business is moving faster than its digital presence",
+  medium: "Medium. Some distance between the business and its digital presence",
+  low: "Low. The digital presence is already keeping up",
+  unknown: "Unknown",
+};

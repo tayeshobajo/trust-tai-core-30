@@ -423,11 +423,14 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       model,
       citations: candidate.source_urls ?? [],
     };
-    // Buying signals, digital opportunities and named people, kept apart from
-    // the fit read: they inform timing, work and reachability, never the score.
+    // Buying signals and digital opportunities now feed the fit read: they
+    // drive the opportunity-gap level, and observed self-sufficiency is a hard
+    // disqualifier (see `discoveryEvaluation`). They are still stored here in
+    // full so timing, work and reachability keep their own detailed reads.
     const intelMeta = {
       buying_signals: asArray(candidate.buying_signals),
       opportunities: asArray(candidate.digital_opportunities),
+      self_sufficiency: asArray(candidate.self_sufficiency_signals),
       people: asArray(candidate.people),
       unknowns: candidate.unknowns ?? [],
       citations: candidate.source_urls ?? [],

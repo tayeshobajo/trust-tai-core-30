@@ -18,6 +18,13 @@
  *  - Red requires positive evidence of a disqualifier, or a low score that is
  *    itself backed by enough evidence.
  *  - Preview/demo rows are neutral: they cannot honestly be scored.
+ *
+ * v5 adds the opportunity-gap lens: the ideal client is a healthy business in
+ * motion whose digital presence has fallen behind. Positive evidence of
+ * digital self-sufficiency (in-house engineering, a modern well-built
+ * presence, funding paired with technical leadership) is a hard disqualifier,
+ * because that company has no gap Trust Tai can close. Absence of such
+ * evidence never disqualifies anyone.
  */
 
 import {
@@ -25,8 +32,10 @@ import {
   type FitCriterion,
   type FitCriterionState,
   type FitLight,
+  type OpportunityGapRead,
   type ScoutFitEvaluation,
 } from "@/domain/scout-fit";
+import { deriveOpportunityGap, signalStatements } from "@/data/scout-opportunity-gap";
 
 type Row = Record<string, unknown>;
 
@@ -308,10 +317,21 @@ function qualifiedGaps(s: Structured): { confident: string[]; weak: string[] } {
   return { confident, weak };
 }
 
+/**
+ * v5 weights. The score now rewards one shape of company: a healthy business
+ * in motion (active_operating + proven, 32 together) whose current system is
+ * visibly holding it back (limiting_system, 24, the single heaviest read).
+ * Founder-presence alone stops carrying the score: decision_maker dropped to 8
+ * and instead gates green in the light logic, because a reachable owner is a
+ * requirement, not a reason to buy. funding_capacity dropped to 2: visible
+ * funding is now as much a self-sufficiency risk as a budget signal, so it
+ * can no longer nudge a technically mature company toward green.
+ */
 const SPECS: CriterionSpec[] = [
   {
     key: "active_operating",
     label: "Active and already serving people",
+    // Held at 16: live activity is one half of the momentum read.
     maxScore: 16,
     structuredKeys: ["active_business_signals"],
     structured: (s) => {
@@ -359,7 +379,8 @@ const SPECS: CriterionSpec[] = [
   {
     key: "proven",
     label: "Proven rather than idea-stage",
-    maxScore: 14,
+    // 14 -> 16: proof of delivered work is the other half of momentum.
+    maxScore: 16,
     structuredKeys: ["proof_signals", "testimonial_signals", "case_study_signals"],
     structured: (s) => {
       const proof = s.count("proof_signals");
@@ -412,7 +433,10 @@ const SPECS: CriterionSpec[] = [
   {
     key: "decision_maker",
     label: "Founder / owner reachable",
-    maxScore: 12,
+    // 12 -> 8: a visible founder is a gate, not a score. Green now requires
+    // this criterion to be at least partial (see the light logic), so the
+    // points it used to carry moved to the reads that describe the work.
+    maxScore: 8,
     structuredKeys: ["decision_maker_signals", "contact_routes", "team_signals"],
     structured: (s) => {
       const people = s.count("decision_maker_signals");
@@ -467,7 +491,9 @@ const SPECS: CriterionSpec[] = [
   {
     key: "clear_offer",
     label: "Clear offer, service, or process",
-    maxScore: 14,
+    // 14 -> 12: still matters, but a clear offer describes the business, not
+    // the opportunity, so it gives two points to limiting_system.
+    maxScore: 12,
     structuredKeys: ["clear_offer_signals", "pricing_signal"],
     structured: (s) => {
       const offer = s.flag("clear_offer_signals");
@@ -508,7 +534,10 @@ const SPECS: CriterionSpec[] = [
   {
     key: "limiting_system",
     label: "Current site or system limiting growth",
-    maxScore: 18,
+    // 18 -> 24: the observed constraint IS the opportunity. This is the read
+    // that separates a Mental Dental from a Soundstripe, so it carries the
+    // most weight of any criterion.
+    maxScore: 24,
     structuredKeys: [
       "contact_routes",
       "booking_signal",
@@ -575,7 +604,9 @@ const SPECS: CriterionSpec[] = [
   {
     key: "first_milestone",
     label: "One first milestone worth selling",
-    maxScore: 12,
+    // 12 -> 14: a concrete, evidence-backed first piece of work is what turns
+    // a gap into a sale, so it grows alongside limiting_system.
+    maxScore: 14,
     structuredKeys: ["milestone_opportunities"],
     structured: (s, milestones) => {
       if (!s.has("milestone_opportunities") && milestones.length === 0) return null;
@@ -646,7 +677,10 @@ const SPECS: CriterionSpec[] = [
   {
     key: "funding_capacity",
     label: "Appears able to fund meaningful work",
-    maxScore: 6,
+    // 6 -> 2: funding cuts both ways now. A funded company with technical
+    // leadership is a self-sufficiency disqualifier, so capacity evidence is
+    // nearly weightless on its own.
+    maxScore: 2,
     structuredKeys: ["pricing_signal", "organization_schema", "team_signals"],
     structured: (s) => {
       const pricing = s.flag("pricing_signal");
@@ -674,6 +708,56 @@ const SPECS: CriterionSpec[] = [
       "Public pages do not show revenue, budget, or scale. Left unknown rather than assumed.",
   },
 ];
+
+/* ------------------------------------------------------------------ *
+ * Digital self-sufficiency, a hard disqualifier
+ * ------------------------------------------------------------------ */
+
+/** Text patterns that positively read as in-house build capability. */
+const IN_HOUSE_PATTERNS: RegExp[] = [
+  /\b(in-?house|internal) (engineering|development|dev|software|product) team\b/,
+  /\bengineering (team|department|org(anization)?) of \d+\b/,
+  /\b(hiring|careers?|open roles?)\b.{0,80}\b(software|frontend|front-?end|backend|back-?end|full.?stack|platform) (engineer|developer)/,
+];
+
+/** Venture funding only disqualifies when paired with technical leadership. */
+const FUNDING_PATTERNS: RegExp[] = [
+  /\b(series [a-e]\b|venture(-| )backed|venture capital|vc(-| )funded|raised \$\s?\d)/,
+];
+const TECH_LEADERSHIP_PATTERNS: RegExp[] = [
+  /\b(cto|chief technology officer|vp of engineering|head of engineering|engineering director)\b/,
+];
+
+/**
+ * Positive evidence that the company can already do this work itself: an
+ * in-house engineering team, a modern well-executed digital presence, or
+ * venture funding paired with technical leadership. Absence of evidence never
+ * fires this, in keeping with "unknown is never a mismatch": every branch
+ * below requires a confirmed reading (truth !== false), never a gap.
+ */
+function selfSufficiencyEvidence(structured: Structured, observations: Observation[]): string[] {
+  const evidence: string[] = [];
+
+  // Structured v3/v5 signal: the researcher recorded self-sufficiency directly.
+  for (const item of structured.list("self_sufficiency_signals")) evidence.push(item);
+
+  const confirmed = observations.filter((o) => o.truth !== false);
+  const textFor = (o: Observation) => o.evidence || valueText(o.value) || o.label || o.key;
+
+  for (const observation of confirmed) {
+    if (IN_HOUSE_PATTERNS.some((p) => p.test(observation.text))) {
+      evidence.push(textFor(observation));
+    }
+  }
+
+  const funded = confirmed.find((o) => FUNDING_PATTERNS.some((p) => p.test(o.text)));
+  const techLed = confirmed.find((o) => TECH_LEADERSHIP_PATTERNS.some((p) => p.test(o.text)));
+  if (funded && techLed) {
+    evidence.push(`${textFor(funded)}; ${textFor(techLed)}`);
+  }
+
+  return Array.from(new Set(evidence.map((item) => item.trim()).filter(Boolean)));
+}
 
 /** Positive disqualifiers. Only a confirmed reading, never an absence. */
 const DISQUALIFIERS: { patterns: RegExp[]; reason: string }[] = [
@@ -732,6 +816,11 @@ interface EvaluateInput {
   pagesResearched?: number | null;
   /** `provenance.research_version` when the backend reported one. */
   researchVersion?: number | null;
+  /**
+   * Stored `metadata.scout_intel` arrays, when the row has them. They feed the
+   * opportunity-gap read (momentum vs digital maturity), never raw fit points.
+   */
+  intel?: { buying_signals?: unknown; opportunities?: unknown } | null;
 }
 
 export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
@@ -834,9 +923,21 @@ export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
     }
   }
 
-  const disqualifier = DISQUALIFIERS.find((d) =>
+  // Digital self-sufficiency is a hard disqualifier: a company that can
+  // already build for itself has no opportunity gap to sell into, no matter
+  // how well it resembles the ICP demographically. Positive evidence only.
+  const selfSufficiency = selfSufficiencyEvidence(structured, observations);
+
+  const patternDisqualifier = DISQUALIFIERS.find((d) =>
     observations.some((o) => d.patterns.some((p) => p.test(o.text))),
   );
+  const disqualifier = patternDisqualifier
+    ? patternDisqualifier
+    : selfSufficiency.length > 0
+      ? {
+          reason: `The company reads as digitally self-sufficient, so there is no gap Trust Tai can close: ${selfSufficiency[0]}.`,
+        }
+      : null;
   if (disqualifier) {
     criteria.push({
       key: "disqualifier",
@@ -850,10 +951,20 @@ export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
 
   const maxTotal = SPECS.reduce((sum, spec) => sum + spec.maxScore, 0);
   const raw = criteria.reduce((sum, c) => sum + c.score, 0);
-  const score = Math.round((raw / maxTotal) * 100);
+  // A disqualified company keeps an honestly low score: whatever it earned is
+  // capped at 25, because a high number next to a red light would mislead.
+  const score = disqualifier
+    ? Math.min(25, Math.round((raw / maxTotal) * 100))
+    : Math.round((raw / maxTotal) * 100);
 
   const partials = criteria.filter((c) => c.state === "partial").length;
   const hasSufficientEvidence = evidenceCount >= 3;
+  // Green is gated on the decision maker: a company nobody can be reached at
+  // is not a strong fit however good the evidence, but the gate accepts
+  // partial, so an unnamed contact route does not block an otherwise clear
+  // read. Missing stays missing, it just cannot read green.
+  const decisionMakerState = criteria.find((c) => c.key === "decision_maker")?.state;
+  const decisionMakerGate = decisionMakerState === "met" || decisionMakerState === "partial";
 
   let light: FitLight;
   let explanation: string;
@@ -861,9 +972,13 @@ export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
   if (disqualifier) {
     light = "red";
     explanation = disqualifier.reason;
-  } else if (score >= 75 && hasSufficientEvidence) {
+  } else if (score >= 75 && hasSufficientEvidence && decisionMakerGate) {
     light = "green";
     explanation = `${evidenceCount} ICP criteria are clearly met with supporting evidence and no disqualifier was found.`;
+  } else if (score >= 75 && hasSufficientEvidence && !decisionMakerGate) {
+    light = "yellow";
+    explanation =
+      "The evidence is strong, but no decision maker or contact route was read, so this holds at yellow until someone reachable is found.";
   } else if (score < 35 && evidenceCount + partials >= 4) {
     light = "red";
     explanation =
@@ -882,6 +997,35 @@ export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
     criteria.find((c) => c.state === "partial")?.reason ??
     "No strong signal was observed on the public site.";
 
+  // The opportunity gap read: business momentum against digital maturity,
+  // derived from the same stored evidence and nothing else.
+  const activeCount = structured.count("active_business_signals");
+  const proofCount = structured.count("proof_signals");
+  const momentumEvidence = [
+    ...signalStatements(input.intel?.buying_signals),
+    ...(activeCount !== null && activeCount >= 3
+      ? [
+          structured.evidence("active_business_signals") ||
+            `${activeCount} independent signals of live activity`,
+        ]
+      : []),
+    ...(proofCount !== null && proofCount >= 2
+      ? [
+          structured.evidence("proof_signals") ||
+            `${proofCount} published proof points of delivered work`,
+        ]
+      : []),
+  ];
+  const weaknessEvidence = [
+    ...signalStatements(input.intel?.opportunities),
+    ...qualifiedGaps(structured).confident,
+  ];
+  const opportunityGap: OpportunityGapRead = deriveOpportunityGap({
+    momentumEvidence,
+    weaknessEvidence,
+    healthEvidence: selfSufficiency,
+  });
+
   return {
     score,
     light,
@@ -893,6 +1037,7 @@ export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
     evaluatedAt,
     explanation,
     scoreable: true,
+    opportunityGap,
     ...(pages !== null ? { pagesResearched: pages } : {}),
     ...(depthNote ? { researchDepthNote: depthNote } : {}),
     ...(researchVersion !== null ? { researchVersion } : {}),

@@ -29,6 +29,7 @@ import {
 } from "@/data/scout/sweep";
 
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
+import { gapIntelFromMetadata } from "@/data/scout-opportunity-gap";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 
 /** How long one organization's lease is held before it is considered dead. */
@@ -256,6 +257,9 @@ async function writeObservation(
     scoreable: true,
     icpVersion: null,
     pagesResearched: payload.pages_researched?.length ?? 0,
+    // A sweep does not collect intel itself; the gap read uses what the row
+    // already holds from earlier discovery or research passes.
+    intel: gapIntelFromMetadata(row["metadata"]),
   });
 
   const metadata = { ...((row["metadata"] ?? {}) as Row) };

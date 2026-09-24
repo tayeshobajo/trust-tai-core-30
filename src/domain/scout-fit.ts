@@ -24,6 +24,23 @@ export interface FitCriterion {
   sourceUrls?: string[];
 }
 
+/**
+ * Opportunity gap: business momentum measured against digital maturity.
+ * "high" means a healthy, moving business whose digital presence has fallen
+ * behind, which is exactly who Trust Tai serves. "low" means the digital
+ * presence is already strong or the company can build for itself. "unknown"
+ * means the evidence is not there yet, and unknown is never guessed over.
+ */
+export type OpportunityGapLevel = "high" | "medium" | "low" | "unknown";
+
+export interface OpportunityGapRead {
+  gap: OpportunityGapLevel;
+  /** Evidence the business itself is healthy and moving. */
+  momentumEvidence: string[];
+  /** Evidence about the state of the digital presence, weak or strong. */
+  maturityEvidence: string[];
+}
+
 export interface ScoutFitEvaluation {
   /** 0–100. Null-safe: preview rows are still scored 0 with a neutral light. */
   score: number;
@@ -46,6 +63,8 @@ export interface ScoutFitEvaluation {
   researchDepthNote?: string;
   /** `provenance.research_version` reported by the backend, when present. */
   researchVersion?: number;
+  /** Momentum vs digital maturity, derived from the same stored evidence. */
+  opportunityGap?: OpportunityGapRead;
 }
 
-export const SCOUT_EVALUATOR_VERSION = "trust-tai-icp-v3";
+export const SCOUT_EVALUATOR_VERSION = "trust-tai-icp-v4";

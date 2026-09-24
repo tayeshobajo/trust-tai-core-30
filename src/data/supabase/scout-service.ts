@@ -685,6 +685,8 @@ export const scoutService = {
       changes: diffObservations({ previous: priorObserved, incoming: payload.observed ?? [] }),
     });
 
+    // Buying signals and opportunities from this pass feed the gap read.
+    const intel = intelFromResearch(payload);
     const evaluation = evaluateScoutFit({
       observed,
       inferred: payload.inferred ?? {},
@@ -693,6 +695,9 @@ export const scoutService = {
       icpVersion: icp?.version ?? null,
       pagesResearched: pageCount(payload),
       researchVersion: researchVersion(payload),
+      intel: intel
+        ? { buying_signals: intel["buying_signals"], opportunities: intel["opportunities"] }
+        : null,
     });
     const row = await saveResearchProspect({
       organizationId: request.organizationId,
@@ -710,7 +715,7 @@ export const scoutService = {
       metadata: {
         scout_fit: evaluation,
         ...(identity ? { identity } : {}),
-        ...(intelFromResearch(payload) ? { scout_intel: intelFromResearch(payload) } : {}),
+        ...(intel ? { scout_intel: intel } : {}),
         research_history: appendResearchRun(
           existing?.metadata,
           runFromEvaluation(evaluation, evaluation.evaluatedAt),
