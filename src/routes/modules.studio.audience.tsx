@@ -169,7 +169,7 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
                         {s.providerSyncState ? ` · Sync: ${s.providerSyncState}` : ""}
                       </p>
                     </div>
-                    <TonePill tone={s.status === "confirmed" ? "success" : s.status === "unsubscribed" ? "danger" : "warning"}>
+                    <TonePill tone={s.status === "confirmed" ? "good" : s.status === "unsubscribed" ? "neutral" : "caution"}>
                       {s.status === "unknown" ? "Unknown" : s.status[0]!.toUpperCase() + s.status.slice(1)}
                     </TonePill>
                   </li>
