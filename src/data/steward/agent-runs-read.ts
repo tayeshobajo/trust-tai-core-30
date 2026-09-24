@@ -54,7 +54,7 @@ export async function readAgentRuns(
     if (MISSING.test(`${error.code} ${error.message}`)) return { available: false, runs: [] };
     throw new Error(error.message);
   }
-  return { available: true, runs: (data ?? []).map((r) => toRun(r as Row)) };
+  return { available: true, runs: (data ?? []).map((r) => toRun(r as unknown as Row)) };
 }
 
 export async function readAgentQueue(organizationId: string) {
