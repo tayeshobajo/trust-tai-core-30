@@ -2036,6 +2036,41 @@ export async function approveVersion(
             record: correction,
             actorId: caller.userId,
           });
+
+          /* Learning engine (Step 5), immediate reflection path: a Tai
+             intervention just happened, so the unit reflects now, in
+             product, through the runtime caller boundary. Best-effort and
+             additive: reflectImmediately swallows every failure mode (no
+             provider configured queues the unit), and nothing here can
+             touch the approval recorded above. */
+          const { reflectImmediately } = await import("@/lib/reflection.server");
+          const { assembleLearningUnit } = await import("@/domain/learning-unit");
+          const { readPrinciples } = await import("@/lib/organizational-principles.server");
+          const { CHARACTER_BIBLE_RUNTIME_PRIOR } = await import("@/lib/character-bible-prior");
+          const freshRationale = {
+            ...rationale,
+            correction,
+            ...(dimensional ? { dimensional } : {}),
+          };
+          const unit = assembleLearningUnit({
+            organizationId: input.organizationId,
+            relationshipId:
+              typeof (draftRow as Row)["relationship_id"] === "string"
+                ? ((draftRow as Row)["relationship_id"] as string)
+                : null,
+            draftId: session.draftId,
+            rationale: freshRationale,
+          });
+          await reflectImmediately({
+            token,
+            organizationId: input.organizationId,
+            writer,
+            draftId: session.draftId,
+            unit,
+            rationale: freshRationale,
+            characterBibleRuntimeCard: CHARACTER_BIBLE_RUNTIME_PRIOR,
+            priorPrinciples: await readPrinciples(writer, input.organizationId),
+          });
         }
       }
     } catch {

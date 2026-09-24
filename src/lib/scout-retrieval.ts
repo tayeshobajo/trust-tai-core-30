@@ -65,6 +65,65 @@ function correctionAsCase(entry: StoredEditCorrection): IntelligenceCase {
   };
 }
 
+/**
+ * An organizational principle promoted by the learning engine (active or
+ * strengthened only; provisional influences nothing). It enters the SAME
+ * corrections lane a human edit does, because a learned principle IS the
+ * consolidated form of Tai's corrections: it outranks inference in every
+ * Scout/DECIDE read, through the existing judgment path, not a new one.
+ */
+export interface RetrievalPrinciple {
+  id: string;
+  organizationId: string;
+  principle: string;
+  scope: { domain: string; contextTags: string[] };
+  status: string;
+  confidence: number;
+  lastValidatedAt: string | null;
+}
+
+/**
+ * Scope filter: a principle flows into a read only when the read's domain
+ * matches and, when the principle is tag-scoped, at least one context tag
+ * matches. A relationship_nurture principle never leaks into an unrelated
+ * sales or delivery read; a milestone_event-scoped principle never colors
+ * a cold first touch.
+ */
+export function principlesForScope(
+  principles: RetrievalPrinciple[],
+  scope: { domain: string; contextTags: string[] },
+): RetrievalPrinciple[] {
+  return principles.filter((principle) => {
+    if (principle.status !== "active" && principle.status !== "strengthened") return false;
+    if (principle.scope.domain !== scope.domain) return false;
+    if (principle.scope.contextTags.length === 0) return true;
+    return principle.scope.contextTags.some((tag) => scope.contextTags.includes(tag));
+  });
+}
+
+function principleAsCase(entry: RetrievalPrinciple): IntelligenceCase {
+  const lesson = `Learned principle (${entry.scope.domain}${
+    entry.scope.contextTags.length > 0 ? `, ${entry.scope.contextTags.join("/")}` : ""
+  }): ${entry.principle}`;
+  return {
+    id: entry.id,
+    organizationId: entry.organizationId,
+    patternId: "organizational-principle",
+    patternVersion: 1,
+    entities: [],
+    evidenceRefs: [],
+    hypothesis: lesson,
+    humanDecision:
+      "Promoted by the learning engine from repeated Tai corrections and outcomes; it outranks inference within its scope.",
+    decidedBy: "",
+    decidedAt: entry.lastValidatedAt ?? "",
+    diagnosisVerdict: "unknown",
+    correction: lesson,
+    lesson,
+    createdAt: entry.lastValidatedAt ?? "",
+  };
+}
+
 /** A company this workspace already knows about, by canonical record. */
 export interface KnownCompany {
   name: string;
@@ -104,6 +163,12 @@ export interface ScoutRetrievalInput {
    * inference in every later Scout reasoning pass.
    */
   editCorrections?: StoredEditCorrection[];
+  /**
+   * Promoted organizational principles ALREADY FILTERED for this read's
+   * scope (see principlesForScope). They enter the same corrections lane,
+   * after the raw edit corrections they were consolidated from.
+   */
+  principles?: RetrievalPrinciple[];
   /** Sources that could not be read. They stay unknown, never zero. */
   withheld?: WithheldSource[];
 }
@@ -161,6 +226,7 @@ export function composeScoutRetrieval(input: ScoutRetrievalInput): RetrievalBund
   const cases = [
     ...(input.cases ?? []),
     ...(input.editCorrections ?? []).map(correctionAsCase),
+    ...(input.principles ?? []).map(principleAsCase),
   ];
 
   return composeRetrieval({

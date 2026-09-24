@@ -44,6 +44,7 @@ import {
 } from "@/domain/voice-gate-feedback";
 import { buildEditCorrection, correctionLesson } from "@/domain/edit-correction";
 import { withIntervention } from "@/domain/dimensional-record";
+import { markReflectionPending } from "@/domain/learning-unit";
 import type { MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
 
@@ -857,14 +858,22 @@ export const commsService = {
         const dimensional = withIntervention(rationale["dimensional"], reviewState, editedWords);
 
         if (correction || dimensional) {
+          /* Learning engine (Step 5): a Tai intervention marks this unit
+             reflection-pending. The immediate reflection runs server-side
+             where a runtime caller exists; here the queued flag alone is
+             written, additively, inside the same best-effort block. */
+          const withCapture = {
+            ...rationale,
+            ...(correction ? { correction } : {}),
+            ...(dimensional ? { dimensional } : {}),
+          };
+          const withLearning = correction
+            ? (markReflectionPending(withCapture, "tai_intervention") ?? withCapture)
+            : withCapture;
           await supabase
             .from("comms_drafts")
             .update({
-              rationale: {
-                ...rationale,
-                ...(correction ? { correction } : {}),
-                ...(dimensional ? { dimensional } : {}),
-              },
+              rationale: withLearning,
               updated_at: new Date().toISOString(),
             })
             .eq("id", draft.id)
