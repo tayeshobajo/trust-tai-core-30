@@ -1,13 +1,16 @@
 /**
  * Scout, discovery candidate validation.
  *
- * Pure functions, deliberately dependency-free so they can be unit tested and
- * shared between the server discovery boundary and the UI.
+ * Pure functions, deliberately free of framework or network dependencies so
+ * they can be unit tested and shared between the server discovery boundary
+ * and the UI.
  *
  * A sourced company is only real if it has a name, a resolvable website, and at
  * least one source URL that was actually read. Anything else is dropped rather
  * than shown, because an unverifiable company is worse than no company.
  */
+
+import { deriveOpportunityGap, signalStatements } from "@/data/scout-opportunity-gap";
 
 export const DISCOVERY_SOURCE = "scout_ai_discovery";
 export const SCOUT_DISCOVERY_EVALUATOR_VERSION = "trust-tai-scout-discovery-v1";
@@ -24,6 +27,8 @@ export interface RawDiscoveryCandidate {
   buying_signals?: unknown;
   /** Observed digital problems Trust Tai could fix. */
   digital_opportunities?: unknown;
+  /** Positive evidence the company can already do this work itself. */
+  self_sufficiency_signals?: unknown;
   /** Named people read from public pages. Never invented. */
   people?: unknown;
   source_urls?: string[];
@@ -144,11 +149,41 @@ export function discoveryEvaluation(
 
   const evidenceCount = observed.length;
   const claimed = fit.light ?? "yellow";
-  const light = claimed === "green" && evidenceCount < 3 ? "yellow" : claimed;
+
+  // The buying-signal and digital-opportunity arrays used to sit outside the
+  // fit read. That policy changed with the opportunity-gap model: they now
+  // decide the gap level, and observed self-sufficiency is a hard
+  // disqualifier, because a company that can build for itself has no gap
+  // Trust Tai can close. Absence of these arrays changes nothing.
+  const selfSufficiency = signalStatements(candidate.self_sufficiency_signals);
+  const opportunityGap = deriveOpportunityGap({
+    momentumEvidence: signalStatements(candidate.buying_signals),
+    weaknessEvidence: signalStatements(candidate.digital_opportunities),
+    healthEvidence: selfSufficiency,
+  });
+  const disqualified = selfSufficiency.length > 0;
+  const cappedScore = disqualified ? Math.min(25, score) : score;
+  const light = disqualified
+    ? "red"
+    : claimed === "green" && evidenceCount < 3
+      ? "yellow"
+      : claimed;
+  if (disqualified) {
+    criteria.push({
+      key: "disqualifier",
+      label: "Material mismatch",
+      score: 0,
+      maxScore: 0,
+      state: "mismatch",
+      reason: `The company reads as digitally self-sufficient, so there is no gap Trust Tai can close: ${selfSufficiency[0]}.`,
+      sourceUrls: [],
+    });
+  }
 
   return {
-    score,
+    score: cappedScore,
     light,
+    opportunityGap,
     evidenceCount,
     strongestSignal:
       String(candidate.discovery_reason ?? "").trim() ||
