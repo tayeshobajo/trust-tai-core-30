@@ -217,7 +217,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     : "";
 
   const startedAt = new Date().toISOString();
-  const { data: runRow } = await supabase
+  const { data: runRow, error: runInsertError } = await supabase
     .from("scout_discovery_runs")
     .insert({
       organization_id: orgId,
@@ -227,18 +227,22 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
 
       model,
       icp_version: icpVersion,
-      requested_count: limit,
-      created_by: user.id,
+      request_payload: { requested_count: limit },
+      initiated_by: user.id,
+      started_at: startedAt,
     })
     .select("*")
     .maybeSingle();
+  if (runInsertError) {
+    console.error("scout_discovery_runs insert failed:", runInsertError.message);
+  }
   const runId = (runRow?.["id"] as string | undefined) ?? null;
 
   const failRun = async (message: string) => {
     if (runId) {
       await supabase
         .from("scout_discovery_runs")
-        .update({ status: "failed", error: message, finished_at: new Date().toISOString() })
+        .update({ status: "failed", error_message: message, completed_at: new Date().toISOString() })
         .eq("id", runId);
     }
   };
@@ -565,7 +569,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       .update({
         status: "succeeded",
         result_count: savedCount,
-        finished_at: finishedAt,
+        completed_at: finishedAt,
         response_meta: {
           provider: providerName,
           model,

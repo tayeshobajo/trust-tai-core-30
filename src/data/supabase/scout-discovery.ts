@@ -163,11 +163,14 @@ function toRun(row: Record<string, unknown>): DiscoveryRun {
     status: (row["status"] as DiscoveryRun["status"]) ?? "running",
     model: (row["model"] as string | null) ?? null,
     icpVersion: (row["icp_version"] as number | null) ?? null,
-    requestedCount: (row["requested_count"] as number | null) ?? null,
+    requestedCount:
+      (((row["request_payload"] as Record<string, unknown> | null)?.["requested_count"] as
+        | number
+        | undefined) ?? null),
     resultCount: (row["result_count"] as number | null) ?? null,
-    error: (row["error"] as string | null) ?? null,
+    error: (row["error_message"] as string | null) ?? null,
     createdAt: String(row["created_at"] ?? ""),
-    finishedAt: (row["finished_at"] as string | null) ?? null,
+    finishedAt: (row["completed_at"] as string | null) ?? null,
     meta: (row["response_meta"] as Record<string, unknown>) ?? {},
   };
 }
