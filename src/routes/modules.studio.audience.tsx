@@ -179,7 +179,7 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
 
             <nav aria-label="Audience pages" className="flex items-center justify-between gap-3 border-t border-border p-4 text-sm">
               <span className="text-muted-foreground">
-                Page {result.page} of {result.pageCount} · {result.matching.toLocaleString("en-US")} people in this view
+                Page {result.page} of {result.pageCount} · {result.matching.toLocaleString("en-US")} {result.matching === 1 ? "person" : "people"} in this view
               </span>
               <div className="flex gap-2">
                 <TTButton variant="secondary" disabled={result.page <= 1} onClick={() => setPage(result.page - 1)}>

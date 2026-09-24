@@ -155,3 +155,5 @@ Build proof (PASS):
 - No subscriber storage, no consent change, no sending; token and list never logged (only upstream HTTP status).
 
 Live proof (BLOCKED): `GET https://trusttai.com/api/public/newsletter/subscribers` returns **404** with and without the access code (checked 2026-09-24, server-side, body not printed). Blocker: the website project b3555ed3 has not published the feed route. Not authorized to publish it from here. Signed-in UI walkthrough also pending a session.
+
+Update 2026-09-24 00:40 UTC — Live proof (PASS, signed-in owner): the website feed is now answering. `/modules/studio/audience` loaded through the authenticated server path for the bound workspace: counts Total 1 / Confirmed 1 / Pending 0 / Unsubscribed 0, labelled "counted from what the website returned" (not whole-audience; the source's revised counts contract is still pending), one confirmed row with safe dates, source and sync state, and correct filters and pages. Content/Audience switch shown on both Studio pages. Session discarded after. No writes, sends or publishing. Still to prove live: the other-workspace and view-only denials (unit-tested only, no second account used).
