@@ -144,3 +144,14 @@ Defects found and fixed during the run:
 
 The first attempt failed safely (bad model id) and the failure was recorded on the same run before the successful retry.
 The synthetic task is left in place as evidence.
+
+## Studio · Audience (read-only newsletter list) — 2026-09-24
+
+Built inside Studio (Content / Audience switch at `/modules/studio/audience`); no new room.
+
+Build proof (PASS):
+- `src/lib/studio-audience.server.test.ts` 16/16: signed-out, non-active membership, view-only role, other workspace's owner, and unbound workspace are all denied **before** any website fetch; token sent only as `x-studio-token`; 401/503/404/500/network/bad-shape map to distinct explained failures, never zero; capped answers (>=1000 rows) shown as floors ("1,000+"), missing counts "Unknown"; revised contract (`counts_scope: "all"` or `complete: true`) shown exact; filter + pagination over every matching row; unparseable timestamps become unknown.
+- Workspace binding: `STUDIO_AUDIENCE_ORGANIZATION_ID`, falling back to the existing `WEBSITE_INTAKE_ORGANIZATION_ID`; neither set = nobody sees it. Owner/admin only.
+- No subscriber storage, no consent change, no sending; token and list never logged (only upstream HTTP status).
+
+Live proof (BLOCKED): `GET https://trusttai.com/api/public/newsletter/subscribers` returns **404** with and without the access code (checked 2026-09-24, server-side, body not printed). Blocker: the website project b3555ed3 has not published the feed route. Not authorized to publish it from here. Signed-in UI walkthrough also pending a session.
