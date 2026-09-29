@@ -76,10 +76,35 @@ function hardOverride(text: string, recipient?: string): string | null {
   if (EM_EN_DASH.test(text)) return "hard_override:em_or_en_dash";
   if (PLACEHOLDER.test(text)) return "hard_override:leftover_placeholder";
   if (SUPERIORITY.test(text)) return "hard_override:superiority_or_urgency";
-  if (recipient && recipient.trim() && !text.includes(recipient.trim())) {
+  if (recipient && recipient.trim() && !mentionsRecipient(text, recipient)) {
     return `hard_override:recipient_name_missing:${recipient.trim()}`;
   }
   return null;
+}
+
+// Generic words that appearing alone prove nothing about recognition.
+const RECIPIENT_STOPWORDS = new Set([
+  "the", "and", "llc", "inc", "pllc", "corp", "company", "group", "consulting",
+  "coaching", "coach", "author", "founder", "executive", "law", "firm", "agency",
+  "studio", "solutions", "services", "partners", "team", "office",
+]);
+
+/**
+ * True when the draft plausibly names the recipient. Callers pass strings like
+ * "Warren Consulting (Terry Warren, Executive Coach, Author)"; a real draft
+ * says "Hi Terry", so requiring the full string verbatim bounced every draft
+ * (observed 2026-09-28: 100% of scout intros dead on this check). Accept any
+ * distinctive token of the recipient string instead. No tokens at all in the
+ * draft still bounces — that is the genuine no-recognition failure.
+ */
+function mentionsRecipient(text: string, recipient: string): boolean {
+  if (text.includes(recipient.trim())) return true;
+  const tokens = recipient
+    .split(/[^A-Za-z]+/)
+    .filter((w) => w.length >= 3 && !RECIPIENT_STOPWORDS.has(w.toLowerCase()));
+  if (tokens.length === 0) return true; // nothing distinctive to demand
+  const lower = text.toLowerCase();
+  return tokens.some((w) => new RegExp(`\\b${w.toLowerCase()}\\b`).test(lower));
 }
 
 async function scoreWithJev(
