@@ -431,6 +431,11 @@ async function handleDraftIntro(req: Request): Promise<Response> {
     typeof body.draft_subject === "string" && body.draft_subject.trim()
       ? body.draft_subject.trim()
       : null;
+  // Optional rendered HTML alternative (the intro-card email). Stored on the
+  // draft as body_html; the plain-text draft_body remains what the gate and
+  // approval review read.
+  const draftHtmlOverride =
+    typeof body.draft_html === "string" && body.draft_html.trim() ? body.draft_html : null;
   const idempotencyKey =
     typeof body.idempotency_key === "string" && body.idempotency_key.trim()
       ? body.idempotency_key.trim()
@@ -550,6 +555,7 @@ async function handleDraftIntro(req: Request): Promise<Response> {
       register: "scout_intro",
       subject,
       body: rawBody,
+      ...(draftHtmlOverride ? { body_html: draftHtmlOverride } : {}),
       review_state: reviewState,
       rationale: {
         source: "scout_agent",
