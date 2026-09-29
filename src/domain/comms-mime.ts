@@ -223,6 +223,8 @@ export interface MimeMessageInput {
   bcc?: string[];
   subject: string;
   bodyText: string;
+  /** When present, the message carries an HTML alternative alongside the text. */
+  bodyHtml?: string;
   messageId?: string;
   inReplyTo?: string;
   references?: string[];
@@ -232,7 +234,11 @@ export interface MimeMessageInput {
 /**
  * The finished message. A reply carries `In-Reply-To` / `References` so Gmail
  * keeps it inside its conversation; an attachment turns the message into a
- * `multipart/mixed` tree whose first part is always the readable text.
+ * `multipart/mixed` tree whose first part is always the readable text. An
+ * HTML body rides as `multipart/alternative` — plain text first, then HTML,
+ * so a reader that renders neither still shows the words — and when both
+ * HTML and attachments are present the alternative pair nests as the first
+ * part of the mixed tree.
  */
 export function buildMimeMessage(input: MimeMessageInput): string {
   const headers: string[] = [`From: ${input.from.trim().toLowerCase()}`, `To: input.to.join(", ")`];
@@ -258,16 +264,42 @@ export function buildMimeMessage(input: MimeMessageInput): string {
     "Content-Transfer-Encoding: base64",
   ];
   const textBody = fold76(textToBase64(input.bodyText));
+  const textPart = [...textHeaders, "", textBody].join("\r\n");
+  const html = input.bodyHtml?.trim() ? input.bodyHtml : undefined;
+
+  // Boundaries are derived from the message identity, not a random source:
+  // the same draft always builds the same message. The alternative boundary
+  // carries its own prefix so it can never collide with the mixed one.
+  const identity = (input.messageId ?? "message").replace(/[^a-z0-9]/gi, "");
+  const boundary = `----comms-${identity}`;
+  const altBoundary = `----comms-alt-${identity}`;
+
+  // Plain text first, then HTML: the last alternative a reader supports wins.
+  const alternativePart = html
+    ? [
+        `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+        "",
+        `--${altBoundary}`,
+        textPart,
+        `--${altBoundary}`,
+        [
+          'Content-Type: text/html; charset="UTF-8"',
+          "Content-Transfer-Encoding: base64",
+          "",
+          fold76(textToBase64(html)),
+        ].join("\r\n"),
+        `--${altBoundary}--`,
+      ].join("\r\n")
+    : undefined;
 
   if (attachments.length === 0) {
-    return [...headers, ...textHeaders, "", textBody].join("\r\n");
+    if (!alternativePart) {
+      return [...headers, ...textHeaders, "", textBody].join("\r\n");
+    }
+    return [...headers, alternativePart, ""].join("\r\n");
   }
 
-  // The boundary is derived from the message identity, not a random source:
-  // the same draft always builds the same message.
-  const boundary = `----comms-${(input.messageId ?? "message").replace(/[^a-z0-9]/gi, "")}`;
-
-  const parts: string[] = [[...textHeaders, "", textBody].join("\r\n")];
+  const parts: string[] = [alternativePart ?? textPart];
   for (const attachment of attachments) {
     parts.push(
       [

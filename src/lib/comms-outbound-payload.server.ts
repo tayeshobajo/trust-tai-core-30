@@ -25,6 +25,7 @@ export interface DraftForSend {
   id: string;
   subject: string | null;
   body: string;
+  bodyHtml: string | null;
   relationshipId: string;
   rationale: Record<string, unknown> | null;
 }
@@ -76,7 +77,7 @@ export async function loadDraftForSend(
 ): Promise<DraftForSend> {
   const { data, error } = await client
     .from("comms_drafts")
-    .select("id, subject, body, relationship_id, rationale")
+    .select("id, subject, body, body_html, relationship_id, rationale")
     .eq("id", draftId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -89,6 +90,7 @@ export async function loadDraftForSend(
     id: String(row["id"]),
     subject: typeof row["subject"] === "string" ? row["subject"] : null,
     body: typeof row["body"] === "string" ? row["body"] : "",
+    bodyHtml: typeof row["body_html"] === "string" ? row["body_html"] : null,
     relationshipId: String(row["relationship_id"] ?? ""),
     rationale: (row["rationale"] as Record<string, unknown> | null) ?? null,
   };
@@ -155,5 +157,6 @@ export async function outboundPayloadForDraft(
     attachments,
     cc: extras.cc,
     bcc: extras.bcc,
+    bodyHtml: input.draft.bodyHtml,
   };
 }

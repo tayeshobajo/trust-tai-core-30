@@ -57,6 +57,11 @@ export interface OutboundPayload {
   /** Anyone else on the message. Part of what was approved. */
   cc?: string[];
   bcc?: string[];
+  /**
+   * The rendered HTML alternative, when the draft carries one. Part of what
+   * was approved: a message whose HTML changed is a different message.
+   */
+  bodyHtml?: string | null;
 }
 
 /** One address, written the one way every path writes it. */
@@ -84,6 +89,17 @@ export function providerBody(payload: OutboundPayload): string {
 }
 
 /**
+ * The HTML alternative a provider is actually handed, or nothing. Line
+ * endings are normalised exactly as the plain body's are; a blank string is
+ * the same as no HTML at all.
+ */
+export function providerHtml(payload: OutboundPayload): string {
+  return (payload.bodyHtml ?? "").replace(/\r\n?/g, "\n").trim() === ""
+    ? ""
+    : (payload.bodyHtml ?? "").replace(/\r\n?/g, "\n");
+}
+
+/**
  * The exact outbound message, written once, unambiguously: every field is
  * length-prefixed so no combination of contents can be rearranged into
  * another valid message.
@@ -102,6 +118,7 @@ export function canonicalOutbound(payload: OutboundPayload): string {
     .sort();
   const recipients = (list: string[] | undefined) =>
     [...new Set((list ?? []).map(address).filter(Boolean))].sort().join(",");
+  const html = providerHtml(payload);
   return [
     "comms-outbound/1",
     field("channel", payload.channel),
@@ -112,6 +129,9 @@ export function canonicalOutbound(payload: OutboundPayload): string {
     field("bcc", recipients(payload.bcc)),
     field("from", address(payload.senderIdentity ?? "")),
     field("attachments", attachments.join(";")),
+    // Only a message that actually carries HTML adds this line, so every
+    // plain-text fingerprint on record stays exactly what it was.
+    ...(html ? [field("html", `sha256:${sha256(html)}`)] : []),
   ].join("\n");
 }
 

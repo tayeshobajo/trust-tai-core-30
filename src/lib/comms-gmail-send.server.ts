@@ -314,6 +314,7 @@ interface DraftRow {
   relationship_id: string;
   subject: string | null;
   body: string;
+  body_html: string | null;
   review_state: string;
   rationale: Record<string, unknown> | null;
   updated_at: string | null;
@@ -385,7 +386,7 @@ export async function sendDraftViaGmail(input: {
 
   const { data: draftRow, error: draftError } = await client
     .from("comms_drafts")
-    .select("id, relationship_id, subject, body, review_state, rationale, updated_at")
+    .select("id, relationship_id, subject, body, body_html, review_state, rationale, updated_at")
     .eq("id", input.draftId)
     .eq("organization_id", input.organizationId)
     .maybeSingle();
@@ -627,6 +628,7 @@ export async function sendDraftViaGmail(input: {
       ...(bcc.length > 0 ? { bcc } : {}),
       subject,
       bodyText: draft.body,
+      ...(draft.body_html?.trim() ? { bodyHtml: draft.body_html } : {}),
       messageId,
       ...(inReplyTo ? { inReplyTo } : {}),
       ...(references.length > 0 ? { references } : {}),
@@ -652,6 +654,9 @@ export async function sendDraftViaGmail(input: {
     attachments: staged.map(attachmentIdentity),
     cc,
     bcc,
+    // The HTML alternative is part of what is approved: the gate fingerprints
+    // it, so an approval of the plain words never covers different markup.
+    bodyHtml: draft.body_html,
   };
   const sendApproval = await requireSendApproval(input.token, {
     organizationId: input.organizationId,

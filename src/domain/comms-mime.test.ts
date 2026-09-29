@@ -183,6 +183,71 @@ describe("buildMimeMessage", () => {
     expect(raw.trimEnd().endsWith(`--${boundary}--`)).toBe(true);
   });
 
+  it("carries an HTML body as multipart/alternative, plain text first", () => {
+    const raw = buildMimeMessage({
+      from: "tai@trust-tai.com",
+      to: ["dana@x.com"],
+      subject: "Intro",
+      bodyText: "Hi Dana",
+      bodyHtml: "<p>Hi <b>Dana</b></p>",
+      messageId: "<comms-d3@trusttai.com>",
+    });
+    expect(raw).toContain("multipart/alternative");
+    expect(raw).not.toContain("multipart/mixed");
+    const boundary = raw.match(/boundary="([^"]+)"/)?.[1] ?? "";
+    expect(boundary).toContain("comms-alt-");
+    expect(boundary).toContain("commsd3");
+    const textAt = raw.indexOf("text/plain");
+    const htmlAt = raw.indexOf("text/html");
+    expect(textAt).toBeGreaterThan(-1);
+    expect(htmlAt).toBeGreaterThan(textAt);
+    expect(raw).toContain(Buffer.from("Hi Dana", "utf8").toString("base64"));
+    expect(raw).toContain(Buffer.from("<p>Hi <b>Dana</b></p>", "utf8").toString("base64"));
+    expect(raw.trimEnd().endsWith(`--${boundary}--`)).toBe(true);
+  });
+
+  it("nests the alternative pair inside multipart/mixed when files ride along", () => {
+    const raw = buildMimeMessage({
+      from: "tai@trust-tai.com",
+      to: ["dana@x.com"],
+      subject: "Intro",
+      bodyText: "Hi Dana",
+      bodyHtml: "<p>Hi Dana</p>",
+      messageId: "<comms-d4@trusttai.com>",
+      attachments: [
+        { filename: "brief.pdf", mimeType: "application/pdf", size: 3, contentBase64: "QUJD" },
+      ],
+    });
+    const mixed = raw.match(/multipart\/mixed; boundary="([^"]+)"/)?.[1] ?? "";
+    const alt = raw.match(/multipart\/alternative; boundary="([^"]+)"/)?.[1] ?? "";
+    expect(mixed).toBeTruthy();
+    expect(alt).toBeTruthy();
+    expect(mixed).not.toBe(alt);
+    // The alternative tree opens before any attachment and closes before the
+    // mixed tree does: it is the first part, nested whole.
+    const altOpen = raw.indexOf(`--${alt}`);
+    const altClose = raw.indexOf(`--${alt}--`);
+    const fileAt = raw.indexOf("application/pdf");
+    const mixedClose = raw.indexOf(`--${mixed}--`);
+    expect(altOpen).toBeGreaterThan(raw.indexOf(`--${mixed}`));
+    expect(altClose).toBeLessThan(fileAt);
+    expect(fileAt).toBeLessThan(mixedClose);
+    expect(raw).toContain("text/html");
+    expect(raw.trimEnd().endsWith(`--${mixed}--`)).toBe(true);
+  });
+
+  it("builds the exact same plain-text message when no HTML is given", () => {
+    const input = {
+      from: "tai@trust-tai.com",
+      to: ["dana@x.com"],
+      subject: "Hi",
+      bodyText: "Words only.",
+      messageId: "<comms-d5@trusttai.com>",
+    };
+    expect(buildMimeMessage(input)).toBe(buildMimeMessage({ ...input, bodyHtml: "" }));
+    expect(buildMimeMessage(input)).not.toContain("multipart");
+  });
+
   it("appends nothing the person did not write", () => {
     const raw = buildMimeMessage({
       from: "tai@trust-tai.com",
