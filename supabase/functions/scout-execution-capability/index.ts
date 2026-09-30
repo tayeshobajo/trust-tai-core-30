@@ -35,6 +35,14 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { gateDraft } from "../_shared/voice-gate.ts";
+import {
+  ComposeError,
+  composeIntro,
+  COMPOSER_VERSION,
+  evidenceIsDistinctive,
+  prospectEvidence,
+  recipientFirstName,
+} from "../_shared/intro-composer.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -397,6 +405,17 @@ async function handleProspect(req: Request): Promise<Response> {
  * in review_state 'needs_human_review'. No path from here touches
  * comms-send, Resend, or any provider.
  *
+ * DRAFT COMPOSITION (2026-09-30 rework): when the caller does not supply a
+ * finished draft_body, the intro is COMPOSED from the prospect's recorded
+ * evidence by _shared/intro-composer.ts, not filled from a template. The
+ * template fallback produced structurally identical notes (same opener, one
+ * swapped middle sentence, same closer) that Jev graded 0.6-1.1 precisely
+ * because templated sameness is a negative signal in the rubric. Templates
+ * remain accepted only alongside an explicit draft_body override (the old
+ * caller contract); with no override, template_id is optional and ignored
+ * for prose. No evidence on record means NO draft (422), never a mail-merge
+ * fallback.
+ *
  * NOTE on voice: the deterministic voice policy (src/data/voice-policy.ts)
  * is not ported to Deno, so this mirror cannot run it. Every draft written
  * here is marked rationale.voice_checked = false, and the app re-runs the
@@ -441,31 +460,114 @@ async function handleDraftIntro(req: Request): Promise<Response> {
       ? body.idempotency_key.trim()
       : `scout.draft_intro:${prospectId}:${templateId}:${crypto.randomUUID()}`;
 
-  if (!prospectId || !templateId) {
-    return fail("prospect_id and template_id are required.", 400);
+  if (!prospectId) {
+    return fail("prospect_id is required.", 400);
+  }
+  if (draftBodyOverride && !templateId) {
+    return fail("template_id is required when draft_body is supplied.", 400);
   }
 
   const { data: prospect, error: prospectError } = await supabase
     .from("prospects")
-    .select("id, organization_id, company_name, website_url, status")
+    .select(
+      "id, organization_id, company_name, website_url, status, metadata, observed, inferred, provenance",
+    )
     .eq("id", prospectId)
     .eq("organization_id", agent.organization_id)
     .maybeSingle();
   if (prospectError) throw Object.assign(new Error(prospectError.message), { status: 500 });
   if (!prospect) return fail("Prospect not found in this organization.", 404);
 
-  const { data: template, error: templateError } = await supabase
-    .from("scout_intro_templates")
-    .select("id, organization_id, name, subject, body, active")
-    .eq("id", templateId)
-    .eq("organization_id", agent.organization_id)
-    .maybeSingle();
-  if (templateError) throw Object.assign(new Error(templateError.message), { status: 500 });
-  if (!template) return fail("Template not found in this organization.", 404);
-  if (!template.active) return fail("Template is not active.", 409);
+  // A template is validated only when the caller named one. In compose mode
+  // it is optional and contributes nothing to the prose.
+  let template: { id: string; name: string; subject: string | null } | null = null;
+  if (templateId) {
+    const { data: templateRow, error: templateError } = await supabase
+      .from("scout_intro_templates")
+      .select("id, organization_id, name, subject, body, active")
+      .eq("id", templateId)
+      .eq("organization_id", agent.organization_id)
+      .maybeSingle();
+    if (templateError) throw Object.assign(new Error(templateError.message), { status: 500 });
+    if (!templateRow) return fail("Template not found in this organization.", 404);
+    if (!templateRow.active) return fail("Template is not active.", 409);
+    template = {
+      id: templateRow.id as string,
+      name: templateRow.name as string,
+      subject: (templateRow.subject as string | null) ?? null,
+    };
+  }
 
-  const rawBody = draftBodyOverride ?? (template.body as string);
-  const subject = draftSubjectOverride ?? (template.subject as string | null) ?? null;
+  let rawBody: string;
+  let subject: string | null;
+  let composer: Record<string, unknown> | null = null;
+
+  if (draftBodyOverride) {
+    // The old contract: the caller composed the prose itself.
+    rawBody = draftBodyOverride;
+    subject = draftSubjectOverride ?? template?.subject ?? null;
+  } else {
+    // Compose from evidence. Fail closed: no distinctive evidence, no draft.
+    const evidence = prospectEvidence(prospect as Record<string, unknown>);
+    if (!evidenceIsDistinctive(evidence)) {
+      return fail(
+        "No distinctive evidence is on record for this prospect, so an intro cannot be composed. Attach evidence (observed facts, scout_intel, or an evaluation) first.",
+        422,
+      );
+    }
+
+    /* How the queue's recent notes opened, so this one cannot converge on
+       the same shape. Composed and human drafts both count. */
+    const { data: recentDrafts } = await supabase
+      .from("comms_drafts")
+      .select("body")
+      .eq("organization_id", agent.organization_id)
+      .eq("register", "scout_intro")
+      .order("created_at", { ascending: false })
+      .limit(8);
+    const recentOpenings = ((recentDrafts ?? []) as { body?: string }[])
+      .flatMap((row) => {
+        const lines = String(row.body ?? "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        // Line one is the salutation; the opening thought is line two. The
+        // self-introduction line travels too, so notes cannot converge on
+        // one pasted positioning sentence.
+        const opening = lines[1] ?? "";
+        const selfIntro = lines.find(
+          (line) => /\bI'm Tai\b|\bI help\b|\bI run Trust Tai\b/.test(line),
+        );
+        return [opening, selfIntro ?? ""];
+      })
+      .filter(Boolean);
+
+    const recipient = recipientFirstName(prospect.company_name as string);
+    try {
+      const composed = await composeIntro({
+        recipient,
+        companyName: prospect.company_name as string,
+        websiteUrl: (prospect.website_url as string | null) ?? null,
+        evidence,
+        recentOpenings,
+      });
+      rawBody = composed.body;
+      subject = draftSubjectOverride ?? composed.subject;
+      composer = {
+        version: COMPOSER_VERSION,
+        model: composed.model,
+        evidence_count: evidence.length,
+        evidence_sources: Array.from(new Set(evidence.map((line) => line.source))),
+        recent_openings_avoided: recentOpenings.length,
+      };
+    } catch (error) {
+      if (error instanceof ComposeError) {
+        const status = error.code === "insufficient_evidence" ? 422 : 502;
+        return fail(error.message, status);
+      }
+      throw error;
+    }
+  }
   if (!rawBody || !rawBody.trim()) return fail("The draft body is empty.", 400);
 
   const binding = await recordBinding({
@@ -476,7 +578,11 @@ async function handleDraftIntro(req: Request): Promise<Response> {
     objective: `Draft an intro to ${prospect.company_name} for human review.`,
     expectedOutcome: "A comms draft awaiting human review. Nothing is sent.",
     idempotencyKey,
-    businessOutputs: { prospect_id: prospect.id, template_id: template.id },
+    businessOutputs: {
+      prospect_id: prospect.id,
+      template_id: template?.id ?? null,
+      composed: Boolean(composer),
+    },
   });
 
   // Find or create the relationship carrying this prospect in Comms.
@@ -559,8 +665,9 @@ async function handleDraftIntro(req: Request): Promise<Response> {
       review_state: reviewState,
       rationale: {
         source: "scout_agent",
-        template_id: template.id,
-        template_name: template.name,
+        template_id: template?.id ?? null,
+        template_name: template?.name ?? null,
+        ...(composer ? { composer } : {}),
         prospect_id: prospect.id,
         agent_id: agent.paperclip_agent_id,
         // Voice policy lives in the app (src/data/voice-policy.ts) and is not
@@ -599,7 +706,8 @@ async function handleDraftIntro(req: Request): Promise<Response> {
       draft_id: (draft as { id: string }).id,
       relationship_id: relationshipId,
       prospect_id: prospect.id,
-      template_id: template.id,
+      template_id: template?.id ?? null,
+      composed: Boolean(composer),
       review_state: reviewState,
       gate_verdict: gate.verdict,
     },
