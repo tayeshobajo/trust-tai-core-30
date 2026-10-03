@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";
 
+import { OutreachToday } from "@/components/tt/comms/outreach-today";
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { TTButton } from "@/components/tt/primitives";
@@ -550,6 +551,7 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
       />
       <CommsTabs active="dashboard" />
 
+      <OutreachToday identity={identity} />
       <RecentEmail identity={identity} relationships={relationships.data ?? []} />
 
 

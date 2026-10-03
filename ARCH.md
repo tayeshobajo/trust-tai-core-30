@@ -1,0 +1,2 @@
+# Outreach Today architecture
+Existing WorkspaceGate supplies user and organization identity. The panel uses React Query with user, organization and Chicago reporting date in its key. The existing member Supabase client performs metadata-only SELECT under RLS. A pure defensive projection rejects invalid/cross-scope records and holds conflicting provider identities. No send, sync, mutation or campaign qualification is introduced. Existing Comms consumers are unchanged.
