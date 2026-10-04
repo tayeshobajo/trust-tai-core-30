@@ -86,6 +86,7 @@ export function DailyHome({
   const done = mine.filter((t) => t.status === "complete");
   const legacy = read.tasks.filter((t) => t.owner.userId === identity.userId);
   const ownGoal = read.weeklyGoal?.ownerUserId === identity.userId ? read.weeklyGoal : null;
+  const partialTasks = Boolean(personal.data?.truncated || business.data?.truncated);
   const taskReadFailed = personal.isError || business.isError;
   return (
     <div className="space-y-5 pb-8 sm:space-y-6">
@@ -104,7 +105,7 @@ export function DailyHome({
         </p>
       </header>
       <section
-        className={`${card} grid grid-cols-2 gap-5 lg:grid-cols-[1fr_1.3fr_1fr]`}
+        className={`${card} grid grid-cols-1 gap-5 min-[400px]:grid-cols-2 lg:grid-cols-[1fr_1.3fr_1fr]`}
         aria-label="Revenue snapshot"
       >
         <div>
@@ -112,9 +113,9 @@ export function DailyHome({
           <p className="mt-3 font-display text-3xl font-semibold">Not verified</p>
           <p className="mt-2 text-xs text-muted-foreground">Review the saved target in Outcomes.</p>
         </div>
-        <div className="border-l border-border pl-5">
+        <div className="border-t border-border pt-4 min-[400px]:border-l min-[400px]:border-t-0 min-[400px]:pl-5 min-[400px]:pt-0">
           <p className="text-xs font-bold uppercase text-muted-foreground">Recorded Run MRR</p>
-          <p className="mt-3 break-words font-display text-3xl font-semibold">
+          <p className="mt-3 font-display text-2xl font-semibold sm:text-3xl">
             {!canReadRevenue
               ? "Unavailable"
               : revenue.isPending
@@ -138,7 +139,7 @@ export function DailyHome({
           </p>
           <p className="mt-1 text-xs font-semibold text-amber-700">Coverage unverified</p>
         </div>
-        <div className="col-span-2 border-t border-border pt-4 lg:col-span-1 lg:border-t-0 lg:pt-0">
+        <div className="min-[400px]:col-span-2 border-t border-border pt-4 lg:col-span-1 lg:border-t-0 lg:pt-0">
           <p className="font-semibold text-muted-foreground">Not comparable yet.</p>
           <p className="mt-1 text-sm text-muted-foreground">No gap calculated.</p>
           <details className="mt-2">
@@ -282,7 +283,10 @@ export function DailyHome({
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              {open.length} open · {done.length} delivered in your task board
+              {partialTasks ? "Partial view: at least " : ""}
+              {open.length} open · {partialTasks ? "at least " : ""}
+              {done.length} delivered in your task board
+              {partialTasks ? ". Read limit reached; these are not complete totals." : ""}
             </p>
           )}
           <ul className="mt-3 divide-y divide-border">
@@ -329,6 +333,7 @@ export function DailyHome({
           {!taskReadFailed &&
           !personal.isPending &&
           !business.isPending &&
+          !partialTasks &&
           !open.length &&
           !legacy.filter((t) => t.state !== "complete").length ? (
             <p className="py-4 text-sm text-muted-foreground">No open tasks assigned to you.</p>

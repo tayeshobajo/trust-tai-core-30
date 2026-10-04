@@ -4,19 +4,31 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DailyHome } from "./daily-home";
+import { PersonalDashboard } from "./personal-dashboard";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import type { StewardDashboardRead } from "@/data/steward/dashboard-read";
-const mocks = vi.hoisted(() => ({ list: vi.fn(), revenue: vi.fn() }));
-vi.mock("@/data/supabase/cmd-tasks", () => ({ cmdTasks: { list: mocks.list } }));
+const mocks = vi.hoisted(() => ({
+  list: vi.fn(),
+  revenue: vi.fn(),
+  create: vi.fn(),
+  dashboard: vi.fn(),
+}));
+vi.mock("@/data/supabase/cmd-tasks", () => ({
+  cmdTasks: { list: mocks.list, create: mocks.create },
+}));
 vi.mock("@/data/supabase/commercial-service", () => ({ listClientCommercialState: mocks.revenue }));
+vi.mock("@/data/steward/dashboard-read", () => ({ readStewardDashboard: mocks.dashboard }));
+vi.mock("@/data/steward/use-steward-actions", () => ({ useStewardActions: () => ({}) }));
+vi.mock("@/components/tt/steward/reassign-picker", () => ({ ReassignPicker: () => null }));
+vi.mock("@/components/tt/steward/task-detail", () => ({ TaskDetailPanel: () => null }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
     <a href={to}>{children}</a>
   ),
 }));
 const identity = {
-  userId: "self",
-  organizationId: "org",
+  userId: "00000000-0000-4000-8000-000000000001",
+  organizationId: "00000000-0000-4000-8000-000000000010",
   name: "Test Person",
   role: "member",
   apps: [{ appId: "clients" }],
@@ -56,6 +68,49 @@ function empty() {
   mocks.revenue.mockResolvedValue([]);
 }
 describe("approved daily Home", () => {
+  it.each(["personal", "business"])(
+    "qualifies incomplete My Tasks counts when %s is truncated",
+    async (scope) => {
+      empty();
+      mocks.list.mockImplementation(async (_org: string, requested: string) => ({
+        tasks: [],
+        truncated: requested === scope,
+      }));
+      mount();
+      expect(await screen.findByText(/Partial view: at least 0 open/)).toBeTruthy();
+      expect(screen.getByText(/these are not complete totals/)).toBeTruthy();
+      expect(screen.queryByText("No open tasks assigned to you.")).toBeNull();
+    },
+  );
+  it("opens the private task editor directly from Home and saves through its canonical service", async () => {
+    empty();
+    mocks.dashboard.mockResolvedValue({ ...read, people: [], agents: { agents: [] } });
+    mocks.create.mockResolvedValue({});
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <PersonalDashboard identity={identity} />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "+ New task" }));
+    const title = await screen.findByLabelText("Task title");
+    expect(screen.getByRole("dialog", { name: "New task" })).toBeTruthy();
+    fireEvent.change(title, { target: { value: "Synthetic direct Home task" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save task" }));
+    await waitFor(() =>
+      expect(mocks.create).toHaveBeenCalledWith(
+        identity.organizationId,
+        "personal",
+        expect.stringMatching(/^cmd-board:/),
+        expect.objectContaining({
+          title: "Synthetic direct Home task",
+          owner_user_id: identity.userId,
+        }),
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
   it("renders honest unknown revenue and empty work without mockup metrics or an AI feed", async () => {
     empty();
     const actions = mount();

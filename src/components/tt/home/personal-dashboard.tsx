@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router";
 
 import { DailyHome } from "./daily-home";
 import { TaskEditor } from "@/components/tt/steward/business-task-board";
@@ -19,9 +18,9 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 
 /** The signed-in person's operating view, shared by Home only. */
 export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity }) {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const queryKey = ["steward", "dashboard", identity.organizationId, identity.userId];
+  const [newTaskKey, setNewTaskKey] = useState<string | null>(null);
   const [boardTask, setBoardTask] = useState<BoardTask | null>(null);
   const [confirmingGoal, setConfirmingGoal] = useState(false);
   const [reassigning, setReassigning] = useState<StewardTask | null>(null);
@@ -67,33 +66,38 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
         read={read.data}
         onConfirmGoal={handleConfirmGoal}
         confirmingGoal={confirmingGoal}
-        onCreate={() =>
-          void navigate({ to: "/modules/steward/board", search: { scope: "personal" } })
-        }
+        onCreate={() => setNewTaskKey(`cmd-board:${crypto.randomUUID()}`)}
         onOpenLegacy={setOpenTask}
         onOpenBoard={setBoardTask}
       />
-      {boardTask ? (
+      {boardTask || newTaskKey ? (
         <TaskEditor
+          key={boardTask?.id ?? newTaskKey}
           task={boardTask}
-          scope={boardTask.task_visibility}
+          scope={boardTask?.task_visibility ?? "personal"}
           identity={identity}
           tasks={
             queryClient.getQueryData<{ tasks: BoardTask[] }>([
               "cmd-tasks",
               identity.organizationId,
               identity.userId,
-              boardTask.task_visibility,
-            ])?.tasks ?? [boardTask]
+              boardTask?.task_visibility ?? "personal",
+            ])?.tasks ?? (boardTask ? [boardTask] : [])
           }
           people={read.data.people.map((p) => ({ userId: p.userId, name: p.name }))}
-          onClose={() => setBoardTask(null)}
+          onClose={() => {
+            setBoardTask(null);
+            setNewTaskKey(null);
+          }}
           onSave={async (input) => {
-            await cmdTasks.update(boardTask, input);
+            if (boardTask) await cmdTasks.update(boardTask, input);
+            else if (newTaskKey)
+              await cmdTasks.create(identity.organizationId, "personal", newTaskKey, input);
             await queryClient.invalidateQueries({
               queryKey: ["cmd-tasks", identity.organizationId, identity.userId],
             });
             setBoardTask(null);
+            setNewTaskKey(null);
           }}
         />
       ) : null}
