@@ -153,6 +153,37 @@ export function BusinessTaskBoard({
           New task
         </TTButton>
       </div>
+      {scope === "business" &&
+      identity.organizationSlug === "trust-tai" &&
+      read.isSuccess &&
+      tasks.length === 0 &&
+      ["owner", "admin"].includes(identity.role) ? (
+        <div className="rounded-xl border border-border p-4">
+          <p className="text-sm">
+            The 22 approved launch tasks are ready to add, including the website audit checklist.
+            Owners and due dates remain unassigned.
+          </p>
+          <TTButton
+            variant="secondary"
+            className="mt-3"
+            disabled={working}
+            onClick={async () => {
+              setWorking(true);
+              try {
+                await cmdTasks.importPlannedWork(identity.organizationId);
+                await refresh();
+                setNotice("Approved business work added.");
+              } catch (error) {
+                setNotice(errorText(error));
+              } finally {
+                setWorking(false);
+              }
+            }}
+          >
+            {working ? "Adding planned work…" : "Add planned work"}
+          </TTButton>
+        </div>
+      ) : null}
       <p role="status" aria-live="polite" className="text-sm">
         {notice}
       </p>

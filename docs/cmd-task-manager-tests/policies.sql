@@ -7,7 +7,7 @@ create schema auth;
 create schema private;
 create function auth.uid() returns uuid language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),(nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub'))::uuid $$;
 create function auth.role() returns text language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claim.role',true),''),(nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'role')) $$;
-create table public.organizations(id uuid primary key);
+create table public.organizations(id uuid primary key,slug text);
 create table public.organization_memberships(organization_id uuid,user_id uuid,status text,role text);
 create table public.profiles(id uuid primary key,full_name text);
 create function private.is_org_member(target_org uuid) returns boolean language sql stable security definer set search_path='' as $$ select exists(select 1 from public.organization_memberships m where m.organization_id=target_org and m.user_id=auth.uid() and m.status='active') $$;
@@ -16,7 +16,7 @@ create function private.is_org_admin(target_org uuid) returns boolean language s
 \ir ../../supabase/migrations/20260921170000_steward_weekly_goals.sql
 -- Existing source columns inspected in production, absent from the original task migration.
 alter table public.steward_tasks add column source_app text,add column source_entity_type text,add column source_entity_id uuid;
-insert into organizations values ('00000000-0000-4000-8000-000000000010'),('00000000-0000-4000-8000-000000000020');
+insert into organizations values ('00000000-0000-4000-8000-000000000010','trust-tai'),('00000000-0000-4000-8000-000000000020','other-workspace');
 insert into organization_memberships values
  ('00000000-0000-4000-8000-000000000010','00000000-0000-4000-8000-000000000001','active','member'),
  ('00000000-0000-4000-8000-000000000010','00000000-0000-4000-8000-000000000002','active','member'),
@@ -29,7 +29,7 @@ insert into steward_tasks(id,organization_id,title) values('00000000-0000-4000-8
 \ir ../cmd-release/migration.review.sql
 grant usage on schema public,private,auth to authenticated,anon,service_role;
 grant select,insert,update,delete on steward_tasks,steward_weekly_goals to authenticated,service_role;
-grant select on organization_memberships,profiles to authenticated;
+grant select on organizations,organization_memberships,profiles to authenticated;
 create function public.test_assert(ok boolean,label text) returns void language plpgsql as $$ begin if ok is distinct from true then raise exception 'FAILED: %',label; end if; raise notice 'PASS: %',label; end $$;
 create function public.test_denied(statement text,label text) returns void language plpgsql as $$
 declare rejected boolean := false;

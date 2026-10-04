@@ -53,12 +53,13 @@ seed = header + '-- Fixture SHA256 '+hashlib.sha256(fixture.read_bytes()).hexdig
 set local lock_timeout='5s';
 set local statement_timeout='60s';
 -- Temporary release RPC. SECURITY INVOKER retains the approved RLS/trigger rules.
-create function public.cmd_import_approved_business_tasks(target_org uuid)
+create or replace function public.cmd_import_approved_business_tasks(target_org uuid)
 returns table(correlation_id text,task_id uuid,was_inserted boolean)
 language plpgsql security invoker set search_path='' as $$
 declare item jsonb; existing public.steward_tasks%rowtype; parent_id uuid; inserted_id uuid;
 begin
  if auth.uid() is null or not private.is_org_admin(target_org) then raise exception 'Verified active workspace owner/admin required'; end if;
+ if not exists(select 1 from public.organizations o where o.id=target_org and o.slug='trust-tai') then raise exception 'Prepared work belongs to the Trust Tai workspace'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(target_org::text,0));
  for item in select value from jsonb_array_elements($cmd_seed$'''+data+'''$cmd_seed$::jsonb) loop
    parent_id := null;

@@ -1,13 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
-import { PersonDashboard } from "@/components/tt/steward/dashboard/person-dashboard";
+import { DailyHome } from "./daily-home";
+import { TaskEditor } from "@/components/tt/steward/business-task-board";
+import { cmdTasks } from "@/data/supabase/cmd-tasks";
+import type { BoardTask } from "@/domain/cmd-tasks";
 import { ReassignPicker } from "@/components/tt/steward/reassign-picker";
 import { TaskDetailPanel } from "@/components/tt/steward/task-detail";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
-import { readStewardDashboard, type DashboardActivity } from "@/data/steward/dashboard-read";
+import { readStewardDashboard } from "@/data/steward/dashboard-read";
 import { reassignAuthority } from "@/data/steward/authority";
 import { useStewardActions } from "@/data/steward/use-steward-actions";
 import { weeklyGoals } from "@/data/supabase/weekly-goals";
@@ -19,6 +22,7 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const queryKey = ["steward", "dashboard", identity.organizationId, identity.userId];
+  const [boardTask, setBoardTask] = useState<BoardTask | null>(null);
   const [confirmingGoal, setConfirmingGoal] = useState(false);
   const [reassigning, setReassigning] = useState<StewardTask | null>(null);
   const [openTask, setOpenTask] = useState<StewardTask | null>(null);
@@ -46,14 +50,6 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
     }
   }
 
-  function handleCompleteTask(task: StewardTask): void {
-    actions.complete(task, "");
-  }
-
-  function handleUndo(activity: DashboardActivity): void {
-    actions.undoAgentCleared(activity.id, activity.summary);
-  }
-
   if (read.isError) return <StewardUnavailable error={read.error} />;
 
   if (!read.data) {
@@ -66,30 +62,41 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
 
   return (
     <>
-      <Link
-        to="/modules/steward/board"
-        className="mb-4 inline-flex min-h-11 items-center rounded-full border border-border px-5 text-sm font-medium text-royal"
-      >
-        Open task board
-      </Link>
-      <PersonDashboard
+      <DailyHome
+        identity={identity}
         read={read.data}
-        scope="self"
-        tasksHref="/modules/steward/tasks"
-        activityHref="/modules/activity"
-        onCompleteTask={handleCompleteTask}
         onConfirmGoal={handleConfirmGoal}
         confirmingGoal={confirmingGoal}
-        onUndoActivity={handleUndo}
-        actor={{ userId: identity.userId, canManage: identity.canManage }}
-        taskStorageAvailable={read.data.taskStorageAvailable}
-        completingTaskKey={actions.completingTaskKey}
-        onCreateTask={() =>
+        onCreate={() =>
           void navigate({ to: "/modules/steward/board", search: { scope: "personal" } })
         }
-        onReassignTask={setReassigning}
-        onOpenTask={setOpenTask}
+        onOpenLegacy={setOpenTask}
+        onOpenBoard={setBoardTask}
       />
+      {boardTask ? (
+        <TaskEditor
+          task={boardTask}
+          scope={boardTask.task_visibility}
+          identity={identity}
+          tasks={
+            queryClient.getQueryData<{ tasks: BoardTask[] }>([
+              "cmd-tasks",
+              identity.organizationId,
+              identity.userId,
+              boardTask.task_visibility,
+            ])?.tasks ?? [boardTask]
+          }
+          people={read.data.people.map((p) => ({ userId: p.userId, name: p.name }))}
+          onClose={() => setBoardTask(null)}
+          onSave={async (input) => {
+            await cmdTasks.update(boardTask, input);
+            await queryClient.invalidateQueries({
+              queryKey: ["cmd-tasks", identity.organizationId, identity.userId],
+            });
+            setBoardTask(null);
+          }}
+        />
+      ) : null}
       <TaskDetailPanel
         task={openTask}
         actor={{ userId: identity.userId, canManage: identity.canManage }}

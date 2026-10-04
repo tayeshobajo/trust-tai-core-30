@@ -77,3 +77,15 @@ Artifact hashes:
 - migration.review.sql: `2a0b2a98fff9c20a67a0a8826ce7466650fbac3472829daa3a8e8fb592363208`
 - import-helper.review.sql: `ad73bc50f17e1a2d64e1e697f9e0e59ed1719ce1c5c1ffb99428858fd691098e`
 - cleanup.review.sql: `693c9771b2dfe5bcf988b51727bc1a45e5c857090f0881668c099b9b4972e4a3`
+
+## Latest runtime and production checkpoint
+
+2026-10-04T23:13:08.513103+00:00
+
+102 application tests/14files, TypeScript, scoped lint and production build pass after full Home implementation. Latest isolated rerun passes 55 SQL assertions and seven concurrent/API groups, including denial of an admin importing Trust Tai work into another organization.
+
+Applied to okydosoacqdnursmmenf through apply_migration: cmd_task_board_approved_visibility_and_goal_guard; cmd_task_board_scoped_planned_work_import; cmd_task_import_restrict_to_trust_tai_workspace. All returned success. Current readback: two legacy tasks, zero business tasks, three goals, both guards present, temporary helper available, anonymous execute denied. Transactional comparisons preserved original task/goal contents. No historical row reclassification.
+
+Import is awaiting the actual owner/admin authenticated session and deployed Add planned work action. Helper must be removed after the 22-row receipt is verified. No production fixtures or user impersonation. No push or publish yet. Browser-control tools are unavailable in this executor turn; approved reference pixels were inspected via Library/local view_image, but the new Home render and live auth remain unverified.
+
+Latest import artifact hash: `9fab2fcd57462d0d3bcd94deb0a93b82276ec9a82d7117d05f082b9f175e69f6`.

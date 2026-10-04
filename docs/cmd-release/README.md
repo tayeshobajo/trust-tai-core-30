@@ -41,4 +41,4 @@ Use existing authorized accounts/sessions; do not invite users or widen roles fo
 
 ## Current evidence
 
-Application suite: 96 tests across 13 files; previous TypeScript/lint/build and synthetic Chrome checks pass. The latest generator and shell syntax checks pass. SQL permission/import/concurrency and JWT/PostgREST checks now pass; see verification.md. No database mutation, production seed, push or publish has occurred.
+Application suite: 102 tests across 14 files; previous TypeScript/lint/build and synthetic Chrome checks pass. The latest generator and shell syntax checks pass. SQL permission/import/concurrency and JWT/PostgREST checks now pass; see verification.md. The tested access migration and scoped import helper are now applied. No production task import, push or publish has occurred; see verification.md.

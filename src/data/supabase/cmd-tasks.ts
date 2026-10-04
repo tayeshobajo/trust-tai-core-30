@@ -20,6 +20,10 @@ function failure(error: { code?: string; message: string }): Error {
 /** All writes use the signed-in client. PostgreSQL RLS and immutable-field triggers are authoritative. */
 export function boardService(client: SupabaseClient = supabase) {
   return {
+    async importPlannedWork(org: string): Promise<void> {
+      const { error } = await client.rpc("cmd_import_approved_business_tasks", { target_org: org });
+      if (error) throw failure(error);
+    },
     async list(
       org: string,
       visibility: TaskVisibility,

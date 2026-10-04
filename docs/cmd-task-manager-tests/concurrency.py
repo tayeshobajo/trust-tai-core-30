@@ -36,9 +36,12 @@ subprocess.run(base+['-f',str(helper)],check=True,capture_output=True)
 org2='00000000-0000-4000-8000-000000000020';actor2='00000000-0000-4000-8000-000000000006'
 run(f"update organization_memberships set role='admin' where organization_id='{org2}' and user_id='{actor2}';")
 seed_prefix=prefix.replace(actor,actor2)
-sql=seed_prefix+f"select count(*) from cmd_import_approved_business_tasks('{org2}');"
+denied=subprocess.run(base+['-c',seed_prefix+f"select * from cmd_import_approved_business_tasks('{org2}');"],text=True,capture_output=True)
+assert denied.returncode and 'Trust Tai workspace' in denied.stderr
+print('PASS other workspace admin cannot import Trust Tai work')
+sql=prefix.replace(actor,'00000000-0000-4000-8000-000000000003')+f"select count(*) from cmd_import_approved_business_tasks('{org}');"
 results=concurrent(sql,sql)
 assert all(code==0 for code,_ in results),results
-assert run(f"select count(*) from steward_tasks where organization_id='{org2}' and correlation_id like 'cmd-business:%';").strip()=='22'
+assert run(f"select count(*) from steward_tasks where organization_id='{org}' and correlation_id like 'cmd-business:%';").strip()=='22'
 print('PASS concurrent imports create exactly 22 records')
 run('drop function public.cmd_import_approved_business_tasks(uuid);')

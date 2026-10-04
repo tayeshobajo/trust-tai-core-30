@@ -1,6 +1,6 @@
 # CMD task board: exact staged release review
 
-This is a local implementation for review. No production policy, schema, record, push or publication has occurred. Tai approved the shared-business/private-personal/own-goal model (approval message Sentinel_b768275ff4e481919eee019319537a10, replying to Sentinel_7c28d65cd9dc819190eaee3201e1f500). Implementation and deployment are authorized within that scope; database execution and safe release checks remain outstanding. This document supersedes the initial context-only review.
+Current checkpoint: the tested production access migration and scoped temporary import helper are applied; original task/goal contents remain unchanged. No task import, push or publication has occurred. Tai approved the shared-business/private-personal/own-goal model (approval message Sentinel_b768275ff4e481919eee019319537a10, replying to Sentinel_7c28d65cd9dc819190eaee3201e1f500). Implementation and deployment are authorized within that scope; database execution and safe release checks remain outstanding. This document supersedes the initial context-only review.
 
 ## Implemented locally
 
@@ -68,3 +68,7 @@ No material access expansion outside the approved model is currently proposed. R
 ## Latest release readiness supersedes prior runtime blockers
 
 Tai separately approved PostgreSQL/PostgREST installation and scoped production database changes. Runtime is installed without persistent services. The exact guarded migration, 22-row atomic/idempotent import, role/trigger regressions, concurrent relationship/import tests and real JWT/PostgREST checks passed in a disposable local cluster. See `docs/cmd-release/verification.md` for results and artifact hashes, and `docs/cmd-release/README.md` for migration, authenticated import, helper removal, non-destructive recovery and live acceptance steps. No new business decision is required. Remaining work is coordinated production migration/import, exact remote publication and authenticated live acceptance; none has occurred yet. Current main/Lovable baseline remains 334a766e; no CI statuses or PR workflow runs were returned.
+
+## Full approved Home integration
+
+Approved desktop/mobile reference pixels were materialized through Library into the task workspace, with version metadata preserved; the denied home-approved folder was not read. Full Home now includes the compact revenue snapshot, business priorities with evidence, My Tasks before priorities on mobile, meeting preparation with unknown coverage/time, compact own-goal review and collapsed existing progress. AI Activity panel is removed only from Home; its existing route remains linked. Revenue queries require existing Clients app access and never use the illustrative $5,000/$75k values as live facts. No new permission or data store. Changed Home files: personal-dashboard.tsx, new daily-home.tsx/test, and route index.tsx. Full Home runtime screenshot/live authentication checks remain required; the reference has been inspected, not falsely claimed as a screenshot of delivered code.

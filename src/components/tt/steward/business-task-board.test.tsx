@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   archive: vi.fn(),
+  importPlannedWork: vi.fn(),
 }));
 vi.mock("@/data/supabase/cmd-tasks", () => ({ cmdTasks: mocks }));
 vi.mock("@/data/steward/task-choices", () => ({
@@ -65,12 +66,12 @@ afterEach(() => {
   cleanup();
   vi.resetAllMocks();
 });
-function board() {
+function board(viewer = identity) {
   return render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <BusinessTaskBoard identity={identity} />
+      <BusinessTaskBoard identity={viewer} />
     </QueryClientProvider>,
   );
 }
@@ -93,6 +94,17 @@ function editor(
   return onSave;
 }
 describe("board UI with mocked transport", () => {
+  it("adds the approved work only through the authenticated import action and reports failure", async () => {
+    mocks.list.mockResolvedValue({ tasks: [], truncated: false });
+    mocks.personalCounts.mockResolvedValue([]);
+    mocks.importPlannedWork.mockRejectedValue(new Error("Import denied"));
+    board({ ...identity, role: "admin", organizationSlug: "trust-tai" });
+    fireEvent.click(await screen.findByRole("button", { name: "Add planned work" }));
+    expect(await screen.findByText("Import denied")).toBeTruthy();
+    expect(mocks.importPlannedWork).toHaveBeenCalledWith(identity.organizationId);
+    expect(screen.queryByText("Approved business work added.")).toBeNull();
+  });
+
   it("returns keyboard focus to the opening button after Escape", async () => {
     mocks.list.mockResolvedValue({ tasks: [], truncated: false });
     mocks.personalCounts.mockResolvedValue([]);

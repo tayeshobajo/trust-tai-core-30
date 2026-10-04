@@ -10,7 +10,7 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Your dashboard · Trust Tai OS";
 const DESCRIPTION =
-  "Your weekly goal, tasks, progress, AI teammate activity, and blockers in one operating view.";
+  "Business priorities, your tasks, meeting preparation and weekly focus in one operating view.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,9 +56,8 @@ function SystemStatus({ identity }: { identity: WorkspaceIdentity }) {
           className={isError ? "size-4 text-warning" : "size-4 text-success"}
           aria-hidden
         />
-        {isError ? "Workspace unreachable" : "All systems operational"}
+        {isError ? "Workspace unreachable" : "Workspace connection available"}
       </p>
     </div>
   );
 }
-
