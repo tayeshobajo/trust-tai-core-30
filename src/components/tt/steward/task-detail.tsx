@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { MetaPill, TTButton } from "@/components/tt/primitives";
 import { OwnerBadge } from "@/components/tt/steward/task-row";
+import { TaskContext } from "@/components/tt/steward/task-context";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   completeAuthority,
@@ -111,6 +112,8 @@ export function TaskDetailPanel({
               </Link>
             ) : null}
           </section>
+
+          <TaskContext task={task} viewerUserId={actor.userId} />
 
           {task.evidence.length > 0 ? (
             <section className="space-y-2 border-t border-border pt-5">
