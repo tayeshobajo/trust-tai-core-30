@@ -1,0 +1,222 @@
+{
+  "state": "review-only-not-seeded",
+  "sourceDate": "2026-10-04",
+  "tasks": [
+    {
+      "correlationId": "cmd-business:task-manager",
+      "sourceApp": "cmd-business",
+      "sourceEntityType": "operational_task",
+      "title": "Finish and deploy CMD task manager",
+      "status": "in_progress",
+      "statusLabel": "In progress",
+      "ownerUserId": null,
+      "ownerLabel": null,
+      "dueAt": null,
+      "assigneeKind": "human",
+      "notes": "Agree business access; finish persistence and live QA",
+      "subtasks": [
+        {
+          "id": "cmd-business:task-manager:next",
+          "text": "Agree business access; finish persistence and live QA",
+          "done": false
+        }
+      ],
+      "acceptanceCriteria": [
+        "Real tasks persist; correct visibility and ownership; statuses, blockers and next actions work; tests and authenticated desktop/mobile live QA pass"
+      ],
+      "contextLinks": []
+    },
+    {
+      "correlationId": "cmd-business:website-audit",
+      "sourceApp": "cmd-business",
+      "sourceEntityType": "operational_task",
+      "title": "Close Trust Tai website audit",
+      "status": "in_progress",
+      "statusLabel": "In progress",
+      "ownerUserId": null,
+      "ownerLabel": null,
+      "dueAt": null,
+      "assigneeKind": "human",
+      "notes": "Obtain verified individual audit checklist; pricing and terms decisions pending",
+      "subtasks": [
+        {
+          "id": "cmd-business:website-audit:next",
+          "text": "Obtain verified individual audit checklist; pricing and terms decisions pending",
+          "done": false
+        }
+      ],
+      "acceptanceCriteria": [
+        "Verify implemented recommendations individually; audit delivery alone does not mean launch-ready"
+      ],
+      "contextLinks": []
+    },
+    {
+      "correlationId": "cmd-business:payment-repair",
+      "sourceApp": "cmd-business",
+      "sourceEntityType": "operational_task",
+      "title": "Validate and publish payment persistence repair",
+      "status": "blocked",
+      "statusLabel": "Blocked",
+      "ownerUserId": null,
+      "ownerLabel": null,
+      "dueAt": null,
+      "assigneeKind": "human",
+      "notes": "Database integration test environment and authenticated gateway access unresolved",
+      "subtasks": [
+        {
+          "id": "cmd-business:payment-repair:next",
+          "text": "Database integration test environment and authenticated gateway access unresolved",
+          "done": false
+        }
+      ],
+      "acceptanceCriteria": [
+        "Real isolated database integration and authenticated gateway tests, then controlled publication and verification; existing staged test results alone are insufficient"
+      ],
+      "contextLinks": []
+    },
+    {
+      "correlationId": "cmd-business:client-portal",
+      "sourceApp": "cmd-business",
+      "sourceEntityType": "operational_task",
+      "title": "Build client portal from reviewed mockups",
+      "status": "in_progress",
+      "statusLabel": "In progress",
+      "ownerUserId": null,
+      "ownerLabel": null,
+      "dueAt": null,
+      "assigneeKind": "human",
+      "notes": "Resolve Core entitlement/publication contract and schema approval",
+      "subtasks": [
+        {
+          "id": "cmd-business:client-portal:next",
+          "text": "Resolve Core entitlement/publication contract and schema approval",
+          "done": false
+        }
+      ],
+      "acceptanceCriteria": [
+        "Verified client isolation and working end-to-end routes; three mockups are delivered, implementation is still staged"
+      ],
+      "contextLinks": []
+    },
+    {
+      "correlationId": "cmd-business:outreach-pilots",
+      "sourceApp": "cmd-business",
+      "sourceEntityType": "operational_task",
+      "title": "Review three roadmap-led outreach pilots",
+      "status": "needs_approval",
+      "statusLabel": "Awaiting owner review",
+      "ownerUserId": null,
+      "ownerLabel": null,
+      "dueAt": null,
+      "assigneeKind": "human",
+      "notes": "Review pack delivered to Tai; review copy for Stonewall Meadows, Sanders Bros. Coffee and The Staff Curator before roadmap build",
+      "subtasks": [
+        {
+          "id": "cmd-business:outreach-pilots:next",
+          "text": "Review pack delivered to Tai; review copy for Stonewall Meadows, Sanders Bros. Coffee and The Staff Curator before roadmap build",
+          "done": false
+        }
+      ],
+      "acceptanceCriteria": [
+        "Approved copy and verified roadmap links; no pilot sends recorded"
+      ],
+      "contextLinks": []
+    },
+    {
+      "correlationId": "cmd-business:linkedin-credibility",
+      "sourceApp": "cmd-business",
+      "sourceEntityType": "operational_task",
+      "title": "Apply LinkedIn credibility plan",
+      "status": "needs_approval",
+      "statusLabel": "Awaiting owner review",
+      "ownerUserId": null,
+      "ownerLabel": null,
+      "dueAt": null,
+      "assigneeKind": "human",
+      "notes": "Review pack delivered to Tai; review headline, About, Featured, Experience and main website destination; verify legacy testimonial attributions",
+      "subtasks": [
+        {
+          "id": "cmd-business:linkedin-credibility:next",
+          "text": "Review pack delivered to Tai; review headline, About, Featured, Experience and main website destination; verify legacy testimonial attributions",
+          "done": false
+        }
+      ],
+      "acceptanceCriteria": [
+        "Approved changes applied and checked live; audit complete, profile edits not recorded"
+      ],
+      "contextLinks": []
+    },
+    {
+      "correlationId": "cmd-business:upwork-case-studies",
+      "sourceApp": "cmd-business",
+      "sourceEntityType": "operational_task",
+      "title": "Turn Upwork evidence into case studies",
+      "status": "needs_approval",
+      "statusLabel": "Awaiting owner review",
+      "ownerUserId": null,
+      "ownerLabel": null,
+      "dueAt": null,
+      "assigneeKind": "human",
+      "notes": "Review pack delivered to Tai; review training implementation, maintenance, learning/commerce and calculator examples",
+      "subtasks": [
+        {
+          "id": "cmd-business:upwork-case-studies:next",
+          "text": "Review pack delivered to Tai; review training implementation, maintenance, learning/commerce and calculator examples",
+          "done": false
+        }
+      ],
+      "acceptanceCriteria": [
+        "Source-supported case studies and reuse decisions; no assumed quantified ROI or reuse permissions"
+      ],
+      "contextLinks": []
+    },
+    {
+      "correlationId": "cmd-business:roadmap-showcase",
+      "sourceApp": "cmd-business",
+      "sourceEntityType": "operational_task",
+      "title": "Decide public roadmap showcase scope",
+      "status": "draft",
+      "statusLabel": "Proposed",
+      "ownerUserId": null,
+      "ownerLabel": null,
+      "dueAt": null,
+      "assigneeKind": "human",
+      "notes": "Review curated examples, filters, privacy and reuse",
+      "subtasks": [
+        {
+          "id": "cmd-business:roadmap-showcase:next",
+          "text": "Review curated examples, filters, privacy and reuse",
+          "done": false
+        }
+      ],
+      "acceptanceCriteria": [
+        "Scope decision recorded with proposed versus implemented labels; gallery build is not approved"
+      ],
+      "contextLinks": []
+    },
+    {
+      "correlationId": "cmd-business:studio-demonstration",
+      "sourceApp": "cmd-business",
+      "sourceEntityType": "operational_task",
+      "title": "Validate one Studio product demonstration",
+      "status": "draft",
+      "statusLabel": "Proposed",
+      "ownerUserId": null,
+      "ownerLabel": null,
+      "dueAt": null,
+      "assigneeKind": "human",
+      "notes": "Approve demonstration and configured-agent comparison",
+      "subtasks": [
+        {
+          "id": "cmd-business:studio-demonstration:next",
+          "text": "Approve demonstration and configured-agent comparison",
+          "done": false
+        }
+      ],
+      "acceptanceCriteria": [
+        "Source-grounded communication and safe publishing demonstrated against the baseline; no product launch assumed"
+      ],
+      "contextLinks": []
+    }
+  ]
+}
