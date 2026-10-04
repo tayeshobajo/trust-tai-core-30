@@ -171,7 +171,11 @@ export const stewardTasks = {
       if (NOT_PROVISIONED.test(`${error.code} ${error.message}`)) return [];
       throw new Error(error.message);
     }
-    return (data ?? []).map((row) => toRecord(row as Row));
+    // Classified board rows use their atomic receipt path. Keeping them out of
+    // legacy actions also prevents personal titles entering org-visible activity.
+    return (data ?? [])
+      .filter((row) => !row.task_visibility || row.task_visibility === "legacy_shared")
+      .map((row) => toRecord(row as Row));
   },
 
   async provisioned(organizationId: ID): Promise<boolean> {
