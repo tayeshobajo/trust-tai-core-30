@@ -5,8 +5,8 @@ create role authenticated;
 create role service_role bypassrls;
 create schema auth;
 create schema private;
-create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
-create function auth.role() returns text language sql stable as $$ select current_setting('request.jwt.claim.role',true) $$;
+create function auth.uid() returns uuid language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),(nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub'))::uuid $$;
+create function auth.role() returns text language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claim.role',true),''),(nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'role')) $$;
 create table public.organizations(id uuid primary key);
 create table public.organization_memberships(organization_id uuid,user_id uuid,status text,role text);
 create table public.profiles(id uuid primary key,full_name text);
@@ -26,8 +26,7 @@ insert into organization_memberships values
  ('00000000-0000-4000-8000-000000000020','00000000-0000-4000-8000-000000000006','active','member');
 insert into profiles select user_id,'Synthetic user' from organization_memberships;
 insert into steward_tasks(id,organization_id,title) values('00000000-0000-4000-8000-000000000104','00000000-0000-4000-8000-000000000010','Legacy fixture');
-\ir ../cmd-task-manager-access.DRAFT.sql
-\ir ../cmd-own-goal-guard.DRAFT.sql
+\ir ../cmd-release/migration.review.sql
 grant usage on schema public,private,auth to authenticated,anon,service_role;
 grant select,insert,update,delete on steward_tasks,steward_weekly_goals to authenticated,service_role;
 grant select on organization_memberships,profiles to authenticated;
@@ -80,7 +79,11 @@ insert into steward_weekly_goals(id,organization_id,owner_user_id,week_start,tit
 insert into steward_tasks(id,organization_id,title,task_visibility,parent_task_id) values
  ('00000000-0000-4000-8000-000000000105','00000000-0000-4000-8000-000000000010','Child fixture','business','00000000-0000-4000-8000-000000000101');
 select test_denied($q$update steward_tasks set depends_on_task_id='00000000-0000-4000-8000-000000000101' where id='00000000-0000-4000-8000-000000000105'$q$,'child cannot depend on parent');
-select test_denied($q$update steward_tasks set status='open',depends_on_task_id='00000000-0000-4000-8000-000000000105' where id='00000000-0000-4000-8000-000000000103'$q$,'mixed hierarchy dependency cycle refused');
+update steward_tasks set depends_on_task_id=null where id='00000000-0000-4000-8000-000000000101';
+update steward_tasks set depends_on_task_id='00000000-0000-4000-8000-000000000103' where id='00000000-0000-4000-8000-000000000105';
+select test_denied($q$update steward_tasks set status='open',depends_on_task_id='00000000-0000-4000-8000-000000000101' where id='00000000-0000-4000-8000-000000000103'$q$,'mixed hierarchy dependency cycle refused');
+update steward_tasks set depends_on_task_id=null where id='00000000-0000-4000-8000-000000000105';
+update steward_tasks set depends_on_task_id='00000000-0000-4000-8000-000000000103' where id='00000000-0000-4000-8000-000000000101';
 select test_denied($q$update steward_tasks set status='complete',completion_evidence='Checked parent result with child unfinished' where id='00000000-0000-4000-8000-000000000101'$q$,'unfinished child blocks parent completion');
 select test_denied($q$update steward_tasks set parent_task_id='00000000-0000-4000-8000-000000000105' where id='00000000-0000-4000-8000-000000000103'$q$,'nested parent refused');
 select test_denied($q$update steward_tasks set parent_task_id='00000000-0000-4000-8000-000000000102' where id='00000000-0000-4000-8000-000000000105'$q$,'private parent cannot be linked from business task');
@@ -134,4 +137,18 @@ select set_config('request.jwt.claim.sub','',false);
 select set_config('request.jwt.claim.role','anon',false);
 select test_denied($q$select * from cmd_personal_task_counts('00000000-0000-4000-8000-000000000010')$q$,'anonymous aggregate denied');
 select test_denied($q$select * from steward_tasks$q$,'anonymous detail denied');
+-- Test the exact release helper only in this disposable database.
+reset role;
+\ir ../cmd-release/import-helper.review.sql
+set role authenticated;
+select set_config('request.jwt.claim.role','authenticated',false);
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000004',false);
+select test_denied($q$select * from cmd_import_approved_business_tasks('00000000-0000-4000-8000-000000000010')$q$,'viewer cannot import');
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',false);
+select test_assert((select count(*)=22 and bool_and(was_inserted) from cmd_import_approved_business_tasks('00000000-0000-4000-8000-000000000010')),'approved import inserts exactly 22');
+select test_assert((select count(*)=22 and not bool_or(was_inserted) from cmd_import_approved_business_tasks('00000000-0000-4000-8000-000000000010')),'approved import retry does not overwrite');
+select test_assert((select count(*)=22 from steward_tasks where correlation_id like 'cmd-business:%' and owner_user_id is null and due_at is null and status<>'complete' and completion_evidence=''),'import has no invented owners dates or receipts');
+select test_assert((select count(*)=13 from steward_tasks where correlation_id like 'cmd-business:%' and parent_task_id is not null),'13 audit children linked');
+reset role;
+\ir ../cmd-release/cleanup.review.sql
 \echo Schema-backed tests completed against isolated synthetic PostgreSQL.

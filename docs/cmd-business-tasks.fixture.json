@@ -13,11 +13,11 @@
       "ownerLabel": null,
       "dueAt": null,
       "assigneeKind": "human",
-      "notes": "Agree business access; finish persistence and live QA",
+      "notes": "Shared business/private personal/own-goal access approved; database permission tests and live QA remain required",
       "subtasks": [
         {
           "id": "cmd-business:task-manager:next",
-          "text": "Agree business access; finish persistence and live QA",
+          "text": "Run isolated permission regressions, then migrate and verify authenticated live behavior",
           "done": false
         }
       ],
@@ -26,7 +26,7 @@
       ],
       "contextLinks": [],
       "taskVisibility": "business",
-      "nextAction": "Agree business access; finish persistence and live QA",
+      "nextAction": "Run isolated permission regressions, then migrate and verify authenticated live behavior",
       "blockedBecause": "",
       "dependsOnTaskId": null,
       "completionEvidence": ""
@@ -42,11 +42,11 @@
       "ownerLabel": null,
       "dueAt": null,
       "assigneeKind": "human",
-      "notes": "Obtain verified individual audit checklist; pricing and terms decisions pending",
+      "notes": "Thirteen audit child items prepared from the supplied audit; implementation and owner decisions remain open",
       "subtasks": [
         {
           "id": "cmd-business:website-audit:next",
-          "text": "Obtain verified individual audit checklist; pricing and terms decisions pending",
+          "text": "Verify the 13 audit items individually; route pricing and terms decisions to the owner",
           "done": false
         }
       ],
@@ -55,7 +55,7 @@
       ],
       "contextLinks": [],
       "taskVisibility": "business",
-      "nextAction": "Obtain verified individual audit checklist; pricing and terms decisions pending",
+      "nextAction": "Verify the 13 audit items individually; route pricing and terms decisions to the owner",
       "blockedBecause": "",
       "dependsOnTaskId": null,
       "completionEvidence": ""
@@ -281,7 +281,7 @@
       "blockedBecause": "",
       "dependsOnTaskId": null,
       "completionEvidence": "",
-      "notes": "Several main calls to action promise a 30-minute call but open a 7–12 minute AI intake. The existing Calendly session works. Safe technical changes are being staged; no audit fix is published.",
+      "notes": "Several main calls to action promise a 30-minute call but open a 7\u201312 minute AI intake. The existing Calendly session works. Safe technical changes are being staged; no audit fix is published.",
       "acceptanceCriteria": [
         "Every start button opens the intended choice and working destination.",
         "Labels accurately describe the call and online intake.",
@@ -621,7 +621,7 @@
       "blockedBecause": "",
       "dependsOnTaskId": null,
       "completionEvidence": "",
-      "notes": "Candidates include /our-work to /case-studies, /services to /what-we-build, /blog to /insights and /contact-us to an approved start path. FAQs, career and legacy service URLs require individual review. The new article’s existing redirect must remain intact.",
+      "notes": "Candidates include /our-work to /case-studies, /services to /what-we-build, /blog to /insights and /contact-us to an approved start path. FAQs, career and legacy service URLs require individual review. The new article\u2019s existing redirect must remain intact.",
       "acceptanceCriteria": [
         "Relevant permanent redirects use a single hop.",
         "Unknown URLs return a genuine 404 instead of a blanket Home redirect.",
@@ -731,7 +731,7 @@
   ],
   "auditProvenance": {
     "source": "Delivered website audit version 1; parent supplied sanitized checks and targeted recheck results.",
-    "reportedRecheck": "2026-10-04 05:20–05:25 UTC",
+    "reportedRecheck": "2026-10-04 05:20\u201305:25 UTC",
     "independentlyReverifiedByThisTask": false,
     "releaseGates": [
       "Authorized booking and intake tests",
