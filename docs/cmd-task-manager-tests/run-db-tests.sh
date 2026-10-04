@@ -1,8 +1,8 @@
 #!/bin/sh
 # Isolated local PostgreSQL only. No production connection string is accepted.
 set -eu
-CMD_PG_BIN=${CMD_PG_BIN:-/opt/homebrew/opt/postgresql@17/bin}
-for cmd in initdb pg_ctl psql; do
+CMD_PG_BIN=${CMD_PG_BIN:-/opt/homebrew/bin}
+for cmd in postgres initdb pg_ctl psql; do
   if [ ! -x "$CMD_PG_BIN/$cmd" ]; then echo "Missing isolated PostgreSQL runtime: $CMD_PG_BIN/$cmd" >&2; exit 2; fi
 done
 CMD_TEST_ROOT=$(mktemp -d /tmp/cmd-task-db.XXXXXX)
