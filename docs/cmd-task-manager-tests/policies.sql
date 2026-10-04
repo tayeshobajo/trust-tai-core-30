@@ -48,6 +48,9 @@ insert into steward_tasks(id,organization_id,title,task_visibility,correlation_i
  ('00000000-0000-4000-8000-000000000103','00000000-0000-4000-8000-000000000010','Dependency fixture','business','test:dependency');
 select test_assert((select created_by=auth.uid() from steward_tasks where id='00000000-0000-4000-8000-000000000101'),'server stamps creator');
 select test_assert((select owner_user_id=auth.uid() from steward_tasks where id='00000000-0000-4000-8000-000000000102'),'personal owner stamped');
+select test_denied($q$update steward_tasks set id='00000000-0000-4000-8000-000000000199' where id='00000000-0000-4000-8000-000000000101'$q$,'classified primary identity immutable');
+select test_denied($q$update steward_tasks set parent_task_id='00000000-0000-4000-8000-000000000102' where id='00000000-0000-4000-8000-000000000104'$q$,'legacy cannot inject private child relationship');
+select test_denied($q$insert into steward_tasks(organization_id,title,parent_task_id) values('00000000-0000-4000-8000-000000000010','Legacy relationship injection','00000000-0000-4000-8000-000000000101')$q$,'legacy insert cannot inject board relationship');
 select test_assert((select task_visibility='legacy_shared' from steward_tasks where id='00000000-0000-4000-8000-000000000104'),'historical rows preserved');
 select test_denied($q$update steward_tasks set task_visibility='business' where id='00000000-0000-4000-8000-000000000102'$q$,'visibility immutable');
 select test_denied($q$update steward_tasks set task_visibility='personal' where id='00000000-0000-4000-8000-000000000104'$q$,'no automatic historical reclassification');
@@ -76,6 +79,8 @@ insert into steward_weekly_goals(id,organization_id,owner_user_id,week_start,tit
 -- One-level audit children cannot be hidden behind a prematurely completed parent.
 insert into steward_tasks(id,organization_id,title,task_visibility,parent_task_id) values
  ('00000000-0000-4000-8000-000000000105','00000000-0000-4000-8000-000000000010','Child fixture','business','00000000-0000-4000-8000-000000000101');
+select test_denied($q$update steward_tasks set depends_on_task_id='00000000-0000-4000-8000-000000000101' where id='00000000-0000-4000-8000-000000000105'$q$,'child cannot depend on parent');
+select test_denied($q$update steward_tasks set status='open',depends_on_task_id='00000000-0000-4000-8000-000000000105' where id='00000000-0000-4000-8000-000000000103'$q$,'mixed hierarchy dependency cycle refused');
 select test_denied($q$update steward_tasks set status='complete',completion_evidence='Checked parent result with child unfinished' where id='00000000-0000-4000-8000-000000000101'$q$,'unfinished child blocks parent completion');
 select test_denied($q$update steward_tasks set parent_task_id='00000000-0000-4000-8000-000000000105' where id='00000000-0000-4000-8000-000000000103'$q$,'nested parent refused');
 select test_denied($q$update steward_tasks set parent_task_id='00000000-0000-4000-8000-000000000102' where id='00000000-0000-4000-8000-000000000105'$q$,'private parent cannot be linked from business task');
@@ -98,11 +103,14 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003'
 select test_assert((select count(*)=0 from steward_tasks where task_visibility='personal'),'admin cannot read personal detail');
 update steward_tasks set owner_user_id='00000000-0000-4000-8000-000000000002' where id='00000000-0000-4000-8000-000000000101';
 select test_denied($q$update steward_weekly_goals set status='confirmed' where id='00000000-0000-4000-8000-000000000201'$q$,'admin cannot confirm another goal');
+insert into steward_tasks(id,organization_id,title,task_visibility,owner_user_id) values('00000000-0000-4000-8000-000000000106','00000000-0000-4000-8000-000000000010','Admin parent','business',auth.uid());
+update steward_tasks set status='open',parent_task_id='00000000-0000-4000-8000-000000000106',owner_user_id='00000000-0000-4000-8000-000000000002' where id='00000000-0000-4000-8000-000000000105';
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000002',false);
+select test_denied($q$update steward_tasks set parent_task_id=null where id='00000000-0000-4000-8000-000000000105'$q$,'child assignee cannot detach from parent they cannot edit');
 update steward_tasks set next_action='Assignee updated next step' where id='00000000-0000-4000-8000-000000000101';
 select test_assert((select next_action='Assignee updated next step' from steward_tasks where id='00000000-0000-4000-8000-000000000101'),'assignee can update');
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000004',false);
-select test_assert((select count(*)=3 from steward_tasks where task_visibility='business'),'viewer can read business');
+select test_assert((select count(*)=4 from steward_tasks where task_visibility='business'),'viewer can read business');
 select test_denied($q$insert into steward_tasks(organization_id,title,task_visibility) values('00000000-0000-4000-8000-000000000010','viewer write','business')$q$,'viewer cannot create');
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000005',false);
 select test_assert((select count(*)=0 from steward_tasks),'inactive member cannot read');
@@ -113,6 +121,14 @@ select test_denied($q$select * from cmd_personal_task_counts('00000000-0000-4000
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);
 update steward_weekly_goals set status='confirmed' where id='00000000-0000-4000-8000-000000000201';
 select test_assert((select confirmed_at is not null from steward_weekly_goals where id='00000000-0000-4000-8000-000000000201'),'owner confirmation timestamp server-generated');
+select test_denied($q$update steward_weekly_goals set title='Changed confirmed outcome' where id='00000000-0000-4000-8000-000000000201'$q$,'owner must reopen before rewriting confirmed goal');
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000002',false);
+select test_denied($q$update steward_weekly_goals set linked_task_ids='[]',target_count=999,title='Other member substituted goal' where id='00000000-0000-4000-8000-000000000201'$q$,'other member cannot substitute confirmed outcome');
+select test_denied($q$update steward_weekly_goals set status='proposed',title='Other member reopened goal' where id='00000000-0000-4000-8000-000000000201'$q$,'other member cannot reopen confirmed goal');
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);
+update steward_weekly_goals set status='proposed',title='Owner revised proposal' where id='00000000-0000-4000-8000-000000000201';
+select test_assert((select confirmed_at is null and completed_at is null from steward_weekly_goals where id='00000000-0000-4000-8000-000000000201'),'revised proposal has no confirmation receipt');
+update steward_weekly_goals set status='confirmed' where id='00000000-0000-4000-8000-000000000201';
 set role anon;
 select set_config('request.jwt.claim.sub','',false);
 select set_config('request.jwt.claim.role','anon',false);

@@ -35,11 +35,17 @@ begin
  end if;
  if TG_OP='UPDATE' then
    if new.task_visibility is distinct from old.task_visibility then raise exception 'Task visibility is immutable'; end if;
-   if old.task_visibility='legacy_shared' then return new; end if;
-   if new.organization_id is distinct from old.organization_id or new.created_by is distinct from old.created_by
+   if old.task_visibility='legacy_shared' then
+     if new.parent_task_id is not null or new.depends_on_task_id is not null then raise exception 'Legacy work cannot link board relationships'; end if;
+     return new;
+   end if;
+   if new.id is distinct from old.id or new.organization_id is distinct from old.organization_id or new.created_by is distinct from old.created_by
      or new.correlation_id is distinct from old.correlation_id then raise exception 'Task identity is immutable'; end if;
  end if;
- if new.task_visibility='legacy_shared' then return new; end if;
+ if new.task_visibility='legacy_shared' then
+   if new.parent_task_id is not null or new.depends_on_task_id is not null then raise exception 'Legacy work cannot link board relationships'; end if;
+   return new;
+ end if;
  -- Classified work is human-reviewed; service credentials cannot bypass ownership here.
  if actor is null or not private.cmd_can_write_tasks(new.organization_id) then raise exception 'Task write access required'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(new.organization_id::text, 0));
@@ -70,6 +76,13 @@ begin
  end if;
  if length(trim(new.title))=0 or length(new.title)>500 then raise exception 'A task title is required (maximum 500 characters)'; end if;
  if new.status='blocked' and length(trim(new.blocked_because))=0 then raise exception 'Record the blocker'; end if;
+ if TG_OP='UPDATE' and old.parent_task_id is not null and new.parent_task_id is distinct from old.parent_task_id then
+   select * into parent from public.steward_tasks where id=old.parent_task_id;
+   if parent.task_visibility='business' and actor is distinct from parent.created_by
+      and actor is distinct from parent.owner_user_id and not admin then
+     raise exception 'Only an authorized parent editor can remove child work';
+   end if;
+ end if;
  if new.parent_task_id is not null then
    select * into parent from public.steward_tasks where id=new.parent_task_id;
    if not found or parent.id=new.id or parent.organization_id<>new.organization_id
@@ -93,12 +106,22 @@ begin
      or (new.task_visibility='personal' and dependency.owner_user_id is distinct from actor) then
      raise exception 'Dependency must be an accessible task in the same board';
    end if;
-   -- Enforce one dependency without cycles, even when updates bypass the UI.
-   if exists(with recursive chain as (
-      select t.id,t.depends_on_task_id,array[t.id] path from public.steward_tasks t where t.id=new.depends_on_task_id
-      union all select t.id,t.depends_on_task_id,c.path||t.id from public.steward_tasks t join chain c on t.id=c.depends_on_task_id where not t.id=any(c.path)
-   ) select 1 from chain where id=new.id) then raise exception 'Dependency cycle is not allowed'; end if;
  end if;
+ -- Both a dependency and a parent's children are completion prerequisites.
+ -- Check the resulting graph, including NEW, so mixed hierarchy/dependency
+ -- cycles cannot leave work impossible to finish.
+ if exists(with recursive nodes as (
+   select t.id,t.depends_on_task_id,t.parent_task_id from public.steward_tasks t
+     where t.organization_id=new.organization_id and t.task_visibility<>'legacy_shared' and t.id<>new.id
+   union all select new.id,new.depends_on_task_id,new.parent_task_id
+ ), edges as (
+   select id src,depends_on_task_id dst from nodes where depends_on_task_id is not null
+   union select parent_task_id,id from nodes where parent_task_id is not null
+ ), chain as (
+   select new.id id,array[new.id] path,false cycle
+   union all select e.dst,c.path||e.dst,e.dst=any(c.path)
+     from chain c join edges e on e.src=c.id where not c.cycle
+ ) select 1 from chain where cycle) then raise exception 'Completion prerequisite cycle is not allowed'; end if;
  if new.status='complete' then
    if exists(select 1 from public.steward_tasks t where t.parent_task_id=new.id and t.status<>'complete') then raise exception 'Complete the child tasks first'; end if;
    if length(trim(new.completion_evidence))<10 then raise exception 'Record the checked result and evidence before completing'; end if;
