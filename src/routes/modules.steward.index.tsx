@@ -82,7 +82,7 @@ const FILTERS: TeamFilter[] = [
 
 function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
   const queryClient = useQueryClient();
-  const queryKey = ["steward", "team", identity.organizationId];
+  const queryKey = ["steward", "team", identity.organizationId, identity.userId];
   const [filter, setFilter] = useState<TeamFilter>("all");
   const [query, setQuery] = useState("");
   const [openTask, setOpenTask] = useState<StewardTask | null>(null);

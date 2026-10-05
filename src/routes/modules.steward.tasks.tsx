@@ -127,7 +127,7 @@ function StewardTasks({
   recordedAt: string;
 }) {
   const queryClient = useQueryClient();
-  const queryKey = ["steward", "team", identity.organizationId];
+  const queryKey = ["steward", "team", identity.organizationId, identity.userId];
   const [filter, setFilter] = useState<TasksFilter>("all");
   const [grouping, setGrouping] = useState<Grouping>("priority");
   const [query, setQuery] = useState("");

@@ -132,11 +132,15 @@ export const weeklyGoals = {
 
   /** Confirm a proposed goal: status 'confirmed', confirmed_at set to now. */
   async confirm(id: ID): Promise<WeeklyGoalRecord> {
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError || !auth.user) throw new Error("Sign in to confirm your own goal.");
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("steward_weekly_goals")
       .update({ status: "confirmed", confirmed_at: now, updated_at: now })
       .eq("id", id)
+      .eq("owner_user_id", auth.user.id)
+      .eq("status", "proposed")
       .select("*")
       .single();
     if (error) {

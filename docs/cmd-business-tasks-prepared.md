@@ -1,0 +1,17 @@
+# Business task set prepared for review
+
+Source: parent-approved sanitized business set, received 2026-10-04. Not inserted into production. All owners and deadlines remain unassigned/unset until verified. Display labels below preserve the supplied nuance; they are not new database enum values. Stable candidate keys prevent duplicate import after approval.
+
+| Candidate correlation key | Task | Current status | Next action / blocker | Completion check |
+| --- | --- | --- | --- | --- |
+| cmd-business:task-manager | Finish and deploy CMD task manager | In progress | Agree business access; finish persistence and live QA | Real tasks persist; correct visibility and ownership; statuses, blockers and next actions work; tests and authenticated desktop/mobile live QA pass |
+| cmd-business:website-audit | Close Trust Tai website audit | In progress | Obtain verified individual audit checklist; pricing and terms decisions pending | Verify implemented recommendations individually; audit delivery alone does not mean launch-ready |
+| cmd-business:payment-repair | Validate and publish payment persistence repair | Blocked | Database integration test environment and authenticated gateway access unresolved | Real isolated database integration and authenticated gateway tests, then controlled publication and verification; existing staged test results alone are insufficient |
+| cmd-business:client-portal | Build client portal from reviewed mockups | In progress | Resolve Core entitlement/publication contract and schema approval | Verified client isolation and working end-to-end routes; three mockups are delivered, implementation is still staged |
+| cmd-business:outreach-pilots | Review three roadmap-led outreach pilots | Awaiting owner review | Review pack delivered to Tai; review copy for Stonewall Meadows, Sanders Bros. Coffee and The Staff Curator before roadmap build | Approved copy and verified roadmap links; no pilot sends recorded |
+| cmd-business:linkedin-credibility | Apply LinkedIn credibility plan | Awaiting owner review | Review pack delivered to Tai; review headline, About, Featured, Experience and main website destination; verify legacy testimonial attributions | Approved changes applied and checked live; audit complete, profile edits not recorded |
+| cmd-business:upwork-case-studies | Turn Upwork evidence into case studies | Awaiting owner review | Review pack delivered to Tai; review training implementation, maintenance, learning/commerce and calculator examples | Source-supported case studies and reuse decisions; no assumed quantified ROI or reuse permissions |
+| cmd-business:roadmap-showcase | Decide public roadmap showcase scope | Proposed | Review curated examples, filters, privacy and reuse | Scope decision recorded with proposed versus implemented labels; gallery build is not approved |
+| cmd-business:studio-demonstration | Validate one Studio product demonstration | Proposed | Approve demonstration and configured-agent comparison | Source-grounded communication and safe publishing demonstrated against the baseline; no product launch assumed |
+
+The supplied payment test count (287, including 62 payment tests) and Upwork inspection counts (130 completed rows, 32 portfolio titles, 4 details) are parent-reported context, not independently verified completion receipts in this task. Do not promote them to production success metrics. No private notes, local paths, personal affairs or invented employee assignments belong in imported descriptions.

@@ -194,6 +194,8 @@ export interface StewardAgentRun {
 }
 
 export interface StewardTask {
+  /** Original manual record fields; no inferred plan or completion evidence. */
+  manualDetail?: Pick<ManualTaskRecord, "subtasks" | "acceptanceCriteria" | "contextLinks" | "notes">;
   /** Stable across reloads: `<origin>:<id>`. Used as the task-state key. */
   key: string;
   id: ID;

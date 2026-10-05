@@ -308,6 +308,12 @@ export function buildStewardTasks(input: AccountabilityInput): StewardTask[] {
       id: m.id,
       origin: "manual",
       title: m.title,
+      manualDetail: {
+        subtasks: m.subtasks,
+        acceptanceCriteria: m.acceptanceCriteria,
+        contextLinks: m.contextLinks,
+        ...(m.notes ? { notes: m.notes } : {}),
+      },
       sourceLabel: "Created here",
       owner,
       ...(m.dueAt ? { dueAt: m.dueAt } : {}),

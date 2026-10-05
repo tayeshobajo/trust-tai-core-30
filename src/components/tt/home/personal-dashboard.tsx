@@ -2,19 +2,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  CreateTaskDrawer,
-  type CreateManualTaskInput,
-} from "@/components/tt/steward/create-task-drawer";
-import { PersonDashboard } from "@/components/tt/steward/dashboard/person-dashboard";
+import { DailyHome } from "./daily-home";
+import { TaskEditor } from "@/components/tt/steward/business-task-board";
+import { cmdTasks } from "@/data/supabase/cmd-tasks";
+import type { BoardTask } from "@/domain/cmd-tasks";
 import { ReassignPicker } from "@/components/tt/steward/reassign-picker";
 import { TaskDetailPanel } from "@/components/tt/steward/task-detail";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
-import { readStewardDashboard, type DashboardActivity } from "@/data/steward/dashboard-read";
+import { readStewardDashboard } from "@/data/steward/dashboard-read";
 import { reassignAuthority } from "@/data/steward/authority";
 import { useStewardActions } from "@/data/steward/use-steward-actions";
-import { useTaskChoices } from "@/data/steward/task-choices";
-import { stewardTasks } from "@/data/supabase/steward-tasks";
 import { weeklyGoals } from "@/data/supabase/weekly-goals";
 import type { StewardTask } from "@/domain/steward-accountability";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -23,9 +20,9 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity }) {
   const queryClient = useQueryClient();
   const queryKey = ["steward", "dashboard", identity.organizationId, identity.userId];
+  const [newTaskKey, setNewTaskKey] = useState<string | null>(null);
+  const [boardTask, setBoardTask] = useState<BoardTask | null>(null);
   const [confirmingGoal, setConfirmingGoal] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [creatingTask, setCreatingTask] = useState(false);
   const [reassigning, setReassigning] = useState<StewardTask | null>(null);
   const [openTask, setOpenTask] = useState<StewardTask | null>(null);
 
@@ -36,7 +33,6 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
   });
 
   const actions = useStewardActions({ identity, queryKey });
-  const choices = useTaskChoices(identity.organizationId, { userId: identity.userId, name: identity.name });
 
   async function handleConfirmGoal(): Promise<void> {
     const goal = read.data?.weeklyGoal;
@@ -53,64 +49,6 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
     }
   }
 
-  function handleCompleteTask(task: StewardTask): void {
-    actions.complete(task, "");
-  }
-
-  function handleUndo(activity: DashboardActivity): void {
-    actions.undoAgentCleared(activity.id, activity.summary);
-  }
-
-  async function handleCreate(
-    input: CreateManualTaskInput,
-    opts: { assignToAI: boolean } = { assignToAI: false },
-  ): Promise<void> {
-    setCreatingTask(true);
-    try {
-      const created = await stewardTasks.create({
-        organizationId: identity.organizationId,
-        createdBy: identity.userId,
-        title: input.title,
-        clientId: input.clientId ?? null,
-        clientLabel: input.clientLabel ?? null,
-        projectId: input.projectId ?? null,
-        projectLabel: input.projectLabel ?? null,
-        dueAt: input.dueAt ?? null,
-        ownerUserId: opts.assignToAI ? null : (input.ownerUserId ?? identity.userId),
-        ownerLabel: opts.assignToAI ? "Trust Tai AI" : (input.ownerLabel ?? identity.name),
-        priority: input.priority,
-        assigneeKind: opts.assignToAI ? "agent" : "human",
-        aiMode: opts.assignToAI ? (input.aiMode ?? "safe_internal") : null,
-        status: input.status,
-        subtasks: input.subtasks,
-        acceptanceCriteria: input.acceptanceCriteria,
-        contextLinks: input.contextLinks,
-        notes: input.notes ?? null,
-      });
-      if (opts.assignToAI && input.status !== "draft") {
-        try {
-          const { runStewardAgentTask } = await import("@/data/steward-agent-runs.functions");
-          const run = await runStewardAgentTask({ data: { organizationId: identity.organizationId, taskId: created.id, agentId: "trust-tai-internal" } });
-          toast.success(run.status === "completed" ? "AI teammate completed the task with saved evidence." : run.status === "needs_approval" ? "Task saved. It needs your approval before the AI can continue." : "Task assigned to the AI teammate.");
-        } catch (error) {
-          toast.warning("Task saved, but AI work did not start", {
-            description: error instanceof Error ? error.message : "The AI runner is unavailable.",
-          });
-        }
-      } else {
-        toast.success(input.status === "draft" ? "Task draft saved." : "Task created.");
-      }
-      setCreating(false);
-      await queryClient.invalidateQueries({ queryKey });
-    } catch (error) {
-      toast.error("Task not saved", {
-        description: error instanceof Error ? error.message : "The task could not be saved.",
-      });
-    } finally {
-      setCreatingTask(false);
-    }
-  }
-
   if (read.isError) return <StewardUnavailable error={read.error} />;
 
   if (!read.data) {
@@ -123,65 +61,85 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
 
   return (
     <>
-    <PersonDashboard
-      read={read.data}
-      scope="self"
-      tasksHref="/modules/steward/tasks"
-      activityHref="/modules/activity"
-      onCompleteTask={handleCompleteTask}
-      onConfirmGoal={handleConfirmGoal}
-      confirmingGoal={confirmingGoal}
-      onUndoActivity={handleUndo}
-      actor={{ userId: identity.userId, canManage: identity.canManage }}
-      taskStorageAvailable={read.data.taskStorageAvailable}
-      completingTaskKey={actions.completingTaskKey}
-      onCreateTask={() => setCreating(true)}
-      onReassignTask={setReassigning}
-      onOpenTask={setOpenTask}
-    />
-    <TaskDetailPanel
-      task={openTask}
-      actor={{ userId: identity.userId, canManage: identity.canManage }}
-      onClose={() => setOpenTask(null)}
-      onComplete={(note) => {
-        if (openTask) actions.complete(openTask, note);
-        setOpenTask(null);
-      }}
-      onReassign={() => {
-        setReassigning(openTask);
-        setOpenTask(null);
-      }}
-      onFocus={(focus) => openTask && actions.setFocus(openTask, focus)}
-      onDue={(due) => openTask && actions.setDue(openTask, due)}
-    />
-    <ReassignPicker
-      open={Boolean(reassigning)}
-      task={reassigning}
-      people={read.data.people}
-      agents={read.data.agents.agents}
-      eligibleAgent={actions.eligibleAgent}
-      refusal={reassigning ? reassignAuthority(reassigning, { userId: identity.userId, canManage: identity.canManage }).because : null}
-      onClose={() => setReassigning(null)}
-      onAssignPerson={(person) => {
-        if (reassigning) actions.reassignToPerson(reassigning, person);
-        setReassigning(null);
-      }}
-      onAssignAgent={(agent) => {
-        if (reassigning) actions.requestAgentAssignment(reassigning, agent);
-        setReassigning(null);
-      }}
-    />
-    <CreateTaskDrawer
-      open={creating}
-      onClose={() => setCreating(false)}
-      identity={identity}
-      clients={choices.data?.clients ?? []}
-      projects={choices.data?.projects ?? []}
-      people={choices.data?.people ?? read.data.people}
-      onCreate={handleCreate}
-      pending={creatingTask}
-      allowAgentCreate
-    />
+      <DailyHome
+        identity={identity}
+        read={read.data}
+        onConfirmGoal={handleConfirmGoal}
+        confirmingGoal={confirmingGoal}
+        onCreate={() => setNewTaskKey(`cmd-board:${crypto.randomUUID()}`)}
+        onOpenLegacy={setOpenTask}
+        onOpenBoard={setBoardTask}
+      />
+      {boardTask || newTaskKey ? (
+        <TaskEditor
+          key={boardTask?.id ?? newTaskKey}
+          task={boardTask}
+          scope={boardTask?.task_visibility ?? "personal"}
+          identity={identity}
+          tasks={
+            queryClient.getQueryData<{ tasks: BoardTask[] }>([
+              "cmd-tasks",
+              identity.organizationId,
+              identity.userId,
+              boardTask?.task_visibility ?? "personal",
+            ])?.tasks ?? (boardTask ? [boardTask] : [])
+          }
+          people={read.data.people.map((p) => ({ userId: p.userId, name: p.name }))}
+          onClose={() => {
+            setBoardTask(null);
+            setNewTaskKey(null);
+          }}
+          onSave={async (input) => {
+            if (boardTask) await cmdTasks.update(boardTask, input);
+            else if (newTaskKey)
+              await cmdTasks.create(identity.organizationId, "personal", newTaskKey, input);
+            await queryClient.invalidateQueries({
+              queryKey: ["cmd-tasks", identity.organizationId, identity.userId],
+            });
+            setBoardTask(null);
+            setNewTaskKey(null);
+          }}
+        />
+      ) : null}
+      <TaskDetailPanel
+        task={openTask}
+        actor={{ userId: identity.userId, canManage: identity.canManage }}
+        onClose={() => setOpenTask(null)}
+        onComplete={(note) => {
+          if (openTask) actions.complete(openTask, note);
+          setOpenTask(null);
+        }}
+        onReassign={() => {
+          setReassigning(openTask);
+          setOpenTask(null);
+        }}
+        onFocus={(focus) => openTask && actions.setFocus(openTask, focus)}
+        onDue={(due) => openTask && actions.setDue(openTask, due)}
+      />
+      <ReassignPicker
+        open={Boolean(reassigning)}
+        task={reassigning}
+        people={read.data.people}
+        agents={read.data.agents.agents}
+        eligibleAgent={actions.eligibleAgent}
+        refusal={
+          reassigning
+            ? reassignAuthority(reassigning, {
+                userId: identity.userId,
+                canManage: identity.canManage,
+              }).because
+            : null
+        }
+        onClose={() => setReassigning(null)}
+        onAssignPerson={(person) => {
+          if (reassigning) actions.reassignToPerson(reassigning, person);
+          setReassigning(null);
+        }}
+        onAssignAgent={(agent) => {
+          if (reassigning) actions.requestAgentAssignment(reassigning, agent);
+          setReassigning(null);
+        }}
+      />
     </>
   );
 }
