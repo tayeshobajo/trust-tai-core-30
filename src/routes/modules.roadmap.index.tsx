@@ -17,6 +17,7 @@ import { BuildFromScoutPanel } from "@/components/tt/roadmap/index/build-from-sc
 import { DecisionAttentionCard } from "@/components/tt/roadmap/index/decision-card";
 import { RoadmapHeader } from "@/components/tt/roadmap/index/header";
 import { RoadmapList } from "@/components/tt/roadmap/index/list";
+import { RoadmapTracker } from "@/components/tt/roadmap/tracker/tracker";
 import { ReadyFromScout } from "@/components/tt/roadmap/index/ready-from-scout";
 import { RoadmapSidebar } from "@/components/tt/roadmap/index/sidebar";
 import { StartRoadmapForm, type StartRoadmapValues } from "@/components/tt/roadmap/start-form";
@@ -76,13 +77,14 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
   };
 
   const [mode, setMode] = useState<Mode>("idle");
+  const [view, setView] = useState<"roadmaps" | "tracker">("roadmaps");
   const [startError, setStartError] = useState<string | null>(null);
   const [preselected, setPreselected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RoadmapFilter>("all");
 
   const roadmapsQuery = useQuery({
-    queryKey: ["roadmap", "list", identity.organizationId],
+    queryKey: ["roadmap", "list", identity.organizationId, identity.userId],
     queryFn: () => roadmapService.list(identity.organizationId),
     retry: false,
   });
@@ -330,7 +332,34 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
           />
         ) : null}
 
-        {body}
+        <nav aria-label="Roadmap views" className="flex gap-2 border-b border-border pb-3">
+          <TTButton
+            variant={view === "roadmaps" ? "primary" : "secondary"}
+            aria-pressed={view === "roadmaps"}
+            onClick={() => setView("roadmaps")}
+          >
+            Roadmaps
+          </TTButton>
+          <TTButton
+            variant={view === "tracker" ? "primary" : "secondary"}
+            aria-pressed={view === "tracker"}
+            onClick={() => setView("tracker")}
+          >
+            Tracker
+          </TTButton>
+        </nav>
+        {view === "tracker" ? (
+          <RoadmapTracker
+            key={`${identity.organizationId}:${identity.userId}`}
+            roadmaps={roadmaps}
+            organizationId={identity.organizationId}
+            userId={identity.userId}
+            loading={roadmapsQuery.isPending}
+            readError={roadmapsQuery.isError}
+          />
+        ) : (
+          body
+        )}
       </div>
     </AppShell>
   );
