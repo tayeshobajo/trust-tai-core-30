@@ -14,12 +14,13 @@ function routeFileFor(route: string): string {
 }
 
 describe("the ordinary navigation is the charter's, in the charter's order", () => {
-  it("lists exactly Home, Clients, Scout, Comms, Website, Ops, Studio, Pulse, Conductor, Approvals, Steward", () => {
+  it("lists exactly Home, Clients, Scout, Comms, Roadmaps, Website, Ops, Studio, Pulse, Conductor, Approvals, Steward", () => {
     expect(primaryNavigation().map((app) => app.name)).toEqual([
       "Home",
       "Clients",
       "Scout",
       "Comms",
+      "Roadmaps",
       "Website",
       "Ops",
       "Studio",
@@ -30,10 +31,10 @@ describe("the ordinary navigation is the charter's, in the charter's order", () 
     ]);
   });
 
-  it("never shows Roadmap or Projects on the rail, even to someone allowed into them", () => {
+  it("shows Roadmaps on the rail while Projects remains a deep link", () => {
     const everyone = APP_REGISTRY.map((app) => app.id);
     const rail = primaryNavigation(everyone).map((app) => app.id);
-    expect(rail).not.toContain("roadmap");
+    expect(rail).toContain("roadmap");
     expect(rail).not.toContain("projects");
   });
 
@@ -54,9 +55,9 @@ describe("the ordinary navigation is the charter's, in the charter's order", () 
 });
 
 describe("leaving the rail is not a demotion", () => {
-  it("keeps Roadmap and Projects registered as business rooms with their routes", () => {
+  it("keeps Projects registered as a business room with its route", () => {
     const deep = deepLinkedApps();
-    expect(deep.map((app) => app.id).sort()).toEqual(["projects", "roadmap"]);
+    expect(deep.map((app) => app.id).sort()).toEqual(["projects"]);
     for (const app of deep) {
       expect(app.layer).toBe("business");
       expect(app.status).toBe("live");
