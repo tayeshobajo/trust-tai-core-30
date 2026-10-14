@@ -78,14 +78,15 @@ export interface AppRegistration {
 /**
  * The ordinary top-level navigation, in the order the charter fixes it
  * (docs/production-plan.md, "Navigation target"). Settings is secondary and
- * lives in the account menu, not here. Roadmap and Projects are deliberately
- * absent: they remain registered, routed and deep-linkable.
+ * lives in the account menu, not here. Roadmaps is a first-class destination;
+ * Projects remains reachable through its owning client.
  */
 export const PRIMARY_NAVIGATION: readonly ID[] = [
   "home",
   "clients",
   "scout",
   "comms",
+  "roadmap",
   "website",
   "ops",
   "studio",
@@ -144,16 +145,14 @@ export const APP_REGISTRY: AppRegistration[] = [
   {
     id: "roadmap",
     layer: "business",
-    name: "Roadmap",
+    name: "Roadmaps",
     slug: "roadmap",
     description: "Point A to Point B, sequenced into a build order.",
     status: "live",
     route: "/modules/roadmap",
     icon: "Route",
     capabilities: ["projects", "decisions"],
-    // Reached through the client it belongs to. Still owns its state, its
-    // permissions, its routes and its events.
-    navigation: "deep_link",
+    navigation: "primary",
   },
   {
     id: "projects",

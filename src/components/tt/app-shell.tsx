@@ -67,7 +67,7 @@ function NavList({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   /* The rail is derived, never a static list: an app the organization has
      switched off, or one hidden for this person, is simply not here. Rooms
-     registered as deep links (Roadmap, Projects) keep their routes and their
+     registered as deep links (Projects) keep their routes and their
      ownership and are reached from the client they belong to. */
   const rooms = primaryNavigation(allowed);
 

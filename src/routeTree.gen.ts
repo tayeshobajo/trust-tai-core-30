@@ -104,6 +104,7 @@ import { Route as ApiPublicProjectsContextPacketRouteImport } from './routes/api
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
 import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
+import { Route as ApiPublicRoadmapTrackerRouteImport } from './routes/api/public/roadmap.tracker'
 import { Route as ApiPublicRoadmapTrackerPreviewRouteImport } from './routes/api/public/roadmap.tracker-preview'
 import { Route as ApiPublicRoutingNotifyRouteImport } from './routes/api/public/routing.notify'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
@@ -623,6 +624,11 @@ const ApiPublicRoadmapStudioRoute = ApiPublicRoadmapStudioRouteImport.update({
   path: '/api/public/roadmap/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRoadmapTrackerRoute = ApiPublicRoadmapTrackerRouteImport.update({
+  id: '/api/public/roadmap/tracker',
+  path: '/api/public/roadmap/tracker',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicRoadmapTrackerPreviewRoute =
   ApiPublicRoadmapTrackerPreviewRouteImport.update({
     id: '/api/public/roadmap/tracker-preview',
@@ -900,6 +906,7 @@ export interface FileRoutesByFullPath {
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
+  '/api/public/roadmap/tracker': typeof ApiPublicRoadmapTrackerRoute
   '/api/public/roadmap/tracker-preview': typeof ApiPublicRoadmapTrackerPreviewRoute
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
@@ -1020,6 +1027,7 @@ export interface FileRoutesByTo {
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
+  '/api/public/roadmap/tracker': typeof ApiPublicRoadmapTrackerRoute
   '/api/public/roadmap/tracker-preview': typeof ApiPublicRoadmapTrackerPreviewRoute
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
@@ -1150,6 +1158,7 @@ export interface FileRoutesById {
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
+  '/api/public/roadmap/tracker': typeof ApiPublicRoadmapTrackerRoute
   '/api/public/roadmap/tracker-preview': typeof ApiPublicRoadmapTrackerPreviewRoute
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
@@ -1281,6 +1290,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
+    | '/api/public/roadmap/tracker'
     | '/api/public/roadmap/tracker-preview'
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
@@ -1401,6 +1411,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
+    | '/api/public/roadmap/tracker'
     | '/api/public/roadmap/tracker-preview'
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
@@ -1530,6 +1541,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
+    | '/api/public/roadmap/tracker'
     | '/api/public/roadmap/tracker-preview'
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
@@ -1612,6 +1624,7 @@ export interface RootRouteChildren {
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
   ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
+  ApiPublicRoadmapTrackerRoute: typeof ApiPublicRoadmapTrackerRoute
   ApiPublicRoadmapTrackerPreviewRoute: typeof ApiPublicRoadmapTrackerPreviewRoute
   ApiPublicRoutingNotifyRoute: typeof ApiPublicRoutingNotifyRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
@@ -2309,6 +2322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRoadmapStudioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/roadmap/tracker': {
+      id: '/api/public/roadmap/tracker'
+      path: '/api/public/roadmap/tracker'
+      fullPath: '/api/public/roadmap/tracker'
+      preLoaderRoute: typeof ApiPublicRoadmapTrackerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/roadmap/tracker-preview': {
       id: '/api/public/roadmap/tracker-preview'
       path: '/api/public/roadmap/tracker-preview'
@@ -2789,6 +2809,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
   ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
+  ApiPublicRoadmapTrackerRoute: ApiPublicRoadmapTrackerRoute,
   ApiPublicRoadmapTrackerPreviewRoute: ApiPublicRoadmapTrackerPreviewRoute,
   ApiPublicRoutingNotifyRoute: ApiPublicRoutingNotifyRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,

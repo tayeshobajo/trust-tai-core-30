@@ -1,3 +1,4 @@
+import { EditableTrackerTable } from "./editable-table";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -20,8 +21,19 @@ interface Props {
   userId: string;
   loading: boolean;
   readError: boolean;
+  canWork?: boolean;
 }
-export function RoadmapTracker({ roadmaps, organizationId, userId, loading, readError }: Props) {
+export function RoadmapTracker(props: Props) {
+  return (
+    <div className="space-y-10">
+      <EditableTrackerTable {...props} canWork={props.canWork ?? false} />
+      <div className="border-t border-border pt-8">
+        <SourceTracker {...props} />
+      </div>
+    </div>
+  );
+}
+function SourceTracker({ roadmaps, organizationId, userId, loading, readError }: Props) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const source = useQuery({
@@ -71,7 +83,7 @@ export function RoadmapTracker({ roadmaps, organizationId, userId, loading, read
       <div className="space-y-2">
         <p className="tt-eyebrow text-royal">Import review · Read only</p>
         <h2 id="tracker-title" className="font-display text-3xl">
-          Keep the next move grounded.
+          Review the workbook identities.
         </h2>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Review the team's tracker alongside existing roadmaps. Confirm identities and reconcile

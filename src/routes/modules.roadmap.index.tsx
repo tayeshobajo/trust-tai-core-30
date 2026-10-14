@@ -356,6 +356,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
             userId={identity.userId}
             loading={roadmapsQuery.isPending}
             readError={roadmapsQuery.isError}
+            canWork={identity.apps.some((app) => app.appId === "roadmap" && app.canWork)}
           />
         ) : (
           body
