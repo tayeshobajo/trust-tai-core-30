@@ -3,17 +3,17 @@ import {
   ArrowRight,
   Check,
   CheckCheck,
-  ChevronDown,
   Circle,
   CircleCheck,
   FileText,
+  Sparkles,
   Flag,
   LockKeyhole,
   RotateCcw,
   Search,
   Video,
 } from "lucide-react";
-import { TTButton, TTInput, TonePill } from "@/components/tt/primitives";
+import { TTButton, TTInput } from "@/components/tt/primitives";
 import { AmbientSurface } from "@/components/tt/ambient";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { PREVIEW_MEETINGS, PREVIEW_WORK } from "@/data/mockups/steward-preview";
@@ -47,7 +47,7 @@ export function StewardPreview() {
   const [work, setWork] = useState(() => PREVIEW_WORK.map((item) => ({ ...item })));
   const [selected, setSelected] = useState("example-planning");
   const [view, setView] = useState<"meetings" | "work">("meetings");
-  const [filter, setFilter] = useState<Filter>("outstanding");
+  const [filter, setFilter] = useState<Filter>("all");
   const [person, setPerson] = useState("Everyone");
   const [query, setQuery] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -56,6 +56,8 @@ export function StewardPreview() {
   const [reopening, setReopening] = useState(false);
   const [owner, setOwner] = useState("");
   const [future, setFuture] = useState(false);
+  const [helpId, setHelpId] = useState<string | null>(null);
+  const help = work.find((item) => item.id === helpId);
   const [message, setMessage] = useState("");
   const meeting = PREVIEW_MEETINGS.find((entry) => entry.id === selected) ?? PREVIEW_MEETINGS[0];
   if (!meeting) return null;
@@ -70,9 +72,6 @@ export function StewardPreview() {
   );
   const detail = work.find((item) => item.id === detailId);
   const detailMeeting = PREVIEW_MEETINGS.find((entry) => entry.id === detail?.meetingId);
-  const outstanding = work.filter((item) => matches(item, "outstanding")).length;
-  const blocked = work.filter((item) => item.status === "blocked").length;
-  const proposals = work.filter((item) => item.status === "proposed").length;
   function update(id: string, change: (item: PreviewDeliverable) => PreviewDeliverable) {
     setWork((current) => current.map((item) => (item.id === id ? change(item) : item)));
   }
@@ -97,352 +96,68 @@ export function StewardPreview() {
     : true;
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] pb-12 text-foreground [&_h1]:tracking-normal [&_h2]:tracking-normal [&_h3]:tracking-normal">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border px-1 py-1 text-xs text-muted-foreground sm:py-3">
-        <span className="flex min-w-0 items-center gap-2">
-          <Flag className="size-3.5 shrink-0" aria-hidden /> Fictional design preview
-        </span>
-        <TTButton
-          variant="quiet"
-          onClick={() => {
-            setWork(PREVIEW_WORK.map((item) => ({ ...item })));
-            setMessage("Illustrative work reset. No workspace records changed.");
-          }}
-          className="h-11 px-2 text-xs"
-        >
-          <RotateCcw /> Reset examples
-        </TTButton>
-      </div>
-      <AmbientSurface appId="steward" className="border-b border-border px-1 py-3 sm:px-3 sm:py-7">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="hidden font-mono text-[11px] text-muted-foreground sm:block">
-              CMD / STEWARD
-            </p>
-            <h1 className="font-display text-3xl font-semibold sm:mt-2 sm:text-4xl">Steward</h1>
-            <p className="mt-3 hidden text-sm text-muted-foreground sm:block">
-              The conversation ended. The work carries on.
-            </p>
-          </div>
-          <TTButton
-            variant="secondary"
-            className="shrink-0 px-2 text-xs sm:px-4"
-            onClick={() => setFuture(true)}
-          >
-            <Video /> Fathom{" "}
-            <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">
-              NOT CONNECTED
-            </span>
-          </TTButton>
+    <div className="mx-auto w-full max-w-[1440px] text-foreground [&_h1]:tracking-normal [&_h2]:tracking-normal [&_h3]:tracking-normal">
+      <AmbientSurface appId="steward" className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border pb-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-success/10 text-success"><CheckCheck aria-hidden /></span>
+          <div className="min-w-0"><h1 className="font-display text-xl font-semibold">Steward</h1><p className="text-xs text-muted-foreground">Fictional work · resets on reload</p></div>
         </div>
-        <div className="mt-7 hidden flex-wrap gap-x-9 gap-y-4 sm:flex">
-          {[
-            { n: outstanding, label: "agreed items outstanding", filter: "outstanding" as Filter },
-            { n: blocked, label: "waiting on something", filter: "blocked" as Filter },
-            { n: proposals, label: "needs a decision", filter: "proposed" as Filter },
-          ].map((stat) => (
-            <TTButton
-              key={stat.filter}
-              variant="quiet"
-              onClick={() => {
-                setView("work");
-                setFilter(stat.filter);
-              }}
-              className="h-auto min-h-11 gap-3 rounded-none px-0 text-left hover:bg-transparent"
-            >
-              <span
-                className={cn(
-                  "font-display text-3xl font-medium",
-                  stat.filter === "blocked" ? "text-warning" : "text-foreground",
-                )}
-              >
-                {stat.n}
-              </span>
-              <span className="max-w-28 text-xs font-normal leading-5 text-muted-foreground">
-                {stat.label}
-              </span>
-            </TTButton>
-          ))}
+        <div className="flex shrink-0">
+          <TTButton variant="quiet" title="Fathom — not connected" aria-label="Fathom — not connected" className="size-11 p-0" onClick={() => setFuture(true)}><Video /></TTButton>
+          <TTButton variant="quiet" title="Reset examples" aria-label="Reset examples" className="size-11 p-0" onClick={() => { setWork(PREVIEW_WORK.map((item) => ({ ...item }))); setMessage("Examples reset. No workspace records changed."); }}><RotateCcw /></TTButton>
         </div>
       </AmbientSurface>
-      <div className="flex items-center gap-5 border-b border-border px-1 sm:px-3">
-        {(["meetings", "work"] as const).map((tab) => (
-          <TTButton
-            key={tab}
-            variant="quiet"
-            aria-pressed={view === tab}
-            onClick={() => {
-              setView(tab);
-              setFilter("outstanding");
-            }}
-            className={cn(
-              "h-11 rounded-none border-b-2 px-0 sm:h-14",
-              view === tab ? "border-foreground text-foreground" : "border-transparent",
-            )}
-          >
-            {tab === "meetings" ? "Meetings" : "All outstanding work"}
-          </TTButton>
-        ))}
-      </div>
-      <div
-        className={cn(
-          "mt-3 grid gap-4 sm:mt-6 sm:gap-7",
-          view === "meetings" && "lg:grid-cols-[260px_minmax(0,1fr)]",
-        )}
-      >
-        {view === "meetings" && (
-          <aside aria-label="Example meetings" className="hidden min-w-0 lg:block">
-            <p className="mb-3 px-1 font-mono text-[11px] text-muted-foreground">
-              RECENT MEETINGS · 3
-            </p>
-            <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-              {PREVIEW_MEETINGS.map((entry) => {
-                const p = meetingProgress(entry, work);
-                return (
-                  <TTButton
-                    key={entry.id}
-                    variant="quiet"
-                    aria-pressed={selected === entry.id}
-                    onClick={() => {
-                      setSelected(entry.id);
-                      setFilter("outstanding");
-                    }}
-                    className={cn(
-                      "h-auto min-h-36 w-full items-start justify-start rounded-lg border p-4 text-left",
-                      selected === entry.id
-                        ? "border-royal/25 bg-card text-foreground"
-                        : "border-transparent",
-                    )}
-                  >
-                    <span className="block w-full">
-                      <span className="flex items-center justify-between gap-2 text-[11px] font-normal text-muted-foreground">
-                        <span>
-                          {entry.date} · {entry.time}
-                        </span>
-                        <Video className="size-3.5" />
-                      </span>
-                      <span className="mt-3 block text-sm font-semibold leading-6">
-                        {entry.title}
-                      </span>
-                      <span className="mt-3 flex items-center justify-between gap-2 text-xs font-normal">
-                        <span className={p.complete ? "text-success" : "text-muted-foreground"}>
-                          {p.complete ? (
-                            <>
-                              <CheckCheck className="mr-1 inline size-3.5" />
-                              Verified complete
-                            </>
-                          ) : (
-                            p.outstanding + " outstanding"
-                          )}
-                        </span>
-                        <span
-                          className={cn(
-                            "font-mono text-[11px]",
-                            p.complete ? "text-success" : "text-muted-foreground",
-                          )}
-                        >
-                          {p.score === null ? "Partial" : `${p.score}/100`}
-                        </span>
-                      </span>
-                    </span>
-                  </TTButton>
-                );
-              })}
-            </div>
-          </aside>
-        )}
-        <main className="min-w-0">
-          {view === "meetings" && (
-            <label className="mb-3 block text-xs text-muted-foreground lg:hidden">
-              Meeting
-              <select
-                aria-label="Select example meeting"
-                value={selected}
-                onChange={(event) => {
-                  setSelected(event.target.value);
-                  setFilter("outstanding");
-                }}
-                className="mt-1 h-11 w-full min-w-0 rounded-md border border-input bg-card px-2 text-sm text-foreground"
-              >
-                {PREVIEW_MEETINGS.map((entry) => {
-                  const p = meetingProgress(entry, work);
-                  return (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.title} · {p.score === null ? "Partial" : `${p.score}/100`}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-          )}
-          <header className="border-b border-border pb-2 sm:pb-5">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:justify-between">
-              <div className="min-w-0">
-                <p className="font-mono text-[11px] text-muted-foreground">
-                  {view === "meetings"
-                    ? `${meeting.date.toUpperCase()} · ${meeting.time} · ${meeting.duration}`
-                    : "ACROSS ALL EXAMPLE MEETINGS"}
-                </p>
-                <h2 className="mt-1 font-display text-lg font-semibold sm:mt-2 sm:text-2xl">
-                  {view === "meetings" ? meeting.title : "What still needs to move"}
-                </h2>
-                <p className="mt-2 hidden text-xs text-muted-foreground sm:block">
-                  {view === "meetings"
-                    ? meeting.people.join(" · ")
-                    : "Agreed work, one next move at a time."}
-                </p>
-              </div>
-              {view === "meetings" && (
-                <div
-                  className={cn(
-                    "text-right",
-                    progress.complete ? "text-success" : "text-foreground",
-                  )}
-                >
-                  <p className="font-mono text-2xl">
-                    {progress.score === null ? "—/100" : `${progress.score}/100`}
-                  </p>
-                  <p className="mt-1 max-w-24 text-[11px] text-muted-foreground sm:max-w-none">
-                    {progress.verified}/{progress.agreed} agreed items verified
-                  </p>
-                </div>
-              )}
-            </div>
-            {view === "meetings" && (
-              <p
-                className={cn(
-                  "mt-4 hidden border-l-2 pl-3 text-[13px] leading-6 sm:block",
-                  meeting.coverage === "partial"
-                    ? "border-warning text-warning"
-                    : progress.complete
-                      ? "border-success text-success"
-                      : "border-border text-muted-foreground",
-                )}
-              >
-                {meeting.read}
-              </p>
-            )}
-            {view === "meetings" && meeting.coverage === "partial" && (
-              <p className="mt-2 text-xs text-warning sm:hidden">
-                Incomplete coverage · more work may be missing.
-              </p>
-            )}
-          </header>
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2 sm:py-4">
-            <div
-              className="flex w-full min-w-0 gap-1 overflow-x-auto sm:w-auto sm:flex-wrap"
-              aria-label="Work filters"
-            >
-              {FILTERS.map((entry) => (
-                <TTButton
-                  key={entry.id}
-                  variant="quiet"
-                  aria-pressed={filter === entry.id}
-                  onClick={() => setFilter(entry.id)}
-                  className={cn(
-                    "min-h-11 shrink-0 px-3 text-xs",
-                    filter === entry.id && "bg-secondary text-foreground",
-                  )}
-                >
-                  {entry.label}
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {scope.filter((item) => matches(item, entry.id)).length}
-                  </span>
-                </TTButton>
-              ))}
-            </div>
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              Owner
-              <select
-                aria-label="Filter by owner"
-                value={person}
-                onChange={(event) => setPerson(event.target.value)}
-                className="h-11 max-w-36 rounded-md border border-input bg-card px-3 text-xs text-foreground"
-              >
-                {["Everyone", "Alex", "Morgan", "Sam"].map((name) => (
-                  <option key={name}>{name}</option>
-                ))}
-              </select>
-            </label>
+      <nav aria-label="Example meetings" className="flex min-w-0 gap-1 overflow-x-auto border-b border-border py-1">
+        {PREVIEW_MEETINGS.map((entry) => {
+          const p = meetingProgress(entry, work);
+          return <TTButton key={entry.id} variant="quiet" aria-pressed={view === "meetings" && selected === entry.id} onClick={() => { setView("meetings"); setSelected(entry.id); setFilter("all"); setQuery(""); setPerson("Everyone"); }} className={cn("h-11 shrink-0 rounded-md px-3 text-[13px]", view === "meetings" && selected === entry.id && "bg-success/8 text-foreground")}>
+            {entry.title}<span className={cn("font-mono text-xs", p.complete ? "text-success" : "text-warning")}>{p.score === null ? "Partial" : `${p.score}/100`}</span>
+          </TTButton>;
+        })}
+        <TTButton variant="quiet" aria-pressed={view === "work"} onClick={() => { setView("work"); setFilter("outstanding"); setQuery(""); setPerson("Everyone"); }} className={cn("h-11 shrink-0 rounded-md px-3 text-[13px]", view === "work" && "bg-secondary text-royal")}>All outstanding work</TTButton>
+      </nav>
+      <main className="min-w-0">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3">
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-semibold">{view === "meetings" ? meeting.title : "Across meetings"}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{view === "meetings" ? `${meeting.date} · ${meeting.time} · ${meeting.people.join(" / ")}` : "Agreed work · every owner · every meeting"}</p>
           </div>
-          <label className="mb-3 flex items-center gap-2 border-b border-border pb-1 sm:mb-4 sm:pb-2">
-            <Search className="size-4 text-muted-foreground" aria-hidden />
-            <input
-              aria-label="Search example work"
-              placeholder="Find a deliverable"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </label>
-          <div className="space-y-3">
-            {visible.map((item) => (
-              <WorkRow
-                key={item.id}
-                item={item}
-                meetingTitle={
-                  view === "work"
-                    ? PREVIEW_MEETINGS.find((m) => m.id === item.meetingId)?.title
-                    : undefined
-                }
-                onOpen={() => openDetail(item)}
-                onReopen={() => openDetail(item, true)}
-              />
-            ))}
-            {visible.length === 0 && (
-              <div className="py-12 text-center">
-                <CircleCheck
-                  className={cn(
-                    "mx-auto size-8",
-                    progress.complete && view === "meetings"
-                      ? "text-success"
-                      : "text-muted-foreground",
-                  )}
-                />
-                <h3 className="mt-3 text-base font-medium">
-                  {progress.complete && view === "meetings" && filter === "outstanding"
-                    ? "Every agreed deliverable is verified."
-                    : "No items match this view."}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {meeting.coverage === "partial" && view === "meetings"
-                    ? "Coverage is incomplete. This meeting cannot be called complete."
-                    : "The original context and completion references stay with the work."}
-                </p>
-                <TTButton
-                  variant="quiet"
-                  className="mt-3"
-                  onClick={() => {
-                    setFilter("all");
-                    setQuery("");
-                    setPerson("Everyone");
-                  }}
-                >
-                  View all work <ArrowRight />
-                </TTButton>
-              </div>
-            )}
+          {view === "meetings" && <div aria-label="Meeting work completion" className={cn("flex shrink-0 items-center gap-2 rounded-md border px-3 py-2", progress.complete ? "border-success/25 bg-success/8 text-success" : "border-warning/25 bg-warning/8 text-warning")}>
+            {progress.complete ? <CheckCheck className="size-5" /> : <Circle className="size-5" />}
+            <div><p className="font-mono text-xl font-medium">{progress.score === null ? "—/100" : `${progress.score}/100`}</p><p className="text-xs">{progress.score === null ? "Partial coverage" : `${progress.verified}/${progress.agreed} verified`}</p></div>
+          </div>}
+        </header>
+        <div className="grid min-w-0 gap-1 border-y border-border py-1 xl:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex min-w-0 gap-0.5 overflow-x-auto" aria-label="Work filters">{FILTERS.map((entry) => <TTButton key={entry.id} variant="quiet" aria-pressed={filter === entry.id} onClick={() => setFilter(entry.id)} className={cn("h-11 shrink-0 rounded-md px-2 text-xs", filter === entry.id && "bg-secondary text-foreground")}>
+            {entry.label}<span className="font-mono text-xs">{scope.filter((item) => matches(item, entry.id)).length}</span>
+          </TTButton>)}</div>
+          <div className="flex min-w-0 items-center gap-2">
+            <label className="flex min-w-0 flex-1 items-center gap-1"><Search aria-hidden className="size-4 shrink-0 text-muted-foreground" /><input aria-label="Search example work" placeholder="Find work" value={query} onChange={(e) => setQuery(e.target.value)} className="h-11 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground xl:w-24" /></label>
+            <select aria-label="Filter by owner" value={person} onChange={(e) => setPerson(e.target.value)} className="h-11 max-w-28 shrink-0 rounded-md border border-input bg-card px-2 text-xs text-foreground">{["Everyone", "Alex", "Morgan", "Sam"].map((name) => <option key={name}>{name}</option>)}</select>
           </div>
-          {filter === "outstanding" && proposals > 0 && (
-            <TTButton
-              variant="quiet"
-              onClick={() => setFilter("proposed")}
-              className="mt-4 w-full justify-between rounded-md border-t border-border px-1"
-            >
-              <span className="text-xs">Proposals are not agreed work.</span>
-              <span className="flex items-center gap-2 text-xs">
-                Review proposals <ArrowRight />
-              </span>
-            </TTButton>
-          )}
-          <p className="mt-6 text-xs leading-5 text-muted-foreground">
-            Illustrative completion references only. No assignments, messages or workspace changes.
-          </p>
-          <p className="sr-only" role="status">
-            {message}
-          </p>
-        </main>
-      </div>
+        </div>
+        <div aria-label="Meeting tasks">
+          {visible.map((item) => <WorkRow key={item.id} item={item} meetingTitle={view === "work" ? PREVIEW_MEETINGS.find((m) => m.id === item.meetingId)?.title : undefined} onOpen={() => openDetail(item)} onReopen={() => openDetail(item, true)} onHelp={() => setHelpId(item.id)} />)}
+          {visible.length === 0 && <div className="py-6 text-center"><CircleCheck className={cn("mx-auto size-6", progress.complete ? "text-success" : "text-muted-foreground")} /><h3 className="mt-2 text-sm font-medium">{progress.complete && view === "meetings" && filter === "outstanding" ? "Every agreed deliverable is verified." : "No items match this view."}</h3><TTButton variant="quiet" onClick={() => { setFilter("all"); setQuery(""); setPerson("Everyone"); }}>View all work <ArrowRight /></TTButton></div>}
+        </div>
+        {view === "meetings" && <footer aria-label="Requirements for complete meeting work" className={cn("mt-2 border-l-2 px-3 py-2 text-[13px] leading-5", progress.complete ? "border-success bg-success/5 text-success" : "border-warning bg-warning/5 text-foreground")}>
+          <span className="font-semibold">{progress.complete ? "✓ All agreed work verified." : "To reach 100/100: "}</span>
+          {meeting.coverage === "partial" ? "Recover the missing meeting coverage, then verify all agreed work. The full score is unknown." : !progress.complete && `${progress.outstanding} agreed items still need evidence${scope.some((item) => item.status === "blocked") ? "; approve the copy to unblock the page build" : ""}.`}
+          {work.some((item) => item.meetingId === selected && item.status === "proposed") && <span> Proposals await agreement and an owner; they do not count yet.</span>}
+          <p className="text-xs text-muted-foreground">Work completion, not a grade for people. Example references only.</p>
+        </footer>}
+        <p className="sr-only" role="status">{message}</p>
+      </main>
+      <Dialog open={Boolean(help)} onOpenChange={(open) => { if (!open) setHelpId(null); }}>
+        <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto bg-card">
+          <p className="flex items-center gap-2 text-xs text-royal"><Sparkles className="size-4" /> Illustrative AI support · not executing</p>
+          <DialogTitle className="pr-6 text-lg tracking-normal">{help?.title}</DialogTitle>
+          <DialogDescription>A prepared example for human review. No model runs, sends or assignments.</DialogDescription>
+          {help && <><section className="border-l-2 border-royal pl-3"><h3 className="text-sm font-semibold">{help.status === "verified" ? "Review aid" : "Starting point"}</h3><p className="mt-2 whitespace-pre-line text-sm leading-6">{help.aiDraft}</p></section>
+          <section><h3 className="text-sm font-semibold">Your next move</h3><p className="mt-1 text-sm">{help.nextMove}</p><p className="mt-2 text-sm text-muted-foreground">{help.status === "blocked" ? `Wait for verified evidence of: ${help.dependency}. This example cannot clear it.` : help.status === "proposed" ? "Confirm whether this is agreed work and name its owner before acting." : help.status === "verified" ? "Keep the recorded evidence. Reopen with a reason if another review finds a gap." : "Check this against the source and actual result. A draft alone is not completion evidence."}</p></section>
+          <TTButton variant="secondary" onClick={() => { setHelpId(null); openDetail(help); }}><FileText /> Review source & evidence</TTButton></>}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={Boolean(detail)}
@@ -677,105 +392,19 @@ export function StewardPreview() {
   );
 }
 
-function WorkRow({
-  item,
-  meetingTitle,
-  onOpen,
-  onReopen,
-}: {
-  item: PreviewDeliverable;
-  meetingTitle?: string | undefined;
-  onOpen: () => void;
-  onReopen: () => void;
+function WorkRow({ item, meetingTitle, onOpen, onReopen, onHelp }: {
+  item: PreviewDeliverable; meetingTitle?: string; onOpen: () => void; onReopen: () => void; onHelp: () => void;
 }) {
   const verified = item.status === "verified";
   const blocked = item.status === "blocked";
-  return (
-    <article
-      className={cn(
-        "rounded-lg border bg-card p-4 sm:p-5",
-        verified ? "border-success/25" : blocked ? "border-warning/30" : "border-border",
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <span
-          className={cn(
-            "mt-1 shrink-0",
-            verified ? "text-success" : blocked ? "text-warning" : "text-muted-foreground",
-          )}
-        >
-          {verified ? (
-            <CircleCheck className="size-5" />
-          ) : blocked ? (
-            <LockKeyhole className="size-5" />
-          ) : (
-            <Circle className="size-5" />
-          )}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3 className={cn("text-sm font-semibold leading-6", verified && "text-success")}>
-              {item.title}
-            </h3>
-            <TonePill tone={verified ? "good" : blocked || item.overdue ? "caution" : "neutral"}>
-              {verified
-                ? "Verified"
-                : blocked
-                  ? "Blocked"
-                  : item.status === "proposed"
-                    ? "Proposed"
-                    : item.overdue
-                      ? "Overdue"
-                      : "Agreed"}
-            </TonePill>
-          </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {item.owner ?? "Owner not confirmed"}
-            <span aria-hidden> · </span>
-            {item.due
-              ? item.dueKind === "spoken"
-                ? `“${item.due}” · date unconfirmed`
-                : item.due
-              : "No date agreed"}
-            {meetingTitle && <> · {meetingTitle}</>}
-          </p>
-          <p
-            className={cn(
-              "mt-3 flex items-start gap-2 text-[13px] leading-6",
-              blocked ? "text-warning" : "text-muted-foreground",
-            )}
-          >
-            {verified ? (
-              <Check className="mt-1 size-4 shrink-0" />
-            ) : (
-              <ArrowRight className="mt-1 size-4 shrink-0" />
-            )}
-            {verified ? item.proof : item.nextMove}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <TTButton variant="quiet" onClick={onOpen} className="min-h-11 px-0 text-xs">
-              <FileText />
-              Source · {item.at}
-              <ChevronDown />
-            </TTButton>
-            {verified ? (
-              <TTButton variant="quiet" onClick={onReopen} className="min-h-11 px-2 text-xs">
-                <RotateCcw />
-                Reopen
-              </TTButton>
-            ) : (
-              <TTButton variant="secondary" onClick={onOpen} className="min-h-11 px-4 text-xs">
-                {blocked
-                  ? "View blocker"
-                  : item.status === "proposed"
-                    ? "Review proposal"
-                    : "Review & verify"}
-                <ArrowRight />
-              </TTButton>
-            )}
-          </div>
-        </div>
-      </div>
-    </article>
-  );
+  const proposed = item.status === "proposed";
+  const label = verified ? "Verified" : blocked ? "Blocked" : proposed ? "Proposed" : item.overdue ? "Overdue" : "Agreed";
+  const action = verified ? "Reopen" : blocked ? "View blocker" : proposed ? "Review proposal" : "Review & verify";
+  return <article data-task-row={item.id} className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 border-b border-l-2 px-2 py-2 sm:grid-cols-[minmax(0,1fr)_72px_94px_90px_88px] sm:gap-x-1 sm:py-0", verified ? "border-l-success bg-success/8" : blocked || item.overdue ? "border-l-warning bg-warning/5" : proposed ? "border-l-royal bg-royal/5" : "border-l-transparent bg-card")}>
+    <div className="min-w-0"><div className="flex min-w-0 items-center gap-2">{verified ? <CircleCheck aria-hidden className="size-4 shrink-0 text-success" /> : blocked ? <LockKeyhole aria-hidden className="size-4 shrink-0 text-warning" /> : proposed ? <Flag aria-hidden className="size-4 shrink-0 text-royal" /> : <Circle aria-hidden className="size-4 shrink-0 text-muted-foreground" />}<h3 title={item.title} className={cn("min-w-0 text-sm font-medium leading-5 sm:truncate", verified && "text-success")}>{item.title}</h3></div>{meetingTitle && <p title={meetingTitle} className="truncate pl-6 text-xs text-muted-foreground">{meetingTitle}</p>}<p className="mt-1 pl-6 text-xs text-muted-foreground sm:hidden">{item.owner ?? "Owner unknown"} · {item.dueKind === "spoken" ? `“${item.due}” · unconfirmed` : item.due ?? "Date unknown"}</p></div>
+    <div className="hidden min-w-0 text-xs sm:block"><p className={item.owner ? "text-foreground" : "text-royal"}>{item.owner ?? "Unknown"}</p><p className="truncate text-muted-foreground" title={item.dueKind === "spoken" ? `Said ${item.due}; date unconfirmed` : item.due ?? "Date unknown"}>{item.dueKind === "spoken" ? `“${item.due}”?` : item.due ?? "No date"}</p></div>
+    <span className={cn("text-xs font-medium", verified ? "text-success" : blocked || item.overdue ? "text-warning" : proposed ? "text-royal" : "text-muted-foreground")}>{label}</span>
+    <TTButton variant="quiet" title={`AI help: ${item.title}`} aria-label={`AI help: ${item.title}`} className="h-11 rounded-md px-1 text-xs text-royal" onClick={onHelp}><Sparkles /> AI help</TTButton>
+    <TTButton variant="quiet" title={action} aria-label={action} className="h-11 rounded-md px-1 text-xs" onClick={verified ? onReopen : onOpen}>{verified ? <RotateCcw /> : blocked ? <LockKeyhole /> : proposed ? <Flag /> : <Check />}<span>{verified ? "Reopen" : blocked ? "Blocker" : proposed ? "Review" : "Verify"}</span></TTButton>
+  </article>;
 }
