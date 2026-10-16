@@ -6,6 +6,11 @@ import { StewardPreview } from "./workspace";
 
 afterEach(cleanup);
 describe("Steward illustrative user journey", () => {
+  it("offers a review starting point without completing work or adding receipts", () => {
+    render(<StewardPreview />);
+    fireEvent.click(screen.getByRole("button", { name: "AI help: Approve the launch page copy" }));
+    expect(screen.getByRole("button", { name: "Verify example completion" })).toBeUndefined();
+  });
   it("reviews source, records example proof, and reopens without persistence", () => {
     render(<StewardPreview />);
     fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*8$/ }));

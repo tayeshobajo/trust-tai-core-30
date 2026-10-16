@@ -99,7 +99,7 @@ export function StewardPreview() {
     <div className="mx-auto w-full max-w-[1440px] text-foreground [&_h1]:tracking-normal [&_h2]:tracking-normal [&_h3]:tracking-normal">
       <AmbientSurface
         appId="steward"
-        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border pb-2"
+        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border"
       >
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-success/10 text-success">
@@ -136,7 +136,7 @@ export function StewardPreview() {
       </AmbientSurface>
       <nav
         aria-label="Example meetings"
-        className="flex min-w-0 gap-1 overflow-x-auto border-b border-border py-1"
+        className="flex min-w-0 gap-1 overflow-x-auto border-b border-border"
       >
         {PREVIEW_MEETINGS.map((entry) => {
           const p = meetingProgress(entry, work);
@@ -184,7 +184,7 @@ export function StewardPreview() {
         </TTButton>
       </nav>
       <main className="min-w-0">
-        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-1">
           <div className="min-w-0">
             <h2 className="font-display text-lg font-semibold">
               {view === "meetings" ? meeting.title : "Across meetings"}
