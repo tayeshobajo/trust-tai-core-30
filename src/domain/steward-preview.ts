@@ -26,6 +26,7 @@ export interface PreviewDeliverable {
   overdue: boolean;
   status: PreviewStatus;
   nextMove: string;
+  aiDraft?: string | undefined;
   dependency: string | null;
   at: string;
   quote: string;

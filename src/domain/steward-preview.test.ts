@@ -16,15 +16,15 @@ describe("Steward illustrative completion rules", () => {
     expect(meetingProgress(meeting, items)).toMatchObject({
       score: 100,
       complete: true,
-      agreed: 4,
-      verified: 4,
+      agreed: 11,
+      verified: 11,
     });
     expect(
       meetingProgress(
         meeting,
         items.map((item) => (item.id === open.id ? { ...item, proof: null } : item)),
       ),
-    ).toMatchObject({ score: 75, complete: false });
+    ).toMatchObject({ score: 90, complete: false });
   });
   it("never claims 100 when coverage is incomplete", () => {
     expect(
@@ -38,10 +38,10 @@ describe("Steward illustrative completion rules", () => {
   });
   it("keeps proposals outside agreed completion counts", () => {
     expect(meetingProgress(meeting, PREVIEW_WORK)).toMatchObject({
-      agreed: 4,
-      verified: 1,
-      outstanding: 3,
-      score: 25,
+      agreed: 11,
+      verified: 3,
+      outstanding: 8,
+      score: 27,
     });
   });
   it("requires a completion reference", () => {

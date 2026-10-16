@@ -2,6 +2,21 @@
 
 Preview: `/mockups/steward-next`.
 
+## Current density direction — 2026-10-16, 06:37 UTC
+
+The current preview replaces oversized cards and metrics with a compact homework-style work list. Meeting navigation stays directly above the meeting title. Twelve distinct invented rows demonstrate the actual density: 14px task titles, 12px metadata, 44px action targets and 45px desktop rows. Green rows plus checks mean verified work; amber plus explicit labels mean blocked/overdue or incomplete work; royal plus a flag means a proposal. The score certifies work, never a person's worth. The bottom remark names the remaining evidence and copy/build dependency; proposals remain outside the agreed denominator.
+
+Each row offers a task-specific static AI example (review checklist, recap starter, build order or handover outline) and a path to source/evidence review. It does not call a model or mutate work. Unknown owners and dates remain visible; spoken timing is marked unconfirmed. Existing completion, reason-required reopening and append-only receipt functions remain intact. No AGENTS instructions, older import draft, production routes or shared shell were changed.
+
+### Actual browser evidence
+
+- Normal browser zoom and device scale, no CSS scaling. At **1440×900: 12 fully visible rows**, list y=294–834. At **1366×768: 10 fully visible rows**, tenth row ends y=744; remaining two rows and the bottom remark require scrolling.
+- At **375×812: 4 fully visible rows**, first task y=364–465 with both actions visible. Natural vertical scrolling; no horizontal document overflow on any tested size. Navigation and filters scroll within their own bounded horizontal strips.
+- Independent actual interactions at all three sizes passed: AI help → source review; evidence-required verification (27→36/100); reason-required reopening (36→27/100); a second completion/reopen cycle retained both proofs and reasons as four ordered receipts with fictional actor and simulated UTC times. Blocked work could not verify or clear an outstanding dependency. Proposals required an owner. Meeting switching showed partial unknown and verified 100/100 separately; cross-meeting work retained the discovery task. Reload reset all changed example state.
+- Runtime errors: none. **17 focused tests passed** (11 domain rules, 6 component journeys), including AI support not adding receipts/completion. Changed-file ESLint passed. Harness build reported **build OK at 06:37:06 UTC** after narrow optional-property type fixes.
+- Screenshots and geometry/interactions: `/tmp/browser/steward-density/initial-1440.png`, `initial-1366.png`, `initial-375.png`, `ai-1440.png`, `history-1366.png`, and `results.log`; screenshots visually inspected. AI screenshot captured after the opening transition settled.
+- Hosted URL: `https://preview--trusttai-os-foundation.lovable.app/mockups/steward-next`. A fresh external browser redirects to Lovable login, so hosted authenticated QA remains unverified. Editor path and local actual-browser QA are verified. No publication, canonical reads/writes, integrations, permissions or sends.
+
 ## Direction
 
 One dominant idea: the meeting ended, but its agreed work remains visible until verified. A bounded meeting list provides orientation; the central workspace prioritizes outstanding deliverables, owners and the next move. The alternative All outstanding work view spans meetings without becoming a dashboard grid.
