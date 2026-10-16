@@ -59,10 +59,37 @@ describe("Steward illustrative completion rules", () => {
       "proposed",
     );
   });
-  it("reopening removes proof and restores outstanding work", () => {
-    const reopened = reopenPreview(verifyPreview(open, "Example proof"));
-    expect(reopened).toMatchObject({ status: "open", proof: null });
+  it("reopening retains proof and restores outstanding work without counting old proof as complete", () => {
+    const reopened = reopenPreview(verifyPreview(open, "Example proof"), "Copy needs another review");
+    expect(reopened).toMatchObject({ status: "open", proof: "Example proof" });
     expect(meetingProgress(meeting, [reopened]).score).toBe(0);
+  });
+  it("requires a nonblank reopen reason without changing receipts", () => {
+    const completed = verifyPreview(open, "Example proof");
+    expect(reopenPreview(completed, "  ")).toBe(completed);
+  });
+  it("appends every completion and reopening with illustrative actor and time across repeated cycles", () => {
+    const first = { actor: "Alex (fictional)", at: "2026-10-16T16:00:00Z" };
+    const second = { actor: "Morgan (fictional)", at: "2026-10-16T16:01:00Z" };
+    const completed = verifyPreview(open, "First proof", first);
+    const reopened = reopenPreview(completed, "First reason", second);
+    const recompleted = verifyPreview(reopened, "Second proof", { ...first, at: "2026-10-16T16:02:00Z" });
+    const again = reopenPreview(recompleted, "Second reason", { ...second, at: "2026-10-16T16:03:00Z" });
+    expect(again.history).toEqual([
+      { kind: "completed", ...first, illustrative: true, proof: "First proof" },
+      { kind: "reopened", ...second, illustrative: true, proof: "First proof", reason: "First reason" },
+      { kind: "completed", actor: first.actor, at: "2026-10-16T16:02:00Z", illustrative: true, proof: "Second proof" },
+      { kind: "reopened", actor: second.actor, at: "2026-10-16T16:03:00Z", illustrative: true, proof: "Second proof", reason: "Second reason" },
+    ]);
+    expect(completed.history).toHaveLength(1);
+    expect(again.status).toBe("open");
+  });
+  it("preserves the original receipt on initially verified examples", () => {
+    const fixture = PREVIEW_WORK.find((item) => item.status === "verified");
+    if (!fixture) throw new Error("Expected verified example");
+    const reopened = reopenPreview(fixture, "Review again");
+    expect(reopened.history?.[0]).toEqual(fixture.history?.[0]);
+    expect(reopened.history).toHaveLength(2);
   });
   it("proposals require an explicit owner to become agreed", () => {
     const proposed = { ...open, status: "proposed" as const, owner: null };
