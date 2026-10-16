@@ -97,65 +97,291 @@ export function StewardPreview() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px] text-foreground [&_h1]:tracking-normal [&_h2]:tracking-normal [&_h3]:tracking-normal">
-      <AmbientSurface appId="steward" className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border pb-2">
+      <AmbientSurface
+        appId="steward"
+        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border pb-2"
+      >
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-success/10 text-success"><CheckCheck aria-hidden /></span>
-          <div className="min-w-0"><h1 className="font-display text-xl font-semibold">Steward</h1><p className="text-xs text-muted-foreground">Fictional work · resets on reload</p></div>
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-success/10 text-success">
+            <CheckCheck aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h1 className="font-display text-xl font-semibold">Steward</h1>
+            <p className="text-xs text-muted-foreground">Fictional work · resets on reload</p>
+          </div>
         </div>
         <div className="flex shrink-0">
-          <TTButton variant="quiet" title="Fathom — not connected" aria-label="Fathom — not connected" className="size-11 p-0" onClick={() => setFuture(true)}><Video /></TTButton>
-          <TTButton variant="quiet" title="Reset examples" aria-label="Reset examples" className="size-11 p-0" onClick={() => { setWork(PREVIEW_WORK.map((item) => ({ ...item }))); setMessage("Examples reset. No workspace records changed."); }}><RotateCcw /></TTButton>
+          <TTButton
+            variant="quiet"
+            title="Fathom — not connected"
+            aria-label="Fathom — not connected"
+            className="size-11 p-0"
+            onClick={() => setFuture(true)}
+          >
+            <Video />
+          </TTButton>
+          <TTButton
+            variant="quiet"
+            title="Reset examples"
+            aria-label="Reset examples"
+            className="size-11 p-0"
+            onClick={() => {
+              setWork(PREVIEW_WORK.map((item) => ({ ...item })));
+              setMessage("Examples reset. No workspace records changed.");
+            }}
+          >
+            <RotateCcw />
+          </TTButton>
         </div>
       </AmbientSurface>
-      <nav aria-label="Example meetings" className="flex min-w-0 gap-1 overflow-x-auto border-b border-border py-1">
+      <nav
+        aria-label="Example meetings"
+        className="flex min-w-0 gap-1 overflow-x-auto border-b border-border py-1"
+      >
         {PREVIEW_MEETINGS.map((entry) => {
           const p = meetingProgress(entry, work);
-          return <TTButton key={entry.id} variant="quiet" aria-pressed={view === "meetings" && selected === entry.id} onClick={() => { setView("meetings"); setSelected(entry.id); setFilter("all"); setQuery(""); setPerson("Everyone"); }} className={cn("h-11 shrink-0 rounded-md px-3 text-[13px]", view === "meetings" && selected === entry.id && "bg-success/8 text-foreground")}>
-            {entry.title}<span className={cn("font-mono text-xs", p.complete ? "text-success" : "text-warning")}>{p.score === null ? "Partial" : `${p.score}/100`}</span>
-          </TTButton>;
+          return (
+            <TTButton
+              key={entry.id}
+              variant="quiet"
+              aria-pressed={view === "meetings" && selected === entry.id}
+              onClick={() => {
+                setView("meetings");
+                setSelected(entry.id);
+                setFilter("all");
+                setQuery("");
+                setPerson("Everyone");
+              }}
+              className={cn(
+                "h-11 shrink-0 rounded-md px-3 text-[13px]",
+                view === "meetings" && selected === entry.id && "bg-success/8 text-foreground",
+              )}
+            >
+              {entry.title}
+              <span
+                className={cn("font-mono text-xs", p.complete ? "text-success" : "text-warning")}
+              >
+                {p.score === null ? "Partial" : `${p.score}/100`}
+              </span>
+            </TTButton>
+          );
         })}
-        <TTButton variant="quiet" aria-pressed={view === "work"} onClick={() => { setView("work"); setFilter("outstanding"); setQuery(""); setPerson("Everyone"); }} className={cn("h-11 shrink-0 rounded-md px-3 text-[13px]", view === "work" && "bg-secondary text-royal")}>All outstanding work</TTButton>
+        <TTButton
+          variant="quiet"
+          aria-pressed={view === "work"}
+          onClick={() => {
+            setView("work");
+            setFilter("outstanding");
+            setQuery("");
+            setPerson("Everyone");
+          }}
+          className={cn(
+            "h-11 shrink-0 rounded-md px-3 text-[13px]",
+            view === "work" && "bg-secondary text-royal",
+          )}
+        >
+          All outstanding work
+        </TTButton>
       </nav>
       <main className="min-w-0">
         <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3">
           <div className="min-w-0">
-            <h2 className="font-display text-lg font-semibold">{view === "meetings" ? meeting.title : "Across meetings"}</h2>
-            <p className="mt-1 text-xs text-muted-foreground">{view === "meetings" ? `${meeting.date} · ${meeting.time} · ${meeting.people.join(" / ")}` : "Agreed work · every owner · every meeting"}</p>
+            <h2 className="font-display text-lg font-semibold">
+              {view === "meetings" ? meeting.title : "Across meetings"}
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {view === "meetings"
+                ? `${meeting.date} · ${meeting.time} · ${meeting.people.join(" / ")}`
+                : "Agreed work · every owner · every meeting"}
+            </p>
           </div>
-          {view === "meetings" && <div aria-label="Meeting work completion" className={cn("flex shrink-0 items-center gap-2 rounded-md border px-3 py-2", progress.complete ? "border-success/25 bg-success/8 text-success" : "border-warning/25 bg-warning/8 text-warning")}>
-            {progress.complete ? <CheckCheck className="size-5" /> : <Circle className="size-5" />}
-            <div><p className="font-mono text-xl font-medium">{progress.score === null ? "—/100" : `${progress.score}/100`}</p><p className="text-xs">{progress.score === null ? "Partial coverage" : `${progress.verified}/${progress.agreed} verified`}</p></div>
-          </div>}
+          {view === "meetings" && (
+            <div
+              aria-label="Meeting work completion"
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-md border px-3 py-2",
+                progress.complete
+                  ? "border-success/25 bg-success/8 text-success"
+                  : "border-warning/25 bg-warning/8 text-warning",
+              )}
+            >
+              {progress.complete ? (
+                <CheckCheck className="size-5" />
+              ) : (
+                <Circle className="size-5" />
+              )}
+              <div>
+                <p className="font-mono text-xl font-medium">
+                  {progress.score === null ? "—/100" : `${progress.score}/100`}
+                </p>
+                <p className="text-xs">
+                  {progress.score === null
+                    ? "Partial coverage"
+                    : `${progress.verified}/${progress.agreed} verified`}
+                </p>
+              </div>
+            </div>
+          )}
         </header>
         <div className="grid min-w-0 gap-1 border-y border-border py-1 xl:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="flex min-w-0 gap-0.5 overflow-x-auto" aria-label="Work filters">{FILTERS.map((entry) => <TTButton key={entry.id} variant="quiet" aria-pressed={filter === entry.id} onClick={() => setFilter(entry.id)} className={cn("h-11 shrink-0 rounded-md px-2 text-xs", filter === entry.id && "bg-secondary text-foreground")}>
-            {entry.label}<span className="font-mono text-xs">{scope.filter((item) => matches(item, entry.id)).length}</span>
-          </TTButton>)}</div>
+          <div className="flex min-w-0 gap-0.5 overflow-x-auto" aria-label="Work filters">
+            {FILTERS.map((entry) => (
+              <TTButton
+                key={entry.id}
+                variant="quiet"
+                aria-pressed={filter === entry.id}
+                onClick={() => setFilter(entry.id)}
+                className={cn(
+                  "h-11 shrink-0 rounded-md px-2 text-xs",
+                  filter === entry.id && "bg-secondary text-foreground",
+                )}
+              >
+                {entry.label}
+                <span className="font-mono text-xs">
+                  {scope.filter((item) => matches(item, entry.id)).length}
+                </span>
+              </TTButton>
+            ))}
+          </div>
           <div className="flex min-w-0 items-center gap-2">
-            <label className="flex min-w-0 flex-1 items-center gap-1"><Search aria-hidden className="size-4 shrink-0 text-muted-foreground" /><input aria-label="Search example work" placeholder="Find work" value={query} onChange={(e) => setQuery(e.target.value)} className="h-11 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground xl:w-24" /></label>
-            <select aria-label="Filter by owner" value={person} onChange={(e) => setPerson(e.target.value)} className="h-11 max-w-28 shrink-0 rounded-md border border-input bg-card px-2 text-xs text-foreground">{["Everyone", "Alex", "Morgan", "Sam"].map((name) => <option key={name}>{name}</option>)}</select>
+            <label className="flex min-w-0 flex-1 items-center gap-1">
+              <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+              <input
+                aria-label="Search example work"
+                placeholder="Find work"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="h-11 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground xl:w-24"
+              />
+            </label>
+            <select
+              aria-label="Filter by owner"
+              value={person}
+              onChange={(e) => setPerson(e.target.value)}
+              className="h-11 max-w-28 shrink-0 rounded-md border border-input bg-card px-2 text-xs text-foreground"
+            >
+              {["Everyone", "Alex", "Morgan", "Sam"].map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
           </div>
         </div>
         <div aria-label="Meeting tasks">
-          {visible.map((item) => <WorkRow key={item.id} item={item} meetingTitle={view === "work" ? PREVIEW_MEETINGS.find((m) => m.id === item.meetingId)?.title : undefined} onOpen={() => openDetail(item)} onReopen={() => openDetail(item, true)} onHelp={() => setHelpId(item.id)} />)}
-          {visible.length === 0 && <div className="py-6 text-center"><CircleCheck className={cn("mx-auto size-6", progress.complete ? "text-success" : "text-muted-foreground")} /><h3 className="mt-2 text-sm font-medium">{progress.complete && view === "meetings" && filter === "outstanding" ? "Every agreed deliverable is verified." : "No items match this view."}</h3><TTButton variant="quiet" onClick={() => { setFilter("all"); setQuery(""); setPerson("Everyone"); }}>View all work <ArrowRight /></TTButton></div>}
+          {visible.map((item) => (
+            <WorkRow
+              key={item.id}
+              item={item}
+              meetingTitle={
+                view === "work"
+                  ? PREVIEW_MEETINGS.find((m) => m.id === item.meetingId)?.title
+                  : undefined
+              }
+              onOpen={() => openDetail(item)}
+              onReopen={() => openDetail(item, true)}
+              onHelp={() => setHelpId(item.id)}
+            />
+          ))}
+          {visible.length === 0 && (
+            <div className="py-6 text-center">
+              <CircleCheck
+                className={cn(
+                  "mx-auto size-6",
+                  progress.complete ? "text-success" : "text-muted-foreground",
+                )}
+              />
+              <h3 className="mt-2 text-sm font-medium">
+                {progress.complete && view === "meetings" && filter === "outstanding"
+                  ? "Every agreed deliverable is verified."
+                  : "No items match this view."}
+              </h3>
+              <TTButton
+                variant="quiet"
+                onClick={() => {
+                  setFilter("all");
+                  setQuery("");
+                  setPerson("Everyone");
+                }}
+              >
+                View all work <ArrowRight />
+              </TTButton>
+            </div>
+          )}
         </div>
-        {view === "meetings" && <footer aria-label="Requirements for complete meeting work" className={cn("mt-2 border-l-2 px-3 py-2 text-[13px] leading-5", progress.complete ? "border-success bg-success/5 text-success" : "border-warning bg-warning/5 text-foreground")}>
-          <span className="font-semibold">{progress.complete ? "✓ All agreed work verified." : "To reach 100/100: "}</span>
-          {meeting.coverage === "partial" ? "Recover the missing meeting coverage, then verify all agreed work. The full score is unknown." : !progress.complete && `${progress.outstanding} agreed items still need evidence${scope.some((item) => item.status === "blocked") ? "; approve the copy to unblock the page build" : ""}.`}
-          {work.some((item) => item.meetingId === selected && item.status === "proposed") && <span> Proposals await agreement and an owner; they do not count yet.</span>}
-          <p className="text-xs text-muted-foreground">Work completion, not a grade for people. Example references only.</p>
-        </footer>}
-        <p className="sr-only" role="status">{message}</p>
+        {view === "meetings" && (
+          <footer
+            aria-label="Requirements for complete meeting work"
+            className={cn(
+              "mt-2 border-l-2 px-3 py-2 text-[13px] leading-5",
+              progress.complete
+                ? "border-success bg-success/5 text-success"
+                : "border-warning bg-warning/5 text-foreground",
+            )}
+          >
+            <span className="font-semibold">
+              {progress.complete ? "✓ All agreed work verified." : "To reach 100/100: "}
+            </span>
+            {meeting.coverage === "partial"
+              ? "Recover the missing meeting coverage, then verify all agreed work. The full score is unknown."
+              : !progress.complete &&
+                `${progress.outstanding} agreed items still need evidence${scope.some((item) => item.status === "blocked") ? "; approve the copy to unblock the page build" : ""}.`}
+            {work.some((item) => item.meetingId === selected && item.status === "proposed") && (
+              <span> Proposals await agreement and an owner; they do not count yet.</span>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Work completion, not a grade for people. Example references only.
+            </p>
+          </footer>
+        )}
+        <p className="sr-only" role="status">
+          {message}
+        </p>
       </main>
-      <Dialog open={Boolean(help)} onOpenChange={(open) => { if (!open) setHelpId(null); }}>
+      <Dialog
+        open={Boolean(help)}
+        onOpenChange={(open) => {
+          if (!open) setHelpId(null);
+        }}
+      >
         <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto bg-card">
-          <p className="flex items-center gap-2 text-xs text-royal"><Sparkles className="size-4" /> Illustrative AI support · not executing</p>
+          <p className="flex items-center gap-2 text-xs text-royal">
+            <Sparkles className="size-4" /> Illustrative AI support · not executing
+          </p>
           <DialogTitle className="pr-6 text-lg tracking-normal">{help?.title}</DialogTitle>
-          <DialogDescription>A prepared example for human review. No model runs, sends or assignments.</DialogDescription>
-          {help && <><section className="border-l-2 border-royal pl-3"><h3 className="text-sm font-semibold">{help.status === "verified" ? "Review aid" : "Starting point"}</h3><p className="mt-2 whitespace-pre-line text-sm leading-6">{help.aiDraft}</p></section>
-          <section><h3 className="text-sm font-semibold">Your next move</h3><p className="mt-1 text-sm">{help.nextMove}</p><p className="mt-2 text-sm text-muted-foreground">{help.status === "blocked" ? `Wait for verified evidence of: ${help.dependency}. This example cannot clear it.` : help.status === "proposed" ? "Confirm whether this is agreed work and name its owner before acting." : help.status === "verified" ? "Keep the recorded evidence. Reopen with a reason if another review finds a gap." : "Check this against the source and actual result. A draft alone is not completion evidence."}</p></section>
-          <TTButton variant="secondary" onClick={() => { setHelpId(null); openDetail(help); }}><FileText /> Review source & evidence</TTButton></>}
+          <DialogDescription>
+            A prepared example for human review. No model runs, sends or assignments.
+          </DialogDescription>
+          {help && (
+            <>
+              <section className="border-l-2 border-royal pl-3">
+                <h3 className="text-sm font-semibold">
+                  {help.status === "verified" ? "Review aid" : "Starting point"}
+                </h3>
+                <p className="mt-2 whitespace-pre-line text-sm leading-6">{help.aiDraft}</p>
+              </section>
+              <section>
+                <h3 className="text-sm font-semibold">Your next move</h3>
+                <p className="mt-1 text-sm">{help.nextMove}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {help.status === "blocked"
+                    ? `Wait for verified evidence of: ${help.dependency}. This example cannot clear it.`
+                    : help.status === "proposed"
+                      ? "Confirm whether this is agreed work and name its owner before acting."
+                      : help.status === "verified"
+                        ? "Keep the recorded evidence. Reopen with a reason if another review finds a gap."
+                        : "Check this against the source and actual result. A draft alone is not completion evidence."}
+                </p>
+              </section>
+              <TTButton
+                variant="secondary"
+                onClick={() => {
+                  setHelpId(null);
+                  openDetail(help);
+                }}
+              >
+                <FileText /> Review source & evidence
+              </TTButton>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -392,19 +618,129 @@ export function StewardPreview() {
   );
 }
 
-function WorkRow({ item, meetingTitle, onOpen, onReopen, onHelp }: {
-  item: PreviewDeliverable; meetingTitle?: string; onOpen: () => void; onReopen: () => void; onHelp: () => void;
+function WorkRow({
+  item,
+  meetingTitle,
+  onOpen,
+  onReopen,
+  onHelp,
+}: {
+  item: PreviewDeliverable;
+  meetingTitle?: string;
+  onOpen: () => void;
+  onReopen: () => void;
+  onHelp: () => void;
 }) {
   const verified = item.status === "verified";
   const blocked = item.status === "blocked";
   const proposed = item.status === "proposed";
-  const label = verified ? "Verified" : blocked ? "Blocked" : proposed ? "Proposed" : item.overdue ? "Overdue" : "Agreed";
-  const action = verified ? "Reopen" : blocked ? "View blocker" : proposed ? "Review proposal" : "Review & verify";
-  return <article data-task-row={item.id} className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 border-b border-l-2 px-2 py-2 sm:grid-cols-[minmax(0,1fr)_72px_94px_90px_88px] sm:gap-x-1 sm:py-0", verified ? "border-l-success bg-success/8" : blocked || item.overdue ? "border-l-warning bg-warning/5" : proposed ? "border-l-royal bg-royal/5" : "border-l-transparent bg-card")}>
-    <div className="min-w-0"><div className="flex min-w-0 items-center gap-2">{verified ? <CircleCheck aria-hidden className="size-4 shrink-0 text-success" /> : blocked ? <LockKeyhole aria-hidden className="size-4 shrink-0 text-warning" /> : proposed ? <Flag aria-hidden className="size-4 shrink-0 text-royal" /> : <Circle aria-hidden className="size-4 shrink-0 text-muted-foreground" />}<h3 title={item.title} className={cn("min-w-0 text-sm font-medium leading-5 sm:truncate", verified && "text-success")}>{item.title}</h3></div>{meetingTitle && <p title={meetingTitle} className="truncate pl-6 text-xs text-muted-foreground">{meetingTitle}</p>}<p className="mt-1 pl-6 text-xs text-muted-foreground sm:hidden">{item.owner ?? "Owner unknown"} · {item.dueKind === "spoken" ? `“${item.due}” · unconfirmed` : item.due ?? "Date unknown"}</p></div>
-    <div className="hidden min-w-0 text-xs sm:block"><p className={item.owner ? "text-foreground" : "text-royal"}>{item.owner ?? "Unknown"}</p><p className="truncate text-muted-foreground" title={item.dueKind === "spoken" ? `Said ${item.due}; date unconfirmed` : item.due ?? "Date unknown"}>{item.dueKind === "spoken" ? `“${item.due}”?` : item.due ?? "No date"}</p></div>
-    <span className={cn("text-xs font-medium", verified ? "text-success" : blocked || item.overdue ? "text-warning" : proposed ? "text-royal" : "text-muted-foreground")}>{label}</span>
-    <TTButton variant="quiet" title={`AI help: ${item.title}`} aria-label={`AI help: ${item.title}`} className="h-11 rounded-md px-1 text-xs text-royal" onClick={onHelp}><Sparkles /> AI help</TTButton>
-    <TTButton variant="quiet" title={action} aria-label={action} className="h-11 rounded-md px-1 text-xs" onClick={verified ? onReopen : onOpen}>{verified ? <RotateCcw /> : blocked ? <LockKeyhole /> : proposed ? <Flag /> : <Check />}<span>{verified ? "Reopen" : blocked ? "Blocker" : proposed ? "Review" : "Verify"}</span></TTButton>
-  </article>;
+  const label = verified
+    ? "Verified"
+    : blocked
+      ? "Blocked"
+      : proposed
+        ? "Proposed"
+        : item.overdue
+          ? "Overdue"
+          : "Agreed";
+  const action = verified
+    ? "Reopen"
+    : blocked
+      ? "View blocker"
+      : proposed
+        ? "Review proposal"
+        : "Review & verify";
+  return (
+    <article
+      data-task-row={item.id}
+      className={cn(
+        "grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 border-b border-l-2 px-2 py-2 sm:grid-cols-[minmax(0,1fr)_72px_94px_90px_88px] sm:gap-x-1 sm:py-0",
+        verified
+          ? "border-l-success bg-success/8"
+          : blocked || item.overdue
+            ? "border-l-warning bg-warning/5"
+            : proposed
+              ? "border-l-royal bg-royal/5"
+              : "border-l-transparent bg-card",
+      )}
+    >
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          {verified ? (
+            <CircleCheck aria-hidden className="size-4 shrink-0 text-success" />
+          ) : blocked ? (
+            <LockKeyhole aria-hidden className="size-4 shrink-0 text-warning" />
+          ) : proposed ? (
+            <Flag aria-hidden className="size-4 shrink-0 text-royal" />
+          ) : (
+            <Circle aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+          )}
+          <h3
+            title={item.title}
+            className={cn(
+              "min-w-0 text-sm font-medium leading-5 sm:truncate",
+              verified && "text-success",
+            )}
+          >
+            {item.title}
+          </h3>
+        </div>
+        {meetingTitle && (
+          <p title={meetingTitle} className="truncate pl-6 text-xs text-muted-foreground">
+            {meetingTitle}
+          </p>
+        )}
+        <p className="mt-1 pl-6 text-xs text-muted-foreground sm:hidden">
+          {item.owner ?? "Owner unknown"} ·{" "}
+          {item.dueKind === "spoken" ? `“${item.due}” · unconfirmed` : (item.due ?? "Date unknown")}
+        </p>
+      </div>
+      <div className="hidden min-w-0 text-xs sm:block">
+        <p className={item.owner ? "text-foreground" : "text-royal"}>{item.owner ?? "Unknown"}</p>
+        <p
+          className="truncate text-muted-foreground"
+          title={
+            item.dueKind === "spoken"
+              ? `Said ${item.due}; date unconfirmed`
+              : (item.due ?? "Date unknown")
+          }
+        >
+          {item.dueKind === "spoken" ? `“${item.due}”?` : (item.due ?? "No date")}
+        </p>
+      </div>
+      <span
+        className={cn(
+          "text-xs font-medium",
+          verified
+            ? "text-success"
+            : blocked || item.overdue
+              ? "text-warning"
+              : proposed
+                ? "text-royal"
+                : "text-muted-foreground",
+        )}
+      >
+        {label}
+      </span>
+      <TTButton
+        variant="quiet"
+        title={`AI help: ${item.title}`}
+        aria-label={`AI help: ${item.title}`}
+        className="h-11 rounded-md px-1 text-xs text-royal"
+        onClick={onHelp}
+      >
+        <Sparkles /> AI help
+      </TTButton>
+      <TTButton
+        variant="quiet"
+        title={action}
+        aria-label={action}
+        className="h-11 rounded-md px-1 text-xs"
+        onClick={verified ? onReopen : onOpen}
+      >
+        {verified ? <RotateCcw /> : blocked ? <LockKeyhole /> : proposed ? <Flag /> : <Check />}
+        <span>{verified ? "Reopen" : blocked ? "Blocker" : proposed ? "Review" : "Verify"}</span>
+      </TTButton>
+    </article>
+  );
 }

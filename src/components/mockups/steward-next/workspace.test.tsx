@@ -8,6 +8,7 @@ afterEach(cleanup);
 describe("Steward illustrative user journey", () => {
   it("reviews source, records example proof, and reopens without persistence", () => {
     render(<StewardPreview />);
+    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*8$/ }));
     const row = screen
       .getByRole("heading", { name: "Approve the launch page copy" })
       .closest("article");
@@ -22,7 +23,7 @@ describe("Steward illustrative user journey", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Verify example completion" }));
     expect(screen.queryByRole("heading", { name: "Approve the launch page copy" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /^Verified\s*2$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Verified\s*4$/ }));
     const done = screen
       .getByRole("heading", { name: "Approve the launch page copy" })
       .closest("article");
@@ -43,16 +44,16 @@ describe("Steward illustrative user journey", () => {
       screen.getByRole("region", { name: "Illustrative receipt history" }).textContent,
     ).toContain("Example copy needs a correction");
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*3$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*8$/ }));
     expect(screen.getByRole("heading", { name: "Approve the launch page copy" })).toBeTruthy();
     cleanup();
     render(<StewardPreview />);
-    expect(screen.getByRole("button", { name: /^Verified\s*1$/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Verified\s*3$/ })).toBeTruthy();
   });
   it("retains two completion receipts and two reopen reasons through the actual dialog", () => {
     render(<StewardPreview />);
     for (const cycle of [1, 2]) {
-      fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*3$/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*8$/ }));
       const row = screen
         .getByRole("heading", { name: "Approve the launch page copy" })
         .closest("article");
@@ -63,7 +64,7 @@ describe("Steward illustrative user journey", () => {
         { target: { value: `Proof ${cycle}` } },
       );
       fireEvent.click(screen.getByRole("button", { name: "Verify example completion" }));
-      fireEvent.click(screen.getByRole("button", { name: /^Verified\s*2$/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^Verified\s*4$/ }));
       const done = screen
         .getByRole("heading", { name: "Approve the launch page copy" })
         .closest("article");
@@ -105,7 +106,7 @@ describe("Steward illustrative user journey", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Confirm example work" }));
     expect(screen.getByRole("button", { name: /^Proposals\s*0$/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*4$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*9$/ }));
     const row = screen
       .getByRole("heading", { name: "Check analytics access before launch" })
       .closest("article");
@@ -116,6 +117,7 @@ describe("Steward illustrative user journey", () => {
     fireEvent.click(screen.getByRole("button", { name: /Website discovery/ }));
     expect(screen.getByText("—/100")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Onboarding handover/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*0$/ }));
     expect(screen.getAllByText("100/100")[0]).toBeTruthy();
     expect(
       screen.getByRole("heading", { name: "Every agreed deliverable is verified." }),

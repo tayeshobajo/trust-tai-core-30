@@ -112,6 +112,125 @@ const EXAMPLE_WORK: PreviewDeliverable[] = [
     proof: null,
   },
   {
+    id: "example-qa",
+    meetingId: "example-planning",
+    title: "Review the mobile launch layout",
+    owner: "Morgan",
+    due: "Today",
+    dueKind: "exact",
+    overdue: false,
+    status: "open",
+    nextMove: "Check the page at 375px and record layout issues.",
+    dependency: null,
+    at: "23:10",
+    quote: "I will review the mobile launch layout for the launch review.",
+    proof: null,
+    aiDraft:
+      "Mobile review checklist: check the heading, menu, form labels and confirmation state at 375px. Record any clipping with a screenshot.",
+  },
+  {
+    id: "example-form",
+    meetingId: "example-planning",
+    title: "Test the enquiry form",
+    owner: "Sam",
+    due: "Friday",
+    dueKind: "spoken",
+    overdue: false,
+    status: "open",
+    nextMove: "Submit a test enquiry and check the confirmation.",
+    dependency: null,
+    at: "24:10",
+    quote: "I will test the enquiry form for the launch review.",
+    proof: null,
+    aiDraft:
+      "Test outline: use synthetic contact details, check validation, then confirm the success message and delivery receipt. Do not contact a real customer.",
+  },
+  {
+    id: "example-redirect",
+    meetingId: "example-planning",
+    title: "Map the old page redirects",
+    owner: "Alex",
+    due: null,
+    dueKind: "unknown",
+    overdue: false,
+    status: "open",
+    nextMove: "List old URLs and their intended destinations.",
+    dependency: null,
+    at: "25:10",
+    quote: "I will map the old page redirects for the launch review.",
+    proof: null,
+    aiDraft:
+      "Redirect review template: old URL → new destination → reason → check result. Start with the existing page inventory; do not invent missing URLs.",
+  },
+  {
+    id: "example-consent",
+    meetingId: "example-planning",
+    title: "Review consent language",
+    owner: "Morgan",
+    due: null,
+    dueKind: "unknown",
+    overdue: false,
+    status: "open",
+    nextMove: "Compare the form wording with the approved consent text.",
+    dependency: null,
+    at: "26:10",
+    quote: "I will review consent language for the launch review.",
+    proof: null,
+    aiDraft:
+      "Review outline: compare the visible consent text, unchecked default and linked policy against the approved wording. Flag differences for human judgment.",
+  },
+  {
+    id: "example-handoff",
+    meetingId: "example-planning",
+    title: "Prepare the launch handover",
+    owner: "Alex",
+    due: "Friday",
+    dueKind: "spoken",
+    overdue: false,
+    status: "open",
+    nextMove: "List the final checks, remaining gaps and owners.",
+    dependency: null,
+    at: "27:10",
+    quote: "I will prepare the launch handover for the launch review.",
+    proof: null,
+    aiDraft:
+      "Handover outline: approved assets; page review; form test; redirect checks; remaining blockers; named owner. Leave unverified items explicitly open.",
+  },
+  {
+    id: "example-structure",
+    meetingId: "example-planning",
+    title: "Confirm the page structure",
+    owner: "Morgan",
+    due: null,
+    dueKind: "unknown",
+    overdue: false,
+    status: "verified",
+    nextMove: "No outstanding next move.",
+    dependency: null,
+    at: "28:10",
+    quote: "I will confirm the page structure for the launch review.",
+    proof: "Example evidence: confirm the page structure reviewed by Alex.",
+    aiDraft:
+      "Review aid: compare the approved section order against the current page. If the structure changed after approval, retain the receipt and reopen with the discrepancy.",
+  },
+  {
+    id: "example-folder",
+    meetingId: "example-planning",
+    title: "Share the working asset folder",
+    owner: "Sam",
+    due: null,
+    dueKind: "unknown",
+    overdue: false,
+    status: "verified",
+    nextMove: "No outstanding next move.",
+    dependency: null,
+    at: "29:10",
+    quote: "I will share the working asset folder for the launch review.",
+    proof: "Example evidence: share the working asset folder reviewed by Alex.",
+    aiDraft:
+      "Review aid: check that the folder reference still opens and contains the approved assets. Existing example proof stays in history; do not silently replace it.",
+  },
+  {
     id: "example-discovery-work",
     meetingId: "example-discovery",
     title: "Bring two homepage directions to the next call",
@@ -162,6 +281,28 @@ const EXAMPLE_WORK: PreviewDeliverable[] = [
 
 export const PREVIEW_WORK: PreviewDeliverable[] = EXAMPLE_WORK.map((item) => ({
   ...item,
+  aiDraft:
+    item.aiDraft ??
+    (
+      {
+        "example-copy":
+          "Copy review starter: compare the headline, offer, form labels and confirmation text with the agreed direction. Record approval or specific corrections for Sam; this draft is not an approval.",
+        "example-build":
+          "Build-order outline: first obtain Morgan’s verified copy approval, then place approved sections and images, check mobile layout and test the form. The copy dependency is still a human gate.",
+        "example-recap":
+          "Recap starter: decision — launch direction agreed; owner — Morgan reviews copy; dependency — Sam builds after approval; timing — Friday was spoken, not a confirmed date. Check against the source before sharing.",
+        "example-assets":
+          "Review aid: check the approved asset-folder reference, file names and approval notes. If any asset is missing, reopen with a precise reason while retaining the original evidence.",
+        "example-access":
+          "Proposal review: identify who can verify analytics access, ask whether this is agreed work, and record an explicit owner. No access or assignment is changed by this example.",
+        "example-discovery-work":
+          "Direction outline: prepare one content-led and one image-led homepage, each with headline, offer and enquiry path. The closing transcript is missing: do not assume these are all the deliverables.",
+        "example-handover":
+          "Review aid: compare the received checklist with the expected account list. Keep missing or unverified access explicit; do not share credentials.",
+        "example-walkthrough":
+          "Review aid: check that the recording covers navigation, task review and handover. Record the missing section if another review requires reopening.",
+      } as Record<string, string>
+    )[item.id],
   history:
     item.status === "verified" && item.proof
       ? [
