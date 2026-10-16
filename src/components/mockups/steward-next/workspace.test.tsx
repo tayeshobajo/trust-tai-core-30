@@ -28,8 +28,8 @@ describe("Steward illustrative user journey", () => {
       .getByRole("heading", { name: "Approve the launch page copy" })
       .closest("article");
     if (!done) throw new Error("Expected completed row");
-    expect(done.textContent).toContain("Example copy approval reviewed");
     fireEvent.click(within(done).getByRole("button", { name: "Reopen" }));
+    expect(screen.getByRole("dialog").textContent).toContain("Example copy approval reviewed");
     expect(
       screen.getByRole("button", { name: "Record example reopening" }).hasAttribute("disabled"),
     ).toBe(true);
