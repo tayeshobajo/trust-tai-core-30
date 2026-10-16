@@ -626,7 +626,7 @@ function WorkRow({
   onHelp,
 }: {
   item: PreviewDeliverable;
-  meetingTitle?: string;
+  meetingTitle?: string | undefined;
   onOpen: () => void;
   onReopen: () => void;
   onHelp: () => void;
