@@ -9,7 +9,14 @@ describe("Steward illustrative user journey", () => {
   it("offers a review starting point without completing work or adding receipts", () => {
     render(<StewardPreview />);
     fireEvent.click(screen.getByRole("button", { name: "AI help: Approve the launch page copy" }));
-    expect(screen.getByRole("button", { name: "Verify example completion" })).toBeUndefined();
+    expect(screen.queryByRole("button", { name: "Verify example completion" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Review source & evidence" }));
+    expect(screen.queryByRole("region", { name: "Illustrative receipt history" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Verify example completion" }).hasAttribute("disabled"),
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("button", { name: /^Verified\s*3$/ })).toBeTruthy();
   });
   it("reviews source, records example proof, and reopens without persistence", () => {
     render(<StewardPreview />);
