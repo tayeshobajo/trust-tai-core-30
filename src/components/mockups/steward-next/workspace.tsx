@@ -52,6 +52,8 @@ export function StewardPreview() {
   const [query, setQuery] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [reference, setReference] = useState("");
+  const [reopenReason, setReopenReason] = useState("");
+  const [reopening, setReopening] = useState(false);
   const [owner, setOwner] = useState("");
   const [future, setFuture] = useState(false);
   const [message, setMessage] = useState("");
@@ -74,10 +76,19 @@ export function StewardPreview() {
   function update(id: string, change: (item: PreviewDeliverable) => PreviewDeliverable) {
     setWork((current) => current.map((item) => (item.id === id ? change(item) : item)));
   }
-  function openDetail(item: PreviewDeliverable) {
+  function openDetail(item: PreviewDeliverable, reopen = false) {
     setDetailId(item.id);
     setReference("");
+    setReopenReason("");
+    setReopening(reopen);
     setOwner(item.owner ?? "");
+  }
+  function illustrativeMetadata() {
+    const receiptCount = work.reduce((count, item) => count + (item.history?.length ?? 0), 0);
+    return {
+      actor: "Alex (fictional)",
+      at: new Date(Date.UTC(2026, 9, 16, 16, receiptCount)).toISOString(),
+    };
   }
   const dependencyDone = detail?.dependency
     ? work.some(
@@ -87,9 +98,9 @@ export function StewardPreview() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px] pb-12 text-foreground [&_h1]:tracking-normal [&_h2]:tracking-normal [&_h3]:tracking-normal">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-1 py-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <Flag className="size-3.5" aria-hidden /> Design preview · fictional meetings & people
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border px-1 py-1 text-xs text-muted-foreground sm:py-3">
+        <span className="flex min-w-0 items-center gap-2">
+          <Flag className="size-3.5 shrink-0" aria-hidden /> Fictional design preview
         </span>
         <TTButton
           variant="quiet"
@@ -102,21 +113,21 @@ export function StewardPreview() {
           <RotateCcw /> Reset examples
         </TTButton>
       </div>
-      <AmbientSurface appId="steward" className="border-b border-border px-1 pb-7 pt-7 sm:px-3">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div>
-            <p className="font-mono text-[11px] text-muted-foreground">CMD / STEWARD</p>
-            <h1 className="mt-2 font-display text-3xl font-semibold sm:text-4xl">Steward</h1>
-            <p className="mt-3 text-sm text-muted-foreground">
+      <AmbientSurface appId="steward" className="border-b border-border px-1 py-3 sm:px-3 sm:py-7">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="hidden font-mono text-[11px] text-muted-foreground sm:block">CMD / STEWARD</p>
+            <h1 className="font-display text-3xl font-semibold sm:mt-2 sm:text-4xl">Steward</h1>
+            <p className="mt-3 hidden text-sm text-muted-foreground sm:block">
               The conversation ended. The work carries on.
             </p>
           </div>
-          <TTButton variant="secondary" onClick={() => setFuture(true)}>
+          <TTButton variant="secondary" className="shrink-0 px-2 text-xs sm:px-4" onClick={() => setFuture(true)}>
             <Video /> Fathom{" "}
-            <span className="font-mono text-[10px] text-muted-foreground">NOT CONNECTED</span>
+            <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">NOT CONNECTED</span>
           </TTButton>
         </div>
-        <div className="mt-7 flex flex-wrap gap-x-9 gap-y-4">
+        <div className="mt-7 hidden flex-wrap gap-x-9 gap-y-4 sm:flex">
           {[
             { n: outstanding, label: "agreed items outstanding", filter: "outstanding" as Filter },
             { n: blocked, label: "waiting on something", filter: "blocked" as Filter },
@@ -157,7 +168,7 @@ export function StewardPreview() {
               setFilter("outstanding");
             }}
             className={cn(
-              "h-14 rounded-none border-b-2 px-0",
+              "h-11 rounded-none border-b-2 px-0 sm:h-14",
               view === tab ? "border-foreground text-foreground" : "border-transparent",
             )}
           >
@@ -167,12 +178,12 @@ export function StewardPreview() {
       </div>
       <div
         className={cn(
-          "mt-6 grid gap-7",
+          "mt-3 grid gap-4 sm:mt-6 sm:gap-7",
           view === "meetings" && "lg:grid-cols-[260px_minmax(0,1fr)]",
         )}
       >
         {view === "meetings" && (
-          <aside aria-label="Example meetings" className="min-w-0">
+          <aside aria-label="Example meetings" className="hidden min-w-0 lg:block">
             <p className="mb-3 px-1 font-mono text-[11px] text-muted-foreground">
               RECENT MEETINGS · 3
             </p>
@@ -233,18 +244,34 @@ export function StewardPreview() {
           </aside>
         )}
         <main className="min-w-0">
-          <header className="border-b border-border pb-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+          {view === "meetings" && (
+            <label className="mb-3 block text-xs text-muted-foreground lg:hidden">
+              Meeting
+              <select
+                aria-label="Select example meeting"
+                value={selected}
+                onChange={(event) => { setSelected(event.target.value); setFilter("outstanding"); }}
+                className="mt-1 h-11 w-full min-w-0 rounded-md border border-input bg-card px-2 text-sm text-foreground"
+              >
+                {PREVIEW_MEETINGS.map((entry) => {
+                  const p = meetingProgress(entry, work);
+                  return <option key={entry.id} value={entry.id}>{entry.title} · {p.score === null ? "Partial" : `${p.score}/100`}</option>;
+                })}
+              </select>
+            </label>
+          )}
+          <header className="border-b border-border pb-2 sm:pb-5">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:justify-between">
               <div className="min-w-0">
                 <p className="font-mono text-[11px] text-muted-foreground">
                   {view === "meetings"
                     ? `${meeting.date.toUpperCase()} · ${meeting.time} · ${meeting.duration}`
                     : "ACROSS ALL EXAMPLE MEETINGS"}
                 </p>
-                <h2 className="mt-2 font-display text-xl font-semibold sm:text-2xl">
+                <h2 className="mt-1 font-display text-lg font-semibold sm:mt-2 sm:text-2xl">
                   {view === "meetings" ? meeting.title : "What still needs to move"}
                 </h2>
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="mt-2 hidden text-xs text-muted-foreground sm:block">
                   {view === "meetings"
                     ? meeting.people.join(" · ")
                     : "Agreed work, one next move at a time."}
@@ -260,7 +287,7 @@ export function StewardPreview() {
                   <p className="font-mono text-2xl">
                     {progress.score === null ? "—/100" : `${progress.score}/100`}
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p className="mt-1 max-w-24 text-[11px] text-muted-foreground sm:max-w-none">
                     {progress.verified}/{progress.agreed} agreed items verified
                   </p>
                 </div>
@@ -269,7 +296,7 @@ export function StewardPreview() {
             {view === "meetings" && (
               <p
                 className={cn(
-                  "mt-4 border-l-2 pl-3 text-[13px] leading-6",
+                  "mt-4 hidden border-l-2 pl-3 text-[13px] leading-6 sm:block",
                   meeting.coverage === "partial"
                     ? "border-warning text-warning"
                     : progress.complete
@@ -280,9 +307,12 @@ export function StewardPreview() {
                 {meeting.read}
               </p>
             )}
+            {view === "meetings" && meeting.coverage === "partial" && (
+              <p className="mt-2 text-xs text-warning sm:hidden">Incomplete coverage · more work may be missing.</p>
+            )}
           </header>
-          <div className="flex flex-wrap items-center justify-between gap-3 py-4">
-            <div className="flex flex-wrap gap-1" aria-label="Work filters">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2 sm:py-4">
+            <div className="flex w-full min-w-0 gap-1 overflow-x-auto sm:w-auto sm:flex-wrap" aria-label="Work filters">
               {FILTERS.map((entry) => (
                 <TTButton
                   key={entry.id}
@@ -290,7 +320,7 @@ export function StewardPreview() {
                   aria-pressed={filter === entry.id}
                   onClick={() => setFilter(entry.id)}
                   className={cn(
-                    "min-h-11 px-3 text-xs",
+                    "min-h-11 shrink-0 px-3 text-xs",
                     filter === entry.id && "bg-secondary text-foreground",
                   )}
                 >
@@ -315,7 +345,7 @@ export function StewardPreview() {
               </select>
             </label>
           </div>
-          <label className="mb-4 flex items-center gap-2 border-b border-border pb-2">
+          <label className="mb-3 flex items-center gap-2 border-b border-border pb-1 sm:mb-4 sm:pb-2">
             <Search className="size-4 text-muted-foreground" aria-hidden />
             <input
               aria-label="Search example work"
@@ -336,10 +366,7 @@ export function StewardPreview() {
                     : undefined
                 }
                 onOpen={() => openDetail(item)}
-                onReopen={() => {
-                  update(item.id, reopenPreview);
-                  setMessage("Example deliverable reopened.");
-                }}
+                onReopen={() => openDetail(item, true)}
               />
             ))}
             {visible.length === 0 && (
@@ -454,17 +481,25 @@ export function StewardPreview() {
                     </p>
                     {detail.proof}
                   </div>
-                  <TTButton
-                    variant="secondary"
-                    onClick={() => {
-                      update(detail.id, reopenPreview);
-                      setDetailId(null);
-                      setMessage("Example deliverable reopened.");
-                    }}
-                  >
-                    <RotateCcw />
-                    Reopen deliverable
-                  </TTButton>
+                  {reopening ? (
+                    <>
+                      <label className="text-sm">
+                        Reopen reason
+                        <TTInput className="mt-2" aria-label="Reopen reason" value={reopenReason}
+                          onChange={(event) => setReopenReason(event.target.value)}
+                          placeholder="What needs further work?" />
+                      </label>
+                      <TTButton variant="secondary" disabled={!reopenReason.trim()} onClick={() => {
+                        update(detail.id, (item) => reopenPreview(item, reopenReason, illustrativeMetadata()));
+                        setReopening(false);
+                        setMessage("Example deliverable reopened. Prior completion receipts preserved.");
+                      }}><RotateCcw />Record example reopening</TTButton>
+                    </>
+                  ) : (
+                    <TTButton variant="secondary" onClick={() => setReopening(true)}>
+                      <RotateCcw />Reopen deliverable
+                    </TTButton>
+                  )}
                 </>
               ) : detail.status === "proposed" ? (
                 <>
@@ -525,7 +560,7 @@ export function StewardPreview() {
                     disabled={!reference.trim()}
                     className="bg-success text-primary-foreground hover:bg-success/90"
                     onClick={() => {
-                      update(detail.id, (item) => verifyPreview(item, reference));
+                      update(detail.id, (item) => verifyPreview(item, reference, illustrativeMetadata()));
                       setDetailId(null);
                       setMessage("Example completion reference recorded.");
                     }}
@@ -534,6 +569,25 @@ export function StewardPreview() {
                     Verify example completion
                   </TTButton>
                 </>
+              )}
+              {Boolean(detail.history?.length) && (
+                <section aria-label="Illustrative receipt history" className="border-t border-border pt-4">
+                  <h3 className="text-sm font-medium">Completion & reopen history</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Fictional actors and simulated times · resets on reload.</p>
+                  <ol className="mt-3 space-y-3">
+                    {detail.history?.map((receipt, index) => (
+                      <li key={`${receipt.at}-${index}`} className="border-l-2 border-border pl-3 text-sm">
+                        <p className={receipt.kind === "completed" ? "text-success" : "text-foreground"}>
+                          {receipt.kind === "completed" ? <CheckCheck className="mr-1 inline size-4" /> : <RotateCcw className="mr-1 inline size-4" />}
+                          {receipt.kind === "completed" ? "Completed" : "Reopened"} · illustrative
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">{receipt.actor} · {receipt.at.replace("T", " ").replace(".000Z", " UTC").replace("Z", " UTC")}</p>
+                        {receipt.reason && <p className="mt-1">Reason: {receipt.reason}</p>}
+                        <p className="mt-1 break-words text-xs text-muted-foreground">Completion reference: {receipt.proof}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
               )}
             </>
           )}

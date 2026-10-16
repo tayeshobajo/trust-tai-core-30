@@ -1,5 +1,21 @@
 /** Fictional, in-memory design states. Never canonical task records. */
 export type PreviewStatus = "open" | "blocked" | "proposed" | "verified";
+export interface PreviewReceipt {
+  kind: "completed" | "reopened";
+  actor: string;
+  at: string;
+  illustrative: true;
+  proof: string;
+  reason?: string;
+}
+export interface PreviewActorTime {
+  actor: string;
+  at: string;
+}
+const EXAMPLE_ACTOR_TIME: PreviewActorTime = {
+  actor: "Alex (fictional)",
+  at: "2026-10-16T16:00:00Z",
+};
 export interface PreviewDeliverable {
   id: string;
   meetingId: string;
@@ -15,6 +31,7 @@ export interface PreviewDeliverable {
   quote: string;
   proof: string | null;
   priorStatus?: PreviewStatus;
+  history?: readonly PreviewReceipt[];
 }
 export interface PreviewMeeting {
   id: string;
@@ -49,15 +66,36 @@ export function meetingProgress(meeting: PreviewMeeting, items: PreviewDeliverab
   };
 }
 
-export function verifyPreview(item: PreviewDeliverable, proof: string): PreviewDeliverable {
+export function verifyPreview(
+  item: PreviewDeliverable,
+  proof: string,
+  metadata: PreviewActorTime = EXAMPLE_ACTOR_TIME,
+): PreviewDeliverable {
   if (item.status === "proposed" || item.status === "blocked" || !proof.trim()) return item;
   if (item.status === "verified") return item;
-  return { ...item, priorStatus: item.status, status: "verified", proof: proof.trim() };
+  if (!metadata.actor.trim() || !metadata.at.trim()) return item;
+  return {
+    ...item, priorStatus: item.status, status: "verified", proof: proof.trim(),
+    history: [...(item.history ?? []), {
+      kind: "completed", actor: metadata.actor, at: metadata.at,
+      illustrative: true, proof: proof.trim(),
+    }],
+  };
 }
 
-export function reopenPreview(item: PreviewDeliverable): PreviewDeliverable {
-  if (item.status !== "verified") return item;
-  return { ...item, status: item.priorStatus ?? "open", proof: null };
+export function reopenPreview(
+  item: PreviewDeliverable,
+  reason: string,
+  metadata: PreviewActorTime = EXAMPLE_ACTOR_TIME,
+): PreviewDeliverable {
+  if (item.status !== "verified" || !reason.trim() || !metadata.actor.trim() || !metadata.at.trim()) return item;
+  return {
+    ...item, status: item.priorStatus ?? "open",
+    history: [...(item.history ?? []), {
+      kind: "reopened", actor: metadata.actor, at: metadata.at,
+      illustrative: true, proof: item.proof ?? "", reason: reason.trim(),
+    }],
+  };
 }
 
 export function confirmPreview(item: PreviewDeliverable, owner: string): PreviewDeliverable {
