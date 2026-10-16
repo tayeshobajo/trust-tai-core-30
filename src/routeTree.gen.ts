@@ -20,6 +20,7 @@ import { Route as MockupsCommsFamiliarCRouteImport } from './routes/mockups.comm
 import { Route as MockupsCommsNextRouteImport } from './routes/mockups.comms-next'
 import { Route as MockupsCommsWorkspaceV2RouteImport } from './routes/mockups.comms-workspace-v2'
 import { Route as MockupsPulseNextRouteImport } from './routes/mockups.pulse-next'
+import { Route as MockupsStewardNextRouteImport } from './routes/mockups.steward-next'
 import { Route as MockupsStudioContentRouteImport } from './routes/mockups.studio-content'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesActivityRouteImport } from './routes/modules.activity'
@@ -192,6 +193,11 @@ const MockupsCommsWorkspaceV2Route = MockupsCommsWorkspaceV2RouteImport.update({
 const MockupsPulseNextRoute = MockupsPulseNextRouteImport.update({
   id: '/mockups/pulse-next',
   path: '/mockups/pulse-next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MockupsStewardNextRoute = MockupsStewardNextRouteImport.update({
+  id: '/mockups/steward-next',
+  path: '/mockups/steward-next',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MockupsStudioContentRoute = MockupsStudioContentRouteImport.update({
@@ -829,6 +835,7 @@ export interface FileRoutesByFullPath {
   '/mockups/comms-next': typeof MockupsCommsNextRoute
   '/mockups/comms-workspace-v2': typeof MockupsCommsWorkspaceV2Route
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
+  '/mockups/steward-next': typeof MockupsStewardNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
@@ -959,6 +966,7 @@ export interface FileRoutesByTo {
   '/mockups/comms-next': typeof MockupsCommsNextRoute
   '/mockups/comms-workspace-v2': typeof MockupsCommsWorkspaceV2Route
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
+  '/mockups/steward-next': typeof MockupsStewardNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
@@ -1083,6 +1091,7 @@ export interface FileRoutesById {
   '/mockups/comms-next': typeof MockupsCommsNextRoute
   '/mockups/comms-workspace-v2': typeof MockupsCommsWorkspaceV2Route
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
+  '/mockups/steward-next': typeof MockupsStewardNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
@@ -1216,6 +1225,7 @@ export interface FileRouteTypes {
     | '/mockups/comms-next'
     | '/mockups/comms-workspace-v2'
     | '/mockups/pulse-next'
+    | '/mockups/steward-next'
     | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
@@ -1346,6 +1356,7 @@ export interface FileRouteTypes {
     | '/mockups/comms-next'
     | '/mockups/comms-workspace-v2'
     | '/mockups/pulse-next'
+    | '/mockups/steward-next'
     | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
@@ -1469,6 +1480,7 @@ export interface FileRouteTypes {
     | '/mockups/comms-next'
     | '/mockups/comms-workspace-v2'
     | '/mockups/pulse-next'
+    | '/mockups/steward-next'
     | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
@@ -1600,6 +1612,7 @@ export interface RootRouteChildren {
   MockupsCommsNextRoute: typeof MockupsCommsNextRoute
   MockupsCommsWorkspaceV2Route: typeof MockupsCommsWorkspaceV2Route
   MockupsPulseNextRoute: typeof MockupsPulseNextRoute
+  MockupsStewardNextRoute: typeof MockupsStewardNextRoute
   MockupsStudioContentRoute: typeof MockupsStudioContentRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesActivityRoute: typeof ModulesActivityRoute
@@ -1745,6 +1758,13 @@ declare module '@tanstack/react-router' {
       path: '/mockups/pulse-next'
       fullPath: '/mockups/pulse-next'
       preLoaderRoute: typeof MockupsPulseNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mockups/steward-next': {
+      id: '/mockups/steward-next'
+      path: '/mockups/steward-next'
+      fullPath: '/mockups/steward-next'
+      preLoaderRoute: typeof MockupsStewardNextRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mockups/studio-content': {
@@ -2794,6 +2814,7 @@ const rootRouteChildren: RootRouteChildren = {
   MockupsCommsNextRoute: MockupsCommsNextRoute,
   MockupsCommsWorkspaceV2Route: MockupsCommsWorkspaceV2Route,
   MockupsPulseNextRoute: MockupsPulseNextRoute,
+  MockupsStewardNextRoute: MockupsStewardNextRoute,
   MockupsStudioContentRoute: MockupsStudioContentRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesActivityRoute: ModulesActivityRoute,
