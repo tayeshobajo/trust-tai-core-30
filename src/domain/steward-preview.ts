@@ -28,15 +28,23 @@ export interface PreviewMeeting {
 }
 
 export function meetingProgress(meeting: PreviewMeeting, items: PreviewDeliverable[]) {
-  const agreed = items.filter((item) => item.meetingId === meeting.id && item.status !== "proposed");
-  const verified = agreed.filter((item) => item.status === "verified" && Boolean(item.proof?.trim())).length;
-  const complete = meeting.coverage === "complete" && agreed.length > 0 && verified === agreed.length;
+  const agreed = items.filter(
+    (item) => item.meetingId === meeting.id && item.status !== "proposed",
+  );
+  const verified = agreed.filter(
+    (item) => item.status === "verified" && Boolean(item.proof?.trim()),
+  ).length;
+  const complete =
+    meeting.coverage === "complete" && agreed.length > 0 && verified === agreed.length;
   return {
     agreed: agreed.length,
     verified,
     outstanding: agreed.length - verified,
     // Incomplete coverage cannot certify the meeting, even if known work is done.
-    score: meeting.coverage === "complete" && agreed.length > 0 ? Math.floor((verified / agreed.length) * 100) : null,
+    score:
+      meeting.coverage === "complete" && agreed.length > 0
+        ? Math.floor((verified / agreed.length) * 100)
+        : null,
     complete,
   };
 }
