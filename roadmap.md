@@ -1,6 +1,8 @@
 # Roadmap
 
 ## Steward interactive design preview (2026-10-16)
+- [ ] Bring actionable tasks into the first 375×812 viewport without losing cross-meeting work or proposal/blocked distinctions.
+- [ ] Preserve append-only illustrative completion/reopen receipts; require reopen reasons and verify repeated cycles through desktop/mobile interactions.
 - [x] Create isolated meeting-first illustrative prototype; no live reads or writes.
 - [x] Verify completion/coverage rules and component interaction flow (20 focused tests passed).
 - [x] Desktop/tablet/mobile fresh-tab, reload and review/verify/reopen browser checks at 1440/768/375px.
