@@ -124,6 +124,15 @@ function Meetings({ identity }: { identity: WorkspaceIdentity }) {
       />
 
       <StewardTabs active="meetings" />
+      <p className="text-sm text-muted-foreground">
+        Have a list of what was agreed?{" "}
+        <Link
+          to="/modules/steward/meetings/actions"
+          className="underline underline-offset-4 hover:text-foreground"
+        >
+          Stage meeting actions for review
+        </Link>
+      </p>
 
       <section className="tt-surface p-6">
         <p className="tt-eyebrow">Source</p>
