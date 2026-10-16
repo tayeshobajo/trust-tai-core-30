@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Steward interactive design preview (2026-10-16)
-- [ ] Compact characterful task workspace; verify visible row counts at 1440×900 and 1366×768, mobile overflow, meeting navigation, illustrative AI help, scoring and repeated receipt cycles.
+- [x] Compact characterful task workspace: 12 full rows at 1440×900, 10 at 1366×768, 4 at 375×812; actual meeting switching, AI help, scoring, four preserved receipts and reload reset verified; 17 focused tests and build OK. Hosted review still requires Lovable access.
 - [x] Bring actionable tasks into the first 375×812 viewport (task y=586; review action y=756–800), retaining cross-meeting work and proposal/blocked distinctions.
 - [x] Preserve append-only illustrative completion/reopen receipts; required reasons, four receipts across two cycles, desktop/mobile browser checks and reload reset passed; 16 focused tests passed.
 - [x] Create isolated meeting-first illustrative prototype; no live reads or writes.
