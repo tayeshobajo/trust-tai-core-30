@@ -19,12 +19,12 @@ The preview follows the `trust-tai-brand-system` operating law and the existing 
 - Screens: meeting workspace, cross-meeting work, source/review dialog, future-Fathom explanation.
 - Objects: meeting selector, scoped work filters, deliverable rows, evidence/review dialog.
 - States: unknown owner, spoken/unconfirmed timing, exact timing, overdue, blocked dependency, proposed, verified, incomplete coverage, genuinely empty filter result.
-- Responsive intent: meeting list becomes three columns at tablet size and a vertical list at narrow mobile size; workspace becomes two columns only at desktop. Controls wrap, text can break, and modal height is bounded with scrolling. Browser visual checks were subsequently authorized and passed at 1440/768/375px.
+- Responsive intent: below desktop, a compact meeting selector replaces the stacked meeting cards. Mobile trims the orientation band and removes repeated summary/metrics from the task preamble; cross-meeting work stays one tab away. Filters scroll within their own row. The workspace stays two columns at desktop, and dialogs remain bounded and scrollable.
 - Assets: the existing Trust Tai logo in the shared shell. No private meeting imagery or transcript assets.
 
 ## Completion integrity
 
-A meeting reaches 100/100 only with complete coverage, at least one agreed deliverable, and proof for every agreed deliverable. Proposals do not enter the agreed denominator. Missing coverage means an unknown score, not 100. Blocked items cannot be verified; their example dependency must be verified before the blocker can be cleared. Verification needs a nonblank reference. Reopen clears the reference. These are illustrative rules, not new production task lifecycle semantics.
+A meeting reaches 100/100 only with complete coverage, at least one agreed deliverable, and proof for every agreed deliverable. Proposals do not enter the agreed denominator. Missing coverage means an unknown score, not 100. Blocked items cannot be verified; their example dependency must be verified before the blocker can be cleared. Verification needs a nonblank reference. Reopen requires a nonblank reason and retains the prior reference and every receipt. Re-completion appends a new receipt, without overwriting earlier evidence. Both event types carry explicitly fictional actors and simulated UTC times. Old proof never counts as current completion after reopening. These are illustrative rules, not new production task lifecycle semantics.
 
 ## Boundaries
 
@@ -52,3 +52,14 @@ Future Fathom interpretation and authorized assistance are explicitly not connec
 - Official hosted preview URL confirmed by the project URL service: `https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/mockups/steward-next`.
 - A fresh external browser on that URL redirects to **Log in to Lovable**. It cannot reach the app without a project-access Lovable session. This is not proof that the user's authenticated hosted 404 is fixed. The hosted preview remains unverified; no auth bypass, access change, publication or deployment was attempted.
 - Review inside the editor preview at `/mockups/steward-next`, or use Share → Create shared preview link for an independently reviewable private preview. Sharing a preview is distinct from production publication.
+
+## Browser QA corrections — 2026-10-16, after 06:01 UTC
+
+- Reproduced the mobile regression locally at 375×812: the first task heading was at y=1604px.
+- After correction, the first task begins at y=586px (heading y=603px); its Review & verify action spans y=756–800px, fully inside the first viewport.
+- Actual Playwright interactions passed independently at desktop 1280×1800 and mobile 375×812: complete → require nonblank reopen reason → reopen → complete again → reopen again. Four ordered receipts remained visible, including both prior proofs, both reasons, fictional actor and simulated UTC time.
+- Cross-meeting view retained the discovery task; blocked work had no verify action and an uncleared dependency; proposal confirmation required an owner. Reload reset all changed examples and their added receipts. No horizontal overflow or runtime errors on either viewport.
+- Screenshot evidence: `/tmp/browser/steward-corrections/first-task-375.png`, `first-task-1280.png`, `history-cycle-2-375.png`, `history-cycle-2-1280.png` (visually reviewed).
+- 16 focused prototype tests passed (11 domain rules, 5 component journeys); changed-file ESLint passed. Harness build/typecheck reported build OK. No unrelated suites or older import draft changed.
+- Root AGENTS.md prototype additions were reviewed for scope; the new receipt rule applies only to the mockup. Unrelated instructions and the separate session-import constraint remain untouched.
+- User-supplied hosted preview: `https://preview--trusttai-os-foundation.lovable.app/mockups/steward-next`. The available fresh external browser still redirects to Lovable login, so hosted authenticated visual QA is unverified. Local actual-browser QA is verified; no access change or publication attempted.
