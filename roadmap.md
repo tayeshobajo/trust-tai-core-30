@@ -1,5 +1,11 @@
 # Roadmap
 
+## Steward interactive design preview (2026-10-16)
+- [x] Create isolated meeting-first illustrative prototype; no live reads or writes.
+- [x] Verify completion/coverage rules and component interaction flow (20 focused tests passed).
+- [ ] Desktop/mobile browser visual verification — blocked by prior instruction prohibiting browser use.
+- [x] Document design direction and preview evidence.
+
 - [x] Add proposed canonical Steward source links, bounded agent run receipts, and policy SQL for Codex.
 - [x] Implement bounded on-assignment agent runner and authenticated entry point.
 - [x] Show real agent runs and provenance in existing Steward and Home surfaces.

@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Prototype boundaries
+- Keep the Steward design preview in an isolated mockup route with fictional fixtures and in-memory state only; this allows review without reading private tasks or activating production work.
+- Imported meeting deliverables remain separate session staging and do not fetch teammate task details; task linkage needs a separately authorized narrow read contract.

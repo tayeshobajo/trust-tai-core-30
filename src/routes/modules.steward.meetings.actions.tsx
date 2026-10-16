@@ -3,24 +3,21 @@
  *
  * A person brings meeting deliverables from their own device. They are staged
  * in this browser tab only (sessionStorage) and never written anywhere.
- * Existing Steward tasks are read, not changed, to show what is already
- * tracked. Turning a staged item into a task is a later, separate step.
+ * No workspace task details are fetched. Turning a staged item into a task
+ * requires a later, separately authorized step.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Check, CircleDashed, OctagonAlert, RotateCcw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { MetaPill, TTButton } from "@/components/tt/primitives";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { stewardTasks } from "@/data/supabase/steward-tasks";
 import {
   ACTION_STATUS_LABEL,
   completeAction,
-  correlationKeyFor,
   filterActions,
   isOverdue,
   parseMeetingActions,
@@ -98,16 +95,6 @@ function MeetingActions({ identity }: { identity: WorkspaceIdentity }) {
   useEffect(() => {
     if (staged) window.sessionStorage.setItem(storageKey, JSON.stringify(staged));
   }, [staged, storageKey]);
-
-  const tasks = useQuery({
-    queryKey: ["steward", "tasks", "meeting-crossref", identity.organizationId],
-    queryFn: () => stewardTasks.list(identity.organizationId),
-    enabled: Boolean(staged?.items.length),
-  });
-  const tracked = useMemo(
-    () => new Set((tasks.data ?? []).map((t) => t.correlationId).filter(Boolean) as string[]),
-    [tasks.data],
-  );
 
   function stage(content: string, label: string) {
     try {
@@ -215,7 +202,6 @@ function MeetingActions({ identity }: { identity: WorkspaceIdentity }) {
                   key={item.id}
                   item={item}
                   today={today}
-                  tracked={tracked.has(correlationKeyFor(staged.sourceKey, item.statement))}
                   onComplete={() => update(item.id, completeAction)}
                   onReopen={() => update(item.id, reopenAction)}
                 />
@@ -235,13 +221,11 @@ function MeetingActions({ identity }: { identity: WorkspaceIdentity }) {
 function ActionCard({
   item,
   today,
-  tracked,
   onComplete,
   onReopen,
 }: {
   item: StagedAction;
   today: string;
-  tracked: boolean;
   onComplete: () => void;
   onReopen: () => void;
 }) {
@@ -261,7 +245,6 @@ function ActionCard({
           {ACTION_STATUS_LABEL[item.status]}
         </MetaPill>
         {overdue ? <MetaPill className="text-destructive">Overdue</MetaPill> : null}
-        {tracked ? <MetaPill>Already a Steward task</MetaPill> : null}
       </div>
       <p className={"mt-3 text-[15px] text-foreground " + (done ? "line-through decoration-1" : "")}>
         {item.statement}
