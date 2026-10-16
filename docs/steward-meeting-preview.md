@@ -19,7 +19,7 @@ The preview follows the `trust-tai-brand-system` operating law and the existing 
 - Screens: meeting workspace, cross-meeting work, source/review dialog, future-Fathom explanation.
 - Objects: meeting selector, scoped work filters, deliverable rows, evidence/review dialog.
 - States: unknown owner, spoken/unconfirmed timing, exact timing, overdue, blocked dependency, proposed, verified, incomplete coverage, genuinely empty filter result.
-- Responsive intent: meeting list becomes three columns at tablet size and a vertical list at narrow mobile size; workspace becomes two columns only at desktop. Controls wrap, text can break, and modal height is bounded with scrolling. Browser visual verification has not been run because browser use was disallowed in the prior instructions.
+- Responsive intent: meeting list becomes three columns at tablet size and a vertical list at narrow mobile size; workspace becomes two columns only at desktop. Controls wrap, text can break, and modal height is bounded with scrolling. Browser visual checks were subsequently authorized and passed at 1440/768/375px.
 - Assets: the existing Trust Tai logo in the shared shell. No private meeting imagery or transcript assets.
 
 ## Completion integrity
@@ -41,3 +41,14 @@ Future Fathom interpretation and authorized assistance are explicitly not connec
 - Local read-only page request: HTTP 200 with rendered Steward heading and fictional-data disclosure.
 - Evidence level: component and local SSR proof, not desktop/mobile browser visual proof or production acceptance.
 - No production publish, database writes, migrations, assignments, sends or activated integrations.
+
+## Preview availability investigation — 2026-10-16, after 05:53 UTC
+
+- Reviewed application revision: `844b9167200cf1657c2ff9d4634fd3a106ce99a3`.
+- The route file and generated route tree both contain `/mockups/steward-next`; no missing/mismatched route was found. No routing or design change was justified by the evidence.
+- Fresh browser context and reload at `http://localhost:8080/mockups/steward-next`: HTTP 200, correct Steward title/heading, no app 404 and no runtime errors.
+- Desktop (1440px), tablet (768px) and mobile (375px): review → example reference → verify → verified list → reopen passed; no horizontal document overflow.
+- Browser screenshots: `/tmp/browser/steward-routing/review-1440.png`, `review-768.png`, `review-375.png`.
+- Official hosted preview URL confirmed by the project URL service: `https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/mockups/steward-next`.
+- A fresh external browser on that URL redirects to **Log in to Lovable**. It cannot reach the app without a project-access Lovable session. This is not proof that the user's authenticated hosted 404 is fixed. The hosted preview remains unverified; no auth bypass, access change, publication or deployment was attempted.
+- Review inside the editor preview at `/mockups/steward-next`, or use Share → Create shared preview link for an independently reviewable private preview. Sharing a preview is distinct from production publication.

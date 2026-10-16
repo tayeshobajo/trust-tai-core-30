@@ -3,7 +3,8 @@
 ## Steward interactive design preview (2026-10-16)
 - [x] Create isolated meeting-first illustrative prototype; no live reads or writes.
 - [x] Verify completion/coverage rules and component interaction flow (20 focused tests passed).
-- [ ] Desktop/mobile browser visual verification — blocked by prior instruction prohibiting browser use.
+- [x] Desktop/tablet/mobile fresh-tab, reload and review/verify/reopen browser checks at 1440/768/375px.
+- [ ] Hosted preview review — external preview redirects to Lovable login in the available browser; cannot verify the reported hosted 404 without project-access session.
 - [x] Document design direction and preview evidence.
 
 - [x] Add proposed canonical Steward source links, bounded agent run receipts, and policy SQL for Codex.
