@@ -177,7 +177,7 @@ function MeetingActions({ identity }: { identity: WorkspaceIdentity }) {
             />
           </label>
           {staged ? (
-            <TTButton type="button" variant="ghost" onClick={clear}>
+            <TTButton type="button" variant="quiet" onClick={clear}>
               Clear session
             </TTButton>
           ) : null}
@@ -289,11 +289,11 @@ function ActionCard({
       ) : null}
       <div className="mt-4 border-t border-border pt-3">
         {done ? (
-          <TTButton type="button" variant="ghost" onClick={onReopen}>
+          <TTButton type="button" variant="quiet" onClick={onReopen}>
             <RotateCcw aria-hidden className="mr-1 h-4 w-4" /> Reopen
           </TTButton>
         ) : (
-          <TTButton type="button" variant="ghost" onClick={onComplete}>
+          <TTButton type="button" variant="quiet" onClick={onComplete}>
             <Check aria-hidden className="mr-1 h-4 w-4" /> Mark done (this session)
           </TTButton>
         )}
