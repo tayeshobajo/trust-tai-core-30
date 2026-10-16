@@ -124,6 +124,7 @@ import { Route as ApiPublicZenmodeLookupRouteImport } from './routes/api/public/
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
+import { Route as ModulesStewardMeetingsActionsRouteImport } from './routes/modules.steward.meetings.actions'
 import { Route as ModulesStewardPeopleUserIdRouteImport } from './routes/modules.steward.people.$userId'
 import { Route as ModulesWebsiteSubmissionsSubmissionIdRouteImport } from './routes/modules.website_.submissions.$submissionId'
 import { Route as ApiInternalExecutionScoutDraftIntroRouteImport } from './routes/api/internal/execution/scout.draft-intro'
@@ -733,6 +734,12 @@ const ModulesStewardMeetingsConversationIdRoute =
     path: '/$conversationId',
     getParentRoute: () => ModulesStewardMeetingsRoute,
   } as any)
+const ModulesStewardMeetingsActionsRoute =
+  ModulesStewardMeetingsActionsRouteImport.update({
+    id: '/actions',
+    path: '/actions',
+    getParentRoute: () => ModulesStewardMeetingsRoute,
+  } as any)
 const ModulesStewardPeopleUserIdRoute =
   ModulesStewardPeopleUserIdRouteImport.update({
     id: '/people/$userId',
@@ -925,6 +932,7 @@ export interface FileRoutesByFullPath {
   '/api/public/zenmode/lookup': typeof ApiPublicZenmodeLookupRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
+  '/modules/steward/meetings/actions': typeof ModulesStewardMeetingsActionsRoute
   '/modules/steward/people/$userId': typeof ModulesStewardPeopleUserIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
@@ -1046,6 +1054,7 @@ export interface FileRoutesByTo {
   '/api/public/zenmode/lookup': typeof ApiPublicZenmodeLookupRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
+  '/modules/steward/meetings/actions': typeof ModulesStewardMeetingsActionsRoute
   '/modules/steward/people/$userId': typeof ModulesStewardPeopleUserIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsIndexRoute
@@ -1177,6 +1186,7 @@ export interface FileRoutesById {
   '/api/public/zenmode/lookup': typeof ApiPublicZenmodeLookupRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
+  '/modules/steward/meetings/actions': typeof ModulesStewardMeetingsActionsRoute
   '/modules/steward/people/$userId': typeof ModulesStewardPeopleUserIdRoute
   '/modules/website_/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
@@ -1309,6 +1319,7 @@ export interface FileRouteTypes {
     | '/api/public/zenmode/lookup'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
+    | '/modules/steward/meetings/actions'
     | '/modules/steward/people/$userId'
     | '/modules/website/submissions/$submissionId'
     | '/modules/steward/meetings/'
@@ -1430,6 +1441,7 @@ export interface FileRouteTypes {
     | '/api/public/zenmode/lookup'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
+    | '/modules/steward/meetings/actions'
     | '/modules/steward/people/$userId'
     | '/modules/website/submissions/$submissionId'
     | '/modules/steward/meetings'
@@ -1560,6 +1572,7 @@ export interface FileRouteTypes {
     | '/api/public/zenmode/lookup'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
+    | '/modules/steward/meetings/actions'
     | '/modules/steward/people/$userId'
     | '/modules/website_/submissions/$submissionId'
     | '/modules/steward/meetings/'
@@ -2462,6 +2475,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardMeetingsConversationIdRouteImport
       parentRoute: typeof ModulesStewardMeetingsRoute
     }
+    '/modules/steward/meetings/actions': {
+      id: '/modules/steward/meetings/actions'
+      path: '/actions'
+      fullPath: '/modules/steward/meetings/actions'
+      preLoaderRoute: typeof ModulesStewardMeetingsActionsRouteImport
+      parentRoute: typeof ModulesStewardMeetingsRoute
+    }
     '/modules/steward/people/$userId': {
       id: '/modules/steward/people/$userId'
       path: '/people/$userId'
@@ -2698,6 +2718,7 @@ const ModulesScoutRouteWithChildren = ModulesScoutRoute._addFileChildren(
 
 interface ModulesStewardMeetingsRouteChildren {
   ModulesStewardMeetingsConversationIdRoute: typeof ModulesStewardMeetingsConversationIdRoute
+  ModulesStewardMeetingsActionsRoute: typeof ModulesStewardMeetingsActionsRoute
   ModulesStewardMeetingsIndexRoute: typeof ModulesStewardMeetingsIndexRoute
 }
 
@@ -2705,6 +2726,7 @@ const ModulesStewardMeetingsRouteChildren: ModulesStewardMeetingsRouteChildren =
   {
     ModulesStewardMeetingsConversationIdRoute:
       ModulesStewardMeetingsConversationIdRoute,
+    ModulesStewardMeetingsActionsRoute: ModulesStewardMeetingsActionsRoute,
     ModulesStewardMeetingsIndexRoute: ModulesStewardMeetingsIndexRoute,
   }
 
