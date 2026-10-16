@@ -60,7 +60,10 @@ describe("Steward illustrative completion rules", () => {
     );
   });
   it("reopening retains proof and restores outstanding work without counting old proof as complete", () => {
-    const reopened = reopenPreview(verifyPreview(open, "Example proof"), "Copy needs another review");
+    const reopened = reopenPreview(
+      verifyPreview(open, "Example proof"),
+      "Copy needs another review",
+    );
     expect(reopened).toMatchObject({ status: "open", proof: "Example proof" });
     expect(meetingProgress(meeting, [reopened]).score).toBe(0);
   });
@@ -73,13 +76,38 @@ describe("Steward illustrative completion rules", () => {
     const second = { actor: "Morgan (fictional)", at: "2026-10-16T16:01:00Z" };
     const completed = verifyPreview(open, "First proof", first);
     const reopened = reopenPreview(completed, "First reason", second);
-    const recompleted = verifyPreview(reopened, "Second proof", { ...first, at: "2026-10-16T16:02:00Z" });
-    const again = reopenPreview(recompleted, "Second reason", { ...second, at: "2026-10-16T16:03:00Z" });
+    const recompleted = verifyPreview(reopened, "Second proof", {
+      ...first,
+      at: "2026-10-16T16:02:00Z",
+    });
+    const again = reopenPreview(recompleted, "Second reason", {
+      ...second,
+      at: "2026-10-16T16:03:00Z",
+    });
     expect(again.history).toEqual([
       { kind: "completed", ...first, illustrative: true, proof: "First proof" },
-      { kind: "reopened", ...second, illustrative: true, proof: "First proof", reason: "First reason" },
-      { kind: "completed", actor: first.actor, at: "2026-10-16T16:02:00Z", illustrative: true, proof: "Second proof" },
-      { kind: "reopened", actor: second.actor, at: "2026-10-16T16:03:00Z", illustrative: true, proof: "Second proof", reason: "Second reason" },
+      {
+        kind: "reopened",
+        ...second,
+        illustrative: true,
+        proof: "First proof",
+        reason: "First reason",
+      },
+      {
+        kind: "completed",
+        actor: first.actor,
+        at: "2026-10-16T16:02:00Z",
+        illustrative: true,
+        proof: "Second proof",
+      },
+      {
+        kind: "reopened",
+        actor: second.actor,
+        at: "2026-10-16T16:03:00Z",
+        illustrative: true,
+        proof: "Second proof",
+        reason: "Second reason",
+      },
     ]);
     expect(completed.history).toHaveLength(1);
     expect(again.status).toBe("open");

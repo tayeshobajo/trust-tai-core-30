@@ -75,11 +75,20 @@ export function verifyPreview(
   if (item.status === "verified") return item;
   if (!metadata.actor.trim() || !metadata.at.trim()) return item;
   return {
-    ...item, priorStatus: item.status, status: "verified", proof: proof.trim(),
-    history: [...(item.history ?? []), {
-      kind: "completed", actor: metadata.actor, at: metadata.at,
-      illustrative: true, proof: proof.trim(),
-    }],
+    ...item,
+    priorStatus: item.status,
+    status: "verified",
+    proof: proof.trim(),
+    history: [
+      ...(item.history ?? []),
+      {
+        kind: "completed",
+        actor: metadata.actor,
+        at: metadata.at,
+        illustrative: true,
+        proof: proof.trim(),
+      },
+    ],
   };
 }
 
@@ -88,13 +97,22 @@ export function reopenPreview(
   reason: string,
   metadata: PreviewActorTime = EXAMPLE_ACTOR_TIME,
 ): PreviewDeliverable {
-  if (item.status !== "verified" || !reason.trim() || !metadata.actor.trim() || !metadata.at.trim()) return item;
+  if (item.status !== "verified" || !reason.trim() || !metadata.actor.trim() || !metadata.at.trim())
+    return item;
   return {
-    ...item, status: item.priorStatus ?? "open",
-    history: [...(item.history ?? []), {
-      kind: "reopened", actor: metadata.actor, at: metadata.at,
-      illustrative: true, proof: item.proof ?? "", reason: reason.trim(),
-    }],
+    ...item,
+    status: item.priorStatus ?? "open",
+    history: [
+      ...(item.history ?? []),
+      {
+        kind: "reopened",
+        actor: metadata.actor,
+        at: metadata.at,
+        illustrative: true,
+        proof: item.proof ?? "",
+        reason: reason.trim(),
+      },
+    ],
   };
 }
 

@@ -116,15 +116,23 @@ export function StewardPreview() {
       <AmbientSurface appId="steward" className="border-b border-border px-1 py-3 sm:px-3 sm:py-7">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="hidden font-mono text-[11px] text-muted-foreground sm:block">CMD / STEWARD</p>
+            <p className="hidden font-mono text-[11px] text-muted-foreground sm:block">
+              CMD / STEWARD
+            </p>
             <h1 className="font-display text-3xl font-semibold sm:mt-2 sm:text-4xl">Steward</h1>
             <p className="mt-3 hidden text-sm text-muted-foreground sm:block">
               The conversation ended. The work carries on.
             </p>
           </div>
-          <TTButton variant="secondary" className="shrink-0 px-2 text-xs sm:px-4" onClick={() => setFuture(true)}>
+          <TTButton
+            variant="secondary"
+            className="shrink-0 px-2 text-xs sm:px-4"
+            onClick={() => setFuture(true)}
+          >
             <Video /> Fathom{" "}
-            <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">NOT CONNECTED</span>
+            <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">
+              NOT CONNECTED
+            </span>
           </TTButton>
         </div>
         <div className="mt-7 hidden flex-wrap gap-x-9 gap-y-4 sm:flex">
@@ -250,12 +258,19 @@ export function StewardPreview() {
               <select
                 aria-label="Select example meeting"
                 value={selected}
-                onChange={(event) => { setSelected(event.target.value); setFilter("outstanding"); }}
+                onChange={(event) => {
+                  setSelected(event.target.value);
+                  setFilter("outstanding");
+                }}
                 className="mt-1 h-11 w-full min-w-0 rounded-md border border-input bg-card px-2 text-sm text-foreground"
               >
                 {PREVIEW_MEETINGS.map((entry) => {
                   const p = meetingProgress(entry, work);
-                  return <option key={entry.id} value={entry.id}>{entry.title} · {p.score === null ? "Partial" : `${p.score}/100`}</option>;
+                  return (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.title} · {p.score === null ? "Partial" : `${p.score}/100`}
+                    </option>
+                  );
                 })}
               </select>
             </label>
@@ -308,11 +323,16 @@ export function StewardPreview() {
               </p>
             )}
             {view === "meetings" && meeting.coverage === "partial" && (
-              <p className="mt-2 text-xs text-warning sm:hidden">Incomplete coverage · more work may be missing.</p>
+              <p className="mt-2 text-xs text-warning sm:hidden">
+                Incomplete coverage · more work may be missing.
+              </p>
             )}
           </header>
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2 sm:py-4">
-            <div className="flex w-full min-w-0 gap-1 overflow-x-auto sm:w-auto sm:flex-wrap" aria-label="Work filters">
+            <div
+              className="flex w-full min-w-0 gap-1 overflow-x-auto sm:w-auto sm:flex-wrap"
+              aria-label="Work filters"
+            >
               {FILTERS.map((entry) => (
                 <TTButton
                   key={entry.id}
@@ -485,19 +505,35 @@ export function StewardPreview() {
                     <>
                       <label className="text-sm">
                         Reopen reason
-                        <TTInput className="mt-2" aria-label="Reopen reason" value={reopenReason}
+                        <TTInput
+                          className="mt-2"
+                          aria-label="Reopen reason"
+                          value={reopenReason}
                           onChange={(event) => setReopenReason(event.target.value)}
-                          placeholder="What needs further work?" />
+                          placeholder="What needs further work?"
+                        />
                       </label>
-                      <TTButton variant="secondary" disabled={!reopenReason.trim()} onClick={() => {
-                        update(detail.id, (item) => reopenPreview(item, reopenReason, illustrativeMetadata()));
-                        setReopening(false);
-                        setMessage("Example deliverable reopened. Prior completion receipts preserved.");
-                      }}><RotateCcw />Record example reopening</TTButton>
+                      <TTButton
+                        variant="secondary"
+                        disabled={!reopenReason.trim()}
+                        onClick={() => {
+                          update(detail.id, (item) =>
+                            reopenPreview(item, reopenReason, illustrativeMetadata()),
+                          );
+                          setReopening(false);
+                          setMessage(
+                            "Example deliverable reopened. Prior completion receipts preserved.",
+                          );
+                        }}
+                      >
+                        <RotateCcw />
+                        Record example reopening
+                      </TTButton>
                     </>
                   ) : (
                     <TTButton variant="secondary" onClick={() => setReopening(true)}>
-                      <RotateCcw />Reopen deliverable
+                      <RotateCcw />
+                      Reopen deliverable
                     </TTButton>
                   )}
                 </>
@@ -560,7 +596,9 @@ export function StewardPreview() {
                     disabled={!reference.trim()}
                     className="bg-success text-primary-foreground hover:bg-success/90"
                     onClick={() => {
-                      update(detail.id, (item) => verifyPreview(item, reference, illustrativeMetadata()));
+                      update(detail.id, (item) =>
+                        verifyPreview(item, reference, illustrativeMetadata()),
+                      );
                       setDetailId(null);
                       setMessage("Example completion reference recorded.");
                     }}
@@ -571,19 +609,43 @@ export function StewardPreview() {
                 </>
               )}
               {Boolean(detail.history?.length) && (
-                <section aria-label="Illustrative receipt history" className="border-t border-border pt-4">
+                <section
+                  aria-label="Illustrative receipt history"
+                  className="border-t border-border pt-4"
+                >
                   <h3 className="text-sm font-medium">Completion & reopen history</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">Fictional actors and simulated times · resets on reload.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Fictional actors and simulated times · resets on reload.
+                  </p>
                   <ol className="mt-3 space-y-3">
                     {detail.history?.map((receipt, index) => (
-                      <li key={`${receipt.at}-${index}`} className="border-l-2 border-border pl-3 text-sm">
-                        <p className={receipt.kind === "completed" ? "text-success" : "text-foreground"}>
-                          {receipt.kind === "completed" ? <CheckCheck className="mr-1 inline size-4" /> : <RotateCcw className="mr-1 inline size-4" />}
+                      <li
+                        key={`${receipt.at}-${index}`}
+                        className="border-l-2 border-border pl-3 text-sm"
+                      >
+                        <p
+                          className={
+                            receipt.kind === "completed" ? "text-success" : "text-foreground"
+                          }
+                        >
+                          {receipt.kind === "completed" ? (
+                            <CheckCheck className="mr-1 inline size-4" />
+                          ) : (
+                            <RotateCcw className="mr-1 inline size-4" />
+                          )}
                           {receipt.kind === "completed" ? "Completed" : "Reopened"} · illustrative
                         </p>
-                        <p className="mt-1 text-xs text-muted-foreground">{receipt.actor} · {receipt.at.replace("T", " ").replace(".000Z", " UTC").replace("Z", " UTC")}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {receipt.actor} ·{" "}
+                          {receipt.at
+                            .replace("T", " ")
+                            .replace(".000Z", " UTC")
+                            .replace("Z", " UTC")}
+                        </p>
                         {receipt.reason && <p className="mt-1">Reason: {receipt.reason}</p>}
-                        <p className="mt-1 break-words text-xs text-muted-foreground">Completion reference: {receipt.proof}</p>
+                        <p className="mt-1 break-words text-xs text-muted-foreground">
+                          Completion reference: {receipt.proof}
+                        </p>
                       </li>
                     ))}
                   </ol>

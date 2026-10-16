@@ -162,11 +162,16 @@ const EXAMPLE_WORK: PreviewDeliverable[] = [
 
 export const PREVIEW_WORK: PreviewDeliverable[] = EXAMPLE_WORK.map((item) => ({
   ...item,
-  history: item.status === "verified" && item.proof ? [{
-    kind: "completed",
-    actor: `${item.owner ?? "Alex"} (fictional)`,
-    at: "2026-10-15T15:30:00Z",
-    illustrative: true,
-    proof: item.proof,
-  }] : [],
+  history:
+    item.status === "verified" && item.proof
+      ? [
+          {
+            kind: "completed",
+            actor: `${item.owner ?? "Alex"} (fictional)`,
+            at: "2026-10-15T15:30:00Z",
+            illustrative: true,
+            proof: item.proof,
+          },
+        ]
+      : [],
 }));
