@@ -250,7 +250,7 @@ function ActionCard({
   return (
     <li className={"tt-surface p-5 " + (done ? "border-l-4 border-l-success" : "")}>
       <div className="flex flex-wrap items-center gap-2">
-        <MetaPill className={done ? "text-success" : undefined}>
+        <MetaPill className={done ? "text-success" : ""}>
           {done ? (
             <Check aria-hidden className="mr-1 inline h-3 w-3" />
           ) : item.status === "blocked" ? (
