@@ -34,7 +34,7 @@ export const PREVIEW_MEETINGS: PreviewMeeting[] = [
   },
 ];
 
-export const PREVIEW_WORK: PreviewDeliverable[] = [
+const EXAMPLE_WORK: PreviewDeliverable[] = [
   {
     id: "example-copy",
     meetingId: "example-planning",
@@ -159,3 +159,19 @@ export const PREVIEW_WORK: PreviewDeliverable[] = [
     priorStatus: "open",
   },
 ];
+
+export const PREVIEW_WORK: PreviewDeliverable[] = EXAMPLE_WORK.map((item) => ({
+  ...item,
+  history:
+    item.status === "verified" && item.proof
+      ? [
+          {
+            kind: "completed",
+            actor: `${item.owner ?? "Alex"} (fictional)`,
+            at: "2026-10-15T15:30:00Z",
+            illustrative: true,
+            proof: item.proof,
+          },
+        ]
+      : [],
+}));

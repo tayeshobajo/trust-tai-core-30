@@ -29,11 +29,61 @@ describe("Steward illustrative user journey", () => {
     if (!done) throw new Error("Expected completed row");
     expect(done.textContent).toContain("Example copy approval reviewed");
     fireEvent.click(within(done).getByRole("button", { name: "Reopen" }));
+    expect(
+      screen.getByRole("button", { name: "Record example reopening" }).hasAttribute("disabled"),
+    ).toBe(true);
+    fireEvent.change(screen.getByRole("textbox", { name: "Reopen reason" }), {
+      target: { value: "Example copy needs a correction" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Record example reopening" }));
+    expect(
+      screen.getByRole("region", { name: "Illustrative receipt history" }).textContent,
+    ).toContain("Example copy approval reviewed");
+    expect(
+      screen.getByRole("region", { name: "Illustrative receipt history" }).textContent,
+    ).toContain("Example copy needs a correction");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*3$/ }));
     expect(screen.getByRole("heading", { name: "Approve the launch page copy" })).toBeTruthy();
     cleanup();
     render(<StewardPreview />);
     expect(screen.getByRole("button", { name: /^Verified\s*1$/ })).toBeTruthy();
+  });
+  it("retains two completion receipts and two reopen reasons through the actual dialog", () => {
+    render(<StewardPreview />);
+    for (const cycle of [1, 2]) {
+      fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*3$/ }));
+      const row = screen
+        .getByRole("heading", { name: "Approve the launch page copy" })
+        .closest("article");
+      if (!row) throw new Error("Expected work row");
+      fireEvent.click(within(row).getByRole("button", { name: /Review & verify/ }));
+      fireEvent.change(
+        screen.getByPlaceholderText("An illustrative review or evidence reference"),
+        { target: { value: `Proof ${cycle}` } },
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Verify example completion" }));
+      fireEvent.click(screen.getByRole("button", { name: /^Verified\s*2$/ }));
+      const done = screen
+        .getByRole("heading", { name: "Approve the launch page copy" })
+        .closest("article");
+      if (!done) throw new Error("Expected completed work");
+      fireEvent.click(within(done).getByRole("button", { name: "Reopen" }));
+      fireEvent.change(screen.getByRole("textbox", { name: "Reopen reason" }), {
+        target: { value: `Reason ${cycle}` },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Record example reopening" }));
+      const history = screen.getByRole("region", { name: "Illustrative receipt history" });
+      expect(within(history).getAllByRole("listitem")).toHaveLength(cycle * 2);
+      expect(history.textContent).toContain("Proof 1");
+      expect(history.textContent).toContain("Reason 1");
+      expect(history.textContent).toContain("Alex (fictional)");
+      if (cycle === 2) {
+        expect(history.textContent).toContain("Proof 2");
+        expect(history.textContent).toContain("Reason 2");
+      }
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    }
   });
   it("does not expose a completion action for blocked work", () => {
     render(<StewardPreview />);
