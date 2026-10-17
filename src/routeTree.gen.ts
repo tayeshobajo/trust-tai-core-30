@@ -14,7 +14,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-import { Route as DevStewardHarnessRouteImport } from './routes/dev.steward-harness'
 import { Route as MockupsCommsFamiliarARouteImport } from './routes/mockups.comms-familiar-a'
 import { Route as MockupsCommsFamiliarBRouteImport } from './routes/mockups.comms-familiar-b'
 import { Route as MockupsCommsFamiliarCRouteImport } from './routes/mockups.comms-familiar-c'
@@ -168,11 +167,6 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
   getParentRoute: () => AuthRoute,
-} as any)
-const DevStewardHarnessRoute = DevStewardHarnessRouteImport.update({
-  id: '/dev/steward-harness',
-  path: '/dev/steward-harness',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const MockupsCommsFamiliarARoute = MockupsCommsFamiliarARouteImport.update({
   id: '/mockups/comms-familiar-a',
@@ -854,7 +848,6 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/welcome': typeof WelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/dev/steward-harness': typeof DevStewardHarnessRoute
   '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
   '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
   '/mockups/comms-familiar-c': typeof MockupsCommsFamiliarCRoute
@@ -989,7 +982,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/welcome': typeof WelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/dev/steward-harness': typeof DevStewardHarnessRoute
   '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
   '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
   '/mockups/comms-familiar-c': typeof MockupsCommsFamiliarCRoute
@@ -1118,7 +1110,6 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/welcome': typeof WelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/dev/steward-harness': typeof DevStewardHarnessRoute
   '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
   '/mockups/comms-familiar-b': typeof MockupsCommsFamiliarBRoute
   '/mockups/comms-familiar-c': typeof MockupsCommsFamiliarCRoute
@@ -1256,7 +1247,6 @@ export interface FileRouteTypes {
     | '/settings'
     | '/welcome'
     | '/auth/callback'
-    | '/dev/steward-harness'
     | '/mockups/comms-familiar-a'
     | '/mockups/comms-familiar-b'
     | '/mockups/comms-familiar-c'
@@ -1391,7 +1381,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/welcome'
     | '/auth/callback'
-    | '/dev/steward-harness'
     | '/mockups/comms-familiar-a'
     | '/mockups/comms-familiar-b'
     | '/mockups/comms-familiar-c'
@@ -1519,7 +1508,6 @@ export interface FileRouteTypes {
     | '/settings'
     | '/welcome'
     | '/auth/callback'
-    | '/dev/steward-harness'
     | '/mockups/comms-familiar-a'
     | '/mockups/comms-familiar-b'
     | '/mockups/comms-familiar-c'
@@ -1655,7 +1643,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
   WelcomeRoute: typeof WelcomeRoute
-  DevStewardHarnessRoute: typeof DevStewardHarnessRoute
   MockupsCommsFamiliarARoute: typeof MockupsCommsFamiliarARoute
   MockupsCommsFamiliarBRoute: typeof MockupsCommsFamiliarBRoute
   MockupsCommsFamiliarCRoute: typeof MockupsCommsFamiliarCRoute
@@ -1768,13 +1755,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
-    }
-    '/dev/steward-harness': {
-      id: '/dev/steward-harness'
-      path: '/dev/steward-harness'
-      fullPath: '/dev/steward-harness'
-      preLoaderRoute: typeof DevStewardHarnessRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/mockups/comms-familiar-a': {
       id: '/mockups/comms-familiar-a'
@@ -2891,7 +2871,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
   WelcomeRoute: WelcomeRoute,
-  DevStewardHarnessRoute: DevStewardHarnessRoute,
   MockupsCommsFamiliarARoute: MockupsCommsFamiliarARoute,
   MockupsCommsFamiliarBRoute: MockupsCommsFamiliarBRoute,
   MockupsCommsFamiliarCRoute: MockupsCommsFamiliarCRoute,

@@ -365,7 +365,9 @@ export function WorkroomView({
         ? `Checked ${sync.lastSuccessAt.slice(11, 16)} · ${sync.added} new stored${
             sync.refreshed > 0 ? ` · ${sync.refreshed} transcript updated` : ""
           }${
-            sync.pendingTranscript > 0 ? ` · ${sync.pendingTranscript} waiting for a transcript` : ""
+            sync.pendingTranscript > 0
+              ? ` · ${sync.pendingTranscript} waiting for a transcript`
+              : ""
           }${sync.hasMore ? " · recent window only — older calls exist beyond this pull" : ""}`
         : "Steward pulls recent Fathom calls while this page is open. A closed browser syncs nothing.";
 
@@ -391,7 +393,9 @@ export function WorkroomView({
             onClick={() => selectMeeting(m.id)}
             className={cn(
               "grid h-auto min-h-[72px] w-full grid-cols-[20px_minmax(0,1fr)] items-start gap-3 rounded-none border-l-2 px-4 py-3 text-left",
-              meeting?.id === m.id ? "border-l-royal bg-secondary text-foreground" : "border-l-transparent",
+              meeting?.id === m.id
+                ? "border-l-royal bg-secondary text-foreground"
+                : "border-l-transparent",
             )}
           >
             <CalendarDays className={cn("mt-1", meeting?.id === m.id && "text-royal")} />
@@ -477,7 +481,10 @@ export function WorkroomView({
       ) : null}
 
       <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 border-b border-border pb-2">
-        <div className="flex w-full min-w-0 max-w-full overflow-x-auto xl:w-auto" aria-label="Task filters">
+        <div
+          className="flex w-full min-w-0 max-w-full overflow-x-auto xl:w-auto"
+          aria-label="Task filters"
+        >
           {(
             [
               ["all", `All tasks ${meeting.rows.length}`],
@@ -640,7 +647,10 @@ export function WorkroomView({
             ? `Steward could not pull recent calls. ${sync.failure}`
             : "Steward checks for recent Fathom calls while this page is open. Nothing has been stored yet."}
       </p>
-      <Link to="/modules/steward/meetings" className="text-sm text-primary underline underline-offset-4">
+      <Link
+        to="/modules/steward/meetings"
+        className="text-sm text-primary underline underline-offset-4"
+      >
         Read a call by link
       </Link>
     </div>
@@ -682,7 +692,10 @@ export function WorkroomView({
       </p>
 
       {receiptsFailed ? (
-        <p role="alert" className="border-b border-border bg-destructive/10 px-4 py-1.5 text-xs text-destructive">
+        <p
+          role="alert"
+          className="border-b border-border bg-destructive/10 px-4 py-1.5 text-xs text-destructive"
+        >
           Completion receipts could not be read, so nothing is shown as verified rather than
           guessing.
         </p>

@@ -154,9 +154,7 @@ export function buildWorkroom(
           : score === 100
             ? "Every confirmed promise is verified complete."
             : `${done} of ${counted.length} verified. ${open} still open${
-                coverage !== "complete"
-                  ? ", transcript coverage is not confirmed"
-                  : ""
+                coverage !== "complete" ? ", transcript coverage is not confirmed" : ""
               }${proposals > 0 ? `, ${proposals} unreviewed proposal${proposals === 1 ? "" : "s"}` : ""}.`;
     return {
       ...conversation,
