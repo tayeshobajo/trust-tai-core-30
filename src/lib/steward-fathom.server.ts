@@ -50,6 +50,18 @@ function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+/**
+ * Fathom's recording_id arrives as a NUMBER on some responses and a string on
+ * others. A stable identity must survive both, so numbers are normalized to
+ * their exact decimal form rather than dropped.
+ */
+function idText(value: unknown): string | undefined {
+  const asText = text(value);
+  if (asText) return asText;
+  if (typeof value === "number" && Number.isSafeInteger(value)) return String(value);
+  return undefined;
+}
+
 function segmentsOf(meeting: FathomMeeting, fallbackUrl: string): TranscriptSegment[] {
   const raw = Array.isArray(meeting["transcript"]) ? (meeting["transcript"] as unknown[]) : [];
   const segments: TranscriptSegment[] = [];
