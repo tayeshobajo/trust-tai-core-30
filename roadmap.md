@@ -43,3 +43,10 @@
 - [x] Feed write checked; retry reconciles task + feed without rerunning the model
 - [x] Team views read status-only run columns
 - [x] Live signed-in synthetic run (run fa85bfa4, 2026-09-24)
+
+## Steward workroom corrections (2026-10-17)
+- [x] Coverage heuristic removed; score = verified agreed work, capped at 99 unless coverage confirmed + no open proposals
+- [x] Receipts require valid timestamp + substantive note; receipt errors surfaced; actual receipt shown in detail
+- [x] Approved 18/56/26 layout with compact 56px shell; keyboard-selectable rows; Sheets only at compact breakpoints
+- [x] Sync: disconnected source is explicit 503; late-transcript upgrades; added vs refreshed; last-success retained; Retry
+- [x] Visual QA via temporary fictional harness (deleted after): 1440/768/375 screenshots, no overflow, drawers verified
