@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Approved Steward reference implementation (2026-10-17)
-- [ ] Match approved three-column preview and mobile drawers, retaining fictional-only boundaries.
-- [ ] Verify focused rules/interactions and desktop/tablet/mobile screenshots; report hosted access limitations.
+- [x] Match approved three-column preview and mobile drawers, retaining fictional-only boundaries.
+- [x] Verify 18 focused tests and actual desktop/tablet/mobile interactions/screenshots; 12 desktop rows, mobile first task y=405, no overflow. Hosted access remains blocked by Lovable sign-in; evidence in docs/steward-approved-design.md.
 
 ## Steward interactive design preview (2026-10-16)
 - [x] Compact characterful task workspace: 12 full rows at 1440×900, 10 at 1366×768, 4 at 375×812; actual meeting switching, AI help, scoring, four preserved receipts and reload reset verified; 17 focused tests and build OK. Hosted review still requires Lovable access.
