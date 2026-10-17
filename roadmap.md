@@ -1,5 +1,12 @@
 # Roadmap
 
+## Steward live workroom (2026-10-17)
+- [x] /modules/steward is now the approved three-column workroom on real data; Team moved to /modules/steward/team; eight tabs consolidated into Meetings / Team / More; /meetings/workroom redirects.
+- [x] Verified completion requires status kept AND a current completion receipt; kept-without-receipt shows "Needs verification"; proposals never in the denominator.
+- [x] Automatic recent-meeting pull while Steward is open (mount/focus/5 min, deduped) via new member-authorized /api/public/steward/sync; numeric recording_id normalized; zero-transcript calls skipped and retried; closed-browser limit stated in the UI.
+- [x] 10 new focused tests pass; 1,921 Steward/domain/data tests pass; typecheck and build OK.
+- [ ] Populated visual QA at 1440/768/375 — sandbox has no member session; verified route render/redirect only. Tai's authenticated browser check pending.
+
 ## Approved Steward reference implementation (2026-10-17)
 - [x] Match approved three-column preview and mobile drawers, retaining fictional-only boundaries.
 - [x] Verify 18 focused tests and actual desktop/tablet/mobile interactions/screenshots; 12 desktop rows, mobile first task y=405, no overflow. Hosted access remains blocked by Lovable sign-in; evidence in docs/steward-approved-design.md.

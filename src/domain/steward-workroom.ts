@@ -1,11 +1,13 @@
 /**
  * Real-data meeting workroom projection (pure, browser-safe).
  *
- * Built only from stored conversations and person-confirmed commitments.
- * Nothing here infers an owner, a date or a completion. A score is only
- * given when transcript coverage is known to be complete; today the stored
- * Fathom record carries no recording length, so coverage is "unknown" and
- * the meeting shows progress counts without claiming a score.
+ * Built only from stored conversations, person-confirmed commitments and
+ * actual completion receipts. Nothing here infers an owner, a date or a
+ * completion. A commitment marked "kept" without a current completion
+ * receipt is shown as needing verification, never as verified. A score is
+ * only given when transcript coverage is known to be complete; today the
+ * stored Fathom record carries no recording length, so coverage is
+ * "unknown" and the meeting shows progress counts without claiming a score.
  */
 
 import type { Commitment } from "./steward";
@@ -31,7 +33,10 @@ export interface WorkroomRow {
   owner: { label: string; verified: boolean };
   due: { label: string; exact: boolean };
   status: Commitment["status"];
-  done: boolean;
+  /** Status says kept. */
+  kept: boolean;
+  /** Kept AND a current completion receipt exists. Only this turns green. */
+  verified: boolean;
   evidenceCount: number;
   sourceKey: string;
 }
@@ -39,7 +44,10 @@ export interface WorkroomRow {
 export interface WorkroomMeeting extends WorkroomConversationInput {
   rows: WorkroomRow[];
   agreed: number;
+  /** Verified completions only. */
   done: number;
+  /** Marked kept but without a completion receipt. */
+  needsVerification: number;
   coverage: WorkroomCoverage;
   /** Null unless coverage is complete and at least one agreed item exists. */
   score: number | null;
@@ -61,7 +69,14 @@ export function coverageOf(input: WorkroomConversationInput): WorkroomCoverage {
   return last >= length - 120 ? "complete" : "partial";
 }
 
-export function toRow(c: Commitment): WorkroomRow {
+/** The task-state key a completion receipt is stored under. */
+export function receiptKey(commitmentId: string): string {
+  return `commitment:${commitmentId}`;
+}
+
+export function toRow(c: Commitment, receipts?: ReadonlySet<string>): WorkroomRow {
+  const kept = c.status === "kept";
+  const verified = kept && (receipts?.has(receiptKey(c.id)) ?? false);
   return {
     id: c.id,
     what: c.what,
@@ -72,7 +87,8 @@ export function toRow(c: Commitment): WorkroomRow {
       ? { label: c.dueAt.slice(0, 10), exact: true }
       : { label: c.dueText ? `“${c.dueText}”` : "No date", exact: false },
     status: c.status,
-    done: c.status === "kept",
+    kept,
+    verified,
     evidenceCount: c.evidence.length,
     sourceKey: c.sourceKey,
   };
@@ -81,13 +97,15 @@ export function toRow(c: Commitment): WorkroomRow {
 export function buildWorkroom(
   conversations: WorkroomConversationInput[],
   commitments: Commitment[],
+  receipts?: ReadonlySet<string>,
 ): WorkroomMeeting[] {
   return conversations.map((conversation) => {
     const rows = commitments
       .filter((c) => c.conversationId === conversation.id)
-      .map(toRow);
+      .map((c) => toRow(c, receipts));
     const counted = rows.filter((r) => r.status !== "released");
-    const done = counted.filter((r) => r.done).length;
+    const done = counted.filter((r) => r.verified).length;
+    const needsVerification = counted.filter((r) => r.kept && !r.verified).length;
     const coverage = coverageOf(conversation);
     const allDone = counted.length > 0 && done === counted.length;
     const score =
@@ -100,11 +118,13 @@ export function buildWorkroom(
     const remark =
       counted.length === 0
         ? "No promises confirmed from this meeting yet. Review it to confirm what was agreed."
-        : coverage !== "complete"
-          ? `${done} of ${counted.length} kept. Transcript coverage is not confirmed, so no score is given.`
-          : allDone
-            ? "Every confirmed promise is kept."
-            : `${open} confirmed promise${open === 1 ? "" : "s"} still open before 100.`;
-    return { ...conversation, rows, agreed: counted.length, done, coverage, score, remark };
+        : needsVerification > 0
+          ? `${done} of ${counted.length} verified. ${needsVerification} marked kept without a completion record — verify before it counts.`
+          : coverage !== "complete"
+            ? `${done} of ${counted.length} verified. Transcript coverage is not confirmed, so no score is given.`
+            : allDone
+              ? "Every confirmed promise is verified complete."
+              : `${open} confirmed promise${open === 1 ? "" : "s"} still open before 100.`;
+    return { ...conversation, rows, agreed: counted.length, done, needsVerification, coverage, score, remark };
   });
 }

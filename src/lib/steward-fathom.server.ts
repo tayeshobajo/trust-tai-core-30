@@ -50,6 +50,18 @@ function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+/**
+ * Fathom's recording_id arrives as a NUMBER on some responses and a string on
+ * others. A stable identity must survive both, so numbers are normalized to
+ * their exact decimal form rather than dropped.
+ */
+export function normalizeRecordingId(value: unknown): string | undefined {
+  const asText = text(value);
+  if (asText) return asText;
+  if (typeof value === "number" && Number.isSafeInteger(value)) return String(value);
+  return undefined;
+}
+
 function segmentsOf(meeting: FathomMeeting, fallbackUrl: string): TranscriptSegment[] {
   const raw = Array.isArray(meeting["transcript"]) ? (meeting["transcript"] as unknown[]) : [];
   const segments: TranscriptSegment[] = [];
@@ -86,7 +98,9 @@ function normalize(meeting: FathomMeeting, ref: ConversationSourceRef): Normaliz
   return {
     sourceRef: {
       ...ref,
-      ...(text(meeting["recording_id"]) ? { externalId: text(meeting["recording_id"])! } : {}),
+      ...(normalizeRecordingId(meeting["recording_id"])
+        ? { externalId: normalizeRecordingId(meeting["recording_id"])! }
+        : {}),
       url,
     },
     title: text(meeting["title"]) ?? text(meeting["meeting_title"]) ?? "Untitled call",
@@ -123,7 +137,7 @@ function normalize(meeting: FathomMeeting, ref: ConversationSourceRef): Normaliz
 }
 
 function matches(meeting: FathomMeeting, ref: ConversationSourceRef): boolean {
-  const id = text(meeting["recording_id"]) ?? "";
+  const id = normalizeRecordingId(meeting["recording_id"]) ?? "";
   const url = `${text(meeting["url"]) ?? ""} ${text(meeting["share_url"]) ?? ""}`;
   if (ref.externalId && (id === ref.externalId || url.includes(ref.externalId))) return true;
   if (ref.shareToken && url.includes(ref.shareToken)) return true;
@@ -176,13 +190,49 @@ export async function fetchFathomConversation(
   );
 }
 
-/** Recent calls, so a person can pick rather than paste. */
-export async function listFathomConversations(limit = 10): Promise<NormalizedConversation[]> {
-  const result = await page(null);
-  return result.items.slice(0, limit).map((meeting) =>
-    normalize(meeting, {
-      provider: "fathom",
-      url: text(meeting["url"]) ?? text(meeting["share_url"]) ?? "",
-    }),
-  );
+export interface FathomListResult {
+  conversations: NormalizedConversation[];
+  /** True when Fathom has older pages Steward did not walk this time. */
+  hasMore: boolean;
+}
+
+/**
+ * Recent calls, so a person can pick rather than paste. Bounded pagination:
+ * at most `maxPages` pages are walked, and `hasMore` says honestly when older
+ * calls were left behind rather than pretending the list is complete.
+ */
+export async function listFathomConversations(
+  limit = 10,
+  maxPages = 1,
+): Promise<NormalizedConversation[]> {
+  return (await listFathomPage(limit, maxPages)).conversations;
+}
+
+export async function listFathomPage(limit = 10, maxPages = 1): Promise<FathomListResult> {
+  const collected: NormalizedConversation[] = [];
+  let cursor: string | null = null;
+  let hasMore = false;
+  for (let i = 0; i < Math.max(1, maxPages); i += 1) {
+    const result = await page(cursor);
+    const room = limit - collected.length;
+    const take = result.items.slice(0, Math.max(0, room));
+    for (const meeting of take) {
+      collected.push(
+        normalize(meeting, {
+          provider: "fathom",
+          url: text(meeting["url"]) ?? text(meeting["share_url"]) ?? "",
+        }),
+      );
+    }
+    /* More exists when this page had rows we did not take, or another page. */
+    if (result.items.length > take.length || result.next) {
+      hasMore = true;
+      cursor = result.next;
+    } else {
+      hasMore = false;
+      cursor = null;
+    }
+    if (collected.length >= limit || !cursor) break;
+  }
+  return { conversations: collected, hasMore };
 }

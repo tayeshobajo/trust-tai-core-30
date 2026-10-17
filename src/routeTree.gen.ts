@@ -80,6 +80,7 @@ import { Route as ModulesStewardMeetingsRouteImport } from './routes/modules.ste
 import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.steward.memory'
 import { Route as ModulesStewardScoutsRouteImport } from './routes/modules.steward.scouts'
 import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
+import { Route as ModulesStewardTeamRouteImport } from './routes/modules.steward.team'
 import { Route as ModulesStewardTimelineRouteImport } from './routes/modules.steward.timeline'
 import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.index'
 import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
@@ -117,6 +118,7 @@ import { Route as ApiPublicSettingsInviteAcceptRouteImport } from './routes/api/
 import { Route as ApiPublicSettingsInviteEmailRouteImport } from './routes/api/public/settings.invite-email'
 import { Route as ApiPublicStewardConversationRouteImport } from './routes/api/public/steward.conversation'
 import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/public/steward.interpret'
+import { Route as ApiPublicStewardSyncRouteImport } from './routes/api/public/steward.sync'
 import { Route as ApiPublicWebsiteEventsRouteImport } from './routes/api/public/website.events'
 import { Route as ApiPublicWebsiteIntakeRouteImport } from './routes/api/public/website.intake'
 import { Route as ApiPublicWebsiteSyncRouteImport } from './routes/api/public/website.sync'
@@ -500,6 +502,11 @@ const ModulesStewardTasksRoute = ModulesStewardTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
+const ModulesStewardTeamRoute = ModulesStewardTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => ModulesStewardRoute,
+} as any)
 const ModulesStewardTimelineRoute = ModulesStewardTimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
@@ -698,6 +705,11 @@ const ApiPublicStewardInterpretRoute =
     path: '/api/public/steward/interpret',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicStewardSyncRoute = ApiPublicStewardSyncRouteImport.update({
+  id: '/api/public/steward/sync',
+  path: '/api/public/steward/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWebsiteEventsRoute = ApiPublicWebsiteEventsRouteImport.update({
   id: '/api/public/website/events',
   path: '/api/public/website/events',
@@ -896,6 +908,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/scouts': typeof ModulesStewardScoutsRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/steward/team': typeof ModulesStewardTeamRoute
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
@@ -939,6 +952,7 @@ export interface FileRoutesByFullPath {
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
+  '/api/public/steward/sync': typeof ApiPublicStewardSyncRoute
   '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
@@ -1020,6 +1034,7 @@ export interface FileRoutesByTo {
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/scouts': typeof ModulesStewardScoutsRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/steward/team': typeof ModulesStewardTeamRoute
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
@@ -1063,6 +1078,7 @@ export interface FileRoutesByTo {
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
+  '/api/public/steward/sync': typeof ApiPublicStewardSyncRoute
   '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
@@ -1154,6 +1170,7 @@ export interface FileRoutesById {
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/scouts': typeof ModulesStewardScoutsRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/steward/team': typeof ModulesStewardTeamRoute
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
@@ -1197,6 +1214,7 @@ export interface FileRoutesById {
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
+  '/api/public/steward/sync': typeof ApiPublicStewardSyncRoute
   '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
@@ -1289,6 +1307,7 @@ export interface FileRouteTypes {
     | '/modules/steward/memory'
     | '/modules/steward/scouts'
     | '/modules/steward/tasks'
+    | '/modules/steward/team'
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
@@ -1332,6 +1351,7 @@ export interface FileRouteTypes {
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
+    | '/api/public/steward/sync'
     | '/api/public/website/events'
     | '/api/public/website/intake'
     | '/api/public/website/sync'
@@ -1413,6 +1433,7 @@ export interface FileRouteTypes {
     | '/modules/steward/memory'
     | '/modules/steward/scouts'
     | '/modules/steward/tasks'
+    | '/modules/steward/team'
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
@@ -1456,6 +1477,7 @@ export interface FileRouteTypes {
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
+    | '/api/public/steward/sync'
     | '/api/public/website/events'
     | '/api/public/website/intake'
     | '/api/public/website/sync'
@@ -1546,6 +1568,7 @@ export interface FileRouteTypes {
     | '/modules/steward/memory'
     | '/modules/steward/scouts'
     | '/modules/steward/tasks'
+    | '/modules/steward/team'
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
@@ -1589,6 +1612,7 @@ export interface FileRouteTypes {
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
+    | '/api/public/steward/sync'
     | '/api/public/website/events'
     | '/api/public/website/intake'
     | '/api/public/website/sync'
@@ -1675,6 +1699,7 @@ export interface RootRouteChildren {
   ApiPublicSettingsInviteEmailRoute: typeof ApiPublicSettingsInviteEmailRoute
   ApiPublicStewardConversationRoute: typeof ApiPublicStewardConversationRoute
   ApiPublicStewardInterpretRoute: typeof ApiPublicStewardInterpretRoute
+  ApiPublicStewardSyncRoute: typeof ApiPublicStewardSyncRoute
   ApiPublicWebsiteEventsRoute: typeof ApiPublicWebsiteEventsRoute
   ApiPublicWebsiteIntakeRoute: typeof ApiPublicWebsiteIntakeRoute
   ApiPublicWebsiteSyncRoute: typeof ApiPublicWebsiteSyncRoute
@@ -2193,6 +2218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardTasksRouteImport
       parentRoute: typeof ModulesStewardRoute
     }
+    '/modules/steward/team': {
+      id: '/modules/steward/team'
+      path: '/team'
+      fullPath: '/modules/steward/team'
+      preLoaderRoute: typeof ModulesStewardTeamRouteImport
+      parentRoute: typeof ModulesStewardRoute
+    }
     '/modules/steward/timeline': {
       id: '/modules/steward/timeline'
       path: '/timeline'
@@ -2450,6 +2482,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/steward/interpret'
       fullPath: '/api/public/steward/interpret'
       preLoaderRoute: typeof ApiPublicStewardInterpretRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/steward/sync': {
+      id: '/api/public/steward/sync'
+      path: '/api/public/steward/sync'
+      fullPath: '/api/public/steward/sync'
+      preLoaderRoute: typeof ApiPublicStewardSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/website/events': {
@@ -2786,6 +2825,7 @@ interface ModulesStewardRouteChildren {
   ModulesStewardMemoryRoute: typeof ModulesStewardMemoryRoute
   ModulesStewardScoutsRoute: typeof ModulesStewardScoutsRoute
   ModulesStewardTasksRoute: typeof ModulesStewardTasksRoute
+  ModulesStewardTeamRoute: typeof ModulesStewardTeamRoute
   ModulesStewardTimelineRoute: typeof ModulesStewardTimelineRoute
   ModulesStewardIndexRoute: typeof ModulesStewardIndexRoute
   ModulesStewardPeopleUserIdRoute: typeof ModulesStewardPeopleUserIdRoute
@@ -2800,6 +2840,7 @@ const ModulesStewardRouteChildren: ModulesStewardRouteChildren = {
   ModulesStewardMemoryRoute: ModulesStewardMemoryRoute,
   ModulesStewardScoutsRoute: ModulesStewardScoutsRoute,
   ModulesStewardTasksRoute: ModulesStewardTasksRoute,
+  ModulesStewardTeamRoute: ModulesStewardTeamRoute,
   ModulesStewardTimelineRoute: ModulesStewardTimelineRoute,
   ModulesStewardIndexRoute: ModulesStewardIndexRoute,
   ModulesStewardPeopleUserIdRoute: ModulesStewardPeopleUserIdRoute,
@@ -2886,6 +2927,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSettingsInviteEmailRoute: ApiPublicSettingsInviteEmailRoute,
   ApiPublicStewardConversationRoute: ApiPublicStewardConversationRoute,
   ApiPublicStewardInterpretRoute: ApiPublicStewardInterpretRoute,
+  ApiPublicStewardSyncRoute: ApiPublicStewardSyncRoute,
   ApiPublicWebsiteEventsRoute: ApiPublicWebsiteEventsRoute,
   ApiPublicWebsiteIntakeRoute: ApiPublicWebsiteIntakeRoute,
   ApiPublicWebsiteSyncRoute: ApiPublicWebsiteSyncRoute,
