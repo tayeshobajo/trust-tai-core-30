@@ -202,6 +202,23 @@ function TaskDetail({
         </p>
       </div>
 
+      {/* AI help comes first: it prepares the person's review, and never
+          completes, assigns or sends anything itself. */}
+      <div className="rounded-lg border border-royal/25 bg-royal/5 p-3">
+        <p className="flex items-center gap-1.5 font-medium text-foreground">
+          <Sparkles aria-hidden className="size-3.5 text-royal" /> AI help
+        </p>
+        <p className="mt-2 text-[13px] text-muted-foreground">
+          Steward can read this meeting for meaning and prepare a review. It never completes,
+          assigns or sends anything on its own.
+        </p>
+        <TTButton asChild variant="secondary" className="mt-3">
+          <Link to="/modules/steward/meetings/$conversationId" params={{ conversationId: meeting.id }}>
+            Prepare review
+          </Link>
+        </TTButton>
+      </div>
+
       <div className="border-t border-border pt-4">
         <p className="flex items-center gap-1.5 font-medium text-foreground">
           <Check aria-hidden className="size-3.5" /> Completion evidence
