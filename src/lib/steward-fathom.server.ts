@@ -188,13 +188,47 @@ export async function fetchFathomConversation(
   );
 }
 
-/** Recent calls, so a person can pick rather than paste. */
-export async function listFathomConversations(limit = 10): Promise<NormalizedConversation[]> {
-  const result = await page(null);
-  return result.items.slice(0, limit).map((meeting) =>
-    normalize(meeting, {
-      provider: "fathom",
-      url: text(meeting["url"]) ?? text(meeting["share_url"]) ?? "",
-    }),
-  );
+export interface FathomListResult {
+  conversations: NormalizedConversation[];
+  /** True when Fathom has older pages Steward did not walk this time. */
+  hasMore: boolean;
+}
+
+/**
+ * Recent calls, so a person can pick rather than paste. Bounded pagination:
+ * at most `maxPages` pages are walked, and `hasMore` says honestly when older
+ * calls were left behind rather than pretending the list is complete.
+ */
+export async function listFathomConversations(
+  limit = 10,
+  maxPages = 1,
+): Promise<NormalizedConversation[]> {
+  return (await listFathomPage(limit, maxPages)).conversations;
+}
+
+export async function listFathomPage(limit = 10, maxPages = 1): Promise<FathomListResult> {
+  const collected: NormalizedConversation[] = [];
+  let cursor: string | null = null;
+  let hasMore = false;
+  for (let i = 0; i < Math.max(1, maxPages); i += 1) {
+    const result = await page(cursor);
+    for (const meeting of result.items) {
+      if (collected.length >= limit) break;
+      collected.push(
+        normalize(meeting, {
+          provider: "fathom",
+          url: text(meeting["url"]) ?? text(meeting["share_url"]) ?? "",
+        }),
+      );
+    }
+    if (collected.length >= limit) {
+      hasMore = Boolean(result.next) || result.items.length > 0;
+      break;
+    }
+    if (!result.next) break;
+    cursor = result.next;
+    hasMore = false;
+  }
+  if (cursor && collected.length < limit) hasMore = false;
+  return { conversations: collected, hasMore };
 }
