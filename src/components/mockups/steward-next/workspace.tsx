@@ -589,7 +589,7 @@ function WorkRow({
       data-task-row={item.id}
       onClick={onOpen}
       className={cn(
-        "grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] gap-x-2 rounded-none border-b border-l-2 px-3 py-2 text-left text-sm font-normal sm:grid-cols-[minmax(0,1fr)_116px_104px_92px] sm:py-0",
+        "grid h-auto min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] gap-x-2 rounded-none border-b border-l-2 px-3 py-2 text-left text-sm font-normal sm:grid-cols-[minmax(0,1fr)_116px_104px_92px] sm:py-0",
         selected ? "border-l-royal bg-secondary text-foreground" : "border-l-transparent",
         done && "bg-success/8 text-success",
         proposed && !selected && "bg-royal/5",

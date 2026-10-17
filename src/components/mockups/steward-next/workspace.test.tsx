@@ -4,13 +4,11 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { StewardPreview } from "./workspace";
 beforeAll(() => {
-  window.matchMedia = vi
-    .fn()
-    .mockImplementation(() => ({
-      matches: false,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
+  window.matchMedia = vi.fn().mockImplementation(() => ({
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
 });
 afterEach(cleanup);
 const select = (title: string) =>
@@ -48,7 +46,7 @@ describe("Approved Steward fictional interactions", () => {
     }
     cleanup();
     render(<StewardPreview />);
-    expect(screen.getByRole("button", { name: /Completed 3/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Completed\s*3/ })).toBeTruthy();
   });
   it("blocks completion until the dependency is verified, then requires its own evidence", () => {
     render(<StewardPreview />);
@@ -76,8 +74,8 @@ describe("Approved Steward fictional interactions", () => {
       target: { value: "Morgan" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Confirm example work" }));
-    expect(screen.getByRole("button", { name: /Proposed 0/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Open 9/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Proposed\s*0/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Open\s*9/ })).toBeTruthy();
     expect(screen.getByLabelText("Meeting work completion")).toBeTruthy();
   });
   it("keeps partial coverage unknown and cross-meeting work available", () => {
@@ -104,7 +102,7 @@ describe("Approved Steward fictional interactions", () => {
     render(<StewardPreview />);
     fireEvent.click(screen.getByRole("button", { name: "Prepare review" }));
     expect(await screen.findByText("Illustrative review · no model execution")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Completed 3/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Completed\s*3/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "History" }));
     expect(screen.getByText("No completion receipts yet.")).toBeTruthy();
   });
