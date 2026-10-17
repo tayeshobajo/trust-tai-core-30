@@ -21,6 +21,7 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
+const FOCUS_THROTTLE_MS = 60 * 1000;
 
 /* ---------------------------------------------------------- auto sync */
 
