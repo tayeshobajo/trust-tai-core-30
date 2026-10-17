@@ -145,7 +145,7 @@ describe("recent sync dedupe", () => {
 describe("recent sync persistence", () => {
   beforeEach(() => {
     saveConversation.mockClear();
-    vi.restoreAllMocks();
+    vi.restoreAllMocks(); vi.unstubAllGlobals();
   });
 
   it("a url-stored row upgraded by a numeric-id read writes the SAME row (same conflict identity)", async () => {
