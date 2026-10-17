@@ -46,7 +46,7 @@ const receipts = new Map<string, CompletionReceipt>(
     receiptKey(`fictional-${i}`),
     {
       taskKey: receiptKey(`fictional-${i}`),
-      completedAt: "2026-10-17T14:0" + i + ":00Z",
+      completedAt: `2026-10-17T14:${10 + i}:00Z`,
       completionNote: "Verified against the agreed message and shared in the project channel.",
       completedBy: OWNERS[i],
     },
