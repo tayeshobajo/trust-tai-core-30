@@ -61,7 +61,7 @@ export function meetingProgress(meeting: PreviewMeeting, items: PreviewDeliverab
     // Incomplete coverage cannot certify the meeting, even if known work is done.
     score:
       meeting.coverage === "complete" && agreed.length > 0
-        ? Math.floor((verified / agreed.length) * 100)
+        ? Math.min(complete ? 100 : 99, Math.round((verified / agreed.length) * 100))
         : null,
     complete,
   };
