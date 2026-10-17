@@ -73,7 +73,10 @@ export interface MissingResult {
  * while actually losing content — so we skip and warn instead of risking an
  * overwrite.
  */
-function isDemonstrablyFuller(stored: StoredConversation, incoming: NormalizedConversation): boolean {
+function isDemonstrablyFuller(
+  stored: StoredConversation,
+  incoming: NormalizedConversation,
+): boolean {
   return storedSegmentCount(stored) === 0 && incoming.segments.length > 0;
 }
 
