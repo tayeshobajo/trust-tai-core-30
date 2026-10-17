@@ -130,14 +130,14 @@ export function missingCalls(
        and URL on the conversation handed to the writer. */
     if (isDemonstrablyFuller(existing, call)) {
       const storedExternal = existing.conversation?.sourceRef?.externalId;
-      const { externalId: _incomingId, ...restRef } = call.sourceRef;
       upgrades.push({
         ...call,
         sourceRef: {
-          ...restRef,
+          provider: call.sourceRef.provider,
           /* Carry the stored row's identity: its externalId when it has one,
              otherwise no externalId so the conflict key falls back to the
              stored URL — either way the upsert hits the SAME row. */
+          ...(call.sourceRef.shareToken ? { shareToken: call.sourceRef.shareToken } : {}),
           ...(storedExternal ? { externalId: storedExternal } : {}),
           url: existing.sourceUrl ?? call.sourceRef.url,
         },
