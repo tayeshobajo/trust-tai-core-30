@@ -98,7 +98,7 @@ function normalize(meeting: FathomMeeting, ref: ConversationSourceRef): Normaliz
   return {
     sourceRef: {
       ...ref,
-      ...(text(meeting["recording_id"]) ? { externalId: text(meeting["recording_id"])! } : {}),
+      ...(idText(meeting["recording_id"]) ? { externalId: idText(meeting["recording_id"])! } : {}),
       url,
     },
     title: text(meeting["title"]) ?? text(meeting["meeting_title"]) ?? "Untitled call",
@@ -135,7 +135,7 @@ function normalize(meeting: FathomMeeting, ref: ConversationSourceRef): Normaliz
 }
 
 function matches(meeting: FathomMeeting, ref: ConversationSourceRef): boolean {
-  const id = text(meeting["recording_id"]) ?? "";
+  const id = idText(meeting["recording_id"]) ?? "";
   const url = `${text(meeting["url"]) ?? ""} ${text(meeting["share_url"]) ?? ""}`;
   if (ref.externalId && (id === ref.externalId || url.includes(ref.externalId))) return true;
   if (ref.shareToken && url.includes(ref.shareToken)) return true;
