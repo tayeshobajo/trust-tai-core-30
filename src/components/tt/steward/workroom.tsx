@@ -15,7 +15,7 @@ import { syncRecentMeetings } from "@/data/steward/recent-sync";
 import { stewardService } from "@/data/supabase/steward-service";
 import { stewardTaskState } from "@/data/supabase/steward-task-state";
 import { extractProposals } from "@/data/steward/extract";
-import { buildWorkroom, type CompletionReceipt } from "@/domain/steward-workroom";
+import { buildWorkroom, receiptMapFrom } from "@/domain/steward-workroom";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
