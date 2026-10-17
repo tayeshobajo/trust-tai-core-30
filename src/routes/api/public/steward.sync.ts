@@ -71,7 +71,12 @@ export const Route = createFileRoute("/api/public/steward/sync")({
 
         const status = fathomStatus();
         if (!status.configured) {
-          return Response.json({ status, conversations: [], hasMore: false });
+          /* A disconnected source is an explicit unavailable state, never a
+             successful empty answer the client could mistake for "no calls". */
+          return Response.json(
+            { error: "The Fathom source is not connected to this workspace." },
+            { status: 503 },
+          );
         }
 
         try {
