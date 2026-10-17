@@ -106,8 +106,16 @@ function StatusPill({ row }: { row: WorkroomRow }) {
 
 /* ---------------------------------------------------------- score card */
 
-function ScoreCard({ meeting }: { meeting: WorkroomMeeting }) {
-  const value = meeting.score;
+function ScoreCard({
+  meeting,
+  receiptsFailed,
+}: {
+  meeting: WorkroomMeeting;
+  receiptsFailed: boolean;
+}) {
+  /* When receipts could not be read, a numeric score would be computed from
+     an empty map — a definitive-looking lie. Show it as unavailable. */
+  const value = receiptsFailed ? null : meeting.score;
   const full = value === 100;
   return (
     <div
@@ -149,9 +157,11 @@ function ScoreCard({ meeting }: { meeting: WorkroomMeeting }) {
             {value === null ? "—/100" : `${value}/100`}
           </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
-            {value === null
-              ? "Nothing confirmed yet"
-              : `${meeting.done} of ${meeting.agreed} agreed tasks verified`}
+            {receiptsFailed
+              ? "Verification unavailable — receipts could not be read"
+              : value === null
+                ? "Nothing confirmed yet"
+                : `${meeting.done} of ${meeting.agreed} agreed tasks verified`}
           </p>
         </div>
       </div>
@@ -403,15 +413,18 @@ export function WorkroomView({
               <span className="block truncate text-sm font-semibold leading-5">{m.title}</span>
               <span className="mt-1 flex items-center justify-between gap-1 text-xs text-muted-foreground">
                 <span>
-                  {m.occurredAt.slice(0, 10)} · {m.done} of {m.agreed} verified
+                  {m.occurredAt.slice(0, 10)} ·{" "}
+                  {receiptsFailed ? "verification unavailable" : `${m.done} of ${m.agreed} verified`}
                 </span>
                 <span
                   className={cn(
                     "shrink-0 rounded px-1.5 py-0.5 font-semibold",
-                    m.score === 100 ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
+                    m.score === 100 && !receiptsFailed
+                      ? "bg-success/15 text-success"
+                      : "bg-warning/15 text-warning",
                   )}
                 >
-                  {m.score === null ? "Partial" : `${m.score}/100`}
+                  {receiptsFailed ? "—" : m.score === null ? "Partial" : `${m.score}/100`}
                 </span>
               </span>
             </span>
@@ -462,7 +475,7 @@ export function WorkroomView({
             ) : null}
           </div>
         </div>
-        <ScoreCard meeting={meeting} />
+        <ScoreCard meeting={meeting} receiptsFailed={receiptsFailed} />
       </div>
 
       {meeting.openProposals > 0 ? (
