@@ -26,6 +26,7 @@ const incoming = (over: {
       at: "00:00:10",
       text: "…",
     })),
+    sourceActionItems: [],
   }) as NormalizedConversation;
 
 const stored = (over: { externalId?: string; url?: string }): StoredConversation =>
