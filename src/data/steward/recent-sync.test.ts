@@ -10,7 +10,9 @@ vi.mock("@/integrations/trust-tai/supabase", () => ({
 }));
 
 const saveConversation = vi.fn(async (_input: unknown) => ({}) as never);
-const findConversationBySource = vi.fn(async (_input: unknown) => null as StoredConversation | null);
+const findConversationBySource = vi.fn(
+  async (_input: unknown) => null as StoredConversation | null,
+);
 vi.mock("@/data/supabase/steward-service", () => ({
   stewardService: {
     saveConversation: (input: unknown) => saveConversation(input),
