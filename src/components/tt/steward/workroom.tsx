@@ -221,10 +221,10 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
       }
       accountSlot={
         <span
-          aria-label={`Signed in as ${identity.email ?? "workspace member"}`}
+          aria-label={`Signed in as ${identity.email}`}
           className="hidden size-8 items-center justify-center rounded-full bg-secondary text-xs text-muted-foreground sm:flex"
         >
-          {(identity.email ?? "M").slice(0, 2).toUpperCase()}
+          {identity.email.slice(0, 2).toUpperCase()}
         </span>
       }
     />
