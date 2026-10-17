@@ -19,7 +19,7 @@ import { TTButton } from "@/components/tt/primitives";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PREVIEW_MEETINGS, PREVIEW_WORK } from "@/data/mockups/steward-preview";
-import { meetingProgress, type PreviewDeliverable } from "@/domain/steward-preview";
+import { meetingProgress, previewDependencyState, type PreviewDeliverable } from "@/domain/steward-preview";
 import { TaskDetails } from "./task-details";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +62,12 @@ export function StewardPreview() {
   const progress = meetingProgress(meeting, work);
   const scope = work.filter((i) => view === "work" || i.meetingId === selected);
   const proposals = scope.filter((i) => i.status === "proposed").length;
+  const buildDependency = previewDependencyState(scope.find((i) => i.id === "example-build"), work);
+  const dependencyGuidance = buildDependency === "outstanding"
+    ? " Start by approving the copy to unblock the page build."
+    : buildDependency === "ready"
+      ? " Review and clear the page-build blocker; the copy is verified."
+      : "";
   const visible = scope.filter(
     (i) =>
       matches(i, filter) &&
@@ -464,7 +470,7 @@ export function StewardPreview() {
                     ? "Recover the missing meeting coverage, then verify all agreed work. The full score is unknown."
                     : progress.complete
                       ? "Every agreed task has a completion reference."
-                      : `Verify the ${progress.outstanding} remaining agreed tasks.${scope.some((i) => i.status === "blocked") ? " Start by approving the copy to unblock the page build." : ""}`}
+                      : `Verify the ${progress.outstanding} remaining agreed tasks.${dependencyGuidance}`}
                 </p>
                 {proposals > 0 && (
                   <p className="text-muted-foreground">

@@ -67,6 +67,20 @@ export function meetingProgress(meeting: PreviewMeeting, items: PreviewDeliverab
   };
 }
 
+/** Guidance follows the blocker and its evidenced dependency, not other blocked work. */
+export function previewDependencyState(
+  item: PreviewDeliverable | undefined,
+  work: PreviewDeliverable[],
+): "outstanding" | "ready" | "cleared" {
+  if (!item || item.status !== "blocked") return "cleared";
+  const verified = !item.dependency || work.some(
+    (dependency) => dependency.meetingId === item.meetingId &&
+      dependency.title === item.dependency && dependency.status === "verified" &&
+      Boolean(dependency.proof?.trim()),
+  );
+  return verified ? "ready" : "outstanding";
+}
+
 export function verifyPreview(
   item: PreviewDeliverable,
   proof: string,
