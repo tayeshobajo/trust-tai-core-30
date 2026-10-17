@@ -223,13 +223,13 @@ describe("recent sync persistence", () => {
         : null;
     });
     stubFetch([upgrade, fresh], true);
-    /* The new call's write fails, the upgrade succeeds — added/refreshed
-       must reflect that exactly. */
+    /* Writes run in incoming order: the upgrade's write fails, the new
+       call's succeeds — added/refreshed must reflect that exactly. */
     saveConversation.mockRejectedValueOnce(new Error("write denied"));
     saveConversation.mockImplementationOnce(async () => ({}) as never);
     const outcome = await syncRecentMeetings({ organizationId: "o", userId: "u" });
-    expect(outcome.refreshed).toBe(1);
-    expect(outcome.added).toBe(0);
+    expect(outcome.refreshed).toBe(0);
+    expect(outcome.added).toBe(1);
     expect(outcome.errors).toHaveLength(1);
     expect(outcome.checkedAt).toBeNull();
     expect(outcome.hasMore).toBe(true);
