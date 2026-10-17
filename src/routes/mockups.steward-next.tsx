@@ -1,6 +1,5 @@
 /** Isolated design preview. Only invented fixtures; no production work services. */
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/tt/app-shell";
 import { StewardPreview } from "@/components/mockups/steward-next/workspace";
 
 const TITLE = "Steward meeting workspace preview · Trust Tai OS";
@@ -18,9 +17,5 @@ export const Route = createFileRoute("/mockups/steward-next")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: () => (
-    <AppShell>
-      <StewardPreview />
-    </AppShell>
-  ),
+  component: StewardPreview,
 });
