@@ -15,7 +15,7 @@ import { syncRecentMeetings } from "@/data/steward/recent-sync";
 import { stewardService } from "@/data/supabase/steward-service";
 import { stewardTaskState } from "@/data/supabase/steward-task-state";
 import { extractProposals } from "@/data/steward/extract";
-import { buildWorkroom, type CompletionReceipt } from "@/domain/steward-workroom";
+import { buildWorkroom, receiptMapFrom } from "@/domain/steward-workroom";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
@@ -139,18 +139,10 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
 
   const sync = useRecentSync(identity);
 
-  const receiptMap = useMemo(() => {
-    const map = new Map<string, CompletionReceipt>();
-    for (const r of receipts.data ?? []) {
-      map.set(r.taskKey, {
-        taskKey: r.taskKey,
-        completedAt: r.completedAt,
-        completionNote: r.completionNote,
-        completedBy: r.completedBy,
-      });
-    }
-    return map;
-  }, [receipts.data]);
+  const receiptMap = useMemo(
+    () => receiptMapFrom(receipts.data, receipts.isError),
+    [receipts.data, receipts.isError],
+  );
 
   const proposalCounts = useMemo(() => {
     const map = new Map<string, number>();

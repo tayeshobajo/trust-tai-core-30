@@ -506,8 +506,16 @@ export function WorkroomView({
           {(
             [
               ["all", `All tasks ${meeting.rows.length}`],
-              ["open", `Open ${meeting.rows.filter((r) => !r.verified).length}`],
-              ["verified", `Verified ${meeting.done}`],
+              /* When receipts could not be read, open/verified counts would
+                 be computed from suppressed verification — show unavailable,
+                 never a stale or zero number. */
+              [
+                "open",
+                receiptsFailed
+                  ? "Open —"
+                  : `Open ${meeting.rows.filter((r) => !r.verified).length}`,
+              ],
+              ["verified", receiptsFailed ? "Verified —" : `Verified ${meeting.done}`],
             ] as [RowFilter, string][]
           ).map(([value, label]) => (
             <TTButton
@@ -642,16 +650,28 @@ export function WorkroomView({
           )}
         />
         <div>
-          <p className="text-sm font-semibold">
-            {meeting.score === 100 ? "All agreed work verified" : "To reach 100/100"}
-          </p>
-          <p className="mt-1 text-muted-foreground">{meeting.remark}</p>
-          {meeting.score !== 100 ? (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              100 requires every confirmed promise verified, transcript coverage confirmed, and no
-              unreviewed proposals. Work completion, not a grade for people.
-            </p>
-          ) : null}
+          {receiptsFailed ? (
+            <>
+              <p className="text-sm font-semibold">Verification unavailable</p>
+              <p className="mt-1 text-muted-foreground">
+                Completion receipts could not be read, so verified status and the path to 100 are
+                unavailable rather than guessed. Nothing is shown as verified.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold">
+                {meeting.score === 100 ? "All agreed work verified" : "To reach 100/100"}
+              </p>
+              <p className="mt-1 text-muted-foreground">{meeting.remark}</p>
+              {meeting.score !== 100 ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  100 requires every confirmed promise verified, transcript coverage confirmed, and
+                  no unreviewed proposals. Work completion, not a grade for people.
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
       </footer>
     </>
