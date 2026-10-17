@@ -72,4 +72,29 @@ describe("recent sync dedupe", () => {
     expect(result.missing).toHaveLength(0);
     expect(result.pendingTranscript).toBe(1);
   });
+
+  it("a numeric id arriving later does not duplicate a url-stored row", () => {
+    const result = missingCalls(
+      [incoming({ externalId: "42", url: "https://fathom.video/calls/1" })],
+      [stored({ url: "https://fathom.video/calls/1" })],
+    );
+    expect(result.missing).toHaveLength(0);
+    expect(result.upgrades).toHaveLength(0);
+  });
+
+  it("a fuller late transcript upgrades a stored partial one through the same identity", () => {
+    const partial = stored({ externalId: "7" });
+    (partial.conversation as { segments: unknown[] }).segments = [{ index: 0 }];
+    const result = missingCalls([incoming({ externalId: "7", segments: 12 })], [partial]);
+    expect(result.missing).toHaveLength(0);
+    expect(result.upgrades).toHaveLength(1);
+  });
+
+  it("never replaces a fuller stored transcript with a shorter one", () => {
+    const full = stored({ externalId: "7" });
+    (full.conversation as { segments: unknown[] }).segments = Array.from({ length: 20 });
+    const result = missingCalls([incoming({ externalId: "7", segments: 3 })], [full]);
+    expect(result.missing).toHaveLength(0);
+    expect(result.upgrades).toHaveLength(0);
+  });
 });
