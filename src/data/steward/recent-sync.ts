@@ -40,6 +40,8 @@ export interface SyncOutcome {
   hasMore: boolean;
   /** Per-call store failures, surfaced rather than hidden. */
   errors: string[];
+  /** Calls deliberately left untouched (no identity, uncertain overwrite). */
+  warnings: string[];
 }
 
 /** The stable identity of a stored or incoming call. */
@@ -131,7 +133,7 @@ export function missingCalls(
         ...call,
         sourceRef: {
           ...call.sourceRef,
-          externalId: existing.conversation?.sourceRef?.externalId ?? null,
+          externalId: existing.conversation?.sourceRef?.externalId ?? undefined,
           url: existing.sourceUrl ?? call.sourceRef.url,
         },
       });
