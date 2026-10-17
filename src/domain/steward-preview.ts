@@ -73,11 +73,15 @@ export function previewDependencyState(
   work: PreviewDeliverable[],
 ): "outstanding" | "ready" | "cleared" {
   if (!item || item.status !== "blocked") return "cleared";
-  const verified = !item.dependency || work.some(
-    (dependency) => dependency.meetingId === item.meetingId &&
-      dependency.title === item.dependency && dependency.status === "verified" &&
-      Boolean(dependency.proof?.trim()),
-  );
+  const verified =
+    !item.dependency ||
+    work.some(
+      (dependency) =>
+        dependency.meetingId === item.meetingId &&
+        dependency.title === item.dependency &&
+        dependency.status === "verified" &&
+        Boolean(dependency.proof?.trim()),
+    );
   return verified ? "ready" : "outstanding";
 }
 

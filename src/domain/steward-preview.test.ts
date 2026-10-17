@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { PREVIEW_MEETINGS, PREVIEW_WORK } from "@/data/mockups/steward-preview";
-import { confirmPreview, meetingProgress, previewDependencyState, reopenPreview, verifyPreview } from "./steward-preview";
+import {
+  confirmPreview,
+  meetingProgress,
+  previewDependencyState,
+  reopenPreview,
+  verifyPreview,
+} from "./steward-preview";
 
 const meeting = PREVIEW_MEETINGS[0];
 const open = PREVIEW_WORK[0];
@@ -11,13 +17,18 @@ describe("Steward illustrative completion rules", () => {
     const build = PREVIEW_WORK.find((item) => item.id === "example-build");
     if (!build) throw new Error("Missing page-build fixture");
     expect(previewDependencyState(build, PREVIEW_WORK)).toBe("outstanding");
-    const completed = PREVIEW_WORK.map((item) => item.id === open.id
-      ? verifyPreview(item, "Sample copy review") : item);
+    const completed = PREVIEW_WORK.map((item) =>
+      item.id === open.id ? verifyPreview(item, "Sample copy review") : item,
+    );
     expect(meetingProgress(meeting, completed)).toMatchObject({ score: 36, outstanding: 7 });
     expect(previewDependencyState(build, completed)).toBe("ready");
     expect(previewDependencyState({ ...build, status: "open" }, completed)).toBe("cleared");
-    expect(previewDependencyState(build, completed.map((item) => item.id === open.id
-      ? { ...item, proof: " " } : item))).toBe("outstanding");
+    expect(
+      previewDependencyState(
+        build,
+        completed.map((item) => (item.id === open.id ? { ...item, proof: " " } : item)),
+      ),
+    ).toBe("outstanding");
   });
   it("rounds the approved 3 of 11 fixture to 27 without rounding incomplete work to 100", () => {
     expect(meetingProgress(meeting, PREVIEW_WORK).score).toBe(27);
