@@ -66,12 +66,14 @@ export function missingCalls(
   let pendingTranscript = 0;
   const seen = new Set<string>();
   for (const call of incoming) {
-    const identity = callIdentity({
-      externalId: call.sourceRef.externalId ?? null,
-      url: call.sourceRef.url,
-    });
-    if (identity && (known.has(identity) || seen.has(identity))) continue;
-    if (identity) seen.add(identity);
+    /* A call is known when EITHER its stable id OR its source url matches a
+       stored row — the id is preferred as identity, but both are dedupe keys. */
+    const keys = [
+      call.sourceRef.externalId?.trim() ? `id:${call.sourceRef.externalId.trim()}` : null,
+      call.sourceRef.url?.trim() ? `url:${call.sourceRef.url.trim()}` : null,
+    ].filter((k): k is string => Boolean(k));
+    if (keys.some((k) => known.has(k) || seen.has(k))) continue;
+    for (const k of keys) seen.add(k);
     /* A call without a transcript is pending, not empty: skip it this pass
        so an empty read never replaces anything, and retry later. */
     if (call.segments.length === 0) {
