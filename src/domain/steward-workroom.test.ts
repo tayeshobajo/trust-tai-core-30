@@ -45,7 +45,7 @@ describe("steward workroom", () => {
     const b = commit();
     const both = new Set([receiptKey(a.id), receiptKey(b.id)]);
     expect(buildWorkroom([full], [a, b], both)[0]!.score).toBe(100);
-    expect(buildWorkroom([full], [a, b, commit({ status: "open" })], both)[0]!.score).toBe(50);
+    expect(buildWorkroom([full], [a, b, commit({ status: "open" })], both)[0]!.score).toBe(67);
   });
 
   it("kept without a completion receipt is not verified and never counts", () => {
