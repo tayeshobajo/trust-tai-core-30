@@ -74,9 +74,11 @@ describe("recent sync dedupe", () => {
   });
 
   it("a numeric id arriving later does not duplicate a url-stored row", () => {
+    const existing = stored({ url: "https://fathom.video/calls/1" });
+    (existing.conversation as { segments: unknown[] }).segments = Array.from({ length: 5 });
     const result = missingCalls(
       [incoming({ externalId: "42", url: "https://fathom.video/calls/1" })],
-      [stored({ url: "https://fathom.video/calls/1" })],
+      [existing],
     );
     expect(result.missing).toHaveLength(0);
     expect(result.upgrades).toHaveLength(0);
