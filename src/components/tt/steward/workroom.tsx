@@ -139,18 +139,10 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
 
   const sync = useRecentSync(identity);
 
-  const receiptMap = useMemo(() => {
-    const map = new Map<string, CompletionReceipt>();
-    for (const r of receipts.data ?? []) {
-      map.set(r.taskKey, {
-        taskKey: r.taskKey,
-        completedAt: r.completedAt,
-        completionNote: r.completionNote,
-        completedBy: r.completedBy,
-      });
-    }
-    return map;
-  }, [receipts.data]);
+  const receiptMap = useMemo(
+    () => receiptMapFrom(receipts.data, receipts.isError),
+    [receipts.data, receipts.isError],
+  );
 
   const proposalCounts = useMemo(() => {
     const map = new Map<string, number>();
