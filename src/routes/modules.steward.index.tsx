@@ -4,13 +4,13 @@
  * The first page under Steward: stored meetings on the left, the confirmed
  * promises of one meeting in the middle, and the selected promise's source
  * and next step on the right. Real rows only; confirming and completing
- * happen on the meeting review page behind its gates.
+ * happen on the meeting review page behind its gates. The compact Steward
+ * shell replaces the suite shell here so the workspace keeps the screen;
+ * suite navigation and account live in the compact header.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { AppShell } from "@/components/tt/app-shell";
-import { StewardTabs } from "@/components/tt/steward/steward-tabs";
 import { StewardWorkroom } from "@/components/tt/steward/workroom";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 
@@ -36,14 +36,7 @@ export const Route = createFileRoute("/modules/steward/")({
 function StewardWorkroomRoute() {
   return (
     <WorkspaceGate appId="steward">
-      {(identity) => (
-        <AppShell identity={identity}>
-          <div className="px-3 pt-3 lg:px-4">
-            <StewardTabs active="meetings" />
-          </div>
-          <StewardWorkroom identity={identity} />
-        </AppShell>
-      )}
+      {(identity) => <StewardWorkroom identity={identity} />}
     </WorkspaceGate>
   );
 }
