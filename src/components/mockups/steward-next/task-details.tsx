@@ -164,7 +164,10 @@ export function TaskDetails({
             <TTButton
               variant="secondary"
               className="mt-4 rounded-md"
-              onClick={() => setReopening(true)}
+              onClick={() => {
+                setReason("");
+                setReopening(true);
+              }}
             >
               <RotateCcw />
               Reopen deliverable
