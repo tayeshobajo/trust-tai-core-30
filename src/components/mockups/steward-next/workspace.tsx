@@ -220,15 +220,15 @@ export function StewardPreview() {
       </header>
       <div
         className={cn(
-          "grid min-h-[calc(100vh-56px)] min-w-0 md:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[18%_56%_26%]",
+          "grid min-h-[calc(100vh-56px)] min-w-0 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[18%_56%_26%]",
           !detail && "xl:grid-cols-[18%_82%]",
         )}
       >
-        <aside className="hidden border-r border-border bg-cloud md:block">{navigation}</aside>
+        <aside className="hidden border-r border-border bg-cloud lg:block">{navigation}</aside>
         <main className="min-w-0 px-4 pb-5 pt-4 sm:px-6 sm:pt-5">
           <TTButton
             variant="quiet"
-            className="mb-2 h-11 rounded-md px-0 text-royal md:hidden"
+            className="mb-2 h-11 rounded-md px-0 text-royal lg:hidden"
             onClick={() => setNavOpen(true)}
           >
             <List />
@@ -262,7 +262,7 @@ export function StewardPreview() {
               <div
                 aria-label="Meeting work completion"
                 className={cn(
-                  "w-[108px] rounded-lg border border-border bg-cloud p-2 sm:w-[224px] sm:p-3",
+                  "w-[108px] rounded-lg border border-border bg-cloud p-2 sm:w-[280px] sm:p-3",
                   progress.complete ? "text-success" : "text-warning",
                 )}
               >
@@ -341,7 +341,10 @@ export function StewardPreview() {
             </TTButton>
           )}
           <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 border-b border-border pb-2">
-            <div className="flex min-w-0 max-w-full overflow-x-auto" aria-label="Task filters">
+            <div
+              className="flex w-full min-w-0 max-w-full overflow-x-auto xl:w-auto"
+              aria-label="Task filters"
+            >
               {FILTERS.map((f) => (
                 <TTButton
                   key={f.id}
@@ -358,7 +361,7 @@ export function StewardPreview() {
                 </TTButton>
               ))}
             </div>
-            <div className="flex min-w-0 flex-1 gap-2">
+            <div className="flex w-full min-w-0 gap-2 xl:w-auto xl:flex-1">
               <label className="flex h-9 min-w-[110px] flex-1 items-center gap-2 rounded-md border border-input px-2">
                 <Search className="size-4 shrink-0 text-muted-foreground" />
                 <input
