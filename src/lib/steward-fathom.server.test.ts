@@ -4,23 +4,17 @@ import { describe, expect, it } from "vitest";
  * recording_id arrives as a NUMBER on some Fathom responses and a string on
  * others. The normalizer must keep both as the same stable identity rather
  * than dropping the numeric form (which used to silently unlink calls).
- *
- * `normalize` is not exported, so the rule is exercised through the exported
- * list path's dependency: we test the exported surface indirectly via the
- * module's own helpers by reading a meeting through `fetchFathomConversation`
- * is not possible without network. Instead this pins the contract of the
- * module's id normalization through a minimal re-import of the compiled
- * behavior: list normalization is covered by the sync dedupe tests; here we
- * assert the module loads and exposes its API.
  */
 import * as fathom from "./steward-fathom.server";
 
 describe("steward fathom adapter", () => {
-  it("exposes the source API surface", () => {
-    expect(typeof fathom.fathomStatus).toBe("function");
-    expect(typeof fathom.fetchFathomConversation).toBe("function");
-    expect(typeof fathom.listFathomConversations).toBe("function");
-    expect(typeof fathom.listFathomPage).toBe("function");
+  it("normalizes numeric and string recording ids to the same stable identity", () => {
+    expect(fathom.normalizeRecordingId(779145597)).toBe("779145597");
+    expect(fathom.normalizeRecordingId("779145597")).toBe("779145597");
+    expect(fathom.normalizeRecordingId("  ")).toBeUndefined();
+    expect(fathom.normalizeRecordingId(null)).toBeUndefined();
+    expect(fathom.normalizeRecordingId(1.5)).toBeUndefined();
+    expect(fathom.normalizeRecordingId(Number.MAX_SAFE_INTEGER + 1)).toBeUndefined();
   });
 
   it("reports an unconfigured source honestly when no key is present", () => {
