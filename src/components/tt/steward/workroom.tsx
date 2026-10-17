@@ -122,31 +122,6 @@ function useRecentSync(identity: WorkspaceIdentity) {
 
 /* ---------------------------------------------------------- wiring */
 
-/**
- * Build the receipt lookup for the workroom. When the receipt read FAILED,
- * the map is deliberately empty: no cached or partial receipt may qualify a
- * row as verified, so green badges, verified counts, proof panels and score
- * inputs are all suppressed together rather than shown stale. Verified
- * requires a kept status AND a real receipt — an empty map means nothing
- * qualifies, which is the honest "unavailable" state.
- */
-export function receiptMapFrom(
-  rows: Awaited<ReturnType<typeof stewardTaskState.list>> | undefined,
-  failed: boolean,
-): Map<string, CompletionReceipt> {
-  const map = new Map<string, CompletionReceipt>();
-  if (failed) return map;
-  for (const r of rows ?? []) {
-    map.set(r.taskKey, {
-      taskKey: r.taskKey,
-      completedAt: r.completedAt,
-      completionNote: r.completionNote,
-      completedBy: r.completedBy,
-    });
-  }
-  return map;
-}
-
 export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
   const org = identity.organizationId;
   const conversations = useQuery({

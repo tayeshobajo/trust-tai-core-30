@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { receiptMapFrom } from "./workroom";
+import { receiptMapFrom } from "@/domain/steward-workroom";
 
 describe("receiptMapFrom", () => {
   const rows = [
