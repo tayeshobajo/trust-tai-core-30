@@ -175,6 +175,50 @@ export const stewardService = {
     return data ? toConversation(data as Row) : null;
   },
 
+  /**
+   * Authoritative identity lookup for the automatic sync: find the stored
+   * conversation for one source call by its exact conflict identity
+   * (source_external_id) or its source URL, scoped to the organization and
+   * provider, through the member's own RLS. No capped listing — a match
+   * anywhere in the table is found, so an older row is never treated as
+   * missing and duplicated. Returns the stored row's id and its ACTUAL
+   * source_external_id so an upgrade can write back through the same
+   * conflict key. Throws when the lookup fails or is ambiguous — the caller
+   * must skip the write rather than risk a duplicate or overwrite.
+   */
+  async findConversationBySource(input: {
+    organizationId: ID;
+    provider: string;
+    /** Candidate source_external_id values, in priority order. */
+    externalIds: string[];
+    url?: string;
+  }): Promise<StoredConversation | null> {
+    const candidates = [
+      ...input.externalIds.map((value) => ({ column: "source_external_id", value })),
+      ...(input.url ? [{ column: "source_url", value: input.url }] : []),
+    ];
+    const matches = new Map<string, StoredConversation>();
+    for (const candidate of candidates) {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("*")
+        .eq("organization_id", input.organizationId)
+        .eq("source_provider", input.provider)
+        .eq(candidate.column, candidate.value);
+      guard(error);
+      for (const row of data ?? []) {
+        const stored = toConversation(row as Row);
+        matches.set(stored.id, stored);
+      }
+    }
+    if (matches.size > 1) {
+      throw new Error(
+        "Steward found more than one stored record for this call and left it untouched rather than risk overwriting the wrong one.",
+      );
+    }
+    return [...matches.values()][0] ?? null;
+  },
+
   /** Store a read conversation. Re-reading the same call updates it in place. */
   async saveConversation(input: {
     organizationId: ID;
