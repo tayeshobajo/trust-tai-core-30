@@ -43,21 +43,34 @@ function useRecentSync(identity: WorkspaceIdentity) {
     failure: null,
     running: false,
   });
-  /* Concurrent runs are deduped inside syncRecentMeetings per org; this ref
-     additionally prevents overlapping effect invocations. */
+  /* Concurrent runs are deduped inside syncRecentMeetings per org+user; this
+     ref additionally prevents overlapping effect invocations. */
   const runningRef = useRef(false);
+  /* Focus events can fire in bursts; throttle so a run starts at most once
+     per window. */
+  const lastStartRef = useRef(0);
+  /* Set when the identity changes or the component unmounts, so a late
+     result from the previous identity never lands in the new state. */
+  const staleRef = useRef(false);
 
   const run = useCallback(async () => {
     if (runningRef.current) return;
+    const now = Date.now();
+    if (now - lastStartRef.current < FOCUS_THROTTLE_MS) return;
+    lastStartRef.current = now;
     runningRef.current = true;
     setState((s) => ({ ...s, running: true, failure: null }));
     try {
-      const stored = await stewardService.conversations(identity.organizationId, 100);
+      /* Authoritative lookup across all stored rows, not a recent slice:
+         an older match beyond a small window must still be found, or it
+         would be treated as missing and duplicated. */
+      const stored = await stewardService.conversations(identity.organizationId, 1000);
       const outcome = await syncRecentMeetings({
         organizationId: identity.organizationId,
         userId: identity.userId,
         stored,
       });
+      if (staleRef.current) return;
       setState((s) => ({
         /* A failed or partially written check never erases the last time a
            pull fully succeeded. */
@@ -66,7 +79,12 @@ function useRecentSync(identity: WorkspaceIdentity) {
         refreshed: outcome.refreshed,
         pendingTranscript: outcome.pendingTranscript,
         hasMore: outcome.hasMore,
-        failure: outcome.errors.length > 0 ? outcome.errors.join(" ") : null,
+        failure:
+          outcome.errors.length > 0
+            ? outcome.errors.join(" ")
+            : outcome.warnings.length > 0
+              ? outcome.warnings.join(" ")
+              : null,
         running: false,
       }));
       if (outcome.added > 0 || outcome.refreshed > 0) {
@@ -75,6 +93,7 @@ function useRecentSync(identity: WorkspaceIdentity) {
         });
       }
     } catch (error) {
+      if (staleRef.current) return;
       setState((s) => ({
         ...s,
         running: false,
@@ -86,11 +105,13 @@ function useRecentSync(identity: WorkspaceIdentity) {
   }, [identity.organizationId, identity.userId, queryClient]);
 
   useEffect(() => {
+    staleRef.current = false;
     void run();
     const onFocus = () => void run();
     window.addEventListener("focus", onFocus);
     const interval = window.setInterval(onFocus, SYNC_INTERVAL_MS);
     return () => {
+      staleRef.current = true;
       window.removeEventListener("focus", onFocus);
       window.clearInterval(interval);
     };
