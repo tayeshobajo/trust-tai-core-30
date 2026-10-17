@@ -7,6 +7,16 @@ const open = PREVIEW_WORK[0];
 if (!meeting || !open) throw new Error("Missing illustrative fixture");
 
 describe("Steward illustrative completion rules", () => {
+  it("rounds the approved 3 of 11 fixture to 27 without rounding incomplete work to 100", () => {
+    expect(meetingProgress(meeting, PREVIEW_WORK).score).toBe(27);
+    const many = Array.from({ length: 201 }, (_, i) => ({
+      ...open,
+      id: `round-${i}`,
+      status: i === 0 ? ("open" as const) : ("verified" as const),
+      proof: i === 0 ? null : "Proof",
+    }));
+    expect(meetingProgress(meeting, many)).toMatchObject({ score: 99, complete: false });
+  });
   it("reaches 100/100 only when all agreed deliverables have proof", () => {
     const items = PREVIEW_WORK.map((item) => ({
       ...item,
@@ -24,7 +34,7 @@ describe("Steward illustrative completion rules", () => {
         meeting,
         items.map((item) => (item.id === open.id ? { ...item, proof: null } : item)),
       ),
-    ).toMatchObject({ score: 90, complete: false });
+    ).toMatchObject({ score: 91, complete: false });
   });
   it("never claims 100 when coverage is incomplete", () => {
     expect(

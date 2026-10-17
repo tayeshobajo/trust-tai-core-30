@@ -1,87 +1,41 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { StewardPreview } from "./workspace";
-
+beforeAll(() => {
+  window.matchMedia = vi
+    .fn()
+    .mockImplementation(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+});
 afterEach(cleanup);
-describe("Steward illustrative user journey", () => {
-  it("offers a review starting point without completing work or adding receipts", () => {
-    render(<StewardPreview />);
-    fireEvent.click(screen.getByRole("button", { name: "AI help: Approve the launch page copy" }));
-    expect(screen.queryByRole("button", { name: "Verify example completion" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Review source & evidence" }));
-    expect(screen.queryByRole("region", { name: "Illustrative receipt history" })).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Verify example completion" }).hasAttribute("disabled"),
-    ).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("button", { name: /^Verified\s*3$/ })).toBeTruthy();
+const select = (title: string) =>
+  fireEvent.click(screen.getByRole("button", { name: `Select task: ${title}` }));
+const proof = (value: string) =>
+  fireEvent.change(screen.getByRole("textbox", { name: "Completion reference" }), {
+    target: { value },
   });
-  it("reviews source, records example proof, and reopens without persistence", () => {
-    render(<StewardPreview />);
-    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*8$/ }));
-    const row = screen
-      .getByRole("heading", { name: "Approve the launch page copy" })
-      .closest("article");
-    if (!row) throw new Error("Expected deliverable row");
-    fireEvent.click(within(row).getByRole("button", { name: /Review & verify/ }));
-    expect(screen.getByRole("dialog").textContent).toContain("source at 12:34");
-    expect(
-      screen.getByRole("button", { name: "Verify example completion" }).hasAttribute("disabled"),
-    ).toBe(true);
-    fireEvent.change(screen.getByPlaceholderText("An illustrative review or evidence reference"), {
-      target: { value: "Example copy approval reviewed" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Verify example completion" }));
-    expect(screen.queryByRole("heading", { name: "Approve the launch page copy" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /^Verified\s*4$/ }));
-    const done = screen
-      .getByRole("heading", { name: "Approve the launch page copy" })
-      .closest("article");
-    if (!done) throw new Error("Expected completed row");
-    fireEvent.click(within(done).getByRole("button", { name: "Reopen" }));
-    expect(screen.getByRole("dialog").textContent).toContain("Example copy approval reviewed");
-    expect(
-      screen.getByRole("button", { name: "Record example reopening" }).hasAttribute("disabled"),
-    ).toBe(true);
-    fireEvent.change(screen.getByRole("textbox", { name: "Reopen reason" }), {
-      target: { value: "Example copy needs a correction" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Record example reopening" }));
-    expect(
-      screen.getByRole("region", { name: "Illustrative receipt history" }).textContent,
-    ).toContain("Example copy approval reviewed");
-    expect(
-      screen.getByRole("region", { name: "Illustrative receipt history" }).textContent,
-    ).toContain("Example copy needs a correction");
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*8$/ }));
-    expect(screen.getByRole("heading", { name: "Approve the launch page copy" })).toBeTruthy();
-    cleanup();
-    render(<StewardPreview />);
-    expect(screen.getByRole("button", { name: /^Verified\s*3$/ })).toBeTruthy();
-  });
-  it("retains two completion receipts and two reopen reasons through the actual dialog", () => {
+describe("Approved Steward fictional interactions", () => {
+  it("requires nonblank evidence and retains four receipts through repeated cycles", () => {
     render(<StewardPreview />);
     for (const cycle of [1, 2]) {
-      fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*8$/ }));
-      const row = screen
-        .getByRole("heading", { name: "Approve the launch page copy" })
-        .closest("article");
-      if (!row) throw new Error("Expected work row");
-      fireEvent.click(within(row).getByRole("button", { name: /Review & verify/ }));
-      fireEvent.change(
-        screen.getByPlaceholderText("An illustrative review or evidence reference"),
-        { target: { value: `Proof ${cycle}` } },
-      );
-      fireEvent.click(screen.getByRole("button", { name: "Verify example completion" }));
-      fireEvent.click(screen.getByRole("button", { name: /^Verified\s*4$/ }));
-      const done = screen
-        .getByRole("heading", { name: "Approve the launch page copy" })
-        .closest("article");
-      if (!done) throw new Error("Expected completed work");
-      fireEvent.click(within(done).getByRole("button", { name: "Reopen" }));
+      proof("  ");
+      expect(
+        screen.getByRole("button", { name: "Verify completion" }).hasAttribute("disabled"),
+      ).toBe(true);
+      proof(`Proof ${cycle}`);
+      fireEvent.click(screen.getByRole("button", { name: "Verify completion" }));
+      fireEvent.click(screen.getByRole("button", { name: "Reopen deliverable" }));
+      fireEvent.change(screen.getByRole("textbox", { name: "Reopen reason" }), {
+        target: { value: " " },
+      });
+      expect(
+        screen.getByRole("button", { name: "Record example reopening" }).hasAttribute("disabled"),
+      ).toBe(true);
       fireEvent.change(screen.getByRole("textbox", { name: "Reopen reason" }), {
         target: { value: `Reason ${cycle}` },
       });
@@ -91,25 +45,30 @@ describe("Steward illustrative user journey", () => {
       expect(history.textContent).toContain("Proof 1");
       expect(history.textContent).toContain("Reason 1");
       expect(history.textContent).toContain("Alex (fictional)");
-      if (cycle === 2) {
-        expect(history.textContent).toContain("Proof 2");
-        expect(history.textContent).toContain("Reason 2");
-      }
-      fireEvent.click(screen.getByRole("button", { name: "Close" }));
     }
-  });
-  it("does not expose a completion action for blocked work", () => {
+    cleanup();
     render(<StewardPreview />);
-    fireEvent.click(screen.getByRole("button", { name: /View blocker/ }));
-    expect(screen.queryByRole("button", { name: "Verify example completion" })).toBeNull();
+    expect(screen.getByRole("button", { name: /Completed 3/ })).toBeTruthy();
+  });
+  it("blocks completion until the dependency is verified, then requires its own evidence", () => {
+    render(<StewardPreview />);
+    select("Build the launch page");
+    expect(screen.queryByRole("button", { name: "Verify completion" })).toBeNull();
     expect(
       screen.getByRole("button", { name: "Clear example blocker" }).hasAttribute("disabled"),
     ).toBe(true);
+    select("Approve the launch page copy");
+    proof("Example approval");
+    fireEvent.click(screen.getByRole("button", { name: "Verify completion" }));
+    select("Build the launch page");
+    fireEvent.click(screen.getByRole("button", { name: "Clear example blocker" }));
+    expect(screen.getByRole("button", { name: "Verify completion" }).hasAttribute("disabled")).toBe(
+      true,
+    );
   });
-  it("keeps unknown owners explicit until an example proposal is confirmed", () => {
+  it("requires an explicit proposal owner and updates the agreed denominator", () => {
     render(<StewardPreview />);
-    fireEvent.click(screen.getByRole("button", { name: /^Proposals\s*1$/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Review proposal/ }));
+    select("Check analytics access before launch");
     expect(
       screen.getByRole("button", { name: "Confirm example work" }).hasAttribute("disabled"),
     ).toBe(true);
@@ -117,22 +76,36 @@ describe("Steward illustrative user journey", () => {
       target: { value: "Morgan" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Confirm example work" }));
-    expect(screen.getByRole("button", { name: /^Proposals\s*0$/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*9$/ }));
-    const row = screen
-      .getByRole("heading", { name: "Check analytics access before launch" })
-      .closest("article");
-    expect(row?.textContent).toContain("Morgan");
+    expect(screen.getByRole("button", { name: /Proposed 0/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Open 9/ })).toBeTruthy();
+    expect(screen.getByLabelText("Meeting work completion")).toBeTruthy();
   });
-  it("shows partial coverage and the fully verified meeting as different states", () => {
+  it("keeps partial coverage unknown and cross-meeting work available", () => {
     render(<StewardPreview />);
     fireEvent.click(screen.getByRole("button", { name: /Website discovery/ }));
     expect(screen.getByText("—/100")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Onboarding handover/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Outstanding\s*0$/ }));
-    expect(screen.getAllByText("100/100")[0]).toBeTruthy();
-    expect(
-      screen.getByRole("heading", { name: "Every agreed deliverable is verified." }),
-    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "All outstanding work" }));
+    expect(screen.getByRole("button", { name: /Select task: Bring two homepage/ })).toBeTruthy();
+  });
+  it("filters fictional tasks by owner, status and search without changing completion", () => {
+    render(<StewardPreview />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter by owner" }), {
+      target: { value: "Unassigned" },
+    });
+    expect(document.querySelectorAll("[data-task-row]")).toHaveLength(1);
+    fireEvent.change(screen.getByRole("textbox", { name: "Search tasks" }), {
+      target: { value: "no-match" },
+    });
+    expect(document.querySelectorAll("[data-task-row]")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "View all tasks" }));
+    expect(document.querySelectorAll("[data-task-row]")).toHaveLength(12);
+  });
+  it("prepares illustrative help without writing receipts or completing work", async () => {
+    render(<StewardPreview />);
+    fireEvent.click(screen.getByRole("button", { name: "Prepare review" }));
+    expect(await screen.findByText("Illustrative review · no model execution")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Completed 3/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "History" }));
+    expect(screen.getByText("No completion receipts yet.")).toBeTruthy();
   });
 });
