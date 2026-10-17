@@ -212,8 +212,9 @@ export async function listFathomPage(limit = 10, maxPages = 1): Promise<FathomLi
   let hasMore = false;
   for (let i = 0; i < Math.max(1, maxPages); i += 1) {
     const result = await page(cursor);
-    for (const meeting of result.items) {
-      if (collected.length >= limit) break;
+    const room = limit - collected.length;
+    const take = result.items.slice(0, Math.max(0, room));
+    for (const meeting of take) {
       collected.push(
         normalize(meeting, {
           provider: "fathom",
@@ -221,14 +222,15 @@ export async function listFathomPage(limit = 10, maxPages = 1): Promise<FathomLi
         }),
       );
     }
-    if (collected.length >= limit) {
-      hasMore = Boolean(result.next) || result.items.length > 0;
-      break;
+    /* More exists when this page had rows we did not take, or another page. */
+    if (result.items.length > take.length || result.next) {
+      hasMore = true;
+      cursor = result.next;
+    } else {
+      hasMore = false;
+      cursor = null;
     }
-    if (!result.next) break;
-    cursor = result.next;
-    hasMore = false;
+    if (collected.length >= limit || !cursor) break;
   }
-  if (cursor && collected.length < limit) hasMore = false;
   return { conversations: collected, hasMore };
 }
