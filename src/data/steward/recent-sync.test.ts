@@ -9,9 +9,9 @@ vi.mock("@/integrations/trust-tai/supabase", () => ({
   },
 }));
 
-const saveConversation = vi.fn(async () => ({}) as never);
+const saveConversation = vi.fn(async (_input: unknown) => ({}) as never);
 vi.mock("@/data/supabase/steward-service", () => ({
-  stewardService: { saveConversation: (...args: unknown[]) => saveConversation(...args) },
+  stewardService: { saveConversation: (input: unknown) => saveConversation(input) },
 }));
 
 import { callIdentity, missingCalls, syncRecentMeetings } from "./recent-sync";
@@ -39,7 +39,11 @@ const incoming = (over: {
     sourceActionItems: [],
   }) as NormalizedConversation;
 
-const stored = (over: { externalId?: string; url?: string; segments?: number }): StoredConversation =>
+const stored = (over: {
+  externalId?: string;
+  url?: string;
+  segments?: number;
+}): StoredConversation =>
   ({
     id: "s1",
     organizationId: "o",
@@ -145,7 +149,8 @@ describe("recent sync dedupe", () => {
 describe("recent sync persistence", () => {
   beforeEach(() => {
     saveConversation.mockClear();
-    vi.restoreAllMocks(); vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("a url-stored row upgraded by a numeric-id read writes the SAME row (same conflict identity)", async () => {
@@ -164,7 +169,7 @@ describe("recent sync persistence", () => {
       stored: [existing],
     });
     expect(saveConversation).toHaveBeenCalledTimes(1);
-    const written = saveConversation.mock.calls[0]![0] as {
+    const written = saveConversation.mock.calls[0]![0] as unknown as {
       conversation: NormalizedConversation;
     };
     /* Same conflict key as the stored row: source_external_id falls back to

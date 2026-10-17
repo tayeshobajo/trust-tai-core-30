@@ -223,7 +223,10 @@ function TaskDetail({
           assigns or sends anything on its own.
         </p>
         <TTButton asChild variant="secondary" className="mt-3">
-          <Link to="/modules/steward/meetings/$conversationId" params={{ conversationId: meeting.id }}>
+          <Link
+            to="/modules/steward/meetings/$conversationId"
+            params={{ conversationId: meeting.id }}
+          >
             Prepare review
           </Link>
         </TTButton>
@@ -414,7 +417,9 @@ export function WorkroomView({
               <span className="mt-1 flex items-center justify-between gap-1 text-xs text-muted-foreground">
                 <span>
                   {m.occurredAt.slice(0, 10)} ·{" "}
-                  {receiptsFailed ? "verification unavailable" : `${m.done} of ${m.agreed} verified`}
+                  {receiptsFailed
+                    ? "verification unavailable"
+                    : `${m.done} of ${m.agreed} verified`}
                 </span>
                 <span
                   className={cn(

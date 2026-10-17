@@ -129,11 +129,16 @@ export function missingCalls(
        would insert a duplicate second row. Preserve the stored externalId
        and URL on the conversation handed to the writer. */
     if (isDemonstrablyFuller(existing, call)) {
+      const storedExternal = existing.conversation?.sourceRef?.externalId;
+      const { externalId: _incomingId, ...restRef } = call.sourceRef;
       upgrades.push({
         ...call,
         sourceRef: {
-          ...call.sourceRef,
-          externalId: existing.conversation?.sourceRef?.externalId ?? undefined,
+          ...restRef,
+          /* Carry the stored row's identity: its externalId when it has one,
+             otherwise no externalId so the conflict key falls back to the
+             stored URL — either way the upsert hits the SAME row. */
+          ...(storedExternal ? { externalId: storedExternal } : {}),
           url: existing.sourceUrl ?? call.sourceRef.url,
         },
       });
