@@ -64,6 +64,8 @@ export interface StoredConversation {
   /** When Steward actually stored the call. Empty when the row predates it. */
   ingestedAt: string;
   provider: string;
+  /** The row's actual conflict-key identity (source_external_id column). */
+  sourceExternalId: string;
   sourceUrl: string;
   participants: { name: string; email?: string }[];
   conversation: NormalizedConversation;
@@ -78,6 +80,7 @@ function toConversation(row: Row): StoredConversation {
     occurredAt: str(row["occurred_at"]),
     ingestedAt: str(row["created_at"]) || str(row["occurred_at"]),
     provider: str(row["source_provider"]),
+    sourceExternalId: str(row["source_external_id"]),
     sourceUrl: str(row["source_url"]),
     participants: Array.isArray(row["participants"])
       ? (row["participants"] as { name: string; email?: string }[])
