@@ -226,6 +226,3 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
     />
   );
 }
-
-/* receiptKey is re-exported for existing tests and callers. */
-export { receiptKey };
