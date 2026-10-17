@@ -187,8 +187,10 @@ describe("recent sync persistence", () => {
         json: async () => ({ conversations: [upgrade, fresh], hasMore: true }),
       })),
     );
-    saveConversation.mockImplementationOnce(async () => ({}) as never);
+    /* Writes run missing-first, then upgrades: the new call fails, the
+       upgrade succeeds — added/refreshed must reflect that exactly. */
     saveConversation.mockRejectedValueOnce(new Error("write denied"));
+    saveConversation.mockImplementationOnce(async () => ({}) as never);
     const outcome = await syncRecentMeetings({
       organizationId: "o",
       userId: "u",
