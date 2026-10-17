@@ -28,6 +28,7 @@ describe("Approved Steward fictional interactions", () => {
       proof(`Proof ${cycle}`);
       fireEvent.click(screen.getByRole("button", { name: "Verify completion" }));
       fireEvent.click(screen.getByRole("button", { name: "Reopen deliverable" }));
+      expect((screen.getByRole("textbox", { name: "Reopen reason" }) as HTMLInputElement).value).toBe("");
       fireEvent.change(screen.getByRole("textbox", { name: "Reopen reason" }), {
         target: { value: " " },
       });
