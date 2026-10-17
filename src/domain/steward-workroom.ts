@@ -24,9 +24,9 @@ export type WorkroomCoverage = "complete" | "unknown";
 /** A completion receipt as stored in steward_task_state. */
 export interface CompletionReceipt {
   taskKey: string;
-  completedAt?: string;
-  completionNote?: string;
-  completedBy?: string;
+  completedAt?: string | undefined;
+  completionNote?: string | undefined;
+  completedBy?: string | undefined;
 }
 
 /** Receipts count only with a real timestamp and a substantive note. */
