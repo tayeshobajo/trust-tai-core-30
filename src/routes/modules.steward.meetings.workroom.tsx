@@ -37,7 +37,7 @@ export const Route = createFileRoute("/modules/steward/meetings/workroom")({
     <WorkspaceGate appId="steward">
       {(identity) => (
         <AppShell identity={identity}>
-          <StewardTabs />
+          <StewardTabs active="meetings" />
           <Workroom identity={identity} />
         </AppShell>
       )}

@@ -126,6 +126,7 @@ import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/mo
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
 import { Route as ModulesStewardMeetingsActionsRouteImport } from './routes/modules.steward.meetings.actions'
+import { Route as ModulesStewardMeetingsWorkroomRouteImport } from './routes/modules.steward.meetings.workroom'
 import { Route as ModulesStewardPeopleUserIdRouteImport } from './routes/modules.steward.people.$userId'
 import { Route as ModulesWebsiteSubmissionsSubmissionIdRouteImport } from './routes/modules.website_.submissions.$submissionId'
 import { Route as ApiInternalExecutionScoutDraftIntroRouteImport } from './routes/api/internal/execution/scout.draft-intro'
@@ -746,6 +747,12 @@ const ModulesStewardMeetingsActionsRoute =
     path: '/actions',
     getParentRoute: () => ModulesStewardMeetingsRoute,
   } as any)
+const ModulesStewardMeetingsWorkroomRoute =
+  ModulesStewardMeetingsWorkroomRouteImport.update({
+    id: '/workroom',
+    path: '/workroom',
+    getParentRoute: () => ModulesStewardMeetingsRoute,
+  } as any)
 const ModulesStewardPeopleUserIdRoute =
   ModulesStewardPeopleUserIdRouteImport.update({
     id: '/people/$userId',
@@ -940,6 +947,7 @@ export interface FileRoutesByFullPath {
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings/actions': typeof ModulesStewardMeetingsActionsRoute
+  '/modules/steward/meetings/workroom': typeof ModulesStewardMeetingsWorkroomRoute
   '/modules/steward/people/$userId': typeof ModulesStewardPeopleUserIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
@@ -1063,6 +1071,7 @@ export interface FileRoutesByTo {
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings/actions': typeof ModulesStewardMeetingsActionsRoute
+  '/modules/steward/meetings/workroom': typeof ModulesStewardMeetingsWorkroomRoute
   '/modules/steward/people/$userId': typeof ModulesStewardPeopleUserIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsIndexRoute
@@ -1196,6 +1205,7 @@ export interface FileRoutesById {
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings/actions': typeof ModulesStewardMeetingsActionsRoute
+  '/modules/steward/meetings/workroom': typeof ModulesStewardMeetingsWorkroomRoute
   '/modules/steward/people/$userId': typeof ModulesStewardPeopleUserIdRoute
   '/modules/website_/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
@@ -1330,6 +1340,7 @@ export interface FileRouteTypes {
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings/actions'
+    | '/modules/steward/meetings/workroom'
     | '/modules/steward/people/$userId'
     | '/modules/website/submissions/$submissionId'
     | '/modules/steward/meetings/'
@@ -1453,6 +1464,7 @@ export interface FileRouteTypes {
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings/actions'
+    | '/modules/steward/meetings/workroom'
     | '/modules/steward/people/$userId'
     | '/modules/website/submissions/$submissionId'
     | '/modules/steward/meetings'
@@ -1585,6 +1597,7 @@ export interface FileRouteTypes {
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings/actions'
+    | '/modules/steward/meetings/workroom'
     | '/modules/steward/people/$userId'
     | '/modules/website_/submissions/$submissionId'
     | '/modules/steward/meetings/'
@@ -2502,6 +2515,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardMeetingsActionsRouteImport
       parentRoute: typeof ModulesStewardMeetingsRoute
     }
+    '/modules/steward/meetings/workroom': {
+      id: '/modules/steward/meetings/workroom'
+      path: '/workroom'
+      fullPath: '/modules/steward/meetings/workroom'
+      preLoaderRoute: typeof ModulesStewardMeetingsWorkroomRouteImport
+      parentRoute: typeof ModulesStewardMeetingsRoute
+    }
     '/modules/steward/people/$userId': {
       id: '/modules/steward/people/$userId'
       path: '/people/$userId'
@@ -2739,6 +2759,7 @@ const ModulesScoutRouteWithChildren = ModulesScoutRoute._addFileChildren(
 interface ModulesStewardMeetingsRouteChildren {
   ModulesStewardMeetingsConversationIdRoute: typeof ModulesStewardMeetingsConversationIdRoute
   ModulesStewardMeetingsActionsRoute: typeof ModulesStewardMeetingsActionsRoute
+  ModulesStewardMeetingsWorkroomRoute: typeof ModulesStewardMeetingsWorkroomRoute
   ModulesStewardMeetingsIndexRoute: typeof ModulesStewardMeetingsIndexRoute
 }
 
@@ -2747,6 +2768,7 @@ const ModulesStewardMeetingsRouteChildren: ModulesStewardMeetingsRouteChildren =
     ModulesStewardMeetingsConversationIdRoute:
       ModulesStewardMeetingsConversationIdRoute,
     ModulesStewardMeetingsActionsRoute: ModulesStewardMeetingsActionsRoute,
+    ModulesStewardMeetingsWorkroomRoute: ModulesStewardMeetingsWorkroomRoute,
     ModulesStewardMeetingsIndexRoute: ModulesStewardMeetingsIndexRoute,
   }
 
