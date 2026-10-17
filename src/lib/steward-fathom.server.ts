@@ -55,7 +55,7 @@ function text(value: unknown): string | undefined {
  * others. A stable identity must survive both, so numbers are normalized to
  * their exact decimal form rather than dropped.
  */
-function idText(value: unknown): string | undefined {
+export function normalizeRecordingId(value: unknown): string | undefined {
   const asText = text(value);
   if (asText) return asText;
   if (typeof value === "number" && Number.isSafeInteger(value)) return String(value);
