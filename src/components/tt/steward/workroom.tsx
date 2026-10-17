@@ -21,6 +21,7 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
+const FOCUS_THROTTLE_MS = 60 * 1000;
 
 /* ---------------------------------------------------------- auto sync */
 
@@ -43,21 +44,34 @@ function useRecentSync(identity: WorkspaceIdentity) {
     failure: null,
     running: false,
   });
-  /* Concurrent runs are deduped inside syncRecentMeetings per org; this ref
-     additionally prevents overlapping effect invocations. */
+  /* Concurrent runs are deduped inside syncRecentMeetings per org+user; this
+     ref additionally prevents overlapping effect invocations. */
   const runningRef = useRef(false);
+  /* Focus events can fire in bursts; throttle so a run starts at most once
+     per window. */
+  const lastStartRef = useRef(0);
+  /* Set when the identity changes or the component unmounts, so a late
+     result from the previous identity never lands in the new state. */
+  const staleRef = useRef(false);
 
   const run = useCallback(async () => {
     if (runningRef.current) return;
+    const now = Date.now();
+    if (now - lastStartRef.current < FOCUS_THROTTLE_MS) return;
+    lastStartRef.current = now;
     runningRef.current = true;
     setState((s) => ({ ...s, running: true, failure: null }));
     try {
-      const stored = await stewardService.conversations(identity.organizationId, 100);
+      /* Authoritative lookup across all stored rows, not a recent slice:
+         an older match beyond a small window must still be found, or it
+         would be treated as missing and duplicated. */
+      const stored = await stewardService.conversations(identity.organizationId, 1000);
       const outcome = await syncRecentMeetings({
         organizationId: identity.organizationId,
         userId: identity.userId,
         stored,
       });
+      if (staleRef.current) return;
       setState((s) => ({
         /* A failed or partially written check never erases the last time a
            pull fully succeeded. */
@@ -66,7 +80,12 @@ function useRecentSync(identity: WorkspaceIdentity) {
         refreshed: outcome.refreshed,
         pendingTranscript: outcome.pendingTranscript,
         hasMore: outcome.hasMore,
-        failure: outcome.errors.length > 0 ? outcome.errors.join(" ") : null,
+        failure:
+          outcome.errors.length > 0
+            ? outcome.errors.join(" ")
+            : outcome.warnings.length > 0
+              ? outcome.warnings.join(" ")
+              : null,
         running: false,
       }));
       if (outcome.added > 0 || outcome.refreshed > 0) {
@@ -75,6 +94,7 @@ function useRecentSync(identity: WorkspaceIdentity) {
         });
       }
     } catch (error) {
+      if (staleRef.current) return;
       setState((s) => ({
         ...s,
         running: false,
@@ -86,11 +106,13 @@ function useRecentSync(identity: WorkspaceIdentity) {
   }, [identity.organizationId, identity.userId, queryClient]);
 
   useEffect(() => {
+    staleRef.current = false;
     void run();
     const onFocus = () => void run();
     window.addEventListener("focus", onFocus);
     const interval = window.setInterval(onFocus, SYNC_INTERVAL_MS);
     return () => {
+      staleRef.current = true;
       window.removeEventListener("focus", onFocus);
       window.clearInterval(interval);
     };
@@ -196,6 +218,7 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
         <WorkroomMoreMenu>
           {(
             [
+              ["/", "Suite home"],
               ["/modules/steward/team", "Team"],
               ["/modules/steward/tasks", "All outstanding work"],
               ["/modules/steward/agents", "Agents"],
@@ -216,12 +239,14 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
         </WorkroomMoreMenu>
       }
       accountSlot={
-        <span
-          aria-label={`Signed in as ${identity.email}`}
-          className="hidden size-8 items-center justify-center rounded-full bg-secondary text-xs text-muted-foreground sm:flex"
+        <Link
+          to="/settings/profile"
+          aria-label={`Account settings — signed in as ${identity.email}`}
+          title={identity.email}
+          className="hidden size-8 items-center justify-center rounded-full bg-secondary text-xs text-muted-foreground hover:bg-secondary/70 sm:flex"
         >
           {identity.email.slice(0, 2).toUpperCase()}
-        </span>
+        </Link>
       }
     />
   );

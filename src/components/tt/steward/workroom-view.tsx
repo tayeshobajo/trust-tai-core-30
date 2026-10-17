@@ -106,8 +106,16 @@ function StatusPill({ row }: { row: WorkroomRow }) {
 
 /* ---------------------------------------------------------- score card */
 
-function ScoreCard({ meeting }: { meeting: WorkroomMeeting }) {
-  const value = meeting.score;
+function ScoreCard({
+  meeting,
+  receiptsFailed,
+}: {
+  meeting: WorkroomMeeting;
+  receiptsFailed: boolean;
+}) {
+  /* When receipts could not be read, a numeric score would be computed from
+     an empty map — a definitive-looking lie. Show it as unavailable. */
+  const value = receiptsFailed ? null : meeting.score;
   const full = value === 100;
   return (
     <div
@@ -149,9 +157,11 @@ function ScoreCard({ meeting }: { meeting: WorkroomMeeting }) {
             {value === null ? "—/100" : `${value}/100`}
           </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
-            {value === null
-              ? "Nothing confirmed yet"
-              : `${meeting.done} of ${meeting.agreed} agreed tasks verified`}
+            {receiptsFailed
+              ? "Verification unavailable — receipts could not be read"
+              : value === null
+                ? "Nothing confirmed yet"
+                : `${meeting.done} of ${meeting.agreed} agreed tasks verified`}
           </p>
         </div>
       </div>
@@ -202,6 +212,26 @@ function TaskDetail({
         </p>
       </div>
 
+      {/* AI help comes first: it prepares the person's review, and never
+          completes, assigns or sends anything itself. */}
+      <div className="rounded-lg border border-royal/25 bg-royal/5 p-3">
+        <p className="flex items-center gap-1.5 font-medium text-foreground">
+          <Sparkles aria-hidden className="size-3.5 text-royal" /> AI help
+        </p>
+        <p className="mt-2 text-[13px] text-muted-foreground">
+          Steward can read this meeting for meaning and prepare a review. It never completes,
+          assigns or sends anything on its own.
+        </p>
+        <TTButton asChild variant="secondary" className="mt-3">
+          <Link
+            to="/modules/steward/meetings/$conversationId"
+            params={{ conversationId: meeting.id }}
+          >
+            Prepare review
+          </Link>
+        </TTButton>
+      </div>
+
       <div className="border-t border-border pt-4">
         <p className="flex items-center gap-1.5 font-medium text-foreground">
           <Check aria-hidden className="size-3.5" /> Completion evidence
@@ -223,10 +253,10 @@ function TaskDetail({
         )}
       </div>
 
-      <div className="border-t border-border pt-4">
-        <p className="flex items-center gap-1.5 font-medium text-foreground">
-          <Flag aria-hidden className="size-3.5" /> Source evidence
-        </p>
+      <details className="border-t border-border pt-4">
+        <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
+          <Flag aria-hidden className="size-3.5" /> Meeting source
+        </summary>
         {commitment && commitment.evidence.length > 0 ? (
           <ul className="mt-2 space-y-2">
             {commitment.evidence.map((ref, index) => (
@@ -246,24 +276,7 @@ function TaskDetail({
         <p className="mt-2 text-xs text-muted-foreground">
           Source quotations are what was said, not proof of completion.
         </p>
-      </div>
-
-      <div className="border-t border-border pt-4">
-        <p className="flex items-center gap-1.5 font-medium text-foreground">
-          <Sparkles aria-hidden className="size-3.5" /> AI help
-        </p>
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          Steward can read this meeting for meaning and prepare a review. It never completes,
-          assigns or sends anything on its own.
-        </p>
-        <Link
-          to="/modules/steward/meetings/$conversationId"
-          params={{ conversationId: meeting.id }}
-          className="mt-2 inline-block text-primary underline underline-offset-4"
-        >
-          Read this meeting for meaning
-        </Link>
-      </div>
+      </details>
 
       <details className="border-t border-border pt-4">
         <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
@@ -271,8 +284,8 @@ function TaskDetail({
         </summary>
         <p className="mt-2 text-[13px] text-muted-foreground">
           {row.receipt
-            ? "The completion receipt above is the recorded event. Earlier history is not stored in this view."
-            : "No events recorded for this task yet."}
+            ? "The completion receipt above is the recorded event. Earlier history is unavailable in this view."
+            : "History unavailable in this view."}
         </p>
       </details>
 
@@ -403,15 +416,20 @@ export function WorkroomView({
               <span className="block truncate text-sm font-semibold leading-5">{m.title}</span>
               <span className="mt-1 flex items-center justify-between gap-1 text-xs text-muted-foreground">
                 <span>
-                  {m.occurredAt.slice(0, 10)} · {m.done} of {m.agreed} verified
+                  {m.occurredAt.slice(0, 10)} ·{" "}
+                  {receiptsFailed
+                    ? "verification unavailable"
+                    : `${m.done} of ${m.agreed} verified`}
                 </span>
                 <span
                   className={cn(
                     "shrink-0 rounded px-1.5 py-0.5 font-semibold",
-                    m.score === 100 ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
+                    m.score === 100 && !receiptsFailed
+                      ? "bg-success/15 text-success"
+                      : "bg-warning/15 text-warning",
                   )}
                 >
-                  {m.score === null ? "Partial" : `${m.score}/100`}
+                  {receiptsFailed ? "—" : m.score === null ? "Partial" : `${m.score}/100`}
                 </span>
               </span>
             </span>
@@ -462,7 +480,7 @@ export function WorkroomView({
             ) : null}
           </div>
         </div>
-        <ScoreCard meeting={meeting} />
+        <ScoreCard meeting={meeting} receiptsFailed={receiptsFailed} />
       </div>
 
       {meeting.openProposals > 0 ? (
