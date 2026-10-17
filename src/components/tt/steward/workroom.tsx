@@ -62,14 +62,13 @@ function useRecentSync(identity: WorkspaceIdentity) {
     runningRef.current = true;
     setState((s) => ({ ...s, running: true, failure: null }));
     try {
-      /* Authoritative lookup across all stored rows, not a recent slice:
-         an older match beyond a small window must still be found, or it
-         would be treated as missing and duplicated. */
-      const stored = await stewardService.conversations(identity.organizationId, 1000);
+      /* Each incoming call is matched by an authoritative per-call lookup
+         inside syncRecentMeetings — exact org+provider identity queries
+         against the conversations table, no capped listing — so an older
+         match is never treated as missing and duplicated. */
       const outcome = await syncRecentMeetings({
         organizationId: identity.organizationId,
         userId: identity.userId,
-        stored,
       });
       if (staleRef.current) return;
       setState((s) => ({
