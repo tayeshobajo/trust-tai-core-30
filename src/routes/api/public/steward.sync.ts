@@ -16,11 +16,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  fathomStatus,
-  listFathomPage,
-  SourceUnavailableError,
-} from "@/lib/steward-fathom.server";
+import { fathomStatus, listFathomPage, SourceUnavailableError } from "@/lib/steward-fathom.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 
 function bearer(request: Request): string | null {

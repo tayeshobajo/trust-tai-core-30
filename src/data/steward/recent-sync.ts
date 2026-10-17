@@ -39,10 +39,7 @@ export interface SyncOutcome {
 }
 
 /** The stable identity of a stored or incoming call. */
-export function callIdentity(call: {
-  externalId?: string | null;
-  url?: string;
-}): string | null {
+export function callIdentity(call: { externalId?: string | null; url?: string }): string | null {
   if (call.externalId && call.externalId.trim()) return `id:${call.externalId.trim()}`;
   if (call.url && call.url.trim()) return `url:${call.url.trim()}`;
   return null;
@@ -109,8 +106,9 @@ export function syncRecentMeetings(input: {
     if (!response.ok) {
       throw new Error(String(body["error"] ?? "Steward could not check for recent calls."));
     }
-    const incoming = (Array.isArray(body["conversations"]) ? body["conversations"] : []) as
-      NormalizedConversation[];
+    const incoming = (
+      Array.isArray(body["conversations"]) ? body["conversations"] : []
+    ) as NormalizedConversation[];
     const { missing, pendingTranscript } = missingCalls(incoming, input.stored);
 
     const errors: string[] = [];

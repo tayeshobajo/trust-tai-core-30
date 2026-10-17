@@ -56,7 +56,14 @@ function useRecentSync(identity: WorkspaceIdentity, storedCount: number) {
     hasMore: boolean;
     failure: string | null;
     running: boolean;
-  }>({ checkedAt: null, added: 0, pendingTranscript: 0, hasMore: false, failure: null, running: false });
+  }>({
+    checkedAt: null,
+    added: 0,
+    pendingTranscript: 0,
+    hasMore: false,
+    failure: null,
+    running: false,
+  });
   const storedRef = useRef(storedCount);
   storedRef.current = storedCount;
 
@@ -294,10 +301,7 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const receiptKeys = useMemo(
-    () =>
-      new Set(
-        (receipts.data ?? []).filter((r) => r.completedAt).map((r) => r.taskKey),
-      ),
+    () => new Set((receipts.data ?? []).filter((r) => r.completedAt).map((r) => r.taskKey)),
     [receipts.data],
   );
 
@@ -328,9 +332,7 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
     const map = new Map<string, number>();
     for (const c of conversations.data ?? []) {
       const confirmed = new Set(
-        (commitments.data ?? [])
-          .filter((k) => k.conversationId === c.id)
-          .map((k) => k.sourceKey),
+        (commitments.data ?? []).filter((k) => k.conversationId === c.id).map((k) => k.sourceKey),
       );
       const proposals = extractProposals(c.conversation).filter((p) => !confirmed.has(p.id));
       map.set(c.id, proposals.length);
@@ -354,9 +356,7 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
   );
   const meeting = meetings.find((m) => m.id === selectedMeeting) ?? meetings[0] ?? null;
 
-  const owners = meeting
-    ? Array.from(new Set(meeting.rows.map((r) => r.owner.label))).sort()
-    : [];
+  const owners = meeting ? Array.from(new Set(meeting.rows.map((r) => r.owner.label))).sort() : [];
   const visibleRows = meeting
     ? meeting.rows.filter((r) => {
         if (rowFilter === "open" && r.verified) return false;
@@ -378,7 +378,10 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
   }
 
   const rail = (
-    <nav aria-label="Meetings" className="flex h-full flex-col rounded-lg border border-border bg-secondary/40 p-2">
+    <nav
+      aria-label="Meetings"
+      className="flex h-full flex-col rounded-lg border border-border bg-secondary/40 p-2"
+    >
       <div className="relative mb-2">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <TTInput
@@ -614,7 +617,10 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
-      <p aria-live="polite" className="border-b border-border px-4 py-1.5 text-xs text-muted-foreground">
+      <p
+        aria-live="polite"
+        className="border-b border-border px-4 py-1.5 text-xs text-muted-foreground"
+      >
         {sync.running
           ? "Checking Fathom for recent calls…"
           : sync.failure

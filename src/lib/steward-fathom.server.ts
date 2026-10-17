@@ -98,7 +98,9 @@ function normalize(meeting: FathomMeeting, ref: ConversationSourceRef): Normaliz
   return {
     sourceRef: {
       ...ref,
-      ...(normalizeRecordingId(meeting["recording_id"]) ? { externalId: normalizeRecordingId(meeting["recording_id"])! } : {}),
+      ...(normalizeRecordingId(meeting["recording_id"])
+        ? { externalId: normalizeRecordingId(meeting["recording_id"])! }
+        : {}),
       url,
     },
     title: text(meeting["title"]) ?? text(meeting["meeting_title"]) ?? "Untitled call",

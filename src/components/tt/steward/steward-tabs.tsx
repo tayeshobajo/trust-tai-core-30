@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-export type StewardSection = "team" | "meetings" | "tasks" | "agents" | "scouts" | "ai" | "timeline" | "memory";
+export type StewardSection =
+  "team" | "meetings" | "tasks" | "agents" | "scouts" | "ai" | "timeline" | "memory";
 
 function tabClass(active: boolean) {
   return cn(
