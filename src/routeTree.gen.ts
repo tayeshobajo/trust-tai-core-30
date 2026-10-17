@@ -80,6 +80,7 @@ import { Route as ModulesStewardMeetingsRouteImport } from './routes/modules.ste
 import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.steward.memory'
 import { Route as ModulesStewardScoutsRouteImport } from './routes/modules.steward.scouts'
 import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
+import { Route as ModulesStewardTeamRouteImport } from './routes/modules.steward.team'
 import { Route as ModulesStewardTimelineRouteImport } from './routes/modules.steward.timeline'
 import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.index'
 import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
@@ -501,6 +502,11 @@ const ModulesStewardTasksRoute = ModulesStewardTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
+const ModulesStewardTeamRoute = ModulesStewardTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => ModulesStewardRoute,
+} as any)
 const ModulesStewardTimelineRoute = ModulesStewardTimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
@@ -902,6 +908,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/scouts': typeof ModulesStewardScoutsRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/steward/team': typeof ModulesStewardTeamRoute
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
@@ -1027,6 +1034,7 @@ export interface FileRoutesByTo {
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/scouts': typeof ModulesStewardScoutsRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/steward/team': typeof ModulesStewardTeamRoute
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
@@ -1162,6 +1170,7 @@ export interface FileRoutesById {
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/scouts': typeof ModulesStewardScoutsRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/steward/team': typeof ModulesStewardTeamRoute
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
@@ -1298,6 +1307,7 @@ export interface FileRouteTypes {
     | '/modules/steward/memory'
     | '/modules/steward/scouts'
     | '/modules/steward/tasks'
+    | '/modules/steward/team'
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
@@ -1423,6 +1433,7 @@ export interface FileRouteTypes {
     | '/modules/steward/memory'
     | '/modules/steward/scouts'
     | '/modules/steward/tasks'
+    | '/modules/steward/team'
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
@@ -1557,6 +1568,7 @@ export interface FileRouteTypes {
     | '/modules/steward/memory'
     | '/modules/steward/scouts'
     | '/modules/steward/tasks'
+    | '/modules/steward/team'
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
@@ -2206,6 +2218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardTasksRouteImport
       parentRoute: typeof ModulesStewardRoute
     }
+    '/modules/steward/team': {
+      id: '/modules/steward/team'
+      path: '/team'
+      fullPath: '/modules/steward/team'
+      preLoaderRoute: typeof ModulesStewardTeamRouteImport
+      parentRoute: typeof ModulesStewardRoute
+    }
     '/modules/steward/timeline': {
       id: '/modules/steward/timeline'
       path: '/timeline'
@@ -2806,6 +2825,7 @@ interface ModulesStewardRouteChildren {
   ModulesStewardMemoryRoute: typeof ModulesStewardMemoryRoute
   ModulesStewardScoutsRoute: typeof ModulesStewardScoutsRoute
   ModulesStewardTasksRoute: typeof ModulesStewardTasksRoute
+  ModulesStewardTeamRoute: typeof ModulesStewardTeamRoute
   ModulesStewardTimelineRoute: typeof ModulesStewardTimelineRoute
   ModulesStewardIndexRoute: typeof ModulesStewardIndexRoute
   ModulesStewardPeopleUserIdRoute: typeof ModulesStewardPeopleUserIdRoute
@@ -2820,6 +2840,7 @@ const ModulesStewardRouteChildren: ModulesStewardRouteChildren = {
   ModulesStewardMemoryRoute: ModulesStewardMemoryRoute,
   ModulesStewardScoutsRoute: ModulesStewardScoutsRoute,
   ModulesStewardTasksRoute: ModulesStewardTasksRoute,
+  ModulesStewardTeamRoute: ModulesStewardTeamRoute,
   ModulesStewardTimelineRoute: ModulesStewardTimelineRoute,
   ModulesStewardIndexRoute: ModulesStewardIndexRoute,
   ModulesStewardPeopleUserIdRoute: ModulesStewardPeopleUserIdRoute,

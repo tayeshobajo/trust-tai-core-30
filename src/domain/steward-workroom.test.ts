@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Commitment } from "./steward";
-import { buildWorkroom, toRow, type WorkroomConversationInput } from "./steward-workroom";
+import { buildWorkroom, receiptKey, toRow, type WorkroomConversationInput } from "./steward-workroom";
 
 const convo = (over: Partial<WorkroomConversationInput> = {}): WorkroomConversationInput => ({
   id: "c1",
@@ -29,23 +29,43 @@ const commit = (over: Partial<Commitment> = {}): Commitment => ({
 });
 
 describe("steward workroom", () => {
-  it("never scores when recording length is unknown, even if all kept", () => {
-    const [m] = buildWorkroom([convo()], [commit(), commit()]);
+  it("never scores when recording length is unknown, even if all verified", () => {
+    const a = commit();
+    const b = commit();
+    const receipts = new Set([receiptKey(a.id), receiptKey(b.id)]);
+    const [m] = buildWorkroom([convo()], [a, b], receipts);
     expect(m!.coverage).toBe("unknown");
     expect(m!.score).toBeNull();
     expect(m!.done).toBe(2);
   });
 
-  it("gives 100 only when coverage is complete and every promise is kept", () => {
+  it("gives 100 only when coverage is complete and every promise is verified", () => {
     const full = convo({ recordingSeconds: 1800 });
-    expect(buildWorkroom([full], [commit(), commit()])[0]!.score).toBe(100);
-    expect(buildWorkroom([full], [commit(), commit({ status: "open" })])[0]!.score).toBe(50);
+    const a = commit();
+    const b = commit();
+    const both = new Set([receiptKey(a.id), receiptKey(b.id)]);
+    expect(buildWorkroom([full], [a, b], both)[0]!.score).toBe(100);
+    expect(buildWorkroom([full], [a, b, commit({ status: "open" })], both)[0]!.score).toBe(50);
+  });
+
+  it("kept without a completion receipt is not verified and never counts", () => {
+    const full = convo({ recordingSeconds: 1800 });
+    const a = commit();
+    const b = commit();
+    /* No receipts at all: both are kept by status but unverified. */
+    const [m] = buildWorkroom([full], [a, b], new Set());
+    expect(m!.done).toBe(0);
+    expect(m!.needsVerification).toBe(2);
+    expect(m!.score).toBe(0);
+    expect(m!.remark).toContain("without a completion record");
   });
 
   it("released promises leave the denominator", () => {
+    const a = commit();
     const [m] = buildWorkroom(
       [convo({ recordingSeconds: 1800 })],
-      [commit(), commit({ status: "released" })],
+      [a, commit({ status: "released" })],
+      new Set([receiptKey(a.id)]),
     );
     expect(m!.agreed).toBe(1);
   });
