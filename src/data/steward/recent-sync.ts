@@ -154,7 +154,10 @@ export function syncRecentMeetings(input: {
   userId: string;
   stored: StoredConversation[];
 }): Promise<SyncOutcome> {
-  const running = inFlight.get(input.organizationId);
+  /* Dedupe concurrent runs per org AND user, so an identity change never
+     shares or mixes another identity's in-flight result. */
+  const flightKey = `${input.organizationId}:${input.userId}`;
+  const running = inFlight.get(flightKey);
   if (running) return running;
 
   const run = (async (): Promise<SyncOutcome> => {
@@ -173,7 +176,7 @@ export function syncRecentMeetings(input: {
     const incoming = (
       Array.isArray(body["conversations"]) ? body["conversations"] : []
     ) as NormalizedConversation[];
-    const { missing, upgrades, pendingTranscript } = missingCalls(incoming, input.stored);
+    const { missing, upgrades, pendingTranscript, warnings } = missingCalls(incoming, input.stored);
 
     const errors: string[] = [];
     let added = 0;
@@ -206,11 +209,12 @@ export function syncRecentMeetings(input: {
       pendingTranscript,
       hasMore: body["hasMore"] === true,
       errors,
+      warnings,
     };
   })().finally(() => {
-    inFlight.delete(input.organizationId);
+    inFlight.delete(flightKey);
   });
 
-  inFlight.set(input.organizationId, run);
+  inFlight.set(flightKey, run);
   return run;
 }
