@@ -60,6 +60,19 @@ export interface MissingResult {
   /** Stored calls the source now has a fuller transcript for. */
   upgrades: NormalizedConversation[];
   pendingTranscript: number;
+  /** Calls deliberately left untouched, with the reason, surfaced honestly. */
+  warnings: string[];
+}
+
+/**
+ * An upgrade is only safe when it is demonstrably fuller: the stored row has
+ * NO transcript segments and the incoming read has some. When the stored row
+ * already has segments, a re-segmented read could look "fuller" by count
+ * while actually losing content — so we skip and warn instead of risking an
+ * overwrite.
+ */
+function isDemonstrablyFuller(stored: StoredConversation, incoming: NormalizedConversation): boolean {
+  return storedSegmentCount(stored) === 0 && incoming.segments.length > 0;
 }
 
 /**
@@ -80,6 +93,7 @@ export function missingCalls(
   }
   const missing: NormalizedConversation[] = [];
   const upgrades: NormalizedConversation[] = [];
+  const warnings: string[] = [];
   let pendingTranscript = 0;
   const seen = new Set<string>();
   for (const call of incoming) {
@@ -89,6 +103,13 @@ export function missingCalls(
     ].filter((k): k is string => Boolean(k));
     if (keys.some((k) => seen.has(k))) continue;
     for (const k of keys) seen.add(k);
+    /* A call with no stable identity at all can neither be matched nor
+       safely upserted (the conflict key would collapse to a shared null):
+       skip it and say so. */
+    if (keys.length === 0) {
+      warnings.push(`“${call.title}” has no stable source identity and was not stored.`);
+      continue;
+    }
     /* A call without a transcript is pending, not empty: skip it this pass
        so an empty read never replaces anything, and retry later. */
     if (call.segments.length === 0) {
@@ -100,11 +121,27 @@ export function missingCalls(
       missing.push(call);
       continue;
     }
-    /* Late transcript upgrade: only ever replace a stored transcript with a
-       strictly fuller one, through the same stable identity. */
-    if (call.segments.length > storedSegmentCount(existing)) upgrades.push(call);
+    /* Late transcript upgrade. The upsert conflict key is
+       org+provider+source_external_id, and a row stored by URL has its URL
+       as that key — so the write MUST carry the stored row's identity or it
+       would insert a duplicate second row. Preserve the stored externalId
+       and URL on the conversation handed to the writer. */
+    if (isDemonstrablyFuller(existing, call)) {
+      upgrades.push({
+        ...call,
+        sourceRef: {
+          ...call.sourceRef,
+          externalId: existing.conversation?.sourceRef?.externalId ?? null,
+          url: existing.sourceUrl ?? call.sourceRef.url,
+        },
+      });
+    } else if (storedSegmentCount(existing) > 0) {
+      warnings.push(
+        `“${call.title}” already has a stored transcript; the fresh read was not demonstrably fuller, so it was left untouched.`,
+      );
+    }
   }
-  return { missing, upgrades, pendingTranscript };
+  return { missing, upgrades, pendingTranscript, warnings };
 }
 
 const inFlight = new Map<string, Promise<SyncOutcome>>();
