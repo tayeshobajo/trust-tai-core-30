@@ -218,6 +218,7 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
         <WorkroomMoreMenu>
           {(
             [
+              ["/", "Suite home"],
               ["/modules/steward/team", "Team"],
               ["/modules/steward/tasks", "All outstanding work"],
               ["/modules/steward/agents", "Agents"],
@@ -238,12 +239,14 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
         </WorkroomMoreMenu>
       }
       accountSlot={
-        <span
-          aria-label={`Signed in as ${identity.email}`}
-          className="hidden size-8 items-center justify-center rounded-full bg-secondary text-xs text-muted-foreground sm:flex"
+        <Link
+          to="/settings/profile"
+          aria-label={`Account settings — signed in as ${identity.email}`}
+          title={identity.email}
+          className="hidden size-8 items-center justify-center rounded-full bg-secondary text-xs text-muted-foreground hover:bg-secondary/70 sm:flex"
         >
           {identity.email.slice(0, 2).toUpperCase()}
-        </span>
+        </Link>
       }
     />
   );
