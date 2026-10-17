@@ -240,10 +240,10 @@ function TaskDetail({
         )}
       </div>
 
-      <div className="border-t border-border pt-4">
-        <p className="flex items-center gap-1.5 font-medium text-foreground">
-          <Flag aria-hidden className="size-3.5" /> Source evidence
-        </p>
+      <details className="border-t border-border pt-4">
+        <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
+          <Flag aria-hidden className="size-3.5" /> Meeting source
+        </summary>
         {commitment && commitment.evidence.length > 0 ? (
           <ul className="mt-2 space-y-2">
             {commitment.evidence.map((ref, index) => (
@@ -263,24 +263,7 @@ function TaskDetail({
         <p className="mt-2 text-xs text-muted-foreground">
           Source quotations are what was said, not proof of completion.
         </p>
-      </div>
-
-      <div className="border-t border-border pt-4">
-        <p className="flex items-center gap-1.5 font-medium text-foreground">
-          <Sparkles aria-hidden className="size-3.5" /> AI help
-        </p>
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          Steward can read this meeting for meaning and prepare a review. It never completes,
-          assigns or sends anything on its own.
-        </p>
-        <Link
-          to="/modules/steward/meetings/$conversationId"
-          params={{ conversationId: meeting.id }}
-          className="mt-2 inline-block text-primary underline underline-offset-4"
-        >
-          Read this meeting for meaning
-        </Link>
-      </div>
+      </details>
 
       <details className="border-t border-border pt-4">
         <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
@@ -288,8 +271,8 @@ function TaskDetail({
         </summary>
         <p className="mt-2 text-[13px] text-muted-foreground">
           {row.receipt
-            ? "The completion receipt above is the recorded event. Earlier history is not stored in this view."
-            : "No events recorded for this task yet."}
+            ? "The completion receipt above is the recorded event. Earlier history is unavailable in this view."
+            : "History unavailable in this view."}
         </p>
       </details>
 
