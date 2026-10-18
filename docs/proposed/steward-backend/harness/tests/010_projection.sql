@@ -1,8 +1,5 @@
 -- Verification projection RPC: one-statement snapshot, latest receipt per
 -- task, no silent truncation, explicit missing ids, stable tie ordering.
-set role authenticated;
-select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-
 -- 1. Bulk receipts far beyond the PostgREST 1000-row cap on ONE task:
 --    1200 verify receipts then a FINAL reopen. The projection must see
 --    the reopen (false), proving no row-cap truncation hides it.
@@ -23,7 +20,6 @@ begin
     gen_random_uuid(), 'reopen', 'final reopen after bulk verifies', 'digest-final', 1,
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', now());
 end $$;
-reset role;
 update public.steward_tasks set status = 'complete' where id = '10000000-0000-0000-0000-000000000005';
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
@@ -42,7 +38,6 @@ end $$;
 do $$
 declare
   t timestamptz := now();
-  r record;
 begin
   insert into public.steward_task_receipts
     (organization_id, task_id, operation_id, kind, note, request_digest, task_revision_after, actor_id, created_at)
@@ -51,6 +46,12 @@ begin
      gen_random_uuid(), 'verify', 'tie verify', 'tie-a', 1, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', t),
     ('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000006',
      gen_random_uuid(), 'reopen', 'tie reopen', 'tie-b', 1, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', t);
+end $$;
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+do $$
+declare r record;
+begin
   select * into r from public.steward_meeting_verification_projection(
     '11111111-1111-1111-1111-111111111111',
     array['10000000-0000-0000-0000-000000000006']::uuid[]);
@@ -60,19 +61,18 @@ end $$;
 
 -- 3. Valid current verify: revision-bound credit when the latest verify
 --    receipt's task_revision_after equals the CURRENT revision.
-reset role;
 update public.steward_tasks set status = 'complete', revision = 7
  where id = '10000000-0000-0000-0000-000000000003';
+insert into public.steward_task_receipts
+  (organization_id, task_id, operation_id, kind, note, request_digest, task_revision_after, actor_id)
+values ('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000003',
+  gen_random_uuid(), 'verify', 'current valid verify', 'digest-cur', 7,
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 do $$
 declare r record;
 begin
-  insert into public.steward_task_receipts
-    (organization_id, task_id, operation_id, kind, note, request_digest, task_revision_after, actor_id)
-  values ('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000003',
-    gen_random_uuid(), 'verify', 'current valid verify', 'digest-cur', 7,
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
   select * into r from public.steward_meeting_verification_projection(
     '11111111-1111-1111-1111-111111111111',
     array['10000000-0000-0000-0000-000000000003']::uuid[]);
