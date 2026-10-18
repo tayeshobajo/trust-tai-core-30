@@ -242,6 +242,8 @@ export interface AiPreparationProps {
       }) => Promise<ActionOutcome>)
     | undefined;
   onExecuteRun: ((runId: string) => Promise<ActionOutcome>) | undefined;
+  /** Real reload action for a failed run-history read. */
+  onRetryReads?: (() => void) | undefined;
 }
 
 /**
@@ -258,6 +260,7 @@ export function AiPreparationPanel({
   actions,
   onRequestRun,
   onExecuteRun,
+  onRetryReads,
 }: AiPreparationProps) {
   const enabledActions = actions.filter((action) => !action.disabledReason);
   const [selectedAction, setSelectedAction] = useState(enabledActions[0]?.id ?? "");
@@ -376,7 +379,7 @@ export function AiPreparationPanel({
           <RotateCw aria-hidden className="size-3.5" /> Retry same operation
         </TTButton>
       ) : null}
-      <RunHistory runs={runs} busy={attempt.busy} onExecute={execute} />
+      <RunHistory runs={runs} busy={attempt.busy} onExecute={execute} onRetry={onRetryReads} />
     </div>
   );
 }
@@ -385,19 +388,24 @@ function RunHistory({
   runs,
   busy,
   onExecute,
+  onRetry,
 }: {
   runs: RunsRead | undefined;
   busy: boolean;
   onExecute: (runId: string) => Promise<void>;
+  onRetry?: (() => void) | undefined;
 }) {
   if (!runs || runs.kind === "loading") {
     return <p className="text-xs text-muted-foreground">Reading run history…</p>;
   }
-  if (runs.kind === "unavailable" || runs.kind === "rejected") {
+  if (runs.kind === "rejected") {
+    return <RejectedNote message={runs.message} onRetry={onRetry} />;
+  }
+  if (runs.kind === "unavailable") {
     return (
       <p className="flex items-center gap-1.5 text-xs text-warning">
         <AlertCircle aria-hidden className="size-3.5" />
-        {"reason" in runs ? runs.reason : runs.message}
+        {runs.reason}
       </p>
     );
   }
