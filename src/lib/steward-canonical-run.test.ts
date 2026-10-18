@@ -314,6 +314,72 @@ describe("executeCanonicalRun", () => {
     expect(seen).toEqual([{ kind: "transcript", id: "conv-1", content: "SNAPSHOT content", revision: 3 }]);
   });
 
+  it("persists exactly the cited evidence subset, never all inputs", async () => {
+    let completed: { evidenceRefs: string[] } | null = null;
+    const repo = makeRepo({
+      async claimRun() {
+        return makeRun({
+          status: "running",
+          claimToken: "fence-3",
+          claimVersion: 1,
+          inputSnapshot: [
+            snapshotEntry(),
+            snapshotEntry({ id: "conv-2", kind: "task_notes", contentDigest: "digest-2" }),
+          ],
+        });
+      },
+      async completeRun(input) {
+        completed = input;
+        return makeRun({ status: "complete", evidenceRefs: input.evidenceRefs });
+      },
+    });
+    const partial: CanonicalRunProvider = {
+      async generate() {
+        return { text: "artifact citing only the transcript", evidenceRefs: ["transcript:conv-1@1"] };
+      },
+    };
+    const result = await executeCanonicalRun(repo, partial, { runId: "run-1", actorId: ACTOR });
+    expect(result.kind).toBe("complete");
+    expect(completed?.evidenceRefs).toEqual(["transcript:conv-1@1"]);
+  });
+
+  it("treats an uncertain provider outcome as terminal — no automatic retry", async () => {
+    const repo = makeRepo({
+      async claimRun() {
+        return makeRun({ status: "running", claimToken: "fence-u", claimVersion: 1, attempts: 1 });
+      },
+    });
+    const uncertain: CanonicalRunProvider = {
+      async generate() {
+        const error = new Error("provider call timed out; outcome unknown");
+        error.name = "ProviderOutcomeUncertainError";
+        throw error;
+      },
+    };
+    const result = await executeCanonicalRun(repo, uncertain, { runId: "run-1", actorId: ACTOR });
+    expect(result.kind).toBe("uncertain");
+    expect(repo.calls).toContain("markRunUncertain:fence-u");
+    expect(repo.calls).not.toContain("failRun:fence-u");
+    if (result.kind === "uncertain") {
+      expect(result.run.status).toBe("failed");
+      expect(result.run.failureReason).toMatch(/^uncertain:/);
+    }
+  });
+
+  it("finalizes the run honestly when the mutable task-title read fails", async () => {
+    const repo = makeRepo({
+      async claimRun() {
+        return makeRun({ status: "running", claimToken: "fence-t", claimVersion: 1 });
+      },
+      async readTaskTitle() {
+        throw new Error("read failed");
+      },
+    });
+    const result = await executeCanonicalRun(repo, fakeProvider, { runId: "run-1", actorId: ACTOR });
+    expect(result.kind).toBe("failed");
+    expect(repo.calls).toContain("failRun:fence-t");
+  });
+
   it("threads the fencing token into completion with digest and provenance", async () => {
     const repo = makeRepo({
       async claimRun() {
