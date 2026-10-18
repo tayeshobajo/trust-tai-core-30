@@ -90,7 +90,9 @@ export interface CanonicalRunRepository {
     action: CanonicalRunAction;
     operationId: string;
     digest: string;
-    snapshot: CanonicalRunInputSnapshotEntry[];
+    /** Caller-selected refs only — the SQL function resolves and snapshots
+     *  the content server-side; in-memory test repos snapshot themselves. */
+    inputRefs: CanonicalRunInputRef[];
     actorId: string;
   }): Promise<CanonicalRun>;
   claimRun(runId: string, actorId: string, leaseSeconds?: number): Promise<CanonicalRun | null>;
