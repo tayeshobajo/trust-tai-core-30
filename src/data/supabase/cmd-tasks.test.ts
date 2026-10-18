@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { boardService } from "./cmd-tasks";
+import { boardService, businessWorkQuery, cmdTasks } from "./cmd-tasks";
+import { vi } from "vitest";
+import { withMeetingAssociation } from "@/domain/steward-meeting-links";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BoardEdit, BoardTask } from "@/domain/cmd-tasks";
 const org = "00000000-0000-4000-8000-000000000010";
@@ -105,6 +107,50 @@ function transport() {
   return { client, rows, operations, fail: (value: MockError) => (issue = value) };
 }
 describe("board service mocked transport", () => {
+  it("reads only business work with org+user-specific cache identity", async () => {
+    const db = transport();
+    const service = boardService(db.client);
+    await service.create(org, "personal", "private", edit);
+    expect((await service.list(org, "business")).tasks).toHaveLength(0);
+    const read = vi.spyOn(cmdTasks, "list").mockResolvedValue({ tasks: [], truncated: false });
+    const query = businessWorkQuery(org, owner);
+    expect(query.queryKey).toEqual(["cmd-tasks", org, owner, "business"]);
+    expect(businessWorkQuery(org, "other").queryKey).not.toEqual(query.queryKey);
+    expect(businessWorkQuery("other-org", owner).queryKey).not.toEqual(query.queryKey);
+    await query.queryFn();
+    expect(read).toHaveBeenCalledWith(org, "business");
+    read.mockRestore();
+  });
+  it("links/removes by revision-checked update without creating or resetting work", async () => {
+    const db = transport();
+    const service = boardService(db.client);
+    const created = await service.create(org, "business", "link-test", {
+      ...edit,
+      notes: "Keep notes",
+      context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }],
+    });
+    const linked = await service.update(created, {
+      ...edit,
+      notes: created.notes,
+      context_links: withMeetingAssociation(created.context_links, owner),
+    });
+    expect(linked.id).toBe(created.id);
+    expect(linked.revision).toBe(1);
+    await expect(service.update(created, { ...edit, context_links: [] })).rejects.toThrow(
+      /changed/,
+    );
+    expect(db.rows).toHaveLength(1);
+    const removed = await service.update(linked, {
+      ...edit,
+      notes: linked.notes,
+      context_links: withMeetingAssociation(linked.context_links, null),
+    });
+    expect(removed.context_links).toEqual([
+      { label: "Email", url: "https://example.com/email", kind: "email" },
+    ]);
+    expect(removed.notes).toBe("Keep notes");
+    expect(db.operations.filter((op) => op === "insert")).toHaveLength(1);
+  });
   it("creates once using stable retry identity and rereads through a fresh service", async () => {
     const db = transport();
     const service = boardService(db.client);

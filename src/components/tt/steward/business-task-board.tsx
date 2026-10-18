@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sheet";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { taskContextHref } from "./task-context";
+import { meetingAssociationIds, withMeetingAssociation } from "@/domain/steward-meeting-links";
 
 const control = "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm";
 const errorText = (error: unknown) =>
@@ -54,6 +55,11 @@ export function BusinessTaskBoard({
     name: identity.name,
   });
   const tasks = read.data?.tasks ?? [];
+  const meetingRead = useQuery({
+    queryKey: ["steward", "meeting-options", identity.organizationId, identity.userId],
+    queryFn: () => cmdTasks.meetingOptions(identity.organizationId),
+    enabled: scope === "business" && !!editor?.task,
+  });
   const actor = { userId: identity.userId, role: identity.role };
   const visible = tasks
     .filter((t) =>
@@ -341,6 +347,10 @@ export function BusinessTaskBoard({
           identity={identity}
           tasks={tasks}
           people={choices.data?.people ?? []}
+          meetingOptions={meetingRead.data?.meetings ?? []}
+          meetingsLoading={meetingRead.isPending}
+          meetingsError={meetingRead.isError}
+          meetingsTruncated={meetingRead.data?.truncated ?? false}
           onClose={() => setEditor(null)}
           onSave={async (input) => {
             if (editor.task) await cmdTasks.update(editor.task, input);
@@ -363,6 +373,10 @@ export function TaskEditor({
   people,
   onSave,
   onClose,
+  meetingOptions,
+  meetingsLoading = false,
+  meetingsError = false,
+  meetingsTruncated = false,
 }: {
   task: BoardTask | null;
   scope: TaskVisibility;
@@ -371,6 +385,10 @@ export function TaskEditor({
   people: { userId: string; name: string }[];
   onSave: (input: BoardEdit) => Promise<void>;
   onClose: () => void;
+  meetingOptions?: { id: string; title: string }[];
+  meetingsLoading?: boolean;
+  meetingsError?: boolean;
+  meetingsTruncated?: boolean;
 }) {
   const [openingElement] = useState(() => document.activeElement as HTMLElement | null);
   const [input, setInput] = useState<BoardEdit>(() =>
@@ -399,6 +417,8 @@ export function TaskEditor({
     : mayEditBoardTask(task, { userId: identity.userId, role: identity.role });
   const admin = ["owner", "admin"].includes(identity.role);
   const completing = input.status === "complete" && task?.status !== "complete";
+  const currentOrigin = window.location.origin;
+  const associationIds = meetingAssociationIds(input.context_links, currentOrigin);
   function field<K extends keyof BoardEdit>(name: K, value: BoardEdit[K]) {
     setInput((old) => ({ ...old, [name]: value }));
   }
@@ -599,6 +619,64 @@ export function TaskEditor({
               />
             </label>
             <div className="space-y-2">
+              {task && scope === "business" ? (
+                <label className="grid gap-1 text-sm">
+                  Associated meeting
+                  <select
+                    className={control}
+                    aria-label="Associated meeting"
+                    value={associationIds[0] ?? ""}
+                    onChange={(event) =>
+                      field(
+                        "context_links",
+                        withMeetingAssociation(
+                          input.context_links,
+                          event.target.value || null,
+                          currentOrigin,
+                        ),
+                      )
+                    }
+                  >
+                    <option value="">No meeting association</option>
+                    {associationIds
+                      .filter((id) => !meetingOptions?.some((meeting) => meeting.id === id))
+                      .map((id) => (
+                        <option key={id} value={id}>
+                          Linked meeting unavailable in recent list
+                        </option>
+                      ))}
+                    {(meetingOptions ?? []).map((meeting) => (
+                      <option key={meeting.id} value={meeting.id}>
+                        {meeting.title || "Untitled meeting"}
+                      </option>
+                    ))}
+                  </select>
+                  {meetingsLoading ? (
+                    <span role="status" className="text-xs text-muted-foreground">
+                      Loading stored meetings… Existing links remain unchanged.
+                    </span>
+                  ) : meetingsError ? (
+                    <span role="alert" className="text-xs text-destructive">
+                      Meeting choices unavailable. Existing links remain unchanged.
+                    </span>
+                  ) : !meetingOptions?.length ? (
+                    <span className="text-xs text-muted-foreground">
+                      No stored meetings in this list.
+                    </span>
+                  ) : null}
+                  {meetingsTruncated ? (
+                    <span className="text-xs text-muted-foreground">
+                      Most recent 60 meetings only; older associations are retained.
+                    </span>
+                  ) : null}
+                  {associationIds.length > 1 ? (
+                    <span className="text-xs text-muted-foreground">
+                      Multiple recorded associations. Choosing a meeting replaces only the
+                      association links.
+                    </span>
+                  ) : null}
+                </label>
+              ) : null}
               <h3 className="text-sm font-medium">Source links</h3>
               {input.context_links.map((link, index) => (
                 <div key={index} className="space-y-1 rounded-lg border p-2">

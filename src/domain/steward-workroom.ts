@@ -18,6 +18,7 @@
  */
 
 import type { Commitment } from "./steward";
+import type { BoardTask } from "./cmd-tasks";
 
 export type WorkroomCoverage = "complete" | "unknown";
 
@@ -80,11 +81,13 @@ export interface WorkroomConversationInput {
 }
 
 export interface WorkroomRow {
+  kind?: "commitment" | "business-task";
+  boardTask?: BoardTask;
   id: string;
   what: string;
   owner: { label: string; verified: boolean };
   due: { label: string; exact: boolean };
-  status: Commitment["status"];
+  status: string;
   /** Status says kept. */
   kept: boolean;
   /** Kept AND a valid current completion receipt exists. Only this turns green. */
@@ -96,6 +99,7 @@ export interface WorkroomRow {
 }
 
 export interface WorkroomMeeting extends WorkroomConversationInput {
+  linkedWork?: { total: number; open: number };
   rows: WorkroomRow[];
   agreed: number;
   /** Verified completions only. */
@@ -131,6 +135,7 @@ export function toRow(
   const receipt = receipts?.get(receiptKey(c.id)) ?? null;
   const verified = kept && validReceipt(receipt ?? undefined);
   return {
+    kind: "commitment",
     id: c.id,
     what: c.what,
     owner: c.ownerUserId

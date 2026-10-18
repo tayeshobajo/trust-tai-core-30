@@ -42,6 +42,8 @@ import {
 import type { Commitment } from "@/domain/steward";
 import type { WorkroomMeeting, WorkroomRow } from "@/domain/steward-workroom";
 import { cn } from "@/lib/utils";
+import { workroomRowKey } from "@/domain/steward-meeting-links";
+import { taskContextHref } from "./task-context";
 
 type RowFilter = "all" | "open" | "verified";
 
@@ -61,6 +63,7 @@ export interface WorkroomSyncState {
 }
 
 export interface WorkroomViewProps {
+  linkedRead?: { state: "loading" | "error" | "ready"; truncated: boolean; onRetry?: () => void };
   /** Keep suite branding/account in the enclosing AppShell. */
   embedded?: boolean;
   meetings: WorkroomMeeting[];
@@ -211,6 +214,11 @@ function TaskDetail({
     <div className="space-y-5 text-sm">
       <div>
         <h2 className="text-base font-semibold text-foreground">{row.what}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {row.kind === "business-task"
+            ? "Linked business task · association is context, not a confirmed meeting commitment"
+            : "Confirmed meeting commitment"}
+        </p>
         <p className="mt-2 text-muted-foreground">
           Owner: {row.owner.label}
           {row.owner.verified ? "" : " · not linked to a teammate"}
@@ -220,6 +228,39 @@ function TaskDetail({
           {row.due.exact ? "" : " · not an exact date"}
         </p>
       </div>
+
+      {row.boardTask ? (
+        <div className="space-y-3 border-t border-border pt-4">
+          <div>
+            <p className="font-medium">Next action</p>
+            <p className="whitespace-pre-wrap break-words">
+              {row.boardTask.next_action || "No next action recorded."}
+            </p>
+          </div>
+          {row.boardTask.blocked_because ? (
+            <p className="break-words">Blocked: {row.boardTask.blocked_because}</p>
+          ) : null}
+          {row.boardTask.notes ? (
+            <div>
+              <p className="font-medium">Task notes</p>
+              <p className="whitespace-pre-wrap break-words">{row.boardTask.notes}</p>
+            </div>
+          ) : null}
+          {row.boardTask.acceptance_criteria.length ? (
+            <div>
+              <p className="font-medium">Planned acceptance criteria</p>
+              <ul className="list-disc pl-4">
+                {row.boardTask.acceptance_criteria.map((value, index) => (
+                  <li key={index}>{value}</li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground">
+                Planned outcomes, not completion proof.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* AI help comes first: it prepares the person's review, and never
           completes, assigns or sends anything itself. */}
@@ -245,7 +286,22 @@ function TaskDetail({
         <p className="flex items-center gap-1.5 font-medium text-foreground">
           <Check aria-hidden className="size-3.5" /> Completion evidence
         </p>
-        {row.receipt ? (
+        {row.boardTask ? (
+          <div className="mt-2 text-[13px]">
+            <p className="whitespace-pre-wrap break-words">
+              {row.boardTask.completion_evidence || "No board completion evidence recorded."}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Recorded board evidence — not a verified commitment receipt.
+            </p>
+            {row.boardTask.completed_at ? (
+              <p className="text-xs text-muted-foreground">
+                Recorded {row.boardTask.completed_at} ·{" "}
+                {row.boardTask.completed_by || "Actor unavailable"}
+              </p>
+            ) : null}
+          </div>
+        ) : row.receipt ? (
           <div className="mt-2 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-[13px]">
             <p className="text-foreground">“{row.receipt.completionNote}”</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -266,7 +322,33 @@ function TaskDetail({
         <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
           <Flag aria-hidden className="size-3.5" /> Meeting source
         </summary>
-        {commitment && commitment.evidence.length > 0 ? (
+        {row.boardTask ? (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Linked task source context. Association does not replace email or other recorded
+              sources.
+            </p>
+            {row.boardTask.context_links.map((link, index) => {
+              const href = taskContextHref(link.url);
+              return (
+                <p key={index} className="break-words">
+                  {href ? (
+                    <a
+                      className="text-royal underline"
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {link.label || href}
+                    </a>
+                  ) : (
+                    link.label || "Link unavailable"
+                  )}
+                </p>
+              );
+            })}
+          </div>
+        ) : commitment && commitment.evidence.length > 0 ? (
           <ul className="mt-2 space-y-2">
             {commitment.evidence.map((ref, index) => (
               <li
@@ -335,6 +417,7 @@ export function WorkroomView({
   headerMenu,
   accountSlot,
   historyFor,
+  linkedRead,
 }: WorkroomViewProps) {
   const viewportCompact = useCompact();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -369,7 +452,8 @@ export function WorkroomView({
   const owners = meeting ? Array.from(new Set(meeting.rows.map((r) => r.owner.label))).sort() : [];
   const visibleRows = meeting
     ? meeting.rows.filter((r) => {
-        if (rowFilter === "open" && r.verified) return false;
+        if (rowFilter === "open" && (r.verified || r.boardTask?.status === "complete"))
+          return false;
         if (rowFilter === "verified" && !r.verified) return false;
         if (ownerFilter !== "everyone" && r.owner.label !== ownerFilter) return false;
         if (taskQuery.trim() && !r.what.toLowerCase().includes(taskQuery.trim().toLowerCase()))
@@ -380,8 +464,12 @@ export function WorkroomView({
 
   /* Default to the first available task so the detail panel is never blank. */
   const row =
-    meeting?.rows.find((r) => r.id === selectedRow) ?? visibleRows[0] ?? meeting?.rows[0] ?? null;
-  const rowCommitment = row ? commitmentFor(row.id) : undefined;
+    meeting?.rows.find((r) => workroomRowKey(r) === selectedRow) ??
+    visibleRows[0] ??
+    meeting?.rows[0] ??
+    null;
+  const rowCommitment = row && row.kind !== "business-task" ? commitmentFor(row.id) : undefined;
+  const rowHistory = row && row.kind !== "business-task" ? historyFor?.(row.id) : undefined;
 
   function selectMeeting(id: string) {
     setSelectedMeeting(id);
@@ -529,6 +617,24 @@ export function WorkroomView({
         </Link>
       ) : null}
 
+      {linkedRead ? (
+        <div
+          role={linkedRead.state === "error" ? "alert" : "status"}
+          className="mt-2 text-xs text-muted-foreground"
+        >
+          {linkedRead.state === "loading"
+            ? "Loading linked business work… Counts unavailable."
+            : linkedRead.state === "error"
+              ? "Linked business work unavailable. Counts and all-work completion are unknown."
+              : `${meeting.linkedWork?.total ?? 0} linked business tasks · ${meeting.linkedWork?.open ?? 0} recorded open${linkedRead.truncated ? " · most recent 1,000 board records only; linked coverage incomplete" : ""}`}
+          {linkedRead.state === "error" && linkedRead.onRetry ? (
+            <TTButton variant="quiet" className="ml-2 h-7 text-xs" onClick={linkedRead.onRetry}>
+              Retry linked work
+            </TTButton>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 border-b border-border pb-2">
         <div
           className="flex w-full min-w-0 max-w-full overflow-x-auto xl:w-auto"
@@ -536,15 +642,18 @@ export function WorkroomView({
         >
           {(
             [
-              ["all", `All tasks ${meeting.rows.length}`],
+              [
+                "all",
+                `All tasks ${linkedRead && linkedRead.state !== "ready" ? "—" : meeting.rows.length}`,
+              ],
               /* When receipts could not be read, open/verified counts would
                  be computed from suppressed verification — show unavailable,
                  never a stale or zero number. */
               [
                 "open",
-                receiptsFailed
+                receiptsFailed || (linkedRead && linkedRead.state !== "ready")
                   ? "Open —"
-                  : `Open ${meeting.rows.filter((r) => !r.verified).length}`,
+                  : `Open ${meeting.rows.filter((r) => !r.verified && r.boardTask?.status !== "complete").length}`,
               ],
               ["verified", receiptsFailed ? "Verified —" : `Verified ${meeting.done}`],
             ] as [RowFilter, string][]
@@ -599,18 +708,18 @@ export function WorkroomView({
       <div aria-label="Meeting tasks">
         {visibleRows.map((r) => (
           <button
-            key={r.id}
+            key={workroomRowKey(r)}
             type="button"
-            aria-pressed={row?.id === r.id}
+            aria-pressed={row ? workroomRowKey(row) === workroomRowKey(r) : false}
             onClick={(event) => {
               taskTriggerRef.current = event.currentTarget;
-              pickRow(r.id);
+              pickRow(workroomRowKey(r));
             }}
             className={cn(
               "grid min-h-11 w-full grid-cols-[20px_minmax(0,1fr)] items-center gap-2 border-b border-border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal sm:grid-cols-[20px_minmax(0,1fr)_116px_104px_92px]",
               r.verified
                 ? "bg-success/10"
-                : row?.id === r.id
+                : row && workroomRowKey(row) === workroomRowKey(r)
                   ? "bg-secondary"
                   : "hover:bg-secondary/40",
             )}
@@ -647,9 +756,13 @@ export function WorkroomView({
         {visibleRows.length === 0 ? (
           <div role="status" className="py-10 text-center">
             <p className="font-medium">
-              {meeting.rows.length === 0
-                ? "No promises confirmed from this meeting yet."
-                : "No tasks match this view."}
+              {linkedRead?.state === "loading"
+                ? "Reading linked business work…"
+                : linkedRead?.state === "error"
+                  ? "Linked business work unavailable."
+                  : meeting.rows.length === 0
+                    ? "No promises confirmed from this meeting yet."
+                    : "No tasks match this view."}
             </p>
             {meeting.rows.length > 0 ? (
               <TTButton
@@ -684,6 +797,18 @@ export function WorkroomView({
           )}
         />
         <div>
+          {meeting.linkedWork?.open ? (
+            <p className="mb-1 font-medium">
+              {meeting.linkedWork.open} linked business tasks remain recorded open, separately from
+              agreed-work verification.
+            </p>
+          ) : null}
+          {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated) ? (
+            <p className="mb-1 font-medium">
+              Linked-work coverage unavailable or incomplete; all-work completion cannot be
+              established.
+            </p>
+          ) : null}
           {receiptsFailed ? (
             <>
               <p className="text-sm font-semibold">Verification unavailable</p>
@@ -848,7 +973,7 @@ export function WorkroomView({
               meeting={meeting}
               row={row}
               commitment={rowCommitment}
-              history={historyFor?.(row.id)}
+              history={rowHistory}
             />
           </aside>
         ) : null}
@@ -894,7 +1019,7 @@ export function WorkroomView({
                   meeting={meeting}
                   row={row}
                   commitment={rowCommitment}
-                  history={historyFor?.(row.id)}
+                  history={rowHistory}
                 />
               ) : null}
             </SheetContent>

@@ -52,7 +52,7 @@ export const BoardTaskSchema = z.object({
   revision: z.number().int().nonnegative(),
   acceptance_criteria: z.array(z.string()),
   context_links: z.array(
-    z.object({ label: z.string(), url: z.string(), kind: z.string().optional() }),
+    z.object({ label: z.string(), url: z.string(), kind: z.string().optional() }).passthrough(),
   ),
   notes: z.string().nullable(),
   correlation_id: z.string().nullable(),
@@ -86,13 +86,16 @@ export const BoardEditSchema = z
     acceptance_criteria: z.array(z.string().max(2000)).max(50),
     context_links: z
       .array(
-        z.object({
-          label: z.string().max(200),
-          url: z
-            .string()
-            .url()
-            .refine((v) => /^https?:\/\//i.test(v), "Use a web link."),
-        }),
+        z
+          .object({
+            label: z.string().max(200),
+            kind: z.string().optional(),
+            url: z
+              .string()
+              .url()
+              .refine((v) => /^https?:\/\//i.test(v), "Use a web link."),
+          })
+          .passthrough(),
       )
       .max(50),
   })
@@ -125,6 +128,6 @@ export function editOf(task: BoardTask): BoardEdit {
     owner_user_id: task.owner_user_id,
     completion_evidence: task.completion_evidence,
     acceptance_criteria: task.acceptance_criteria,
-    context_links: task.context_links.map(({ label, url }) => ({ label, url })),
+    context_links: task.context_links.map((link) => ({ ...link })),
   };
 }
