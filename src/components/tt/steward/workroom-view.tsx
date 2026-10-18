@@ -551,14 +551,20 @@ function TaskDetail({
             </details>
           ) : null}
           {row.boardTask.acceptance_criteria.length ? (
-            <div>
-              <p className="font-medium">Planned acceptance criteria</p>
-              <ul className="list-disc pl-4">
+            <div
+              className="rounded-lg border px-4 py-3"
+              style={{
+                backgroundColor: "color-mix(in oklab, var(--warning) 7%, transparent)",
+                borderColor: "color-mix(in oklab, var(--warning) 30%, transparent)",
+              }}
+            >
+              <h3 className="font-semibold text-foreground">Planned acceptance criteria</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-4">
                 {row.boardTask.acceptance_criteria.map((value, index) => (
                   <li key={index}>{value}</li>
                 ))}
               </ul>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Planned outcomes, not completion proof.
               </p>
             </div>
