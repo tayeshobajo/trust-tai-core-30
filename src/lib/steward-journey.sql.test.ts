@@ -211,7 +211,7 @@ function createJourneyRunRepository(actorId: string): CanonicalRunRepository {
   return {
     requestRun: (input) => asActor.requestRun(input),
     readTaskTitle: (taskId, orgId) => asActor.readTaskTitle(taskId, orgId),
-    readInput: (ref) => asActor.readInput(ref),
+    readInput: () => asActor.readInput(),
     claimRun: (runId, actor, lease) => asWorkerRepo.claimRun(runId, actor, lease),
     completeRun: (input) => asWorkerRepo.completeRun(input),
     failRun: (input) => asWorkerRepo.failRun(input),
@@ -220,14 +220,14 @@ function createJourneyRunRepository(actorId: string): CanonicalRunRepository {
 }
 
 /** Narrow psql-backed fake of the RLS query builder authorizeWorkerEndpoint uses. */
+type RlsChain = {
+  eq(col: string, val: string): RlsChain;
+  maybeSingle(): Promise<{ data: Record<string, unknown> | null }>;
+};
+
 function createPsqlRlsClient(callerId: string) {
   return userClient(callerId) as {
-    from(table: string): {
-      select(cols: string): {
-        eq(col: string, val: string): unknown;
-        maybeSingle(): Promise<{ data: Record<string, unknown> | null }>;
-      };
-    };
+    from(table: string): { select(cols: string): RlsChain };
   };
 }
 
