@@ -441,13 +441,17 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
       expect(executed.run.evidenceRefs).toEqual([`transcript:${CONVERSATION}`]);
     }
 
-    // 6. Verify the task atomically with substantive evidence.
+    // 6. Verify the task atomically with substantive evidence. The
+    //    revision is read live — earlier harness suites legitimately bump it.
     const taskBefore = await runRepo.readTaskTitle(TASK, ORG, OWNER);
     expect(taskBefore).toBe("Prepare Soji handoff");
+    const revisionAtVerify = Number(
+      asUser(OWNER, `select revision from public.steward_tasks where id = ${lit(TASK)}`),
+    );
     const verified = await verifyCanonicalTask(verifyRepo, {
       orgId: ORG,
       taskId: TASK,
-      expectedRevision: 0,
+      expectedRevision: revisionAtVerify,
       operationId: "e7a00000-0000-0000-0000-000000000002",
       note: "Reviewed the draft brief against the recorded call; it matches.",
       actorId: OWNER,
@@ -464,7 +468,7 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
     const verifyReplay = await verifyCanonicalTask(verifyRepo, {
       orgId: ORG,
       taskId: TASK,
-      expectedRevision: 0,
+      expectedRevision: revisionAtVerify,
       operationId: "e7a00000-0000-0000-0000-000000000002",
       note: "Reviewed the draft brief against the recorded call; it matches.",
       actorId: OWNER,
@@ -473,10 +477,13 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
     if (verifyReplay.kind === "verified") expect(verifyReplay.replayed).toBe(true);
 
     // 8. Reopen with a substantive reason; history is preserved.
+    const revisionAtReopen = Number(
+      asUser(OWNER, `select revision from public.steward_tasks where id = ${lit(TASK)}`),
+    );
     const reopened = await reopenCanonicalTask(verifyRepo, {
       orgId: ORG,
       taskId: TASK,
-      expectedRevision: 1,
+      expectedRevision: revisionAtReopen,
       operationId: "e7a00000-0000-0000-0000-000000000003",
       reason: "Scope changed in the follow-up call; the brief is outdated.",
       actorId: OWNER,
@@ -489,7 +496,7 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
     const reopenReplay = await reopenCanonicalTask(verifyRepo, {
       orgId: ORG,
       taskId: TASK,
-      expectedRevision: 1,
+      expectedRevision: revisionAtReopen,
       operationId: "e7a00000-0000-0000-0000-000000000003",
       reason: "Scope changed in the follow-up call; the brief is outdated.",
       actorId: OWNER,
