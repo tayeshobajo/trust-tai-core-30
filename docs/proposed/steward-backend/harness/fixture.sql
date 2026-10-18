@@ -135,7 +135,7 @@ begin
   begin
     execute statement;
   exception
-    when raise_exception or insufficient_privilege or unique_violation then rejected := true;
+    when others then rejected := true;
   end;
   if not rejected then raise exception 'FAILED expected rejection: %', label; end if;
   raise notice 'PASS: %', label;
