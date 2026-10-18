@@ -23,6 +23,7 @@ export default defineConfig({
       "src/lib/steward-verification.test.ts",
       "src/lib/steward-coverage.test.ts",
       "src/lib/steward-proposal-link.test.ts",
+      "src/lib/steward-supabase-adapters.test.ts",
     ],
   },
 });
