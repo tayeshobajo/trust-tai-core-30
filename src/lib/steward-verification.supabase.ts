@@ -32,6 +32,9 @@ interface ReceiptRow {
   note: string;
   actor_id: string;
   created_at: string;
+  /** The task revision the receipt was recorded against — verified credit
+      exists only while this still equals the task's current revision. */
+  task_revision_after: number;
 }
 
 interface TaskRow {
@@ -53,6 +56,7 @@ function mapReceipt(row: ReceiptRow): TaskReceipt {
     note: row.note,
     actorId: row.actor_id,
     createdAt: row.created_at,
+    taskRevisionAfter: row.task_revision_after,
   };
 }
 
@@ -79,7 +83,23 @@ function rethrow(error: { code?: string; message?: string } | null): never {
   if (error?.code === "P0010" || error?.message?.includes("evidence_required")) {
     throw new EvidenceRequiredError();
   }
-  throw new Error(error?.message ?? "verification call failed");
+  /* Preserve the SQL errcode so the server layer can tell a KNOWN contract
+     answer (authorization, not-found, operation conflict) from an UNKNOWN
+     transport/5xx failure — the latter must surface as uncertain, never
+     as a resolved rejection. */
+  const failure = new Error(error?.message ?? "verification call failed");
+  if (error?.code) (failure as { code?: string }).code = error.code;
+  throw failure;
+}
+
+/** A response that arrived but does not match the contract is treated
+    like a lost response: the durable outcome is unknown. */
+function requireResult(data: unknown): RpcResult {
+  const result = data as RpcResult | null;
+  if (!result || typeof result !== "object" || !result.receipt || !result.receipt.id) {
+    throw new Error("malformed verification response");
+  }
+  return result;
 }
 
 /** The client MUST be the authenticated per-request client (RLS as user). */
