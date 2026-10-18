@@ -23,6 +23,7 @@ import {
   type ScopeCounts,
   type ScopeItem,
 } from "./steward-scope.supabase";
+import { classifyMutationError } from "./steward-mutation-outcome";
 
 export type ScopeCapabilityState = { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
@@ -34,7 +35,10 @@ export type ScopeReadState =
 export type ScopeMutationState =
   | { kind: "unavailable"; reason: string }
   | { kind: "applied"; item: ScopeItem }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  /* Transport ambiguity after send: the mutation may be durable. The
+     caller keeps the pending operation for a same-id replay. */
+  | { kind: "uncertain"; message: string };
 
 function capabilityEnabled(): boolean {
   return process.env["STEWARD_SCOPE_ENABLED"] === "true";
