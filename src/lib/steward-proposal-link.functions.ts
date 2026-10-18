@@ -28,6 +28,7 @@ import {
   type ProposalLink,
 } from "./steward-proposal-link.server";
 import type { LedgerProposal } from "./steward-proposal-ledger.server";
+import { classifyMutationError } from "./steward-mutation-outcome";
 
 /** Serialized proposal DTO: evidence is typed so the server-function
     boundary can validate it (the stored column is jsonb). */

@@ -22,7 +22,7 @@ import { z } from "zod";
 import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
 import { createSupabaseCoverageRepository } from "./steward-coverage.supabase";
 import type { CoverageAttestation } from "./steward-coverage.server";
-import { classifyMutationError } from "./steward-mutation-outcome";
+import { classifyMutationErrorNarrow } from "./steward-mutation-outcome";
 
 export type CoverageCapabilityState = { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
@@ -129,6 +129,6 @@ export const attestMeetingCoverageFn = createServerFn({ method: "POST" })
       /* Known contract answers are resolved rejections; transport/5xx/
          malformed responses after send are UNCERTAIN — the attestation
          may be durable, so the same operation must be replayed. */
-      return classifyMutationError(error);
+      return classifyMutationErrorNarrow(error);
     }
   });

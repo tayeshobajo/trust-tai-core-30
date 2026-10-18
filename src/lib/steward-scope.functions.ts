@@ -23,7 +23,7 @@ import {
   type ScopeCounts,
   type ScopeItem,
 } from "./steward-scope.supabase";
-import { classifyMutationError } from "./steward-mutation-outcome";
+import { classifyMutationErrorNarrow } from "./steward-mutation-outcome";
 
 export type ScopeCapabilityState = { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
@@ -123,7 +123,7 @@ export const addScopeItemFn = createServerFn({ method: "POST" })
       });
       return { kind: "applied", item };
     } catch (error) {
-      return classifyMutationError(error);
+      return classifyMutationErrorNarrow(error);
     }
   });
 
@@ -149,7 +149,7 @@ export const syncRequiredScopeFn = createServerFn({ method: "POST" })
       });
       return { kind: "applied" };
     } catch (error) {
-      return classifyMutationError(error);
+      return classifyMutationErrorNarrow(error);
     }
   });
 
@@ -181,7 +181,7 @@ export const amendScopeItemFn = createServerFn({ method: "POST" })
       });
       return { kind: "applied", item };
     } catch (error) {
-      return classifyMutationError(error);
+      return classifyMutationErrorNarrow(error);
     }
   });
 
@@ -216,6 +216,6 @@ export const reinstateScopeItemFn = createServerFn({ method: "POST" })
       });
       return { kind: "applied", item };
     } catch (error) {
-      return classifyMutationError(error);
+      return classifyMutationErrorNarrow(error);
     }
   });

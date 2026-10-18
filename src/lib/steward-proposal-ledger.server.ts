@@ -15,7 +15,7 @@
  * (004) or dismiss changes that.
  */
 
-import { classifyMutationError } from "./steward-mutation-outcome";
+import { classifyMutationErrorNarrow } from "./steward-mutation-outcome";
 
 export interface LedgerProposal {
   id: string;
@@ -124,7 +124,7 @@ export async function registerExtractedProposals(
     }
     /* Transport/5xx/malformed failures after send are UNCERTAIN — the
        registration may be durable; the same operation must be replayed. */
-    return classifyMutationError(error);
+    return classifyMutationErrorNarrow(error);
   }
 }
 
@@ -156,6 +156,6 @@ export async function dismissLedgerProposal(
     const code = (error as { code?: string }).code;
     const message = error instanceof Error ? error.message : "dismissal failed";
     if (code === "P0030") return { kind: "conflict", message };
-    return classifyMutationError(error);
+    return classifyMutationErrorNarrow(error);
   }
 }

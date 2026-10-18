@@ -72,3 +72,17 @@ export function classifyMutationError(error: unknown): {
   }
   return { kind: "uncertain", message: UNCERTAIN_MUTATION_MESSAGE };
 }
+
+/** Narrowed classification for entrypoints whose public state only
+    distinguishes resolved rejections from uncertainty: a known SQL
+    conflict is a resolved answer, surfaced as a rejection with its
+    message. */
+export function classifyMutationErrorNarrow(error: unknown): {
+  kind: "rejected" | "uncertain";
+  message: string;
+} {
+  const classified = classifyMutationError(error);
+  return classified.kind === "conflict"
+    ? { kind: "rejected", message: classified.message }
+    : classified;
+}
