@@ -234,6 +234,8 @@ describe("scope review source binding", () => {
       onSyncRequiredScope: undefined,
       onLinkProposal: undefined,
       onDismissProposal: undefined,
+      onRemoveScopeItem: undefined,
+      onReinstateScopeItem: undefined,
     };
     const { rerender } = render(
       <ScopeReviewPanel
