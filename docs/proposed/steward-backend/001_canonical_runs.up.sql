@@ -112,7 +112,7 @@ begin
          updated_at = now()
    where id = p_run
      and requested_by = p_actor
-     and (status = 'queued' or (status = 'running' and lease_expires_at < now()))
+     and (status = 'queued' or (status = 'running' and lease_expires_at <= now()))
   returning * into claimed;
   return claimed; -- null when another worker holds the claim
 end;
