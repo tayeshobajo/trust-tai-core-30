@@ -52,7 +52,7 @@ export const getTaskCanonicalRunsFn = createServerFn({ method: "GET" })
     if (error) return { kind: "rejected", message: "the run history could not be read" };
     const truncated = (rows ?? []).length > 20;
     const page = (rows ?? []).slice(0, 20);
-    const runs: CanonicalRun[] = (rows ?? []).map((row: Record<string, unknown>) => ({
+    const runs: CanonicalRun[] = page.map((row: Record<string, unknown>) => ({
       id: row["id"] as string,
       organizationId: row["organization_id"] as string,
       taskId: row["task_id"] as string,
