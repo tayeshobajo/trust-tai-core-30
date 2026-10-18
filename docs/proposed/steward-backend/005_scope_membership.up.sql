@@ -242,13 +242,42 @@ begin
   if p_reason is null or char_length(btrim(p_reason)) < 10 then
     raise exception 'reason_required' using errcode = 'P0010';
   end if;
+
+  -- Canonical task authority FIRST — before any replay — so an ownership
+  -- or role change since the original call cannot be bypassed by
+  -- resubmitting the same operation UUID. Same rule as add/link/verify:
+  -- business task + creator/current owner/admin + active writer.
+  select * into item from public.steward_scope_items
+    where id = p_item and organization_id = p_org and conversation_id = p_conversation
+  for update;
+  if not found then
+    raise exception 'scope_item_not_found' using errcode = 'P0404';
+  end if;
+  declare
+    task public.steward_tasks;
+  begin
+    select * into task from public.steward_tasks
+      where id = item.task_id and organization_id = p_org;
+    if not found then
+      raise exception 'task_not_found' using errcode = 'P0404';
+    end if;
+    if task.task_visibility is distinct from 'business' then
+      raise exception 'personal_tasks_out_of_scope' using errcode = 'P0401';
+    end if;
+    if not private.steward_user_has_task_authority(task, actor) then
+      raise exception 'not_authorized' using errcode = 'P0401';
+    end if;
+  end;
+
   digest := encode(sha256(convert_to(jsonb_build_object(
-    'org', p_org, 'item', p_item, 'reason', p_reason, 'actor', actor)::text, 'utf8')), 'hex');
+    'org', p_org, 'conversation', p_conversation, 'item', p_item,
+    'reason', p_reason, 'actor', actor)::text, 'utf8')), 'hex');
 
   -- Operation replay is bound to the append-only audit trail: the same
   -- operation UUID + same payload returns the already-amended item; the
   -- same UUID with a changed payload conflicts. Without this a retried
-  -- removal would hit 'already_removed' instead of replaying.
+  -- removal would hit 'already_removed' instead of replaying. Replay
+  -- happens only AFTER the authority reauthorization above.
   declare
     prior public.steward_scope_audit;
   begin
@@ -264,12 +293,6 @@ begin
     end if;
   end;
 
-  select * into item from public.steward_scope_items
-    where id = p_item and organization_id = p_org and conversation_id = p_conversation
-  for update;
-  if not found then
-    raise exception 'scope_item_not_found' using errcode = 'P0404';
-  end if;
   if item.removed_at is not null then
     raise exception 'already_removed' using errcode = 'P0030';
   end if;
@@ -382,12 +405,40 @@ begin
   if p_reason is null or char_length(btrim(p_reason)) < 10 then
     raise exception 'reason_required' using errcode = 'P0010';
   end if;
+
+  -- Canonical task authority FIRST — before any replay — identical to
+  -- amend_remove: business task + creator/current owner/admin + active
+  -- writer. An unrelated active member MUST NOT reinstate another
+  -- member's scoped task, and a replay must reauthorize.
+  select * into item from public.steward_scope_items
+    where id = p_item and organization_id = p_org and conversation_id = p_conversation
+  for update;
+  if not found then
+    raise exception 'scope_item_not_found' using errcode = 'P0404';
+  end if;
+  declare
+    task public.steward_tasks;
+  begin
+    select * into task from public.steward_tasks
+      where id = item.task_id and organization_id = p_org;
+    if not found then
+      raise exception 'task_not_found' using errcode = 'P0404';
+    end if;
+    if task.task_visibility is distinct from 'business' then
+      raise exception 'personal_tasks_out_of_scope' using errcode = 'P0401';
+    end if;
+    if not private.steward_user_has_task_authority(task, actor) then
+      raise exception 'not_authorized' using errcode = 'P0401';
+    end if;
+  end;
+
   digest := encode(sha256(convert_to(jsonb_build_object(
-    'org', p_org, 'item', p_item, 'reinstate_reason', p_reason, 'actor', actor)::text, 'utf8')), 'hex');
+    'org', p_org, 'conversation', p_conversation, 'item', p_item,
+    'reinstate_reason', p_reason, 'actor', actor)::text, 'utf8')), 'hex');
 
   -- Operation replay bound to the append-only audit trail, exactly like
   -- amend_remove: same UUID + same payload replays; changed payload
-  -- conflicts.
+  -- conflicts. Replay happens only AFTER the authority reauthorization.
   declare
     prior public.steward_scope_audit;
   begin
@@ -403,12 +454,6 @@ begin
     end if;
   end;
 
-  select * into item from public.steward_scope_items
-    where id = p_item and organization_id = p_org and conversation_id = p_conversation
-  for update;
-  if not found then
-    raise exception 'scope_item_not_found' using errcode = 'P0404';
-  end if;
   if item.removed_at is null then
     raise exception 'not_removed' using errcode = 'P0030';
   end if;
