@@ -252,9 +252,14 @@ function TaskDetail({
               : "Confirmed meeting commitment"}
         </p>
         <p className="mt-2 text-muted-foreground">
-          Owner: {row.owner.label}
+          Accountable person: {row.owner.label}
           {row.owner.verified ? "" : " · not linked to a teammate"}
         </p>
+        {row.boardTask ? (
+          <p className="text-muted-foreground">
+            Assistant execution: Not started — preparation unavailable (run bridge not built yet)
+          </p>
+        ) : null}
         <p className="text-muted-foreground">
           Due: {row.due.label}
           {row.due.exact ? "" : " · not an exact date"}
@@ -282,8 +287,17 @@ function TaskDetail({
               {row.boardTask.next_action || "No next action recorded."}
             </p>
           </div>
+          {/* Recorded blockers/approvals and inputs, exactly as stored — no
+              inference about availability or new scope. */}
           {row.boardTask.blocked_because ? (
-            <p className="break-words">Blocked: {row.boardTask.blocked_because}</p>
+            <p className="break-words">
+              Blocker / awaiting approval: {row.boardTask.blocked_because}
+            </p>
+          ) : null}
+          {!row.boardTask.context_links.length ? (
+            <p className="text-xs text-muted-foreground">
+              Inputs: none recorded — what this task needs has not been captured yet.
+            </p>
           ) : null}
           {row.boardTask.depends_on_task_id || row.boardTask.parent_task_id ? (
             <div>
@@ -307,14 +321,16 @@ function TaskDetail({
             </div>
           ) : null}
           {row.boardTask.notes ? (
-            <div>
-              <p className="font-medium">Task notes</p>
-              <p className="whitespace-pre-wrap break-words">{row.boardTask.notes}</p>
+            <details>
+              <summary className="cursor-pointer font-medium text-foreground">
+                Task notes
+              </summary>
+              <p className="mt-1 whitespace-pre-wrap break-words">{row.boardTask.notes}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Notes are what a person recorded. A link mentioned in notes has not been opened or
                 checked by Steward.
               </p>
-            </div>
+            </details>
           ) : null}
           {row.boardTask.acceptance_criteria.length ? (
             <div>

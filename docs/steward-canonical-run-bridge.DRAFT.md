@@ -32,11 +32,40 @@ board work:
 4. Explicitly NOT written: task status, completion evidence, receipts,
    activities feed completion entries, verified counts. The run row is the
    only record. A person delivers the task through the existing editor.
-5. Idempotency: `steward-canonical:{org}:{task}:{action}:v1` key; retry
-   returns the existing run, never reruns the model on reconcile.
+5. Idempotency: the client generates a unique operation UUID per deliberate
+   action request. The run row stores `client_operation_id` plus an input
+   snapshot: `{action, input_refs, input_revisions}` (each selected input's
+   identity and revision at request time). A retry with the SAME operation
+   UUID returns the existing run and never reruns the model. A later
+   deliberate rerun uses a NEW operation UUID and creates a new run, even for
+   the same task+action — the old artifact is never silently reused or
+   overwritten. The earlier `org/task/action:v1` key is rejected: it would
+   permanently pin an obsolete artifact.
 6. Bounded actions v1: `prepare_brief`, `draft_roadmap`, `prepare_handoff`,
    `review_output` — each mapped to a fixed instruction template with no new
    external tools and `webSearch: false`.
+7. Input selection and provenance: the requester explicitly picks the inputs
+   (task fields, recorded context links, selected transcript excerpts). The
+   run row records exactly which inputs, with revisions, were supplied; the
+   artifact's `evidence_refs` may point only at those supplied inputs.
+8. Output digest: each artifact carries a content digest (hash of the stored
+   text) so the UI can show "this draft" versus "a newer draft" without
+   re-reading full text, and retries can prove they returned the same run.
+9. State transition authority: runs move `queued → running → complete|failed`
+   only inside the server function that owns the run row, with row locking
+   and the requester's authority re-checked on every transition. No client
+   write path can mark a run complete, and no run transition touches the
+   canonical task.
+
+## Fixture acceptance (human vs assistant)
+
+- The accountable person and the executing assistant are distinct fields in
+  every fixture: a run is started by a person, executed by the assistant, and
+  never changes who is accountable for the task.
+- Fixtures assert: retry with the same operation UUID returns run #1; a new
+  operation UUID for the same task+action creates run #2; an artifact digest
+  mismatch is surfaced, not merged; a failed run can be retried only via a
+  new operation; no fixture path writes task status, evidence or receipts.
 
 ## Why it is blocked
 
