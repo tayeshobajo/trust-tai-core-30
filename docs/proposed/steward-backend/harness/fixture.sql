@@ -26,6 +26,10 @@ create or replace function auth.role() returns text language sql stable as $$
 $$;
 
 grant usage on schema public, auth to authenticated, anon, service_role;
+grant select, insert, update, delete on public.organizations,
+  public.organization_memberships, public.steward_tasks,
+  public.steward_conversations, public.steward_proposals
+  to authenticated, service_role;
 
 create table public.organizations (id uuid primary key, slug text);
 create table public.organization_memberships (
