@@ -6,5 +6,5 @@
 set -euo pipefail
 
 export STEWARD_JOURNEY_DB="$1"
-cd "$(dirname "$0")/../../../.."
+cd "$(dirname "$0")/../../../../.."
 bunx vitest run src/lib/steward-journey.sql.test.ts
