@@ -28,7 +28,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
 import { extractProposals } from "@/data/steward/extract";
 import type { NormalizedConversation } from "@/domain/steward";
 import {
@@ -113,7 +113,7 @@ const syncInputSchema = z.object({
 });
 
 export const getProposalLedgerCapabilityFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireTrustTaiAuth])
   .handler(async (): Promise<ProposalLedgerCapabilityState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
     return { kind: "enabled" };
@@ -124,7 +124,7 @@ export const getProposalLedgerCapabilityFn = createServerFn({ method: "GET" })
  * ledger. Read + register only: no confirmation, no task writes.
  */
 export const syncProposalLedgerFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireTrustTaiAuth])
   .inputValidator((data) => syncInputSchema.parse(data))
   .handler(async ({ data, context }): Promise<ProposalLedgerSyncState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
