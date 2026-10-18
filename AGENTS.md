@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Prototype boundaries
+- Associate canonical business tasks with meetings only through recognized internal context links and revision-checked board edits; discriminate task/commitment IDs and keep linked status/evidence outside commitment scores/history to preserve canonical provenance.
 - Embed the real Steward workroom in AppShell's opt-in workroom canvas, with container-relative columns and a standalone view variant; global suite navigation must remain available without changing mockup presentation.
 - Read Steward history only for the selected commitment UUID through the org/member activity reader with appIds ['steward']; activity records never qualify as completion receipts, because legacy writes are non-transactional.
 - Automatic Steward sync compares ordered transcript text, speaker identity and source offsets before classifying unchanged reads; changed nonempty transcripts remain stored without overwrite because segment count cannot prove content preservation.

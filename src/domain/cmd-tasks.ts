@@ -88,6 +88,7 @@ export const BoardEditSchema = z
       .array(
         z.object({
           label: z.string().max(200),
+          kind: z.string().optional(),
           url: z
             .string()
             .url()
@@ -125,6 +126,6 @@ export function editOf(task: BoardTask): BoardEdit {
     owner_user_id: task.owner_user_id,
     completion_evidence: task.completion_evidence,
     acceptance_criteria: task.acceptance_criteria,
-    context_links: task.context_links.map(({ label, url }) => ({ label, url })),
+    context_links: task.context_links.map((link) => ({ ...link })),
   };
 }
