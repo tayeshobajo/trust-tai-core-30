@@ -182,6 +182,37 @@ export function ProposalReview({
 
   return (
     <div className="space-y-8">
+      {overlaps.length > 0 ? (
+        <section
+          aria-label="Passages that may describe the same work"
+          className="tt-surface space-y-3 border-warning/30 p-5"
+        >
+          <h3 className="tt-eyebrow">Possible overlaps — review before confirming</h3>
+          {overlaps.map((group) => (
+            <div key={group.key} className="rounded-md border border-border p-3">
+              <p className="text-sm text-foreground">{group.because}</p>
+              <ul className="mt-2 space-y-1">
+                {group.proposals.map((proposal) => (
+                  <li key={proposal.id} className="text-[13px] text-muted-foreground">
+                    {proposal.at} · “{proposal.quote}”
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <TTButton type="button" variant="secondary" className="h-8 px-2 text-xs" disabled>
+                  Link to existing work — unavailable
+                </TTButton>
+                <p className="text-xs text-muted-foreground">
+                  Linking a passage to an existing canonical task needs the reviewed durable link
+                  contract (docs/steward-proposal-link-contract.DRAFT.md, not applied). Until then,
+                  confirm at most one passage and leave the rest unconfirmed; nothing is merged or
+                  confirmed automatically.
+                </p>
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
       {ORDER.filter((kind) => grouped[kind].length > 0).map((kind) => (
         <section key={kind}>
           <h3 className="tt-eyebrow">
