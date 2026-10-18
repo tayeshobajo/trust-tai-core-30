@@ -540,6 +540,15 @@ function TaskDetail({
               id: a.id,
               label: a.label,
               summary: a.summary,
+              /* review_output needs an actual stored output record as
+                 input; only transcript and task notes are supported input
+                 kinds today, and a URL mentioned in notes is never read. */
+              ...(a.id === "review_output"
+                ? {
+                    disabledReason:
+                      "only the meeting transcript and task notes can be preparation inputs; a recorded output link is not read or fetched, so there is no stored output to review yet.",
+                  }
+                : {}),
             }))}
             onRequestRun={
               backend.onRequestRun
