@@ -311,7 +311,9 @@ describe("executeCanonicalRun", () => {
     });
     const result = await executeCanonicalRun(repo, spy, { runId: "run-1", actorId: ACTOR });
     expect(result.kind).toBe("complete");
-    expect(seen).toEqual([{ kind: "transcript", id: "conv-1", content: "SNAPSHOT content", revision: 3 }]);
+    expect(seen).toEqual([
+      { kind: "transcript", id: "conv-1", content: "SNAPSHOT content", revision: 3 },
+    ]);
   });
 
   it("persists exactly the cited evidence subset, never all inputs", async () => {
@@ -335,7 +337,10 @@ describe("executeCanonicalRun", () => {
     });
     const partial: CanonicalRunProvider = {
       async generate() {
-        return { text: "artifact citing only the transcript", evidenceRefs: ["transcript:conv-1@1"] };
+        return {
+          text: "artifact citing only the transcript",
+          evidenceRefs: ["transcript:conv-1@1"],
+        };
       },
     };
     const result = await executeCanonicalRun(repo, partial, { runId: "run-1", actorId: ACTOR });
@@ -375,7 +380,10 @@ describe("executeCanonicalRun", () => {
         throw new Error("read failed");
       },
     });
-    const result = await executeCanonicalRun(repo, fakeProvider, { runId: "run-1", actorId: ACTOR });
+    const result = await executeCanonicalRun(repo, fakeProvider, {
+      runId: "run-1",
+      actorId: ACTOR,
+    });
     expect(result.kind).toBe("failed");
     expect(repo.calls).toContain("failRun:fence-t");
   });
@@ -437,7 +445,12 @@ describe("authorizeRunWorkerCaller", () => {
 
   it("denies an unknown or foreign run without disclosing existence", () => {
     expect(
-      authorizeRunWorkerCaller({ run: null, membership: MEMBER, task: BUSINESS_TASK, callerId: ACTOR }),
+      authorizeRunWorkerCaller({
+        run: null,
+        membership: MEMBER,
+        task: BUSINESS_TASK,
+        callerId: ACTOR,
+      }),
     ).toBe("this run is not available to you");
   });
 
@@ -451,7 +464,12 @@ describe("authorizeRunWorkerCaller", () => {
       }),
     ).toBe("this run is not available to you");
     expect(
-      authorizeRunWorkerCaller({ run: RUN, membership: null, task: BUSINESS_TASK, callerId: ACTOR }),
+      authorizeRunWorkerCaller({
+        run: RUN,
+        membership: null,
+        task: BUSINESS_TASK,
+        callerId: ACTOR,
+      }),
     ).toBe("this run is not available to you");
   });
 
@@ -479,7 +497,12 @@ describe("authorizeRunWorkerCaller", () => {
 
   it("allows the creator, the current owner, and an org admin", () => {
     expect(
-      authorizeRunWorkerCaller({ run: RUN, membership: MEMBER, task: BUSINESS_TASK, callerId: ACTOR }),
+      authorizeRunWorkerCaller({
+        run: RUN,
+        membership: MEMBER,
+        task: BUSINESS_TASK,
+        callerId: ACTOR,
+      }),
     ).toBeNull();
     expect(
       authorizeRunWorkerCaller({
@@ -534,7 +557,12 @@ describe("authorizeWorkerEndpoint (handler composition over RLS reads)", () => {
       select: (cols: string) => {
         reads.push({ table, cols });
         const leaf = { maybeSingle: async () => ({ data: row }) };
-        return { eq: () => ({ eq: () => ({ eq: () => leaf, maybeSingle: leaf.maybeSingle }), maybeSingle: leaf.maybeSingle }) };
+        return {
+          eq: () => ({
+            eq: () => ({ eq: () => leaf, maybeSingle: leaf.maybeSingle }),
+            maybeSingle: leaf.maybeSingle,
+          }),
+        };
       },
     });
     return {
@@ -558,7 +586,9 @@ describe("authorizeWorkerEndpoint (handler composition over RLS reads)", () => {
     expect("run" in result).toBe(true);
     const taskRead = rls.reads.find((r) => r.table === "steward_tasks");
     expect(taskRead?.cols).toBe("task_visibility, owner_user_id, created_by");
-    expect(rls.reads.find((r) => r.table === "organization_memberships")?.cols).toBe("status, role");
+    expect(rls.reads.find((r) => r.table === "organization_memberships")?.cols).toBe(
+      "status, role",
+    );
   });
 
   it("denies a cross-org caller before any privileged transition", async () => {
