@@ -151,14 +151,24 @@ begin
     raise exception 'FAILED: stale token completed';
   exception when sqlstate 'P0409' then null; end;
   perform public.test_assert(true, 'stale fencing token cannot complete');
-  -- A deliberate rerun uses a NEW operation UUID: fresh run, fresh claim.
-  perform public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-  perform public.steward_request_canonical_run(
-    '11111111-1111-1111-1111-111111111111',
-    (select task_id from public.steward_canonical_runs where id = rid),
-    'prepare_brief', 'a0000000-0000-0000-0000-0000000000f1',
-    '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
-  perform public.test_act_as_worker();
+end $$;
+
+-- 7b. A deliberate rerun uses a NEW operation UUID: fresh run, fresh
+--     claim, clean completion. The request runs as the authenticated
+--     owner (the RPC is granted to authenticated only).
+reset role;
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+select public.steward_request_canonical_run(
+  '11111111-1111-1111-1111-111111111111',
+  '10000000-0000-0000-0000-000000000001',
+  'prepare_brief', 'a0000000-0000-0000-0000-0000000000f1',
+  '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
+select public.test_act_as_worker();
+set role service_role;
+do $$
+declare rid uuid; r public.steward_canonical_runs; fresh uuid;
+begin
   select id into rid from public.steward_canonical_runs
    where client_operation_id = 'a0000000-0000-0000-0000-0000000000f1';
   r := public.steward_claim_canonical_run(rid);
@@ -243,15 +253,25 @@ begin
   perform public.test_assert(r.status = 'failed', 'unknown failure fails terminally, no blind retry');
   r := public.steward_claim_canonical_run(rid);
   perform public.test_assert(r.id is null, 'terminally failed run cannot be claimed');
-  -- Explicit known-pre-call failures may requeue within the attempt budget.
-  -- Fresh run via a new operation UUID (the f1 run completed in test 7).
-  perform public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-  rid := (public.steward_request_canonical_run(
-    '11111111-1111-1111-1111-111111111111',
-    '10000000-0000-0000-0000-000000000001',
-    'prepare_brief', 'a0000000-0000-0000-0000-0000000000f2',
-    '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb))->'run'->>'id';
-  perform public.test_act_as_worker();
+end $$;
+
+-- Explicit known-pre-call failures may requeue within the attempt budget.
+-- Fresh run via a new operation UUID (the f1 run completed in test 7b).
+reset role;
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+select public.steward_request_canonical_run(
+  '11111111-1111-1111-1111-111111111111',
+  '10000000-0000-0000-0000-000000000001',
+  'prepare_brief', 'a0000000-0000-0000-0000-0000000000f2',
+  '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
+select public.test_act_as_worker();
+set role service_role;
+do $$
+declare rid uuid; r public.steward_canonical_runs;
+begin
+  select id into rid from public.steward_canonical_runs
+   where client_operation_id = 'a0000000-0000-0000-0000-0000000000f2';
   for i in 1..3 loop
     r := public.steward_claim_canonical_run(rid);
     r := public.steward_fail_canonical_run(rid, r.claim_token, 'synthetic pre-call failure', true);
