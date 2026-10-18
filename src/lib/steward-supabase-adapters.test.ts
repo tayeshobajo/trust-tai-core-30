@@ -359,6 +359,6 @@ describe("transport uncertainty vs known SQL answers (defect B)", () => {
     await repo.verifyTask(input);
     expect(calls).toHaveLength(2);
     expect(calls[0]!.args).toEqual(calls[1]!.args);
-    expect(calls[0]!.args.p_operation).toBe("op-1");
+    expect(calls[0]!.args["p_operation"]).toBe("op-1");
   });
 });

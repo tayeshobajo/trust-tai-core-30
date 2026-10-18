@@ -143,7 +143,7 @@ describe("verification panel operation safety", () => {
     rerender(
       <VerificationPanel
         capability={enabled}
-        state={{ kind: "ready", task: { status: "complete", revision: 4 }, receipts: [] }}
+        state={{ kind: "ready", verified: false, task: { status: "complete", revision: 4 }, receipts: [] }}
         task={{ ...fictionalTask, revision: 4, status: "complete" } as never}
         onVerify={onVerify}
         onReopen={onReopen}
