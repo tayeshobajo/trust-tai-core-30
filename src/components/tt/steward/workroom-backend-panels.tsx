@@ -1199,7 +1199,9 @@ export function ScopeReviewPanel({
                     <p className="mt-1 text-xs text-muted-foreground">
                       {scopeCapability.kind === "unavailable"
                         ? scopeCapability.reason
-                        : "Scope amendments are not available."}
+                        : mayAmendScopeItem && !mayAmendScopeItem(item.taskId)
+                          ? "Only the task's creator, current owner, or an org admin can amend scope."
+                          : "Scope amendments are not available."}
                     </p>
                   )}
                 </li>
