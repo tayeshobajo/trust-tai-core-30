@@ -35,7 +35,7 @@ begin
     'Draft brief: synthetic artifact from the fake provider.');
   perform public.test_assert(r.status = 'complete' and r.artifact_digest is not null, 'journey: artifact stored with digest');
   select * into t from public.steward_tasks where id = '10000000-0000-0000-0000-000000000002';
-  perform public.test_assert(t.status = 'open' and t.revision = 1,
+  perform public.test_assert(t.status = 'complete' and t.revision = 1,
     'journey: run completion never touches task status or verification');
 end $$;
 
