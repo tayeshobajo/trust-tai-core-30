@@ -258,3 +258,68 @@ select public.test_denied($q$
     'Viewer attempting a dismissal here.', 'c3000000-0000-0000-0000-000000000005') $q$,
   'viewer cannot dismiss');
 reset role;
+
+-- 7. Adversarial: a dismissed proposal can never be silently overwritten
+--    by a later link; the human dismissal stands.
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+select public.test_denied($q$
+  select public.steward_link_proposal('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    '10000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000010') $q$,
+  'linking a dismissed proposal is rejected, never an overwrite');
+do $$
+begin
+  perform public.test_assert((select status from public.steward_proposal_ledger
+    where id = 'ffffffff-ffff-ffff-ffff-ffffffffffff') = 'dismissed',
+    'dismissed status survives the rejected link');
+end $$;
+
+-- 8. Adversarial: linking to a task whose scope item was explicitly
+--    REMOVED fails closed — the proposal is never marked linked while its
+--    obligation would stay out of the denominator. Reinstatement needs
+--    its own explicit audited amendment.
+do $$
+declare added integer;
+begin
+  perform public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000006',
+    'manual_required', 'd4000000-0000-0000-0000-000000000001');
+  perform public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    (select id from public.steward_scope_items
+      where organization_id = '11111111-1111-1111-1111-111111111111'
+        and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+        and task_id = '10000000-0000-0000-0000-000000000006'),
+    'Reviewed: obligation withdrawn by the meeting owner.', 'd4000000-0000-0000-0000-000000000002');
+  added := public.steward_register_proposals(
+    '11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c4000000-0000-0000-0000-000000000011',
+    '[{"source_key":"ext-7701","kind":"action","statement":"Removed-scope link probe"}]'::jsonb,
+    '{"segments":[{"speaker":"Tai","text":"Synthetic Soji roadmap discussion.","offset":0}]}'::jsonb);
+  perform public.test_assert(added = 1, 'probe proposal registered');
+end $$;
+select public.test_denied($q$
+  select public.steward_link_proposal('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    (select id from public.steward_proposal_ledger
+      where organization_id = '11111111-1111-1111-1111-111111111111'
+        and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+        and source_key = 'ext-7701'),
+    '10000000-0000-0000-0000-000000000006', 'c4000000-0000-0000-0000-000000000012') $q$,
+  'link into a removed scope item fails closed');
+do $$
+begin
+  perform public.test_assert((select status from public.steward_proposal_ledger
+    where organization_id = '11111111-1111-1111-1111-111111111111'
+      and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+      and source_key = 'ext-7701') = 'proposed',
+    'rejected link leaves the proposal pending — no silent gate removal');
+  perform public.test_assert((select removed_at is not null from public.steward_scope_items
+    where organization_id = '11111111-1111-1111-1111-111111111111'
+      and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+      and task_id = '10000000-0000-0000-0000-000000000006'),
+    'removed scope item stays removed after the rejected link');
+end $$;
+reset role;
