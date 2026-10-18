@@ -27,6 +27,9 @@ function capabilityEnabled(): boolean {
   return process.env["STEWARD_CANONICAL_RUNS_ENABLED"] === "true";
 }
 
+const COLUMNS =
+  "id, organization_id, task_id, action, client_operation_id, request_digest, input_snapshot, status, artifact_text, artifact_digest, evidence_refs, requested_by, attempts, max_attempts, failure_reason, claim_token, claim_version";
+
 /** List canonical runs (newest first) for one canonical task. */
 export const getTaskCanonicalRunsFn = createServerFn({ method: "GET" })
   .middleware([requireTrustTaiAuth])
@@ -39,9 +42,7 @@ export const getTaskCanonicalRunsFn = createServerFn({ method: "GET" })
     const rls = context.supabase as any;
     const { data: rows, error } = await rls
       .from("steward_canonical_runs")
-      .select(
-        "id, organization_id, task_id, action, status, client_operation_id, artifact_text, artifact_digest, evidence_refs, failure_reason, attempts, created_at, completed_at",
-      )
+      .select(COLUMNS)
       .eq("organization_id", data.orgId)
       .eq("task_id", data.taskId)
       .order("created_at", { ascending: false })
@@ -52,15 +53,19 @@ export const getTaskCanonicalRunsFn = createServerFn({ method: "GET" })
       organizationId: row["organization_id"] as string,
       taskId: row["task_id"] as string,
       action: row["action"] as CanonicalRun["action"],
+      clientOperationId: row["client_operation_id"] as string,
+      requestDigest: row["request_digest"] as string,
+      inputSnapshot: (row["input_snapshot"] as CanonicalRun["inputSnapshot"] | null) ?? [],
       status: row["status"] as CanonicalRun["status"],
-      operationId: row["client_operation_id"] as string,
       artifactText: (row["artifact_text"] as string | null) ?? null,
       artifactDigest: (row["artifact_digest"] as string | null) ?? null,
       evidenceRefs: (row["evidence_refs"] as string[] | null) ?? [],
-      failureReason: (row["failure_reason"] as string | null) ?? null,
+      requestedBy: row["requested_by"] as string,
       attempts: row["attempts"] as number,
-      createdAt: row["created_at"] as string,
-      completedAt: (row["completed_at"] as string | null) ?? null,
+      maxAttempts: row["max_attempts"] as number,
+      failureReason: (row["failure_reason"] as string | null) ?? null,
+      claimToken: (row["claim_token"] as string | null) ?? null,
+      claimVersion: row["claim_version"] as number,
     }));
     return { kind: "ready", runs };
   });
