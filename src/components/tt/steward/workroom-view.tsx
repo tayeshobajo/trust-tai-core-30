@@ -833,7 +833,7 @@ export function WorkroomView({
           ) : (
             <>
               <p className="text-sm font-semibold">
-                {meeting.score === 100 ? "All agreed work verified" : "To reach 100/100"}
+                {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated) ? "Required-work scope unavailable" : meeting.score === 100 ? "All agreed work verified" : "To reach 100/100"}
               </p>
               <p className="mt-1 text-muted-foreground">{meeting.remark}</p>
               {meeting.score !== 100 ? (
@@ -1039,6 +1039,7 @@ export function WorkroomView({
           </Sheet>
         </>
       ) : null}
+      {adding && onAddRequiredTask ? <AddRequiredTask meetingId={adding.id} meetingTitle={adding.title} onSave={onAddRequiredTask} onClose={() => setAdding(null)} /> : null}
     </div>
   );
 }
