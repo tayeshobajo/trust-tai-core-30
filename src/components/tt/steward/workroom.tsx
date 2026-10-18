@@ -207,10 +207,16 @@ function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
     const map = new Map((commitments.data ?? []).map((c) => [c.id, c]));
     return (id: string) => map.get(id);
   }, [commitments.data]);
-  const linkedMeetings = useMemo(() => appendLinkedBusinessWork(meetings,
-    business.isError || business.isPending ? [] : business.data?.tasks ?? [], org,
-    typeof window === "undefined" ? undefined : window.location.origin),
-  [meetings, business.data, business.isError, business.isPending, org]);
+  const linkedMeetings = useMemo(
+    () =>
+      appendLinkedBusinessWork(
+        meetings,
+        business.isError || business.isPending ? [] : (business.data?.tasks ?? []),
+        org,
+        typeof window === "undefined" ? undefined : window.location.origin,
+      ),
+    [meetings, business.data, business.isError, business.isPending, org],
+  );
 
   if (conversations.isPending || commitments.isPending || receipts.isPending) {
     return <p className="p-6 text-sm text-muted-foreground">Reading stored meetings…</p>;
@@ -227,7 +233,11 @@ function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
     <WorkroomView
       embedded
       meetings={linkedMeetings}
-      linkedRead={{ state: business.isPending ? "loading" : business.isError ? "error" : "ready", truncated: business.data?.truncated ?? false, onRetry: () => void business.refetch() }}
+      linkedRead={{
+        state: business.isPending ? "loading" : business.isError ? "error" : "ready",
+        truncated: business.data?.truncated ?? false,
+        onRetry: () => void business.refetch(),
+      }}
       commitmentFor={commitmentById}
       receiptsFailed={receipts.isError}
       sync={sync}

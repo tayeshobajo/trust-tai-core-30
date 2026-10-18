@@ -8,7 +8,12 @@ import { StewardWorkroom } from "./workroom";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const service = vi.hoisted(() => ({ conversations: vi.fn(), commitments: vi.fn(), list: vi.fn() }));
-vi.mock("@/data/supabase/cmd-tasks", () => ({ businessWorkQuery: (org: string, userId: string) => ({ queryKey: ["cmd-tasks", org, userId, "business"], queryFn: async () => ({ tasks: [], truncated: false }) }) }));
+vi.mock("@/data/supabase/cmd-tasks", () => ({
+  businessWorkQuery: (org: string, userId: string) => ({
+    queryKey: ["cmd-tasks", org, userId, "business"],
+    queryFn: async () => ({ tasks: [], truncated: false }),
+  }),
+}));
 vi.mock("@/data/supabase/steward-service", () => ({ stewardService: service }));
 vi.mock("@/data/supabase/steward-task-state", () => ({ stewardTaskState: service }));
 vi.mock("@/data/steward/recent-sync", () => ({ syncRecentMeetings: () => new Promise(() => {}) }));

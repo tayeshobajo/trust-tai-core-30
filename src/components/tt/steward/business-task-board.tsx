@@ -622,16 +622,59 @@ export function TaskEditor({
               {task && scope === "business" ? (
                 <label className="grid gap-1 text-sm">
                   Associated meeting
-                  <select className={control} aria-label="Associated meeting"
+                  <select
+                    className={control}
+                    aria-label="Associated meeting"
                     value={associationIds[0] ?? ""}
-                    onChange={(event) => field("context_links", withMeetingAssociation(input.context_links, event.target.value || null, currentOrigin))}>
+                    onChange={(event) =>
+                      field(
+                        "context_links",
+                        withMeetingAssociation(
+                          input.context_links,
+                          event.target.value || null,
+                          currentOrigin,
+                        ),
+                      )
+                    }
+                  >
                     <option value="">No meeting association</option>
-                    {associationIds.filter((id) => !meetingOptions?.some((meeting) => meeting.id === id)).map((id) => <option key={id} value={id}>Linked meeting unavailable in recent list</option>)}
-                    {(meetingOptions ?? []).map((meeting) => <option key={meeting.id} value={meeting.id}>{meeting.title || "Untitled meeting"}</option>)}
+                    {associationIds
+                      .filter((id) => !meetingOptions?.some((meeting) => meeting.id === id))
+                      .map((id) => (
+                        <option key={id} value={id}>
+                          Linked meeting unavailable in recent list
+                        </option>
+                      ))}
+                    {(meetingOptions ?? []).map((meeting) => (
+                      <option key={meeting.id} value={meeting.id}>
+                        {meeting.title || "Untitled meeting"}
+                      </option>
+                    ))}
                   </select>
-                  {meetingsLoading ? <span role="status" className="text-xs text-muted-foreground">Loading stored meetings… Existing links remain unchanged.</span> : meetingsError ? <span role="alert" className="text-xs text-destructive">Meeting choices unavailable. Existing links remain unchanged.</span> : !meetingOptions?.length ? <span className="text-xs text-muted-foreground">No stored meetings in this list.</span> : null}
-                  {meetingsTruncated ? <span className="text-xs text-muted-foreground">Most recent 60 meetings only; older associations are retained.</span> : null}
-                  {associationIds.length > 1 ? <span className="text-xs text-muted-foreground">Multiple recorded associations. Choosing a meeting replaces only the association links.</span> : null}
+                  {meetingsLoading ? (
+                    <span role="status" className="text-xs text-muted-foreground">
+                      Loading stored meetings… Existing links remain unchanged.
+                    </span>
+                  ) : meetingsError ? (
+                    <span role="alert" className="text-xs text-destructive">
+                      Meeting choices unavailable. Existing links remain unchanged.
+                    </span>
+                  ) : !meetingOptions?.length ? (
+                    <span className="text-xs text-muted-foreground">
+                      No stored meetings in this list.
+                    </span>
+                  ) : null}
+                  {meetingsTruncated ? (
+                    <span className="text-xs text-muted-foreground">
+                      Most recent 60 meetings only; older associations are retained.
+                    </span>
+                  ) : null}
+                  {associationIds.length > 1 ? (
+                    <span className="text-xs text-muted-foreground">
+                      Multiple recorded associations. Choosing a meeting replaces only the
+                      association links.
+                    </span>
+                  ) : null}
                 </label>
               ) : null}
               <h3 className="text-sm font-medium">Source links</h3>

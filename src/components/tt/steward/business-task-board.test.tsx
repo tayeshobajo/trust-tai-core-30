@@ -97,14 +97,37 @@ function editor(
 }
 describe("board UI with mocked transport", () => {
   it("saves a reversible meeting link with retained evidence and reports revision conflict", async () => {
-    const save = editor({ ...task, context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }] }, vi.fn().mockRejectedValue(new Error("Revision conflict")));
+    const save = editor(
+      {
+        ...task,
+        context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }],
+      },
+      vi.fn().mockRejectedValue(new Error("Revision conflict")),
+    );
     fireEvent.change(screen.getByLabelText("Associated meeting"), { target: { value: owner } });
     fireEvent.click(screen.getByText("Save task"));
     expect(await screen.findByText("Revision conflict")).toBeTruthy();
-    expect(save).toHaveBeenCalledWith(expect.objectContaining({ status: "open", context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }, { label: "Steward meeting association", url: `https://cmd.trusttai.com/modules/steward/meetings/${owner}` }] }));
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "open",
+        context_links: [
+          { label: "Email", url: "https://example.com/email", kind: "email" },
+          {
+            label: "Steward meeting association",
+            url: `https://cmd.trusttai.com/modules/steward/meetings/${owner}`,
+          },
+        ],
+      }),
+    );
     fireEvent.change(screen.getByLabelText("Associated meeting"), { target: { value: "" } });
     fireEvent.click(screen.getByText("Save task"));
-    await waitFor(() => expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }] })));
+    await waitFor(() =>
+      expect(save).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }],
+        }),
+      ),
+    );
     expect(mocks.create).not.toHaveBeenCalled();
   });
   it("does not offer shared meeting association for private tasks", () => {

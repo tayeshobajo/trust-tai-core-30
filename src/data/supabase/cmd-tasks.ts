@@ -20,9 +20,15 @@ function failure(error: { code?: string; message: string }): Error {
 /** All writes use the signed-in client. PostgreSQL RLS and immutable-field triggers are authoritative. */
 export function boardService(client: SupabaseClient = supabase) {
   return {
-    async meetingOptions(org: string): Promise<{ meetings: { id: string; title: string }[]; truncated: boolean }> {
-      const { data, error } = await client.from("conversations").select("id,title")
-        .eq("organization_id", org).order("occurred_at", { ascending: false }).limit(61);
+    async meetingOptions(
+      org: string,
+    ): Promise<{ meetings: { id: string; title: string }[]; truncated: boolean }> {
+      const { data, error } = await client
+        .from("conversations")
+        .select("id,title")
+        .eq("organization_id", org)
+        .order("occurred_at", { ascending: false })
+        .limit(61);
       if (error) throw failure(error);
       return { meetings: (data ?? []).slice(0, 60), truncated: (data ?? []).length > 60 };
     },
@@ -128,5 +134,8 @@ export const cmdTasks = boardService();
 
 /** Share the board cache only within the same authenticated organization/user. */
 export function businessWorkQuery(org: string, userId: string) {
-  return { queryKey: ["cmd-tasks", org, userId, "business"] as const, queryFn: () => cmdTasks.list(org, "business") };
+  return {
+    queryKey: ["cmd-tasks", org, userId, "business"] as const,
+    queryFn: () => cmdTasks.list(org, "business"),
+  };
 }

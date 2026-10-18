@@ -124,14 +124,30 @@ describe("board service mocked transport", () => {
   it("links/removes by revision-checked update without creating or resetting work", async () => {
     const db = transport();
     const service = boardService(db.client);
-    const created = await service.create(org, "business", "link-test", { ...edit, notes: "Keep notes", context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }] });
-    const linked = await service.update(created, { ...edit, notes: created.notes, context_links: withMeetingAssociation(created.context_links, owner) });
+    const created = await service.create(org, "business", "link-test", {
+      ...edit,
+      notes: "Keep notes",
+      context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }],
+    });
+    const linked = await service.update(created, {
+      ...edit,
+      notes: created.notes,
+      context_links: withMeetingAssociation(created.context_links, owner),
+    });
     expect(linked.id).toBe(created.id);
     expect(linked.revision).toBe(1);
-    await expect(service.update(created, { ...edit, context_links: [] })).rejects.toThrow(/changed/);
+    await expect(service.update(created, { ...edit, context_links: [] })).rejects.toThrow(
+      /changed/,
+    );
     expect(db.rows).toHaveLength(1);
-    const removed = await service.update(linked, { ...edit, notes: linked.notes, context_links: withMeetingAssociation(linked.context_links, null) });
-    expect(removed.context_links).toEqual([{ label: "Email", url: "https://example.com/email", kind: "email" }]);
+    const removed = await service.update(linked, {
+      ...edit,
+      notes: linked.notes,
+      context_links: withMeetingAssociation(linked.context_links, null),
+    });
+    expect(removed.context_links).toEqual([
+      { label: "Email", url: "https://example.com/email", kind: "email" },
+    ]);
     expect(removed.notes).toBe("Keep notes");
     expect(db.operations.filter((op) => op === "insert")).toHaveLength(1);
   });
