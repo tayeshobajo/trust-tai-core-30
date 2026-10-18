@@ -384,7 +384,7 @@ revoke all on function public.steward_resolve_input(uuid, text, uuid) from publi
 revoke all on function public.steward_request_canonical_run(uuid, uuid, text, uuid, jsonb) from public, anon, authenticated;
 revoke all on function public.steward_claim_canonical_run(uuid, integer) from public, anon, authenticated;
 revoke all on function public.steward_complete_canonical_run(uuid, uuid, text, jsonb) from public, anon, authenticated;
-revoke all on function public.steward_fail_canonical_run(uuid, uuid, text) from public, anon, authenticated;
+revoke all on function public.steward_fail_canonical_run(uuid, uuid, text, boolean) from public, anon, authenticated;
 
 -- UNCERTAIN terminal state: the provider call's outcome is unknown (timeout,
 -- abort, lost connection) — the model may or may not have produced work.
