@@ -21,6 +21,8 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
 import { TaskHistory } from "./task-history";
 import { AppShell } from "@/components/tt/app-shell";
+import { businessWorkQuery } from "@/data/supabase/cmd-tasks";
+import { appendLinkedBusinessWork } from "@/domain/steward-meeting-links";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 const FOCUS_THROTTLE_MS = 60 * 1000;
@@ -141,6 +143,7 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
 
 function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
   const org = identity.organizationId;
+  const business = useQuery(businessWorkQuery(org, identity.userId));
   const conversations = useQuery({
     queryKey: ["steward", "workroom", "conversations", org],
     queryFn: () => stewardService.conversations(org, 60),
@@ -204,6 +207,10 @@ function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
     const map = new Map((commitments.data ?? []).map((c) => [c.id, c]));
     return (id: string) => map.get(id);
   }, [commitments.data]);
+  const linkedMeetings = useMemo(() => appendLinkedBusinessWork(meetings,
+    business.isError || business.isPending ? [] : business.data?.tasks ?? [], org,
+    typeof window === "undefined" ? undefined : window.location.origin),
+  [meetings, business.data, business.isError, business.isPending, org]);
 
   if (conversations.isPending || commitments.isPending || receipts.isPending) {
     return <p className="p-6 text-sm text-muted-foreground">Reading stored meetings…</p>;
@@ -219,7 +226,8 @@ function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
   return (
     <WorkroomView
       embedded
-      meetings={meetings}
+      meetings={linkedMeetings}
+      linkedRead={{ state: business.isPending ? "loading" : business.isError ? "error" : "ready", truncated: business.data?.truncated ?? false, onRetry: () => void business.refetch() }}
       commitmentFor={commitmentById}
       receiptsFailed={receipts.isError}
       sync={sync}
