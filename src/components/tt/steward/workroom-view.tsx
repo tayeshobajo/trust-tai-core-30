@@ -1308,80 +1308,108 @@ export function WorkroomView({
         ) : null}
       </div>
 
-      <footer
-        aria-label="Requirements for complete meeting work"
-        className={cn(
-          "mt-4 flex items-start gap-3 rounded-lg border border-l-2 p-3 text-xs leading-5",
+      {(() => {
+        /* The consistent server snapshot, when active, is the only source
+           for the footer verdict — it can never disagree with the card or
+           the nav row, and a failed snapshot read is unknown, never 100. */
+        const serverScore = backend?.scoreFor
+          ? serverMeetingScore(backend.scoreFor(meeting.id))
+          : null;
+        const localFull =
           meeting.score === 100 &&
-            (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
-            ? "border-success/20 border-l-success bg-success/5"
-            : "border-warning/15 border-l-warning bg-warning/5",
-        )}
-      >
-        <AlertCircle
-          className={cn(
-            "mt-0.5 size-5 shrink-0",
-            meeting.score === 100 &&
-              (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
-              ? "text-success"
-              : "text-warning",
-          )}
-        />
-        <div>
-          {meeting.requiredWork ? (
-            <p className="mb-1 font-medium">
-              {meeting.requiredWork.total} manually required task
-              {meeting.requiredWork.total === 1 ? "" : "s"} · verification unavailable · zero
-              verified credit. Required scope remains after archive.
-            </p>
-          ) : null}
-          {meeting.linkedWork?.open ? (
-            <p className="mb-1 font-medium">
-              {meeting.linkedWork.open} linked business tasks remain recorded open, separately from
-              agreed-work verification.
-            </p>
-          ) : null}
-          {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated) ? (
-            <p className="mb-1 font-medium">
-              Linked-work coverage unavailable or incomplete; all-work completion cannot be
-              established.
-            </p>
-          ) : null}
-          {receiptsFailed ? (
-            <>
-              <p className="text-sm font-semibold">Verification unavailable</p>
-              <p className="mt-1 text-muted-foreground">
-                Completion receipts could not be read, so verified status and the path to 100 are
-                unavailable rather than guessed. Nothing is shown as verified.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-semibold">
-                {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)
-                  ? "Required-work scope unavailable"
-                  : meeting.agreed === 0 && meeting.rows.length > 0
-                    ? `${meeting.rows.length} recorded task${meeting.rows.length === 1 ? "" : "s"}; scope review pending`
-                    : meeting.score === 100
-                      ? "All agreed work verified"
-                      : "To reach 100/100"}
-              </p>
-              <p className="mt-1 text-muted-foreground">
-                {meeting.agreed === 0 && meeting.rows.length > 0
-                  ? "Recorded work is listed, but nothing is confirmed as agreed meeting work yet, and verification is unavailable until the guarded atomic review exists. Reaching 100 is not possible today."
-                  : meeting.remark}
-              </p>
-              {meeting.score !== 100 ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  100 requires every confirmed promise and manually required task verified,
-                  transcript coverage confirmed, and no unreviewed proposals. Work completion, not a
-                  grade for people.
+          (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated));
+        const full = serverScore ? serverScore.value === 100 : localFull;
+        return (
+          <footer
+            aria-label="Requirements for complete meeting work"
+            className={cn(
+              "mt-4 flex items-start gap-3 rounded-lg border border-l-2 p-3 text-xs leading-5",
+              full
+                ? "border-success/20 border-l-success bg-success/5"
+                : "border-warning/15 border-l-warning bg-warning/5",
+            )}
+          >
+            <AlertCircle
+              className={cn(
+                "mt-0.5 size-5 shrink-0",
+                full ? "text-success" : "text-warning",
+              )}
+            />
+            <div>
+              {meeting.requiredWork ? (
+                <p className="mb-1 font-medium">
+                  {meeting.requiredWork.total} manually required task
+                  {meeting.requiredWork.total === 1 ? "" : "s"} · verification unavailable · zero
+                  verified credit. Required scope remains after archive.
                 </p>
               ) : null}
-            </>
-          )}
-        </div>
-      </footer>
+              {meeting.linkedWork?.open ? (
+                <p className="mb-1 font-medium">
+                  {meeting.linkedWork.open} linked business tasks remain recorded open, separately
+                  from agreed-work verification.
+                </p>
+              ) : null}
+              {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated) ? (
+                <p className="mb-1 font-medium">
+                  Linked-work coverage unavailable or incomplete; all-work completion cannot be
+                  established.
+                </p>
+              ) : null}
+              {receiptsFailed ? (
+                <>
+                  <p className="text-sm font-semibold">Verification unavailable</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Completion receipts could not be read, so verified status and the path to 100
+                    are unavailable rather than guessed. Nothing is shown as verified.
+                  </p>
+                </>
+              ) : serverScore ? (
+                <>
+                  <p className="text-sm font-semibold">
+                    {serverScore.value === null
+                      ? "Score unavailable"
+                      : serverScore.value === 100
+                        ? "All agreed work verified"
+                        : "To reach 100/100"}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">{serverScore.label}</p>
+                  {serverScore.value !== 100 ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      100 requires every confirmed promise and manually required task verified,
+                      transcript coverage confirmed, and no unreviewed proposals. Work completion,
+                      not a grade for people.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold">
+                    {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)
+                      ? "Required-work scope unavailable"
+                      : meeting.agreed === 0 && meeting.rows.length > 0
+                        ? `${meeting.rows.length} recorded task${meeting.rows.length === 1 ? "" : "s"}; scope review pending`
+                        : meeting.score === 100
+                          ? "All agreed work verified"
+                          : "To reach 100/100"}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    {meeting.agreed === 0 && meeting.rows.length > 0
+                      ? "Recorded work is listed, but nothing is confirmed as agreed meeting work yet, and verification is unavailable until the guarded atomic review exists. Reaching 100 is not possible today."
+                      : meeting.remark}
+                  </p>
+                  {meeting.score !== 100 ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      100 requires every confirmed promise and manually required task verified,
+                      transcript coverage confirmed, and no unreviewed proposals. Work completion,
+                      not a grade for people.
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </footer>
+        );
+      })()}
     </>
   ) : (
     <div className="flex flex-col items-start gap-3 p-2">
