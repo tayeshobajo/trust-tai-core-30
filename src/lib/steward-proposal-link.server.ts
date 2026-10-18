@@ -9,6 +9,8 @@
  * conversation so scope review restarts honestly.
  */
 
+import { classifyMutationError } from "./steward-mutation-outcome";
+
 export interface ProposalLink {
   id: string;
   organizationId: string;
@@ -56,8 +58,6 @@ export type LinkProposalResult =
  * conflicts. The task must already exist in the org — linking never creates
  * a duplicate task or commitment.
  */
-
-import { classifyMutationError } from "./steward-mutation-outcome";
 export async function linkProposalToTask(
   repo: ProposalLinkRepository,
   input: {
