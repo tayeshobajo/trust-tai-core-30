@@ -244,8 +244,14 @@ begin
   r := public.steward_claim_canonical_run(rid);
   perform public.test_assert(r.id is null, 'terminally failed run cannot be claimed');
   -- Explicit known-pre-call failures may requeue within the attempt budget.
-  select id into rid from public.steward_canonical_runs
-   where client_operation_id = 'a0000000-0000-0000-0000-0000000000f1';
+  -- Fresh run via a new operation UUID (the f1 run completed in test 7).
+  select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+  rid := (public.steward_request_canonical_run(
+    '11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001',
+    'prepare_brief', 'a0000000-0000-0000-0000-0000000000f2',
+    '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb))->'run'->>'id';
+  select public.test_act_as_worker();
   for i in 1..3 loop
     r := public.steward_claim_canonical_run(rid);
     r := public.steward_fail_canonical_run(rid, r.claim_token, 'synthetic pre-call failure', true);
