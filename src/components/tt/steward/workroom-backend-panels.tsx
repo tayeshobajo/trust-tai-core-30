@@ -452,8 +452,36 @@ export interface VerificationPanelProps {
   capability: CapabilityState;
   state: VerificationRead | undefined;
   task: BoardTask;
-  onVerify: ((input: { note: string; operationId: string }) => Promise<ActionOutcome>) | undefined;
-  onReopen: ((input: { note: string; operationId: string }) => Promise<ActionOutcome>) | undefined;
+  onVerify:
+    | ((input: {
+        taskId: string;
+        expectedRevision: number;
+        note: string;
+        operationId: string;
+      }) => Promise<ActionOutcome>)
+    | undefined;
+  onReopen:
+    | ((input: {
+        taskId: string;
+        expectedRevision: number;
+        note: string;
+        operationId: string;
+      }) => Promise<ActionOutcome>)
+    | undefined;
+}
+
+/**
+ * The immutable gesture tuple: action kind, task identity, the revision
+ * the human reviewed and the exact note are captured ONCE at the first
+ * click. A retry after an uncertain transport replays this exact tuple —
+ * never a handler or revision re-derived from refreshed state, so a
+ * background refetch can never turn a verify retry into a reopen.
+ */
+interface VerificationGesture {
+  kind: "verify" | "reopen";
+  taskId: string;
+  expectedRevision: number;
+  note: string;
 }
 
 /**
