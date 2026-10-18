@@ -228,7 +228,8 @@ export const getMeetingVerificationProjectionFn = createServerFn({ method: "GET"
   .handler(async ({ data, context }): Promise<MeetingVerificationProjectionState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
     const uniqueIds = Array.from(new Set(data.taskIds));
-    if (uniqueIds.length === 0) return { kind: "ready", verified: {}, unknown: [], truncated: false };
+    if (uniqueIds.length === 0)
+      return { kind: "ready", verified: {}, unknown: [], truncated: false };
     if (uniqueIds.length > PROJECTION_LIMIT) {
       return {
         kind: "rejected",

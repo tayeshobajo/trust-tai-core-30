@@ -140,9 +140,12 @@ describe("Supabase adapters match the proposed SQL contract", () => {
     await readMeetingVerificationProjection(client as never, "o1", ["t1", "t2"]);
     expect(calls[0]!.fn).toBe("steward_meeting_verification_projection");
     expect(Object.keys(calls[0]!.args).sort()).toEqual(
-      sqlParams("007_verification_projection.up.sql", "steward_meeting_verification_projection").sort(),
+      sqlParams(
+        "007_verification_projection.up.sql",
+        "steward_meeting_verification_projection",
+      ).sort(),
     );
-    expect(calls[0]!.args.p_task_ids).toEqual(["t1", "t2"]);
+    expect(calls[0]!.args["p_task_ids"]).toEqual(["t1", "t2"]);
   });
 
   it("readInput is not available on the Supabase adapter (resolve_input is not granted)", async () => {
