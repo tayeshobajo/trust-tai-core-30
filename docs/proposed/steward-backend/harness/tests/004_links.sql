@@ -321,5 +321,13 @@ begin
       and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
       and task_id = '10000000-0000-0000-0000-000000000006'),
     'removed scope item stays removed after the rejected link');
+  -- Decide the probe proposal so no pending state leaks into later suites.
+  perform public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    (select id from public.steward_proposal_ledger
+      where organization_id = '11111111-1111-1111-1111-111111111111'
+        and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+        and source_key = 'ext-7701'),
+    'Reviewed: probe decided after the rejected link.', 'c4000000-0000-0000-0000-000000000013');
 end $$;
 reset role;
