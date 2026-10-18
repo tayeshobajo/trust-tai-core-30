@@ -73,6 +73,12 @@ export const requestCanonicalRunFn = createServerFn({ method: "POST" })
   .inputValidator((data) => requestInputSchema.parse(data))
   .handler(async ({ data, context }): Promise<CanonicalRunRequestState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
+    // Provider readiness BEFORE queueing: an enabled-but-unconfigured
+    // deployment must report unavailable instead of stranding a queued run.
+    const providerStatus = canonicalRunProviderStatus();
+    if (!providerStatus.configured) {
+      return { kind: "unavailable", reason: providerStatus.reason ?? DISABLED_REASON };
+    }
     const repo = createSupabaseCanonicalRunRepository(context.supabase);
     try {
       // The SQL function derives the actor from auth.uid(), validates
@@ -156,5 +162,12 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
 export const getCanonicalRunCapability = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async (): Promise<CanonicalRunCapabilityState> => {
-    return capabilityEnabled() ? { kind: "enabled" } : DISABLED;
+    if (!capabilityEnabled()) return DISABLED;
+    // Enabled flag without a configured provider is still unavailable —
+    // report the honest reason so the UI never promises a run that cannot
+    // execute.
+    const providerStatus = canonicalRunProviderStatus();
+    return providerStatus.configured
+      ? { kind: "enabled" }
+      : { kind: "unavailable", reason: providerStatus.reason ?? DISABLED_REASON };
   });
