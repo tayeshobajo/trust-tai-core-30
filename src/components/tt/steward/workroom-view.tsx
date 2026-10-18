@@ -230,11 +230,13 @@ function TaskDetail({
   row,
   commitment,
   history,
+  taskById,
 }: {
   meeting: WorkroomMeeting;
   row: WorkroomRow;
   commitment: Commitment | undefined;
   history: ReactNode;
+  taskById?: ((id: string) => BoardTask | undefined) | undefined;
 }) {
   return (
     <div className="space-y-5 text-sm">
@@ -268,6 +270,10 @@ function TaskDetail({
                 : "Required scope is locked."}
             </p>
           ) : null}
+          <p className="text-xs text-muted-foreground">
+            Recorded board status is work progress, not verified completion. Verified completion
+            needs the guarded atomic review, which is not available yet.
+          </p>
           <div>
             <p className="font-medium">Next action</p>
             <p className="whitespace-pre-wrap break-words">
@@ -277,10 +283,35 @@ function TaskDetail({
           {row.boardTask.blocked_because ? (
             <p className="break-words">Blocked: {row.boardTask.blocked_because}</p>
           ) : null}
+          {row.boardTask.depends_on_task_id || row.boardTask.parent_task_id ? (
+            <div>
+              <p className="font-medium">Dependencies</p>
+              <ul className="mt-1 space-y-1 text-[13px] text-muted-foreground">
+                {row.boardTask.depends_on_task_id ? (
+                  <li>
+                    Depends on:{" "}
+                    {taskById?.(row.boardTask.depends_on_task_id)?.title ??
+                      "Linked task unavailable in this view"}
+                  </li>
+                ) : null}
+                {row.boardTask.parent_task_id ? (
+                  <li>
+                    Part of:{" "}
+                    {taskById?.(row.boardTask.parent_task_id)?.title ??
+                      "Parent unavailable in this view"}
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
           {row.boardTask.notes ? (
             <div>
               <p className="font-medium">Task notes</p>
               <p className="whitespace-pre-wrap break-words">{row.boardTask.notes}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Notes are what a person recorded. A link mentioned in notes has not been opened or
+                checked by Steward.
+              </p>
             </div>
           ) : null}
           {row.boardTask.acceptance_criteria.length ? (
