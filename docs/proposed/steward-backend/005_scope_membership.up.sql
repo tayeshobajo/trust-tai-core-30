@@ -31,7 +31,7 @@ create table if not exists public.steward_scope_audit (
   organization_id uuid not null,
   conversation_id uuid not null,
   scope_item_id uuid references public.steward_scope_items(id) on delete restrict,
-  kind text not null check (kind in ('add','amend_remove')),
+  kind text not null check (kind in ('add','amend_remove','amend_reinstate')),
   reason text,
   -- Append-only operation identity: every mutation carries its client
   -- operation UUID and payload digest so a retry replays and a changed
@@ -355,9 +355,84 @@ begin
 end;
 $$;
 
+-- Explicit audited REINSTATEMENT of a removed scope item. Never silent:
+-- a removed item stays out of the denominator (and blocks proposal
+-- linking via 004) until a human deliberately reinstates it with a
+-- substantive reason. Idempotent per operation: a replay returns the
+-- already-reinstated item; the same UUID with a changed payload
+-- conflicts. Bumps the scope version, invalidating coverage, in the same
+-- transaction.
+create or replace function public.steward_scope_amend_reinstate(
+  p_org uuid,
+  p_conversation uuid,
+  p_item uuid,
+  p_reason text,
+  p_operation uuid
+) returns public.steward_scope_items
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  actor uuid := auth.uid();
+  item public.steward_scope_items;
+  digest text;
+  existing public.steward_scope_items;
+begin
+  if actor is null or not private.steward_can_write(p_org) then
+    raise exception 'not_authorized' using errcode = 'P0401';
+  end if;
+  if p_reason is null or char_length(btrim(p_reason)) < 10 then
+    raise exception 'reason_required' using errcode = 'P0010';
+  end if;
+  digest := encode(sha256(convert_to(jsonb_build_object(
+    'org', p_org, 'item', p_item, 'reinstate_reason', p_reason, 'actor', actor)::text, 'utf8')), 'hex');
+
+  -- Operation replay bound to the append-only audit trail, exactly like
+  -- amend_remove: same UUID + same payload replays; changed payload
+  -- conflicts.
+  declare
+    prior public.steward_scope_audit;
+  begin
+    select * into prior from public.steward_scope_audit
+      where organization_id = p_org and operation_id = p_operation;
+    if found then
+      if prior.request_digest is distinct from digest then
+        raise exception 'operation_conflict' using errcode = 'P0002';
+      end if;
+      select * into existing from public.steward_scope_items
+        where id = prior.scope_item_id;
+      return existing;
+    end if;
+  end;
+
+  select * into item from public.steward_scope_items
+    where id = p_item and organization_id = p_org and conversation_id = p_conversation
+  for update;
+  if not found then
+    raise exception 'scope_item_not_found' using errcode = 'P0404';
+  end if;
+  if item.removed_at is null then
+    raise exception 'not_removed' using errcode = 'P0030';
+  end if;
+
+  perform set_config('steward.scope_mutation', 'on', true);
+  update public.steward_scope_items
+     set removed_at = null, removal_reason = null
+    where id = p_item
+  returning * into item;
+
+  insert into public.steward_scope_audit
+    (organization_id, conversation_id, scope_item_id, kind, reason, operation_id, request_digest, actor_id)
+  values (p_org, p_conversation, item.id, 'amend_reinstate', p_reason, p_operation, digest, actor);
+
+  perform private.steward_invalidate_scope(p_org, p_conversation);
+
+  return item;
+end;
+$$;
+
 revoke all on function public.steward_scope_add_item(uuid, uuid, uuid, text, uuid) from public, anon, authenticated;
 revoke all on function public.steward_scope_sync_required(uuid, uuid, uuid) from public, anon, authenticated;
 revoke all on function public.steward_scope_amend_remove(uuid, uuid, uuid, text, uuid) from public, anon, authenticated;
+revoke all on function public.steward_scope_amend_reinstate(uuid, uuid, uuid, text, uuid) from public, anon, authenticated;
 revoke all on function public.steward_scope_counts(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.steward_block_scope_delete() from public, anon, authenticated;
 revoke all on function public.steward_guard_scope_update() from public, anon, authenticated;
