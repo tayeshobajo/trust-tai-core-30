@@ -290,7 +290,9 @@ function TaskDetail({
           <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
             <History aria-hidden className="size-3.5" /> History
           </summary>
-          <p className="mt-2 text-[13px] text-muted-foreground">History unavailable in this view.</p>
+          <p className="mt-2 text-[13px] text-muted-foreground">
+            History unavailable in this view.
+          </p>
         </details>
       )}
 
@@ -743,7 +745,8 @@ export function WorkroomView({
       {sync.warnings.length > 0 ? (
         <details className="border-b border-border px-4 py-1.5 text-xs text-warning">
           <summary className="cursor-pointer">
-            {sync.warnings.length} sync caution{sync.warnings.length === 1 ? "" : "s"} — review details
+            {sync.warnings.length} sync caution{sync.warnings.length === 1 ? "" : "s"} — review
+            details
           </summary>
           <ul className="mt-2 space-y-1">
             {sync.warnings.map((warning, index) => (
@@ -787,7 +790,12 @@ export function WorkroomView({
             aria-label="Selected task details"
             className="hidden min-w-0 overflow-y-auto border-l border-border p-6 xl:block"
           >
-            <TaskDetail meeting={meeting} row={row} commitment={rowCommitment} history={historyFor?.(row.id)} />
+            <TaskDetail
+              meeting={meeting}
+              row={row}
+              commitment={rowCommitment}
+              history={historyFor?.(row.id)}
+            />
           </aside>
         ) : null}
       </div>
@@ -814,7 +822,12 @@ export function WorkroomView({
                 </SheetDescription>
               </SheetHeader>
               {row && meeting ? (
-                <TaskDetail meeting={meeting} row={row} commitment={rowCommitment} history={historyFor?.(row.id)} />
+                <TaskDetail
+                  meeting={meeting}
+                  row={row}
+                  commitment={rowCommitment}
+                  history={historyFor?.(row.id)}
+                />
               ) : null}
             </SheetContent>
           </Sheet>

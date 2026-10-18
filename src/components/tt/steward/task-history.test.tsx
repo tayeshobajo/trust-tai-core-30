@@ -67,7 +67,9 @@ describe("selected commitment history", () => {
     expect(screen.getByText(/fictional-actor/)).toBeTruthy();
     expect(screen.getByText("2026-10-17T20:00:00Z")).toBeTruthy();
     expect(screen.getByText("Checked the fictional deliverable.")).toBeTruthy();
-    expect(screen.getByText(/Legacy activity · task.completed · not a completion receipt/)).toBeTruthy();
+    expect(
+      screen.getByText(/Legacy activity · task.completed · not a completion receipt/),
+    ).toBeTruthy();
   });
 
   it("shows loading while the selected-task read is unresolved", () => {
@@ -98,7 +100,9 @@ describe("selected commitment history", () => {
     let resolveOld: ((events: ActivityEvent[]) => void) | undefined;
     mocks.list.mockImplementation(({ subjectId }: { subjectId: string }) =>
       subjectId === task
-        ? new Promise<ActivityEvent[]>((resolve) => { resolveOld = resolve; })
+        ? new Promise<ActivityEvent[]>((resolve) => {
+            resolveOld = resolve;
+          })
         : Promise.resolve([]),
     );
     const view = setup();

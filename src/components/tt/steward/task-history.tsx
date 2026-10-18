@@ -52,7 +52,9 @@ export function TaskHistory({
           ) : history.isPending || history.isFetching ? (
             <p role="status">Reading recorded history…</p>
           ) : history.data?.length === 0 ? (
-            <p role="status">No recorded history found for this task. This does not mean no prior work.</p>
+            <p role="status">
+              No recorded history found for this task. This does not mean no prior work.
+            </p>
           ) : (
             <ol className="space-y-3">
               {history.data?.map((event) => {
@@ -70,8 +72,12 @@ export function TaskHistory({
                         "Time not recorded"
                       )}
                     </p>
-                    {typeof note === "string" && note.trim() ? <p className="mt-1">{note}</p> : null}
-                    <p className="mt-1 text-xs">Legacy activity · {event.name} · not a completion receipt</p>
+                    {typeof note === "string" && note.trim() ? (
+                      <p className="mt-1">{note}</p>
+                    ) : null}
+                    <p className="mt-1 text-xs">
+                      Legacy activity · {event.name} · not a completion receipt
+                    </p>
                   </li>
                 );
               })}
