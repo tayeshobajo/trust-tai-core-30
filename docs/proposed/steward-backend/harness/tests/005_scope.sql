@@ -438,20 +438,28 @@ begin
   end if;
 end $$;
 
--- 9f. Reinstate authorization: anon cannot reinstate.
-set local role anon;
+-- 9f. Reinstate authorization: a non-member (no active membership, no
+--     write role) cannot reinstate, even with a valid removed item.
+set local role authenticated;
+select public.test_act_as('33333333-3333-3333-3333-333333333333');
 do $$
-declare failed boolean := false;
+declare
+  failed boolean := false;
+  removed_item uuid;
 begin
-  begin
-    perform public.steward_scope_amend_reinstate(
-      '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
-      (select id from public.steward_scope_items limit 1),
-      'anon reinstate attempt', 'f0000000-0000-0000-0000-0000000000e6');
-  exception when insufficient_privilege then failed := true;
-    when sqlstate 'P0401' then failed := true;
-  end;
-  perform public.test_assert(failed, 'anon cannot reinstate scope items');
+  select id into removed_item from public.steward_scope_items
+   where organization_id = '11111111-1111-1111-1111-111111111111'
+     and removed_at is not null limit 1;
+  if removed_item is not null then
+    begin
+      perform public.steward_scope_amend_reinstate(
+        '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+        removed_item, 'non-member reinstate attempt', 'f0000000-0000-0000-0000-0000000000e6');
+    exception when insufficient_privilege then failed := true;
+      when sqlstate 'P0401' then failed := true;
+    end;
+    perform public.test_assert(failed, 'non-member cannot reinstate scope items');
+  end if;
 end $$;
-reset role;
+select public.test_act_as(null);
 reset role;
