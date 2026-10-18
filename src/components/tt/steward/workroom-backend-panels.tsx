@@ -757,27 +757,25 @@ export function ScopeReviewPanel({
     const handler = handlerFor(action);
     if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
     const gesture: SimpleGesture =
-      action === "attest"
+      action === "attest" && expectedSource
         ? {
             action,
             /* Captured at the gesture: the attestation is bound to the
                exact transcript hash + scope version the human reviewed. */
-            ...(expectedSource
-              ? {
-                  expectedTranscriptHash: expectedSource.transcriptHash,
-                  expectedScopeVersion: expectedSource.scopeVersion,
-                }
-              : {}),
+            expectedTranscriptHash: expectedSource.transcriptHash,
+            expectedScopeVersion: expectedSource.scopeVersion,
           }
         : { action };
     return simple.run(
       (input) =>
         handler({
           operationId: input.operationId,
-          ...(input.expectedTranscriptHash
+          /* Attest carries its captured source binding; the other simple
+             operations never do. */
+          ...(input.action === "attest"
             ? {
                 expectedTranscriptHash: input.expectedTranscriptHash,
-                expectedScopeVersion: input.expectedScopeVersion!,
+                expectedScopeVersion: input.expectedScopeVersion,
               }
             : {}),
         }),

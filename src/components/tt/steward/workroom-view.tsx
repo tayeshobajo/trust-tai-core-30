@@ -458,16 +458,8 @@ function TaskDetail({
               capability={backend.capabilities.verification}
               state={backend.verificationFor?.(row.boardTask.id)}
               task={row.boardTask}
-              onVerify={
-                backend.onVerify
-                  ? (input) => backend.onVerify!({ taskId: row.boardTask!.id, ...input })
-                  : undefined
-              }
-              onReopen={
-                backend.onReopen
-                  ? (input) => backend.onReopen!({ taskId: row.boardTask!.id, ...input })
-                  : undefined
-              }
+              onVerify={backend.onVerify}
+              onReopen={backend.onReopen}
               onRetryReads={backend.onRetryReads}
             />
           ) : (

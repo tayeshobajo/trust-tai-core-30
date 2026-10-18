@@ -387,7 +387,9 @@ function useStewardBackend(
       }
       /* Capability OFF: explicitly unavailable, never a forever-loading
          "Reading recorded scope…" state. */
-      return { kind: "unavailable", reason: resolvedCaps.scope.reason };
+      return resolvedCaps.scope.kind === "unavailable"
+        ? { kind: "unavailable", reason: resolvedCaps.scope.reason }
+        : undefined;
     },
     meetingState: (id) => {
       if (id !== meetingId) return undefined;
