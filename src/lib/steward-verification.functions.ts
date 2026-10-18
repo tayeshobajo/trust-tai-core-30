@@ -26,7 +26,7 @@ import {
   createSupabaseVerificationRepository,
   foldVerificationProjection,
   readMeetingVerificationProjection,
-  readTaskVerificationHistory,
+  readSelectedTaskVerification,
 } from "./steward-verification.supabase";
 import {
   reopenCanonicalTask,
@@ -137,39 +137,7 @@ export const getTaskVerificationStateFn = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }): Promise<VerificationReadState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
-    const { rows, error } = await readMeetingVerificationProjection(
-      context.supabase,
-      data.orgId,
-      [data.taskId],
-    );
-    if (error || !rows) {
-      return { kind: "rejected", message: "the verification state could not be read" };
-    }
-    const folded = foldVerificationProjection([data.taskId], rows);
-    const row = folded.byTask[data.taskId];
-    if (!row) {
-      return {
-        kind: "rejected",
-        message: "task not found or not visible as a business task; verification state is unknown",
-      };
-    }
-    const history = await readTaskVerificationHistory(context.supabase, data.orgId, data.taskId);
-    if (history.error) {
-      return { kind: "rejected", message: "the receipt history could not be read" };
-    }
-    return {
-      kind: "ready",
-      read: {
-        task: {
-          id: row.task_id,
-          status: row.status === "complete" ? "complete" : "open",
-          revision: row.revision,
-        },
-        receipts: history.receipts,
-        historyTruncated: history.truncated,
-        verified: row.verified === true,
-      },
-    };
+    return readSelectedTaskVerification(context.supabase, data.orgId, data.taskId);
   });
 
 export type MeetingVerificationProjectionState =

@@ -241,3 +241,58 @@ export async function readTaskVerificationHistory(
     );
   return { receipts, truncated, error: null };
 }
+
+export type SelectedTaskVerification =
+  | {
+      kind: "ready";
+      read: {
+        task: { id: string; status: "open" | "complete"; revision: number };
+        receipts: TaskReceipt[];
+        historyTruncated: boolean;
+        verified: boolean;
+      };
+    }
+  | { kind: "rejected"; message: string };
+
+/**
+ * Selected-task verification read. Verified truth AND the current
+ * status/revision come from the projection RPC for exactly one id (one
+ * statement snapshot); the gesture captures that revision. History is a
+ * separate bounded display read and never feeds `verified`. Unknown
+ * (missing / personal / cross-org / inaccessible) is rejected.
+ */
+export async function readSelectedTaskVerification(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed RPC/table are not in generated types until the UNAPPLIED patches land
+  supabase: any,
+  orgId: string,
+  taskId: string,
+): Promise<SelectedTaskVerification> {
+  const { rows, error } = await readMeetingVerificationProjection(supabase, orgId, [taskId]);
+  if (error || !rows) {
+    return { kind: "rejected", message: "the verification state could not be read" };
+  }
+  const row = foldVerificationProjection([taskId], rows).byTask[taskId];
+  if (!row) {
+    return {
+      kind: "rejected",
+      message: "task not found or not visible as a business task; verification state is unknown",
+    };
+  }
+  const history = await readTaskVerificationHistory(supabase, orgId, taskId);
+  if (history.error) {
+    return { kind: "rejected", message: "the receipt history could not be read" };
+  }
+  return {
+    kind: "ready",
+    read: {
+      task: {
+        id: row.task_id,
+        status: row.status === "complete" ? "complete" : "open",
+        revision: row.revision,
+      },
+      receipts: history.receipts,
+      historyTruncated: history.truncated,
+      verified: row.verified === true,
+    },
+  };
+}
