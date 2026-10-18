@@ -188,16 +188,15 @@ export function AppShell({
             </SheetContent>
           </Sheet>
         ) : (
-          <TTButton
-            variant="quiet"
+          <button
             type="button"
             aria-label={open ? "Close navigation" : "Open navigation"}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="-ml-1 size-11 rounded-lg p-0 lg:hidden"
+            className="-ml-1 flex size-11 items-center justify-center rounded-lg text-foreground lg:hidden"
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
-          </TTButton>
+          </button>
         )}
 
         <Link to="/welcome" className="flex items-center gap-3" aria-label="Trust Tai OS · welcome">

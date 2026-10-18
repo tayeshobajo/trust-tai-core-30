@@ -349,6 +349,7 @@ export function WorkroomView({
     return () => observer.disconnect();
   }, [embedded]);
   const compact = embedded ? canvasCompact : viewportCompact;
+  const TaskArea = embedded ? "section" : "main";
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
   const [meetingQuery, setMeetingQuery] = useState("");
@@ -818,7 +819,7 @@ export function WorkroomView({
         >
           {navigation}
         </aside>
-        <main className="min-w-0 px-4 pb-5 pt-4 sm:px-6 sm:pt-5">
+        <TaskArea className="min-w-0 px-4 pb-5 pt-4 sm:px-6 sm:pt-5">
           <TTButton
             variant="quiet"
             ref={meetingTriggerRef}
@@ -834,7 +835,7 @@ export function WorkroomView({
             <ChevronRight aria-hidden />
           </TTButton>
           {main}
-        </main>
+        </TaskArea>
         {row && meeting ? (
           <aside
             aria-label="Selected task details"
