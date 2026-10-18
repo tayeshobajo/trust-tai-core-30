@@ -57,7 +57,7 @@ import { TaskEditor } from "./business-task-board";
 import { AppShell } from "@/components/tt/app-shell";
 import { businessWorkQuery, cmdTasks } from "@/data/supabase/cmd-tasks";
 import { mayAddRequiredWork } from "@/domain/steward-required-work";
-import { appendLinkedBusinessWork } from "@/domain/steward-meeting-links";
+import { appendLinkedBusinessWork, workroomRowKey } from "@/domain/steward-meeting-links";
 import { mayEditBoardTask, type BoardEdit, type BoardTask } from "@/domain/cmd-tasks";
 import { useTaskChoices } from "@/data/steward/task-choices";
 
