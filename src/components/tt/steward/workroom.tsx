@@ -268,6 +268,14 @@ function useStewardBackend(
     enabled: !!meetingId && caps?.proposals.kind === "enabled",
     queryFn: () => getProposalReviewStateFn({ data: { orgId: org, conversationId: meetingId! } }),
   });
+  /* The consistent one-statement score snapshot. Every score surface
+     (card, nav, footer) reads this; a failed read is an explicit rejected
+     state, never a silently dropped or locally recombined number. */
+  const score = useQuery({
+    queryKey: ["steward", "score-snapshot", org, meetingId],
+    enabled: !!meetingId && caps?.scope.kind === "enabled",
+    queryFn: () => getMeetingScoreSnapshotFn({ data: { orgId: org, conversationId: meetingId! } }),
+  });
 
   const unavailable: CapabilityState = {
     kind: "unavailable",
