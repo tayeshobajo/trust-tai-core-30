@@ -17,6 +17,7 @@ grant select on public.steward_coverage_attestations to authenticated;
 grant select on public.steward_scope_versions to authenticated;
 grant select on public.steward_proposal_ledger to authenticated;
 grant select on public.steward_proposal_links to authenticated;
+grant select on public.steward_proposal_decisions to authenticated;
 grant select on public.steward_scope_items to authenticated;
 grant select on public.steward_scope_audit to authenticated;
 
