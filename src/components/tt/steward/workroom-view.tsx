@@ -438,8 +438,9 @@ function TaskDetail({
 }) {
   return (
     <div className="space-y-5 text-sm">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">{row.what}</h2>
+      <div className="rounded-xl border border-cloud-line bg-cloud px-4 py-3.5">
+        <p className="tt-eyebrow">Summary</p>
+        <h2 className="mt-1.5 text-base font-semibold text-foreground">{row.what}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           {row.kind === "required-task"
             ? "Manually added required work · durable task identity, not a transcript commitment"
