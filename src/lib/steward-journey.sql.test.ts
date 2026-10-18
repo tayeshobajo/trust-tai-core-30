@@ -515,7 +515,7 @@ describe("steward SQL journey (real disposable PostgreSQL, real adapters)", () =
       actorId: OWNER,
     });
     expect(calls.count).toBe(0);
-    expect(second.kind).toBe("unavailable");
+    expect(second.kind).toBe("not_claimed");
     const state = asWorker(
       `select status || '|' || failure_reason from public.steward_canonical_runs where id = ${lit(requested.run.id)}`,
     );
