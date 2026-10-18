@@ -22,6 +22,7 @@ interface LedgerRow {
   kind: string;
   statement: string;
   status: LedgerProposal["status"];
+  evidence?: unknown[];
 }
 
 function mapRow(row: LedgerRow): LedgerProposal {
