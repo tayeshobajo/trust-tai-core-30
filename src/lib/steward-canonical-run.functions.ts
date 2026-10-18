@@ -177,7 +177,18 @@ export const getCanonicalRunCapability = createServerFn({ method: "GET" })
     // report the honest reason so the UI never promises a run that cannot
     // execute.
     const providerStatus = canonicalRunProviderStatus();
-    return providerStatus.configured
-      ? { kind: "enabled" }
-      : { kind: "unavailable", reason: providerStatus.reason ?? DISABLED_REASON };
+    if (!providerStatus.configured) {
+      return { kind: "unavailable", reason: providerStatus.reason ?? DISABLED_REASON };
+    }
+    // The pinned Trust Tai writer must be configured BEFORE anything is
+    // queueable: an enabled flag without worker server access would strand
+    // queued runs that can never be claimed or completed.
+    if (!trustTaiWriterConfigured()) {
+      return {
+        kind: "unavailable",
+        reason:
+          "The worker's server access to the workspace database is not set up, so no run can be queued or executed.",
+      };
+    }
+    return { kind: "enabled" };
   });
