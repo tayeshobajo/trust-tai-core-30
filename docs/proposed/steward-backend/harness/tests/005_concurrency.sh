@@ -4,7 +4,7 @@ set -euo pipefail
 DB="$1"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
-psql "$DB" -v ON_ERROR_STOP=1 -q <<'SQL'
+psql "$DB" -v ON_ERROR_STOP=1 -q -o /dev/null <<'SQL'
 \set org_a '''11111111-1111-1111-1111-111111111111'''
 \set user_owner '''aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'''
 select steward_request_canonical_run(:org_a, '10000000-0000-0000-0000-000000000001',
