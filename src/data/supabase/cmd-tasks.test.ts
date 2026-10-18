@@ -4,6 +4,7 @@ import { vi } from "vitest";
 import { withMeetingAssociation } from "@/domain/steward-meeting-links";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BoardEdit, BoardTask } from "@/domain/cmd-tasks";
+import { requiredWorkKey } from "@/domain/steward-required-work";
 const org = "00000000-0000-4000-8000-000000000010";
 const owner = "00000000-0000-4000-8000-000000000001";
 const edit: BoardEdit = {
@@ -107,6 +108,16 @@ function transport() {
   return { client, rows, operations, fail: (value: MockError) => (issue = value) };
 }
 describe("board service mocked transport", () => {
+  it("retains required identity on archive and rejects generic removal before transport", async () => {
+    const db = transport();
+    const service = boardService(db.client);
+    const created = await service.create(org, "business", requiredWorkKey(owner, owner), { ...edit, context_links: withMeetingAssociation([], owner) });
+    const before = db.operations.length;
+    await expect(service.update(created, { ...edit, context_links: [] })).rejects.toThrow(/scope is locked/);
+    expect(db.operations).toHaveLength(before);
+    await service.archive(created, true);
+    expect((await service.list(org, "business")).tasks[0]?.correlation_id).toBe(requiredWorkKey(owner, owner));
+  });
   it("reads only business work with org+user-specific cache identity", async () => {
     const db = transport();
     const service = boardService(db.client);

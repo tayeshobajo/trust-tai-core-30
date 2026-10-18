@@ -21,7 +21,8 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
 import { TaskHistory } from "./task-history";
 import { AppShell } from "@/components/tt/app-shell";
-import { businessWorkQuery } from "@/data/supabase/cmd-tasks";
+import { businessWorkQuery, cmdTasks } from "@/data/supabase/cmd-tasks";
+import { mayAddRequiredWork } from "@/domain/steward-required-work";
 import { appendLinkedBusinessWork } from "@/domain/steward-meeting-links";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
@@ -142,6 +143,7 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
 }
 
 function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
+  const queryClient = useQueryClient();
   const org = identity.organizationId;
   const business = useQuery(businessWorkQuery(org, identity.userId));
   const conversations = useQuery({
@@ -233,6 +235,10 @@ function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
     <WorkroomView
       embedded
       meetings={linkedMeetings}
+      onAddRequiredTask={mayAddRequiredWork(identity) ? async (draft) => {
+        await cmdTasks.createRequired(identity, draft);
+        await queryClient.invalidateQueries({ queryKey: businessWorkQuery(org, identity.userId).queryKey });
+      } : undefined}
       linkedRead={{
         state: business.isPending ? "loading" : business.isError ? "error" : "ready",
         truncated: business.data?.truncated ?? false,
