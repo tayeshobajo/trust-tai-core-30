@@ -483,6 +483,12 @@ begin
   perform public.test_assert(owner_item is not null, 'owner task scope item exists');
   perform set_config('tmp.owner_item', owner_item::text, false);
 end $$;
+-- Normalize state: earlier suites may have left this item removed.
+reset role;
+update public.steward_scope_items set removed_at = null, removal_reason = null
+ where id = current_setting('tmp.owner_item')::uuid;
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
 -- Unrelated active member: remove denied.
 select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
