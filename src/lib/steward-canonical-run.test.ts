@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   authorizeRunWorkerCaller,
+  authorizeWorkerEndpoint,
   digestArtifact,
   digestRequest,
   executeCanonicalRun,
@@ -357,16 +358,12 @@ describe("executeCanonicalRun", () => {
 
 describe("authorizeRunWorkerCaller", () => {
   const RUN = { organizationId: ORG, taskId: TASK };
-  const BUSINESS_TASK = { visibility: "business", ownerUserId: null };
+  const MEMBER = { status: "active", role: "member" };
+  const BUSINESS_TASK = { taskVisibility: "business", ownerUserId: null, createdBy: "user-owner" };
 
   it("denies an unknown or foreign run without disclosing existence", () => {
     expect(
-      authorizeRunWorkerCaller({
-        run: null,
-        isActiveMember: true,
-        task: BUSINESS_TASK,
-        callerId: ACTOR,
-      }),
+      authorizeRunWorkerCaller({ run: null, membership: MEMBER, task: BUSINESS_TASK, callerId: ACTOR }),
     ).toBe("this run is not available to you");
   });
 
@@ -374,42 +371,152 @@ describe("authorizeRunWorkerCaller", () => {
     expect(
       authorizeRunWorkerCaller({
         run: RUN,
-        isActiveMember: false,
+        membership: { status: "inactive", role: "member" },
+        task: BUSINESS_TASK,
+        callerId: ACTOR,
+      }),
+    ).toBe("this run is not available to you");
+    expect(
+      authorizeRunWorkerCaller({ run: RUN, membership: null, task: BUSINESS_TASK, callerId: ACTOR }),
+    ).toBe("this run is not available to you");
+  });
+
+  it("denies a viewer even when they created the task (no write role)", () => {
+    expect(
+      authorizeRunWorkerCaller({
+        run: RUN,
+        membership: { status: "active", role: "viewer" },
         task: BUSINESS_TASK,
         callerId: ACTOR,
       }),
     ).toBe("this run is not available to you");
   });
 
-  it("denies when the canonical task is not visible to the caller", () => {
-    expect(
-      authorizeRunWorkerCaller({ run: RUN, isActiveMember: true, task: null, callerId: ACTOR }),
-    ).toBe("this run is not available to you");
-  });
-
-  it("denies a personal task to anyone but its owner", () => {
-    const personal = { visibility: "personal", ownerUserId: "user-other" };
-    expect(
-      authorizeRunWorkerCaller({ run: RUN, isActiveMember: true, task: personal, callerId: ACTOR }),
-    ).toBe("this run is not available to you");
-  });
-
-  it("allows an active member on a business task and the owner on a personal task", () => {
+  it("denies an unrelated active member on someone else's business task", () => {
     expect(
       authorizeRunWorkerCaller({
         run: RUN,
-        isActiveMember: true,
+        membership: MEMBER,
         task: BUSINESS_TASK,
-        callerId: ACTOR,
+        callerId: "user-unrelated",
+      }),
+    ).toBe("this run is not available to you");
+  });
+
+  it("allows the creator, the current owner, and an org admin", () => {
+    expect(
+      authorizeRunWorkerCaller({ run: RUN, membership: MEMBER, task: BUSINESS_TASK, callerId: ACTOR }),
+    ).toBeNull();
+    expect(
+      authorizeRunWorkerCaller({
+        run: RUN,
+        membership: MEMBER,
+        task: { taskVisibility: "business", ownerUserId: "user-owner2", createdBy: "user-other" },
+        callerId: "user-owner2",
       }),
     ).toBeNull();
     expect(
       authorizeRunWorkerCaller({
         run: RUN,
-        isActiveMember: true,
-        task: { visibility: "personal", ownerUserId: ACTOR },
-        callerId: ACTOR,
+        membership: { status: "active", role: "admin" },
+        task: BUSINESS_TASK,
+        callerId: "user-admin",
       }),
     ).toBeNull();
+  });
+
+  it("fails closed on personal tasks for everyone, including the owner", () => {
+    const personal = { taskVisibility: "personal", ownerUserId: ACTOR, createdBy: ACTOR };
+    expect(
+      authorizeRunWorkerCaller({ run: RUN, membership: MEMBER, task: personal, callerId: ACTOR }),
+    ).toBe("this run is not available to you");
+    expect(
+      authorizeRunWorkerCaller({
+        run: RUN,
+        membership: { status: "active", role: "admin" },
+        task: personal,
+        callerId: "user-admin",
+      }),
+    ).toBe("this run is not available to you");
+  });
+
+  it("fails closed when the task row is missing", () => {
+    expect(
+      authorizeRunWorkerCaller({ run: RUN, membership: MEMBER, task: null, callerId: ACTOR }),
+    ).toBe("this run is not available to you");
+  });
+});
+
+describe("authorizeWorkerEndpoint (handler composition over RLS reads)", () => {
+  const RUN_ROW = { id: "run-1", organization_id: ORG, task_id: TASK };
+
+  function fakeRls(rows: {
+    run?: Record<string, unknown> | null;
+    membership?: Record<string, unknown> | null;
+    task?: Record<string, unknown> | null;
+  }) {
+    const reads: { table: string; cols: string }[] = [];
+    const make = (table: string, row: Record<string, unknown> | null) => ({
+      select: (cols: string) => {
+        reads.push({ table, cols });
+        const leaf = { maybeSingle: async () => ({ data: row }) };
+        return { eq: () => ({ eq: () => ({ eq: () => leaf, maybeSingle: leaf.maybeSingle }), maybeSingle: leaf.maybeSingle }) };
+      },
+    });
+    return {
+      reads,
+      from: (table: string) =>
+        table === "steward_canonical_runs"
+          ? make(table, rows.run ?? null)
+          : table === "organization_memberships"
+            ? make(table, rows.membership ?? null)
+            : make(table, rows.task ?? null),
+    };
+  }
+
+  it("reads the real column names (task_visibility, not visibility)", async () => {
+    const rls = fakeRls({
+      run: RUN_ROW,
+      membership: { status: "active", role: "member" },
+      task: { task_visibility: "business", owner_user_id: null, created_by: ACTOR },
+    });
+    const result = await authorizeWorkerEndpoint(rls as never, { runId: "run-1", callerId: ACTOR });
+    expect("run" in result).toBe(true);
+    const taskRead = rls.reads.find((r) => r.table === "steward_tasks");
+    expect(taskRead?.cols).toBe("task_visibility, owner_user_id, created_by");
+    expect(rls.reads.find((r) => r.table === "organization_memberships")?.cols).toBe("status, role");
+  });
+
+  it("denies a cross-org caller before any privileged transition", async () => {
+    // RLS returns nothing for a foreign run: indistinguishable from missing.
+    const rls = fakeRls({ run: null });
+    const result = await authorizeWorkerEndpoint(rls as never, { runId: "run-x", callerId: ACTOR });
+    expect(result).toEqual({ denial: "this run is not available to you" });
+  });
+
+  it("denies an unrelated member and a viewer on the real mapping", async () => {
+    const task = { task_visibility: "business", owner_user_id: null, created_by: "user-owner" };
+    for (const membership of [
+      { status: "active", role: "member" },
+      { status: "active", role: "viewer" },
+      { status: "inactive", role: "owner" },
+    ]) {
+      const rls = fakeRls({ run: RUN_ROW, membership, task });
+      const result = await authorizeWorkerEndpoint(rls as never, {
+        runId: "run-1",
+        callerId: "user-unrelated",
+      });
+      expect(result).toEqual({ denial: "this run is not available to you" });
+    }
+  });
+
+  it("authorizes the creator through the full read composition", async () => {
+    const rls = fakeRls({
+      run: RUN_ROW,
+      membership: { status: "active", role: "team_member" },
+      task: { task_visibility: "business", owner_user_id: null, created_by: ACTOR },
+    });
+    const result = await authorizeWorkerEndpoint(rls as never, { runId: "run-1", callerId: ACTOR });
+    expect(result).toEqual({ run: { organizationId: ORG, taskId: TASK } });
   });
 });
