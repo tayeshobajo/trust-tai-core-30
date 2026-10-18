@@ -622,10 +622,11 @@ export function WorkroomView({
   const rowHistory = row && !row.boardTask ? historyFor?.(row.id) : undefined;
 
   function selectMeeting(id: string) {
-    setSelectedMeeting(id);
+    if (onSelect) onSelect(id, null);
+    setLocalMeeting(id);
     /* Filters belong to a meeting; a stale owner or search must never hide
        the next meeting's tasks. */
-    setSelectedRow(null);
+    setLocalRow(null);
     setOwnerFilter("everyone");
     setTaskQuery("");
     setRowFilter("all");
@@ -633,7 +634,8 @@ export function WorkroomView({
   }
 
   function pickRow(id: string) {
-    setSelectedRow(id);
+    if (onSelect) onSelect(meeting?.id ?? null, id);
+    setLocalRow(id);
     if (compact) setDrawerOpen(true);
   }
 
