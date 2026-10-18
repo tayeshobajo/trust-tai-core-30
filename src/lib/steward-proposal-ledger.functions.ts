@@ -63,7 +63,7 @@ function toNormalizedConversation(
     text: segment.text ?? "",
   }));
   return {
-    sourceRef: { provider: "fathom", externalId: conversationId, url: null },
+    sourceRef: { provider: "fathom", externalId: conversationId, url: "" },
     title,
     occurredAt: new Date(0).toISOString(),
     participants: [],
