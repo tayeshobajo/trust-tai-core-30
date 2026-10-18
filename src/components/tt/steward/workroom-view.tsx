@@ -533,9 +533,17 @@ function TaskDetail({
             </div>
           ) : null}
           {row.boardTask.notes ? (
-            <details>
-              <summary className="cursor-pointer font-medium text-foreground">Task notes</summary>
-              <p className="mt-1 whitespace-pre-wrap break-words">{row.boardTask.notes}</p>
+            <details
+              className="rounded-lg border px-4 py-1.5"
+              style={{
+                backgroundColor: "color-mix(in oklab, var(--tt-app-roadmap) 7%, transparent)",
+                borderColor: "color-mix(in oklab, var(--tt-app-roadmap) 25%, transparent)",
+              }}
+            >
+              <summary className="-mx-2 cursor-pointer rounded-md px-2 py-2 font-medium text-foreground focus-visible:outline-2 focus-visible:outline-royal">
+                Task notes
+              </summary>
+              <p className="mt-1 whitespace-pre-wrap break-words pb-2">{row.boardTask.notes}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Notes are what a person recorded. A link mentioned in notes has not been opened or
                 checked by Steward.
