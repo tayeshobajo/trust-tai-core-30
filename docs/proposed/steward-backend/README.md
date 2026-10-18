@@ -58,10 +58,13 @@ only script that drops data and it refuses to run while history rows exist.
 | Module | Status |
 |---|---|
 | `src/lib/steward-canonical-run.server.ts` / `.supabase.ts` / `.provider.server.ts` / `.functions.ts` | Domain service, Supabase adapter, bounded provider, and protected entrypoints (`requestCanonicalRunFn`, `runCanonicalRunWorkerFn`, `getCanonicalRunCapability`). Gated by `STEWARD_CANONICAL_RUNS_ENABLED` (default off); provider readiness is checked before queueing. The worker endpoint authorizes the caller through their own RLS view (`authorizeWorkerEndpoint`) before any privileged transition. |
-| `src/lib/steward-verification.server.ts` / `.supabase.ts` | Atomic verify/reopen service + adapter. NO server entrypoint or UI route consumes it yet — the live workroom keeps verification controls disabled; wiring is a separate reviewed step after apply. |
-| `src/lib/steward-coverage.server.ts` / `.supabase.ts` | Coverage attestation service + adapter. UI disabled until applied. |
+| `src/lib/steward-verification.server.ts` / `.supabase.ts` | Atomic verify/reopen service + adapter, consumed by `steward-verification.functions.ts` (capability-gated `STEWARD_VERIFICATION_ENABLED`, OFF) and the workroom `VerificationPanel`. While OFF the panel renders the server's unavailable reason and no control is reachable. |
+| `src/lib/steward-coverage.server.ts` / `.supabase.ts` | Coverage attestation service + adapter, consumed by `steward-coverage.functions.ts` (capability-gated `STEWARD_COVERAGE_ENABLED`, OFF) and the workroom scope-review panel. |
 | `src/lib/steward-proposal-ledger.server.ts` / `.supabase.ts` / `.functions.ts` | Extraction ledger service, adapter, and the capability-gated sync entrypoint (`syncProposalLedgerFn`, flag `STEWARD_PROPOSAL_LEDGER_ENABLED`, default off) that runs the REAL `extractProposals` over the stored transcript and registers the output. |
-| `src/lib/steward-proposal-link.server.ts` / `.supabase.ts` | Human link service + adapter. UI disabled until applied. |
+| `src/lib/steward-proposal-link.server.ts` / `.supabase.ts` | Human link service + adapter, consumed by `steward-proposal-link.functions.ts` (capability-gated `STEWARD_PROPOSAL_LINKS_ENABLED`, OFF) and the workroom scope-review panel. |
+| `src/lib/steward-trust-tai-auth.server.ts` | Dedicated auth middleware for all Steward canonical entrypoints: same Bearer→getClaims validation shape as the generated middleware, but pinned to the Trust Tai backend via `trust-tai-backend.server.ts` helpers — a mis-pointed generic env can never move these entrypoints to another project. The generated middleware file is untouched. |
+| `src/lib/steward-run-state.functions.ts` | Read-state entrypoint for canonical runs/artifacts (RLS as the caller), consumed by the workroom AI panel. Gated by the same `STEWARD_CANONICAL_RUNS_ENABLED` flag. |
+| `src/components/tt/steward/workroom-backend-panels.tsx` | Presentational panels (preparation runs, verification, scope review) wired into `workroom.tsx` via `useStewardBackend`. With every flag OFF the live workroom shows the staged/not-activated reasons; enabled behavior is exercised only in isolated fixtures. |
 
 ## Verification
 
