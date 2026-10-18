@@ -920,31 +920,51 @@ export function WorkroomView({
                 ) : null}
               </span>
               <span className="mt-1 flex items-center justify-between gap-1 text-xs text-muted-foreground">
-                <span>
-                  {m.occurredAt.slice(0, 10)} ·{" "}
-                  {receiptsFailed
-                    ? "verification unavailable"
-                    : (m.requiredWork?.denominator ?? m.agreed) === 0
-                      ? "scope review pending"
-                      : `${m.done} of ${m.requiredWork?.denominator ?? m.agreed} verified`}
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded px-1.5 py-0.5 font-semibold",
-                    m.score === 100 &&
+                {(() => {
+                  /* The consistent server snapshot, when the staged
+                     contract is active, overrides the local derivation for
+                     this row too — nav, card and footer never disagree. */
+                  const navScore = backend?.scoreFor
+                    ? serverMeetingScore(backend.scoreFor(m.id))
+                    : null;
+                  const pillValue = navScore
+                    ? navScore.value === null
+                      ? "—"
+                      : `${navScore.value}/100`
+                    : receiptsFailed ||
+                        (linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated))
+                      ? "—"
+                      : m.score === null
+                        ? "Partial"
+                        : `${m.score}/100`;
+                  const pillFull = navScore
+                    ? navScore.value === 100
+                    : m.score === 100 &&
                       !receiptsFailed &&
-                      (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
-                      ? "bg-success/15 text-success"
-                      : "bg-warning/15 text-warning",
-                  )}
-                >
-                  {receiptsFailed ||
-                  (linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated))
-                    ? "—"
-                    : m.score === null
-                      ? "Partial"
-                      : `${m.score}/100`}
-                </span>
+                      (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated));
+                  return (
+                    <>
+                      <span>
+                        {m.occurredAt.slice(0, 10)} ·{" "}
+                        {navScore
+                          ? (navScore.label ?? "score unavailable")
+                          : receiptsFailed
+                            ? "verification unavailable"
+                            : (m.requiredWork?.denominator ?? m.agreed) === 0
+                              ? "scope review pending"
+                              : `${m.done} of ${m.requiredWork?.denominator ?? m.agreed} verified`}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded px-1.5 py-0.5 font-semibold",
+                          pillFull ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
+                        )}
+                      >
+                        {pillValue}
+                      </span>
+                    </>
+                  );
+                })()}
               </span>
             </span>
           </TTButton>
