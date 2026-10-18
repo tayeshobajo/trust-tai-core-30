@@ -91,13 +91,21 @@ begin
 end;
 $$;
 
--- Attest coverage of the CURRENT stored conversation state. The
--- conversation must exist in the org and carry a nonempty transcript;
--- hash and version are read from stored state, never from the caller.
--- Supersedes any prior current attestation in the same transaction.
+-- Attest coverage of the source the human ACTUALLY REVIEWED. The caller
+-- supplies the transcript hash and scope version it read (from the
+-- consistent score snapshot); the function derives the CURRENT stored
+-- hash/version itself and REJECTS the attestation when they differ — a
+-- transcript or scope change during human review is never silently
+-- attested. The client operation UUID + payload digest make an
+-- uncertain-transport retry replay the SAME attestation: same operation
+-- + same payload returns the recorded row, changed payload conflicts,
+-- and a retried operation can never attest a newer, unreviewed source.
 create or replace function public.steward_attest_coverage(
   p_org uuid,
-  p_conversation uuid
+  p_conversation uuid,
+  p_operation uuid,
+  p_expected_hash text,
+  p_expected_scope_version integer
 ) returns public.steward_coverage_attestations
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -105,10 +113,15 @@ declare
   conv public.conversations;
   hash text;
   scope_version integer;
+  digest text;
+  prior public.steward_coverage_attestations;
   a public.steward_coverage_attestations;
 begin
   if actor is null or not private.steward_can_write(p_org) then
     raise exception 'not_authorized' using errcode = 'P0401';
+  end if;
+  if p_operation is null or p_expected_hash is null or p_expected_scope_version is null then
+    raise exception 'attestation_binding_required' using errcode = 'P0422';
   end if;
   select * into conv from public.conversations
     where id = p_conversation and organization_id = p_org for update;
@@ -118,10 +131,33 @@ begin
   if conv.transcript is null or conv.transcript = '{}'::jsonb or conv.transcript = '[]'::jsonb then
     raise exception 'transcript_required' using errcode = 'P0020';
   end if;
+
+  digest := encode(sha256(convert_to(jsonb_build_object(
+    'org', p_org, 'conversation', p_conversation, 'hash', p_expected_hash,
+    'scopeVersion', p_expected_scope_version, 'actor', actor)::text, 'utf8')), 'hex');
+
+  -- Operation replay BEFORE any state change: the same operation UUID
+  -- with the same reviewed source replays the recorded attestation; the
+  -- same UUID with a changed payload conflicts.
+  select * into prior from public.steward_coverage_attestations
+    where organization_id = p_org and operation_id = p_operation;
+  if found then
+    if prior.request_digest is distinct from digest then
+      raise exception 'operation_conflict' using errcode = 'P0002';
+    end if;
+    return prior;
+  end if;
+
   hash := private.steward_transcript_hash(p_org, p_conversation);
   select version into scope_version from public.steward_scope_versions
     where organization_id = p_org and conversation_id = p_conversation;
   scope_version := coalesce(scope_version, 1);
+
+  -- Fail closed on drift: the source changed while the human reviewed.
+  if hash is distinct from p_expected_hash
+     or scope_version is distinct from p_expected_scope_version then
+    raise exception 'source_changed_since_review' using errcode = 'P0001';
+  end if;
 
   perform set_config('steward.coverage_mutation', 'on', true);
   update public.steward_coverage_attestations
@@ -130,8 +166,9 @@ begin
      and superseded_at is null;
 
   insert into public.steward_coverage_attestations
-    (organization_id, conversation_id, transcript_hash, scope_version, attested_by)
-  values (p_org, p_conversation, hash, scope_version, actor)
+    (organization_id, conversation_id, transcript_hash, scope_version, attested_by,
+     operation_id, request_digest)
+  values (p_org, p_conversation, hash, scope_version, actor, p_operation, digest)
   returning * into a;
   return a;
 end;
