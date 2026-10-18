@@ -1,5 +1,9 @@
 # Roadmap
 
+## Steward manually required meeting work (2026-10-18)
+- [ ] Add explicit meeting Add task, durable required provenance, immutable scope projection and zero verified credit; retain ordinary linking behavior.
+- [ ] Validate scoped/idempotent creation and generic edit locks; run fictional desktop/mobile QA, focused tests and lint; no live writes or metadata access.
+
 ## Steward canonical meeting association (2026-10-18)
 - [x] Add reversible existing-task meeting selector and business-only workroom projection without altering commitment scores/history or layout.
 - [x] Run focused regression/lint and fictional 1440/768/375 shared-component QA including unavailable reads; no live writes or metadata access. Evidence and live-verification boundary in docs/steward-meeting-association.md.
