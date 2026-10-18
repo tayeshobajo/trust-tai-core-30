@@ -284,9 +284,18 @@ function StewardWorkroomContent({
   }
 
   return (
+    <>
     <WorkroomView
       embedded
       meetings={linkedMeetings}
+      {...(selection ? { selection } : {})}
+      {...(onSelect ? { onSelect } : {})}
+      taskById={taskById}
+      onEditTaskField={(row, field) => {
+        const task = row.boardTask;
+        if (!task || !mayEditBoardTask(task, actor)) return;
+        setEditing({ task, field });
+      }}
       onAddRequiredTask={
         mayAddRequiredWork(identity)
           ? async (draft) => {
@@ -320,6 +329,7 @@ function StewardWorkroomContent({
               ["/", "Suite home"],
               ["/modules/steward/team", "Team"],
               ["/modules/steward/tasks", "All outstanding work"],
+              ["/modules/steward/board", "Business task board"],
               ["/modules/steward/agents", "Agents"],
               ["/modules/steward/scouts", "Scouts"],
               ["/modules/steward/ai", "Trust Tai AI"],
