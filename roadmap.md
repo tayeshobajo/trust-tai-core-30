@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Steward canonical meeting association (2026-10-18)
-- [ ] Add reversible existing-task meeting selector and business-only workroom projection without altering commitment scores/history or layout.
-- [ ] Run focused regression/lint and fictional 1440/768/375 shared-component QA including unavailable reads; no live writes or metadata access.
+- [x] Add reversible existing-task meeting selector and business-only workroom projection without altering commitment scores/history or layout.
+- [x] Run focused regression/lint and fictional 1440/768/375 shared-component QA including unavailable reads; no live writes or metadata access. Evidence and live-verification boundary in docs/steward-meeting-association.md.
 
 ## Steward suite navigation regression (2026-10-18)
 - [x] Restore the existing suite shell around the live workroom without duplicate global controls; preserve standalone mockup and data behavior.

@@ -52,7 +52,7 @@ export const BoardTaskSchema = z.object({
   revision: z.number().int().nonnegative(),
   acceptance_criteria: z.array(z.string()),
   context_links: z.array(
-    z.object({ label: z.string(), url: z.string(), kind: z.string().optional() }),
+    z.object({ label: z.string(), url: z.string(), kind: z.string().optional() }).passthrough(),
   ),
   notes: z.string().nullable(),
   correlation_id: z.string().nullable(),
@@ -93,7 +93,7 @@ export const BoardEditSchema = z
             .string()
             .url()
             .refine((v) => /^https?:\/\//i.test(v), "Use a web link."),
-        }),
+        }).passthrough(),
       )
       .max(50),
   })

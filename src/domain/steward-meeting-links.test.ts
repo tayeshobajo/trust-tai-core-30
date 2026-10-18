@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { editOf, type BoardTask } from "./cmd-tasks";
+import { BoardEditSchema, BoardTaskSchema, editOf, type BoardTask } from "./cmd-tasks";
 import {
   appendLinkedBusinessWork,
   MEETING_ASSOCIATION_LABEL,
@@ -126,6 +126,13 @@ describe("explicit no-schema meeting association", () => {
     expect(
       appendLinkedBusinessWork(meetings(), [task, task], "fictional-org")[0]?.linkedWork,
     ).toEqual({ total: 1, open: 1 });
+  });
+  it("retains additional existing source metadata through read and edit validation", () => {
+    const source = { label: "Email", url: "https://example.com/email", kind: "email", sourceId: "original-email-17" };
+    const parsed = BoardTaskSchema.parse({ ...task, organization_id: id, context_links: [source] });
+    const edit = BoardEditSchema.parse({ ...editOf(parsed), context_links: withMeetingAssociation(parsed.context_links, id) });
+    expect(edit.context_links[0]).toEqual(source);
+    expect(withMeetingAssociation(edit.context_links, null)).toEqual([source]);
   });
   it("never exposes personal, other-org or archived work", () => {
     expect(
