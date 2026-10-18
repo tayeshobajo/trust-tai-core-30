@@ -19,6 +19,10 @@ export default defineConfig({
       "src/components/tt/steward/task-history.test.tsx",
       "src/components/tt/steward/business-task-board.test.tsx",
       "src/components/tt/steward/workroom-receipts.test.ts",
+      "src/lib/steward-canonical-run.test.ts",
+      "src/lib/steward-verification.test.ts",
+      "src/lib/steward-coverage.test.ts",
+      "src/lib/steward-proposal-link.test.ts",
     ],
   },
 });

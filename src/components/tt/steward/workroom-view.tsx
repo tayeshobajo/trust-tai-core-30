@@ -198,7 +198,14 @@ function ScoreCard({
               : scopeUnavailable
                 ? "Required-work scope unavailable"
                 : value === null
-                  ? "Nothing confirmed yet"
+                  ? (() => {
+                      const recorded =
+                        (meeting.requiredWork?.denominator ?? meeting.agreed) +
+                        (meeting.linkedWork?.total ?? 0);
+                      return recorded > 0
+                        ? `${recorded} recorded tasks · scope review pending`
+                        : "Nothing confirmed yet";
+                    })()
                   : `${meeting.done} of ${meeting.requiredWork?.denominator ?? meeting.agreed} ${meeting.requiredWork ? "required" : "agreed"} tasks verified`}
           </p>
         </div>
@@ -214,7 +221,7 @@ function ScoreCard({
           <rect width={value ?? 0} height="8" rx="4" fill="currentColor" />
         </svg>
         <span className="text-[10px] text-muted-foreground">
-          {value === null ? "Unknown" : `${value}%`}
+          {value === null ? "not verified yet" : `${value}%`}
         </span>
       </div>
       <p className="mt-1 text-[10px] text-muted-foreground">
@@ -322,9 +329,7 @@ function TaskDetail({
           ) : null}
           {row.boardTask.notes ? (
             <details>
-              <summary className="cursor-pointer font-medium text-foreground">
-                Task notes
-              </summary>
+              <summary className="cursor-pointer font-medium text-foreground">Task notes</summary>
               <p className="mt-1 whitespace-pre-wrap break-words">{row.boardTask.notes}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Notes are what a person recorded. A link mentioned in notes has not been opened or
@@ -360,6 +365,11 @@ function TaskDetail({
               Bounded preparation for this task. A draft is review material only — it never
               completes the task, grants verified credit, or delivers the work itself.
             </p>
+            <p className="mt-2 rounded-md border border-border bg-card p-2 text-xs text-muted-foreground">
+              Shared blocker: the durable run bridge for canonical tasks has not been built or
+              reviewed yet, so every action below stays unavailable. The legacy runner must never
+              auto-complete shared board work.
+            </p>
             <ul className="mt-3 space-y-2">
               {preparationAvailability(row.boardTask).map(({ action, offered, because }) => (
                 <li key={action.id} className="rounded-md border border-border bg-card p-2.5">
@@ -375,9 +385,11 @@ function TaskDetail({
                     </TTButton>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{action.summary}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {offered ? because : `Not offered here: ${because}`}
-                  </p>
+                  {offered ? null : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Not offered here: {because}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>
