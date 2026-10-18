@@ -281,7 +281,7 @@ begin
     (select lk.task_id from public.steward_proposal_links lk
       join public.steward_proposal_ledger pl on pl.id = lk.proposal_ledger_id
       where pl.organization_id = '11111111-1111-1111-1111-111111111111'
-        and pl.source_key = 'ext-4103' limit 1),
+        and pl.source_key = 'ext-3948' limit 1),
     'manual_required', 'f0000000-0000-0000-0000-0000000000c1');
   select denominator into after_count from public.steward_scope_counts(
     '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
