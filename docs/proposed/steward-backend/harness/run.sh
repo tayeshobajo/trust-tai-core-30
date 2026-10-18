@@ -41,6 +41,7 @@ $AS_USER "$PGBIN/initdb" -D "$ROOT/data" -U postgres --auth=trust --no-locale --
 $AS_USER "$PGBIN/pg_ctl" -D "$ROOT/data" -l "$LOG" -o "-c listen_addresses='' -k $SOCKET" -w start >/dev/null
 
 DB="host=$SOCKET user=postgres dbname=postgres"
+export TMPDIR_A="$ROOT/claim_a" TMPDIR_B="$ROOT/claim_b"
 
 echo "== fixture"
 psql "$DB" -q -v ON_ERROR_STOP=1 -f "$(dirname "$0")/fixture.sql"
