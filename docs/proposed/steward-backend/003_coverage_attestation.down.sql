@@ -1,9 +1,10 @@
 -- Data-preserving operational rollback for 003_coverage_attestation.
-drop function if exists public.steward_current_coverage(uuid, uuid);
+-- Drops the attestation functions ONLY. Attestations, scope versions, RLS,
+-- select policies and the immutability trigger are KEPT, so retained
+-- history stays org-scoped and tamper-proof after rollback.
 drop function if exists public.steward_attest_coverage(uuid, uuid);
-drop trigger if exists steward_coverage_immutable on public.steward_coverage_attestations;
-drop function if exists public.steward_guard_coverage_mutation();
-drop policy if exists steward_coverage_attestations_select on public.steward_coverage_attestations;
-drop policy if exists steward_scope_versions_select on public.steward_scope_versions;
-alter table public.steward_coverage_attestations disable row level security;
-alter table public.steward_scope_versions disable row level security;
+drop function if exists public.steward_current_coverage(uuid, uuid);
+drop function if exists private.steward_transcript_hash(uuid, uuid);
+-- private.steward_invalidate_scope is shared by 004/005; dropped in the
+-- final rollback step. steward_guard_coverage_mutation is dropped in 005
+-- down after the dependent triggers are removed.
