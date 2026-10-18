@@ -66,7 +66,7 @@ export interface WorkroomSyncState {
 }
 
 export interface WorkroomViewProps {
-  onAddRequiredTask?: (draft: RequiredWorkDraft) => Promise<void>;
+  onAddRequiredTask?: ((draft: RequiredWorkDraft) => Promise<void>) | undefined;
   linkedRead?: { state: "loading" | "error" | "ready"; truncated: boolean; onRetry?: () => void };
   /** Keep suite branding/account in the enclosing AppShell. */
   embedded?: boolean;
@@ -562,7 +562,7 @@ export function WorkroomView({
                   {m.occurredAt.slice(0, 10)} ·{" "}
                   {receiptsFailed
                     ? "verification unavailable"
-                    : `${m.done} of ${m.agreed} verified`}
+                    : `${m.done} of ${m.requiredWork?.denominator ?? m.agreed} verified`}
                 </span>
                 <span
                   className={cn(
@@ -830,7 +830,7 @@ export function WorkroomView({
         aria-label="Requirements for complete meeting work"
         className={cn(
           "mt-4 flex items-start gap-3 rounded-lg border border-l-2 p-3 text-xs leading-5",
-          meeting.score === 100
+          meeting.score === 100 && (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
             ? "border-success/20 border-l-success bg-success/5"
             : "border-warning/15 border-l-warning bg-warning/5",
         )}
@@ -838,7 +838,7 @@ export function WorkroomView({
         <AlertCircle
           className={cn(
             "mt-0.5 size-5 shrink-0",
-            meeting.score === 100 ? "text-success" : "text-warning",
+            meeting.score === 100 && (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated)) ? "text-success" : "text-warning",
           )}
         />
         <div>
