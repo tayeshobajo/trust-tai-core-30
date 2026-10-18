@@ -4,21 +4,32 @@
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
--- 1. Add required items (transcript + manual_required + archived task).
+-- 1. Add required items (manual_required + archived task). Task 1 is
+--    ALREADY in scope: the 004 link added it atomically as 'transcript'.
+--    Re-adding it must conflict, not duplicate.
 do $$
 declare i public.steward_scope_items;
 begin
+  perform public.test_assert(exists(
+    select 1 from public.steward_scope_items
+     where organization_id = '11111111-1111-1111-1111-111111111111'
+       and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+       and task_id = '10000000-0000-0000-0000-000000000001'
+       and classification = 'transcript' and removed_at is null),
+    'task 1 already in scope from the atomic proposal link');
   i := public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
-    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000001',
-    'transcript', 'd1000000-0000-0000-0000-000000000001');
-  perform public.test_assert(i.added_by = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'scope add actor from auth.uid');
-  perform public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
     'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000002',
     'manual_required', 'd1000000-0000-0000-0000-000000000002');
+  perform public.test_assert(i.added_by = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'scope add actor from auth.uid');
   perform public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
     'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000003',
     'manual_required', 'd1000000-0000-0000-0000-000000000003');
 end $$;
+select public.test_denied($q$
+  select public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000001',
+    'manual_required', 'd1000000-0000-0000-0000-000000000009') $q$,
+  're-adding the linked task conflicts, never duplicates');
 
 -- 2. Counts: denominator 6 = 4 scope items (3 added here + 1 from the
 --    coverage suite, INCLUDING the archived task) + 2 confirmed
