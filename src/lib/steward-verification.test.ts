@@ -94,8 +94,8 @@ describe("verifyCanonicalTask", () => {
     });
     expect(result.kind).toBe("verified");
     if (result.kind === "verified") {
-      expect(result.task.status).toBe("complete");
-      expect(result.task.revision).toBe(3);
+      expect(result.task?.status).toBe("complete");
+      expect(result.task?.revision).toBe(3);
       expect(result.receipt.operationId).toBe("op-1");
     }
   });
@@ -162,8 +162,8 @@ describe("reopenCanonicalTask", () => {
     });
     expect(result.kind).toBe("reopened");
     if (result.kind === "reopened") {
-      expect(result.task.status).toBe("open");
-      expect(result.task.revision).toBe(3);
+      expect(result.task?.status).toBe("open");
+      expect(result.task?.revision).toBe(3);
     }
   });
 });

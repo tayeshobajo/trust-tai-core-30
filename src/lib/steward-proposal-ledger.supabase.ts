@@ -44,7 +44,7 @@ function rethrow(error: { code?: string; message?: string } | null): never {
     throw new TranscriptChangedError();
   }
   const err = new Error(error?.message ?? "proposal ledger call failed");
-  (err as { code?: string }).code = error?.code;
+  if (error?.code) (err as { code?: string }).code = error.code;
   throw err;
 }
 

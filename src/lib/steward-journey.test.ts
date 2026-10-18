@@ -17,6 +17,7 @@ import {
   reopenCanonicalTask,
   verifyCanonicalTask,
   type VerificationRepository,
+  type VerificationTaskState,
 } from "./steward-verification.server";
 
 const ORG = "org-a";
@@ -112,18 +113,15 @@ function makeVerificationStore() {
       revision += 1;
       const receipt = { id: `rcpt-${receipts.length + 1}`, note: input.note };
       receipts.push(receipt);
-      return {
-        task: {
-          id: input.taskId,
-          status,
-          revision,
-          completionEvidence: input.note,
-          completedAt: "now",
-          completedBy: input.actorId,
-        },
-        receipt: receipt as never,
-        replayed: false,
+      const task: VerificationTaskState = {
+        id: input.taskId,
+        status: status as VerificationTaskState["status"],
+        revision,
+        completionEvidence: input.note,
+        completedAt: "now",
+        completedBy: input.actorId,
       };
+      return { task, receipt: receipt as never, replayed: false };
     },
     async reopenTask(input) {
       if (input.expectedRevision !== revision) {
@@ -133,17 +131,15 @@ function makeVerificationStore() {
       }
       status = "open";
       revision += 1;
-      return {
-        task: {
-          id: input.taskId,
-          status,
-          revision,
-          completionEvidence: null,
-          completedAt: null,
-          completedBy: null,
-        },
-        replayed: false,
+      const task: VerificationTaskState = {
+        id: input.taskId,
+        status: status as VerificationTaskState["status"],
+        revision,
+        completionEvidence: null,
+        completedAt: null,
+        completedBy: null,
       };
+      return { task, replayed: false };
     },
   };
   return repo;

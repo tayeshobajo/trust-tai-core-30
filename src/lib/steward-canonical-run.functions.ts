@@ -19,7 +19,8 @@
  *   deployment fails honestly instead of fabricating output.
  */
 
-import { createServerFn, getRequest } from "@tanstack/react-start";
+import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createSupabaseCanonicalRunRepository } from "./steward-canonical-run.supabase";
@@ -128,7 +129,9 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
     // another org's run/artifact by supplying an arbitrary runId. RLS
     // returns nothing for an inaccessible run, so a foreign runId is
     // indistinguishable from a nonexistent one.
-    const { data: run } = await context.supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
+    const rls = context.supabase as any;
+    const { data: run } = await rls
       .from("steward_canonical_runs")
       .select("id, organization_id, task_id")
       .eq("id", data.runId)
@@ -136,7 +139,7 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
     if (!run) {
       return { kind: "unavailable", reason: "this run is not available to you" };
     }
-    const { data: membership } = await context.supabase
+    const { data: membership } = await rls
       .from("organization_memberships")
       .select("organization_id")
       .eq("organization_id", run.organization_id)
@@ -146,7 +149,7 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
     if (!membership) {
       return { kind: "unavailable", reason: "this run is not available to you" };
     }
-    const { data: task } = await context.supabase
+    const { data: task } = await rls
       .from("steward_tasks")
       .select("visibility, owner_user_id, created_by")
       .eq("organization_id", run.organization_id)
