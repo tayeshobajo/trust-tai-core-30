@@ -561,6 +561,7 @@ export function WorkroomView({
   selection,
   onSelect,
   onEditTaskField,
+  mayEditTask,
   taskById,
 }: WorkroomViewProps) {
   const viewportCompact = useCompact();
@@ -898,7 +899,8 @@ export function WorkroomView({
         {visibleRows.map((r) => {
           const key = workroomRowKey(r);
           const active = row ? workroomRowKey(row) === key : false;
-          const editable = !!r.boardTask && !!onEditTaskField;
+          const editable =
+            !!r.boardTask && !!onEditTaskField && (!mayEditTask || mayEditTask(r.boardTask));
           const title = displayTitleOf(r.what);
           const cell = (
             field: "owner" | "due" | "status",
