@@ -687,6 +687,15 @@ export interface ScopeReviewPanelProps {
  * Linked/dismissed proposals stay visible in the decision history with
  * their reasons and targets — decisions never vanish from review.
  */
+/** The simple one-click operations, tagged so a retry replays the exact
+ *  original action — never whichever button happens to be rendered. */
+type SimpleAction = "register" | "attest" | "sync";
+interface SimpleGesture {
+  action: SimpleAction;
+  expectedTranscriptHash?: string;
+  expectedScopeVersion?: number;
+}
+
 export function ScopeReviewPanel({
   scope,
   coverage,
@@ -695,18 +704,58 @@ export function ScopeReviewPanel({
   coverageCapability,
   proposalCapability,
   linkTargets,
+  expectedSource,
   onAttestCoverage,
   onSyncProposals,
   onSyncRequiredScope,
   onLinkProposal,
   onDismissProposal,
 }: ScopeReviewPanelProps) {
-  const simple = useOperationAttempt<Record<string, never>>();
+  const simple = useOperationAttempt<SimpleGesture>();
   const linkAttempt = useOperationAttempt<{ proposalId: string; taskId: string }>();
   const dismissAttempt = useOperationAttempt<{ proposalId: string; reason: string }>();
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [linkChoices, setLinkChoices] = useState<Record<string, string>>({});
   const busy = simple.busy || linkAttempt.busy || dismissAttempt.busy;
+
+  function handlerFor(action: SimpleAction) {
+    if (action === "register") return onSyncProposals;
+    if (action === "attest") return onAttestCoverage;
+    return onSyncRequiredScope;
+  }
+
+  function runSimple(action: SimpleAction, reuse: typeof simple.pending) {
+    const handler = handlerFor(action);
+    if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
+    const gesture: SimpleGesture =
+      action === "attest"
+        ? {
+            action,
+            /* Captured at the gesture: the attestation is bound to the
+               exact transcript hash + scope version the human reviewed. */
+            ...(expectedSource
+              ? {
+                  expectedTranscriptHash: expectedSource.transcriptHash,
+                  expectedScopeVersion: expectedSource.scopeVersion,
+                }
+              : {}),
+          }
+        : { action };
+    return simple.run(
+      (input) =>
+        handler({
+          operationId: input.operationId,
+          ...(input.expectedTranscriptHash
+            ? {
+                expectedTranscriptHash: input.expectedTranscriptHash,
+                expectedScopeVersion: input.expectedScopeVersion!,
+              }
+            : {}),
+        }),
+      gesture,
+      reuse,
+    );
+  }
 
   const pending =
     proposals?.kind === "ready" ? proposals.proposals.filter((p) => p.status === "proposed") : [];
