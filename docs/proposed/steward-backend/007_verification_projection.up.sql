@@ -5,10 +5,20 @@
 -- reopen and rendering a false verified. This RPC computes the latest
 -- receipt per requested task and the task's current revision in ONE
 -- statement snapshot, server-side, so partial reads are impossible.
--- Read-only: no writes, no grants here (review script only), RLS on the
--- underlying tables plus the active-membership gate below preserve
--- business visibility. Missing or inaccessible task ids are returned
--- explicitly in `missing` — never silently counted as unverified.
+-- Read-only: no writes, no grants here (review script only).
+-- SECURITY DEFINER: this function runs as its owner and therefore BYPASSES
+-- table RLS. Visibility is enforced EXPLICITLY here instead: the caller
+-- must be an active member of p_org, and only tasks in p_org with
+-- task_visibility = 'business' are projected (every canonical Steward
+-- operation is business-only). Personal tasks — the caller's own or
+-- anyone else's — are never projected. Missing, personal, or otherwise
+-- inaccessible task ids are reported as unknown (absent rows / `missing`)
+-- — never silently counted as unverified.
+--
+-- Latest-receipt criterion (shared verbatim with steward_scope_counts):
+-- order by task_revision_after DESC, created_at DESC, id DESC. The
+-- revision each receipt produced is monotonic per task, so the canonical
+-- latest state never depends on random UUID order when timestamps tie.
 
 create or replace function public.steward_meeting_verification_projection(
   p_org uuid,
@@ -38,23 +48,26 @@ begin
       select unnest(requested) as id
     ),
     visible as (
-      -- RLS on steward_tasks applies: only tasks the caller may read
-      -- appear here. Requested ids absent from this set are reported in
-      -- `missing` rather than treated as unverified.
+      -- Explicit visibility (RLS does NOT apply under SECURITY DEFINER):
+      -- same org AND business visibility only. Requested ids absent from
+      -- this set are reported in `missing` rather than treated as
+      -- unverified.
       select t.id, t.status, t.revision
         from public.steward_tasks t
         join req on req.id = t.id
        where t.organization_id = p_org
+         and t.task_visibility = 'business'
     ),
     latest as (
-      -- Latest receipt per task in the SAME statement snapshot. Ties on
-      -- created_at break by id so ordering is stable and deterministic.
+      -- Latest receipt per task in the SAME statement snapshot, by the
+      -- canonical monotonic task_revision_after first; created_at and id
+      -- only break exact revision ties.
       select distinct on (r.task_id)
              r.task_id, r.kind, r.task_revision_after
         from public.steward_task_receipts r
         join visible v on v.id = r.task_id
        where r.organization_id = p_org
-       order by r.task_id, r.created_at desc, r.id desc
+       order by r.task_id, r.task_revision_after desc, r.created_at desc, r.id desc
     )
     select v.id,
            v.status,

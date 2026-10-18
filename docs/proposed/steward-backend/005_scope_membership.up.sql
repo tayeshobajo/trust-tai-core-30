@@ -324,7 +324,7 @@ $$;
 --    evidence-backed verification contract exists for them yet, so they
 --    hold the denominator open until one does.
 --  verified: scope items whose task is complete AND whose LATEST receipt
---    is a verify whose recorded task_revision_after still equals the
+--    (task_revision_after DESC, created_at DESC, id DESC) is a verify whose recorded task_revision_after still equals the
 --    task's current revision. A reopen, an edit, or a legacy status flip
 --    after reopen changes the revision and drops the credit.
 --  pending_proposals: ledger proposals neither linked nor dismissed —
@@ -359,13 +359,17 @@ begin
            count(*) filter (
              where t.status = 'complete'
                and exists (
-                 select 1 from public.steward_task_receipts r
-                  where r.task_id = i.task_id and r.kind = 'verify'
-                    and r.task_revision_after = t.revision
-                    and not exists (
-                      select 1 from public.steward_task_receipts newer
-                       where newer.task_id = i.task_id
-                         and newer.created_at > r.created_at)))::integer,
+                 -- Latest receipt by the canonical criterion shared with
+                 -- steward_meeting_verification_projection (007):
+                 -- task_revision_after DESC, created_at DESC, id DESC.
+                 select 1 from (
+                   select r.kind, r.task_revision_after
+                     from public.steward_task_receipts r
+                    where r.task_id = i.task_id
+                    order by r.task_revision_after desc, r.created_at desc, r.id desc
+                    limit 1) latest
+                  where latest.kind = 'verify'
+                    and latest.task_revision_after = t.revision))::integer,
            (select count(*)::integer from public.steward_proposal_ledger pl
              where pl.organization_id = p_org
                and pl.conversation_id = p_conversation
