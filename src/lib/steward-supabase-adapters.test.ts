@@ -22,7 +22,7 @@ function sqlParams(file: string, fn: string): string[] {
   const sql = readFileSync(join(SQL_DIR, file), "utf8");
   const match = sql.match(new RegExp(`function public\\.${fn}\\(([^)]*)\\)`, "s"));
   if (!match) throw new Error(`function ${fn} not found in ${file}`);
-  return [...match[1].matchAll(/\b(p_[a-z_]+)\s+[a-z]/gi)].map((m) => m[1]);
+  return [...match[1]!.matchAll(/\b(p_[a-z_]+)\s+[a-z]/gi)].map((m) => m[1]!);
 }
 
 interface RpcCall {
