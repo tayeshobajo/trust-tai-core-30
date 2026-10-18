@@ -751,41 +751,38 @@ export function ScopeReviewPanel({
   const [linkChoices, setLinkChoices] = useState<Record<string, string>>({});
   const busy = simple.busy || linkAttempt.busy || dismissAttempt.busy;
 
-  function handlerFor(action: SimpleAction) {
-    if (action === "register") return onSyncProposals;
-    if (action === "attest") return onAttestCoverage;
-    return onSyncRequiredScope;
+  function runRegisterOrSync(action: "register" | "sync", reuse: typeof simple.pending) {
+    const handler = action === "register" ? onSyncProposals : onSyncRequiredScope;
+    if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
+    return simple.run((input) => handler({ operationId: input.operationId }), { action }, reuse);
   }
 
-  function runSimple(action: SimpleAction, reuse: typeof simple.pending) {
-    const handler = handlerFor(action);
-    if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
-    const gesture: SimpleGesture =
-      action === "attest" && expectedSource
-        ? {
-            action,
-            /* Captured at the gesture: the attestation is bound to the
-               exact transcript hash + scope version the human reviewed. */
-            expectedTranscriptHash: expectedSource.transcriptHash,
-            expectedScopeVersion: expectedSource.scopeVersion,
-          }
-        : { action };
+  function runAttest(reuse: typeof simple.pending) {
+    if (!onAttestCoverage || !expectedSource)
+      return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
+    /* Captured at the gesture: the attestation is bound to the exact
+       transcript hash + scope version the human reviewed. */
+    const gesture: SimpleGesture = {
+      action: "attest",
+      expectedTranscriptHash: expectedSource.transcriptHash,
+      expectedScopeVersion: expectedSource.scopeVersion,
+    };
     return simple.run(
       (input) =>
-        handler({
-          operationId: input.operationId,
-          /* Attest carries its captured source binding; the other simple
-             operations never do. */
-          ...(input.action === "attest"
-            ? {
-                expectedTranscriptHash: input.expectedTranscriptHash,
-                expectedScopeVersion: input.expectedScopeVersion,
-              }
-            : {}),
-        }),
+        input.action === "attest"
+          ? onAttestCoverage({
+              operationId: input.operationId,
+              expectedTranscriptHash: input.expectedTranscriptHash,
+              expectedScopeVersion: input.expectedScopeVersion,
+            })
+          : Promise.resolve({ kind: "rejected" as const, message: "unexpected operation" }),
       gesture,
       reuse,
     );
+  }
+
+  function runSimple(action: SimpleAction, reuse: typeof simple.pending) {
+    return action === "attest" ? runAttest(reuse) : runRegisterOrSync(action, reuse);
   }
 
   const pending =
