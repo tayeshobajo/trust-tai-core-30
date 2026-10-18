@@ -22,7 +22,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
+import { trustTaiWriter, trustTaiWriterConfigured } from "./trust-tai-writer.server";
 import { createSupabaseCanonicalRunRepository } from "./steward-canonical-run.supabase";
 import {
   authorizeWorkerEndpoint,
