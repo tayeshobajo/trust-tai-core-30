@@ -246,12 +246,6 @@ select public.test_denied($q$
     '11111111-1111-1111-1111-111111111111',
     array['10000000-0000-0000-0000-000000000005']::uuid[]) $q$,
   'anonymous caller cannot read the projection');
-reset role;
-select public.test_denied($q$
-  set local role anon;
-  select * from public.steward_meeting_verification_projection(
-    '11111111-1111-1111-1111-111111111111',
-    array['10000000-0000-0000-0000-000000000005']::uuid[]) $q$,
-  'anon role has no execute on the projection');
+-- (anon has no EXECUTE at all: covered by 000/000b ACL snapshots.)
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 reset role;
