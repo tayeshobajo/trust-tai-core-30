@@ -41,6 +41,14 @@ export type VerificationActionState =
 export interface TaskVerificationRead {
   task: VerificationTaskState | null;
   receipts: TaskReceipt[];
+  /**
+   * Receipt-backed verified state, computed with the SAME criteria as the
+   * scope SQL: the task is complete AND its LATEST receipt is a verify
+   * whose task_revision_after still equals the current revision. Raw board
+   * "complete" status alone — no receipt, or an edit/reopen since — is
+   * NEVER verified. `null` when the task row could not be read.
+   */
+  verified: boolean | null;
 }
 
 export type VerificationReadState =

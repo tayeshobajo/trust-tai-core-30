@@ -23,6 +23,9 @@ export interface TaskReceipt {
   note: string;
   actorId: string;
   createdAt: string;
+  /** The task revision recorded with the receipt — verified credit exists
+      only while this equals the task's CURRENT revision. */
+  taskRevisionAfter: number;
 }
 
 export interface VerificationTaskState {
