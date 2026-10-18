@@ -89,7 +89,11 @@ export interface CanonicalRunRepository {
   }): Promise<CanonicalRun>;
   failRun(runId: string, actorId: string, reason: string): Promise<CanonicalRun>;
   /** Resolve a selected input ref to stored content; null if inaccessible. */
-  readInput(ref: CanonicalRunInputRef, orgId: string, actorId: string): Promise<{ content: string; revision: number } | null>;
+  readInput(
+    ref: CanonicalRunInputRef,
+    orgId: string,
+    actorId: string,
+  ): Promise<{ content: string; revision: number } | null>;
 }
 
 /**
@@ -179,7 +183,10 @@ export async function requestCanonicalRun(
     return { kind: run.status === "queued" && run.attempts === 0 ? "queued" : "replayed", run };
   } catch (error) {
     if (error instanceof OperationConflictError || (error as { code?: string }).code === "P0002") {
-      return { kind: "conflict", message: "this operation was already requested with different inputs" };
+      return {
+        kind: "conflict",
+        message: "this operation was already requested with different inputs",
+      };
     }
     throw error;
   }
@@ -208,7 +215,11 @@ export async function executeCanonicalRun(
   for (const ref of claimed.inputSnapshot.inputRefs) {
     const resolved = await repo.readInput(ref, claimed.organizationId, input.actorId);
     if (!resolved) {
-      const run = await repo.failRun(claimed.id, input.actorId, `input became inaccessible: ${ref.kind}:${ref.id}`);
+      const run = await repo.failRun(
+        claimed.id,
+        input.actorId,
+        `input became inaccessible: ${ref.kind}:${ref.id}`,
+      );
       return { kind: "failed", run };
     }
     inputs.push({ kind: ref.kind, content: resolved.content, revision: resolved.revision });

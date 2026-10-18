@@ -34,13 +34,19 @@ function makeRun(partial: Partial<CanonicalRun>): CanonicalRun {
   };
 }
 
-function makeRepo(overrides: Partial<CanonicalRunRepository> = {}): CanonicalRunRepository & { calls: string[] } {
+function makeRepo(
+  overrides: Partial<CanonicalRunRepository> = {},
+): CanonicalRunRepository & { calls: string[] } {
   const calls: string[] = [];
   return {
     calls,
     async requestRun(input) {
       calls.push("requestRun");
-      return makeRun({ requestDigest: input.digest, inputSnapshot: input.snapshot, clientOperationId: input.operationId });
+      return makeRun({
+        requestDigest: input.digest,
+        inputSnapshot: input.snapshot,
+        clientOperationId: input.operationId,
+      });
     },
     async claimRun() {
       calls.push("claimRun");
@@ -48,7 +54,12 @@ function makeRepo(overrides: Partial<CanonicalRunRepository> = {}): CanonicalRun
     },
     async completeRun(input) {
       calls.push("completeRun");
-      return makeRun({ status: "complete", artifactText: input.artifactText, artifactDigest: input.artifactDigest, evidenceRefs: input.evidenceRefs });
+      return makeRun({
+        status: "complete",
+        artifactText: input.artifactText,
+        artifactDigest: input.artifactDigest,
+        evidenceRefs: input.evidenceRefs,
+      });
     },
     async failRun(_runId, _actor, reason) {
       calls.push("failRun");
@@ -71,28 +82,51 @@ describe("requestCanonicalRun", () => {
   it("rejects actions outside the allowlist", async () => {
     const repo = makeRepo();
     const result = await requestCanonicalRun(repo, {
-      orgId: ORG, taskId: TASK, taskTitle: "T", action: "build_website" as never,
-      operationId: "op-1", inputRefs: [], actorId: ACTOR,
+      orgId: ORG,
+      taskId: TASK,
+      taskTitle: "T",
+      action: "build_website" as never,
+      operationId: "op-1",
+      inputRefs: [],
+      actorId: ACTOR,
     });
     expect(result.kind).toBe("rejected");
     expect(repo.calls).not.toContain("requestRun");
   });
 
   it("rejects inaccessible inputs before creating a run", async () => {
-    const repo = makeRepo({ async readInput() { return null; } });
+    const repo = makeRepo({
+      async readInput() {
+        return null;
+      },
+    });
     const result = await requestCanonicalRun(repo, {
-      orgId: ORG, taskId: TASK, taskTitle: "T", action: "prepare_brief",
-      operationId: "op-1", inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }], actorId: ACTOR,
+      orgId: ORG,
+      taskId: TASK,
+      taskTitle: "T",
+      action: "prepare_brief",
+      operationId: "op-1",
+      inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }],
+      actorId: ACTOR,
     });
     expect(result.kind).toBe("rejected");
     expect(repo.calls).not.toContain("requestRun");
   });
 
   it("rejects inputs whose revision changed since selection", async () => {
-    const repo = makeRepo({ async readInput() { return { content: "x", revision: 4 }; } });
+    const repo = makeRepo({
+      async readInput() {
+        return { content: "x", revision: 4 };
+      },
+    });
     const result = await requestCanonicalRun(repo, {
-      orgId: ORG, taskId: TASK, taskTitle: "T", action: "prepare_brief",
-      operationId: "op-1", inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }], actorId: ACTOR,
+      orgId: ORG,
+      taskId: TASK,
+      taskTitle: "T",
+      action: "prepare_brief",
+      operationId: "op-1",
+      inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }],
+      actorId: ACTOR,
     });
     expect(result.kind).toBe("rejected");
     if (result.kind === "rejected") expect(result.message).toContain("changed since selection");
@@ -107,31 +141,53 @@ describe("requestCanonicalRun", () => {
       },
     });
     const result = await requestCanonicalRun(repo, {
-      orgId: ORG, taskId: TASK, taskTitle: "T", action: "prepare_brief",
-      operationId: "op-1", inputRefs: [], actorId: ACTOR,
+      orgId: ORG,
+      taskId: TASK,
+      taskTitle: "T",
+      action: "prepare_brief",
+      operationId: "op-1",
+      inputRefs: [],
+      actorId: ACTOR,
     });
     expect(result.kind).toBe("conflict");
   });
 
   it("produces a stable digest independent of input ref order", () => {
-    const a = digestRequest({ action: "prepare_brief", inputRefs: [
-      { kind: "transcript", id: "c1", revision: 1 },
-      { kind: "task_notes", id: "t1", revision: 2 },
-    ] });
-    const b = digestRequest({ action: "prepare_brief", inputRefs: [
-      { kind: "task_notes", id: "t1", revision: 2 },
-      { kind: "transcript", id: "c1", revision: 1 },
-    ] });
+    const a = digestRequest({
+      action: "prepare_brief",
+      inputRefs: [
+        { kind: "transcript", id: "c1", revision: 1 },
+        { kind: "task_notes", id: "t1", revision: 2 },
+      ],
+    });
+    const b = digestRequest({
+      action: "prepare_brief",
+      inputRefs: [
+        { kind: "task_notes", id: "t1", revision: 2 },
+        { kind: "transcript", id: "c1", revision: 1 },
+      ],
+    });
     expect(a).toBe(b);
-    const c = digestRequest({ action: "prepare_brief", inputRefs: [{ kind: "transcript", id: "c1", revision: 2 }] });
+    const c = digestRequest({
+      action: "prepare_brief",
+      inputRefs: [{ kind: "transcript", id: "c1", revision: 2 }],
+    });
     expect(c).not.toBe(a);
   });
 });
 
 describe("executeCanonicalRun", () => {
   it("returns not_claimed when another worker holds the run", async () => {
-    const repo = makeRepo({ async claimRun() { return null; } });
-    const result = await executeCanonicalRun(repo, fakeProvider, { runId: "run-1", actorId: ACTOR, taskTitle: "T" });
+    const repo = makeRepo({
+      async claimRun() {
+        return null;
+      },
+    });
+    const result = await executeCanonicalRun(repo, fakeProvider, {
+      runId: "run-1",
+      actorId: ACTOR,
+      taskTitle: "T",
+    });
     expect(result.kind).toBe("not_claimed");
     expect(repo.calls).not.toContain("completeRun");
   });
@@ -139,10 +195,21 @@ describe("executeCanonicalRun", () => {
   it("completes with artifact text, digest and input provenance refs", async () => {
     const repo = makeRepo({
       async claimRun() {
-        return makeRun({ status: "running", attempts: 1, inputSnapshot: { action: "prepare_brief", inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }] } });
+        return makeRun({
+          status: "running",
+          attempts: 1,
+          inputSnapshot: {
+            action: "prepare_brief",
+            inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }],
+          },
+        });
       },
     });
-    const result = await executeCanonicalRun(repo, fakeProvider, { runId: "run-1", actorId: ACTOR, taskTitle: "T" });
+    const result = await executeCanonicalRun(repo, fakeProvider, {
+      runId: "run-1",
+      actorId: ACTOR,
+      taskTitle: "T",
+    });
     expect(result.kind).toBe("complete");
     if (result.kind === "complete") {
       expect(result.run.artifactDigest).toBe(digestArtifact("draft brief artifact"));
@@ -152,8 +219,16 @@ describe("executeCanonicalRun", () => {
 
   it("marks the run failed on provider failure and never touches the task", async () => {
     const repo = makeRepo();
-    const failing: CanonicalRunProvider = { async generate() { throw new Error("provider timeout"); } };
-    const result = await executeCanonicalRun(repo, failing, { runId: "run-1", actorId: ACTOR, taskTitle: "T" });
+    const failing: CanonicalRunProvider = {
+      async generate() {
+        throw new Error("provider timeout");
+      },
+    };
+    const result = await executeCanonicalRun(repo, failing, {
+      runId: "run-1",
+      actorId: ACTOR,
+      taskTitle: "T",
+    });
     expect(result.kind).toBe("failed");
     expect(repo.calls).toContain("failRun");
     expect(repo.calls).not.toContain("completeRun");
@@ -162,11 +237,24 @@ describe("executeCanonicalRun", () => {
   it("fails the run when an input becomes inaccessible after claiming", async () => {
     const repo = makeRepo({
       async claimRun() {
-        return makeRun({ status: "running", attempts: 1, inputSnapshot: { action: "prepare_brief", inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }] } });
+        return makeRun({
+          status: "running",
+          attempts: 1,
+          inputSnapshot: {
+            action: "prepare_brief",
+            inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }],
+          },
+        });
       },
-      async readInput() { return null; },
+      async readInput() {
+        return null;
+      },
     });
-    const result = await executeCanonicalRun(repo, fakeProvider, { runId: "run-1", actorId: ACTOR, taskTitle: "T" });
+    const result = await executeCanonicalRun(repo, fakeProvider, {
+      runId: "run-1",
+      actorId: ACTOR,
+      taskTitle: "T",
+    });
     expect(result.kind).toBe("failed");
     expect(repo.calls).not.toContain("completeRun");
   });

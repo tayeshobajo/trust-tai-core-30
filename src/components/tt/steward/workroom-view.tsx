@@ -329,9 +329,7 @@ function TaskDetail({
           ) : null}
           {row.boardTask.notes ? (
             <details>
-              <summary className="cursor-pointer font-medium text-foreground">
-                Task notes
-              </summary>
+              <summary className="cursor-pointer font-medium text-foreground">Task notes</summary>
               <p className="mt-1 whitespace-pre-wrap break-words">{row.boardTask.notes}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Notes are what a person recorded. A link mentioned in notes has not been opened or

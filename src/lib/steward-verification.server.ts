@@ -125,10 +125,15 @@ export async function reopenCanonicalTask(
   }
 }
 
-function mapVerificationError(error: unknown): { kind: "revision_conflict" | "evidence_required" | "rejected"; message: string } {
+function mapVerificationError(error: unknown): {
+  kind: "revision_conflict" | "evidence_required" | "rejected";
+  message: string;
+} {
   const code = (error as { code?: string }).code;
   const message = error instanceof Error ? error.message : "verification failed";
-  if (code === "P0001" || error instanceof RevisionConflictError) return { kind: "revision_conflict", message };
-  if (code === "P0010" || error instanceof EvidenceRequiredError) return { kind: "evidence_required", message };
+  if (code === "P0001" || error instanceof RevisionConflictError)
+    return { kind: "revision_conflict", message };
+  if (code === "P0010" || error instanceof EvidenceRequiredError)
+    return { kind: "evidence_required", message };
   return { kind: "rejected", message };
 }

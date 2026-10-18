@@ -54,8 +54,10 @@ export async function resolveCoverage(
 ): Promise<CoverageState> {
   const latest = await repo.latestAttestation(input.orgId, input.conversationId);
   if (!latest || latest.supersededAt) return { kind: "unconfirmed", reason: "never_attested" };
-  if (latest.transcriptHash !== input.transcriptHash) return { kind: "unconfirmed", reason: "transcript_changed" };
-  if (latest.scopeVersion !== input.scopeVersion) return { kind: "unconfirmed", reason: "scope_changed" };
+  if (latest.transcriptHash !== input.transcriptHash)
+    return { kind: "unconfirmed", reason: "transcript_changed" };
+  if (latest.scopeVersion !== input.scopeVersion)
+    return { kind: "unconfirmed", reason: "scope_changed" };
   return { kind: "confirmed", attestation: latest };
 }
 
@@ -63,7 +65,13 @@ export async function resolveCoverage(
  *  the same transaction (handled by the SQL function). */
 export async function attestCoverage(
   repo: CoverageRepository,
-  input: { orgId: string; conversationId: string; transcriptHash: string; scopeVersion: number; actorId: string },
+  input: {
+    orgId: string;
+    conversationId: string;
+    transcriptHash: string;
+    scopeVersion: number;
+    actorId: string;
+  },
 ): Promise<CoverageAttestation> {
   if (input.transcriptHash.trim().length < 16) {
     throw new Error("a real transcript digest (at least 16 characters) is required");
