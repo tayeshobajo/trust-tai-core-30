@@ -256,13 +256,15 @@ describe("Supabase adapters match the proposed SQL contract", () => {
       reason: "scope amendment reason",
       operationId: "op-2",
     });
-    expect(calls[1].fn).toBe("steward_scope_amend_remove");
-    expect(Object.keys(calls[1].args).sort()).toEqual(
+    const amendCall = calls[1]!;
+    expect(amendCall.fn).toBe("steward_scope_amend_remove");
+    expect(Object.keys(amendCall.args).sort()).toEqual(
       sqlParams("005_scope_membership.up.sql", "steward_scope_amend_remove").sort(),
     );
     await repo.counts("o1", "c1");
-    expect(calls[2].fn).toBe("steward_scope_counts");
-    expect(Object.keys(calls[2].args).sort()).toEqual(
+    const countsCall = calls[2]!;
+    expect(countsCall.fn).toBe("steward_scope_counts");
+    expect(Object.keys(countsCall.args).sort()).toEqual(
       sqlParams("005_scope_membership.up.sql", "steward_scope_counts").sort(),
     );
   });
