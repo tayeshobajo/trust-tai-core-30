@@ -5,11 +5,11 @@
 do $$
 declare l steward_proposal_links;
 begin
-  perform steward_attest_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'hash-link', 1, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+  perform steward_attest_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'hash-link-0123456789ab', 1, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
   l := steward_link_proposal('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '10000000-0000-0000-0000-000000000002',
         'c0000000-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
   assert l.task_id = '10000000-0000-0000-0000-000000000002'::uuid;
-  assert not steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'hash-link', 1),
+  assert not steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'hash-link-0123456789ab', 1),
     'a link decision must invalidate coverage';
 end $$;
 
