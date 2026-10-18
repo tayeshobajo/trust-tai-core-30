@@ -730,6 +730,16 @@ export interface ScopeReviewPanelProps {
         operationId: string;
       }) => Promise<ActionOutcome>)
     | undefined;
+  /** Audited, reasoned scope amendment: remove an item from the
+      denominator (it stays in history) or explicitly reinstate a removed
+      item. Both are idempotent per operation UUID with the same retry
+      contract as every other mutation. */
+  onRemoveScopeItem:
+    | ((input: { itemId: string; reason: string; operationId: string }) => Promise<ActionOutcome>)
+    | undefined;
+  onReinstateScopeItem:
+    | ((input: { itemId: string; reason: string; operationId: string }) => Promise<ActionOutcome>)
+    | undefined;
   /** Real reload action for failed scope/coverage/proposal reads. */
   onRetryReads?: (() => void) | undefined;
 }
@@ -769,11 +779,19 @@ export function ScopeReviewPanel({
   onSyncRequiredScope,
   onLinkProposal,
   onDismissProposal,
+  onRemoveScopeItem,
+  onReinstateScopeItem,
   onRetryReads,
 }: ScopeReviewPanelProps) {
   const simple = useOperationAttempt<SimpleGesture>();
   const linkAttempt = useOperationAttempt<{ proposalId: string; taskId: string }>();
   const dismissAttempt = useOperationAttempt<{ proposalId: string; reason: string }>();
+  const scopeAttempt = useOperationAttempt<{
+    action: "remove" | "reinstate";
+    itemId: string;
+    reason: string;
+  }>();
+  const [scopeReasons, setScopeReasons] = useState<Record<string, string>>({});
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [linkChoices, setLinkChoices] = useState<Record<string, string>>({});
   const busy = simple.busy || linkAttempt.busy || dismissAttempt.busy;
