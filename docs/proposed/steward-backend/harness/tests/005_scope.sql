@@ -572,30 +572,55 @@ begin
   end if;
 end $$;
 
--- Authority revoked between first call and replay: the owner removes the
--- item with operation f1…b2, then ownership of task 1 transfers to the
--- member; replaying the SAME operation as the original actor must now be
--- denied (reauthorization happens before replay), not silently replayed.
-select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+-- Authority revoked between first call and replay: the MEMBER removes
+-- their own scoped task 2 with operation f1…b3, then ownership of task 2
+-- transfers to the owner; replaying the SAME operation as the member
+-- must now be denied (reauthorization happens before replay), not
+-- silently replayed. (The owner cannot probe this: they stay org admin.)
+select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
 do $$
 declare
+  member_item uuid;
   r public.steward_scope_items;
+begin
+  select id into member_item from public.steward_scope_items
+   where organization_id = '11111111-1111-1111-1111-111111111111'
+     and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+     and task_id = '10000000-0000-0000-0000-000000000002';
+  perform set_config('tmp.member_item', member_item::text, false);
+  r := public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', member_item,
+    'member removal before revocation', 'f1000000-0000-0000-0000-0000000000b3');
+  perform public.test_assert(r.removed_at is not null, 'member removal recorded for replay probe');
+end $$;
+reset role;
+update public.steward_tasks
+   set owner_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+ where id = '10000000-0000-0000-0000-000000000002';
+set role authenticated;
+select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+select public.test_denied($q$
+  select public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.member_item')::uuid,
+    'member removal before revocation', 'f1000000-0000-0000-0000-0000000000b3') $q$,
+  'replay after ownership transfer is denied, not silently replayed');
+-- Restore fixtures: owner (task authority via ownership) reinstates the
+-- member item, ownership back to the member.
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+do $$
+declare r public.steward_scope_items;
 begin
   r := public.steward_scope_amend_reinstate('11111111-1111-1111-1111-111111111111',
     'dddddddd-dddd-dddd-dddd-dddddddddddd',
-    current_setting('tmp.owner_item')::uuid,
-    'owner reinstate before revocation', 'f1000000-0000-0000-0000-0000000000e1');
-  perform public.test_assert(r.removed_at is null, 'owner reinstates before revocation probe');
-  r := public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
-    'dddddddd-dddd-dddd-dddd-dddddddddddd',
-    current_setting('tmp.owner_item')::uuid,
-    'owner removal before revocation', 'f1000000-0000-0000-0000-0000000000b2');
-  perform public.test_assert(r.removed_at is not null, 'owner removal recorded for replay probe');
+    current_setting('tmp.member_item')::uuid,
+    'restoring member scope after probe', 'f1000000-0000-0000-0000-0000000000e3');
+  perform public.test_assert(r.removed_at is null, 'member scope restored after authority probe');
 end $$;
 reset role;
 update public.steward_tasks
    set owner_user_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
- where id = '10000000-0000-0000-0000-000000000001';
+ where id = '10000000-0000-0000-0000-000000000002';
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 select public.test_denied($q$
