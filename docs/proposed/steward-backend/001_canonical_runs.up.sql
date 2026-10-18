@@ -222,7 +222,7 @@ exception
     select * into existing from public.steward_canonical_runs
       where organization_id = p_org and client_operation_id = p_operation;
     if found and existing.request_digest is not distinct from digest then
-      return existing;
+      return jsonb_build_object('run', to_jsonb(existing), 'replayed', true);
     end if;
     raise exception 'operation_conflict' using errcode = 'P0002';
 end;
