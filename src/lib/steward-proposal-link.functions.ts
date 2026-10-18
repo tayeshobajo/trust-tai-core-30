@@ -147,7 +147,7 @@ export const getProposalReviewStateFn = createServerFn({ method: "GET" })
         return { kind: "rejected", message: "the proposal decision history could not be read" };
       }
       const taskByProposal = new Map(
-        existingLinks.map((link) => [link.proposalLedgerId, link.taskId] as const),
+        existingLinks.map((link) => [link.proposalId, link.taskId] as const),
       );
       const decisions: ProposalDecisionRead[] = (decisionRows ?? []).map(
         (row: Record<string, unknown>) => {
