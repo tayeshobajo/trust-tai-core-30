@@ -30,7 +30,7 @@ begin
   select version into v from public.steward_scope_versions
    where organization_id = '11111111-1111-1111-1111-111111111111'
      and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
-  perform public.test_assert(v = 2, 'link durably bumps scope version');
+  perform public.test_assert(v = 3, 'link durably bumps scope version (1 baseline + 003 scope add + this link)');
 end $$;
 
 -- 2. Same operation replays; different operation on linked proposal
