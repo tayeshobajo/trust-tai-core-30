@@ -66,7 +66,12 @@ export interface VerificationRepository {
 }
 
 export type VerificationResult =
-  | { kind: "verified"; task: VerificationTaskState | null; receipt: TaskReceipt; replayed: boolean }
+  | {
+      kind: "verified";
+      task: VerificationTaskState | null;
+      receipt: TaskReceipt;
+      replayed: boolean;
+    }
   | { kind: "revision_conflict"; message: string }
   | { kind: "evidence_required"; message: string }
   | { kind: "rejected"; message: string };

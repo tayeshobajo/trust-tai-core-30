@@ -27,10 +27,7 @@ import {
   runtimeModelCaller,
   runtimeProviderStatus,
 } from "@/lib/intelligence-runtime.server";
-import type {
-  CanonicalRunAction,
-  CanonicalRunProvider,
-} from "./steward-canonical-run.server";
+import type { CanonicalRunAction, CanonicalRunProvider } from "./steward-canonical-run.server";
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 
@@ -164,7 +161,9 @@ export function createCanonicalRunProvider(access: {
       const cited = Array.isArray(evidenceRefs)
         ? evidenceRefs.filter((r): r is string => typeof r === "string")
         : [];
-      const invalid = cited.filter((r) => !refs.some((ref) => ref.startsWith(`${r} `) || ref === r));
+      const invalid = cited.filter(
+        (r) => !refs.some((ref) => ref.startsWith(`${r} `) || ref === r),
+      );
       if (invalid.length > 0) {
         throw new ProviderCallFailedError("provider cited evidence outside the supplied inputs");
       }

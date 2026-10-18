@@ -11,10 +11,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  LedgerProposal,
-  ProposalLedgerRepository,
-} from "./steward-proposal-ledger.server";
+import type { LedgerProposal, ProposalLedgerRepository } from "./steward-proposal-ledger.server";
 import { TranscriptChangedError } from "./steward-proposal-ledger.server";
 
 interface LedgerRow {

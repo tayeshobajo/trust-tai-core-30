@@ -164,7 +164,10 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
     if (denial) {
       return { kind: "unavailable", reason: denial };
     }
-    const token = getRequest().headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+    const token =
+      getRequest()
+        .headers.get("authorization")
+        ?.replace(/^Bearer\s+/i, "") ?? "";
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const repo = createSupabaseCanonicalRunRepository(supabaseAdmin);
     const result = await executeCanonicalRun(
