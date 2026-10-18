@@ -145,7 +145,12 @@ export function digestRequest(input: {
     requesterId: input.requesterId,
     action: input.action,
     inputs: [...input.inputs]
-      .map((r) => ({ kind: r.kind, id: r.id, revision: r.revision, contentDigest: r.contentDigest }))
+      .map((r) => ({
+        kind: r.kind,
+        id: r.id,
+        revision: r.revision,
+        contentDigest: r.contentDigest,
+      }))
       .sort((a, b) => (a.kind + a.id).localeCompare(b.kind + b.id)),
   });
   return sha256(stable);
@@ -257,7 +262,11 @@ export async function executeCanonicalRun(
 
   const taskTitle = await repo.readTaskTitle(claimed.taskId, claimed.organizationId, input.actorId);
   if (!taskTitle) {
-    const run = await repo.failRun({ runId: claimed.id, claimToken, reason: "task became inaccessible" });
+    const run = await repo.failRun({
+      runId: claimed.id,
+      claimToken,
+      reason: "task became inaccessible",
+    });
     return { kind: "failed", run };
   }
 

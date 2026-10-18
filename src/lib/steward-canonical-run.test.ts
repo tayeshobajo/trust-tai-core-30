@@ -108,7 +108,10 @@ const baseRequest = {
 describe("requestCanonicalRun", () => {
   it("rejects actions outside the allowlist", async () => {
     const repo = makeRepo();
-    const result = await requestCanonicalRun(repo, { ...baseRequest, action: "build_website" as never });
+    const result = await requestCanonicalRun(repo, {
+      ...baseRequest,
+      action: "build_website" as never,
+    });
     expect(result.kind).toBe("rejected");
     expect(repo.calls).not.toContain("requestRun");
   });
@@ -121,14 +124,22 @@ describe("requestCanonicalRun", () => {
   });
 
   it("rejects inaccessible inputs before creating a run", async () => {
-    const repo = makeRepo({ async readInput() { return null; } });
+    const repo = makeRepo({
+      async readInput() {
+        return null;
+      },
+    });
     const result = await requestCanonicalRun(repo, baseRequest);
     expect(result.kind).toBe("rejected");
     expect(repo.calls).not.toContain("requestRun");
   });
 
   it("rejects empty input content", async () => {
-    const repo = makeRepo({ async readInput() { return { content: "  ", revision: 1 }; } });
+    const repo = makeRepo({
+      async readInput() {
+        return { content: "  ", revision: 1 };
+      },
+    });
     const result = await requestCanonicalRun(repo, baseRequest);
     expect(result.kind).toBe("rejected");
   });
@@ -147,23 +158,76 @@ describe("requestCanonicalRun", () => {
 
   it("binds the digest to org, task, requester, action and input identity", () => {
     const inputs = [snapshotEntry()];
-    const a = digestRequest({ orgId: ORG, taskId: TASK, requesterId: ACTOR, action: "prepare_brief", inputs });
-    expect(digestRequest({ orgId: "org-b", taskId: TASK, requesterId: ACTOR, action: "prepare_brief", inputs })).not.toBe(a);
-    expect(digestRequest({ orgId: ORG, taskId: "task-2", requesterId: ACTOR, action: "prepare_brief", inputs })).not.toBe(a);
-    expect(digestRequest({ orgId: ORG, taskId: TASK, requesterId: "user-other", action: "prepare_brief", inputs })).not.toBe(a);
-    expect(digestRequest({ orgId: ORG, taskId: TASK, requesterId: ACTOR, action: "draft_roadmap", inputs })).not.toBe(a);
+    const a = digestRequest({
+      orgId: ORG,
+      taskId: TASK,
+      requesterId: ACTOR,
+      action: "prepare_brief",
+      inputs,
+    });
     expect(
       digestRequest({
-        orgId: ORG, taskId: TASK, requesterId: ACTOR, action: "prepare_brief",
+        orgId: "org-b",
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "prepare_brief",
+        inputs,
+      }),
+    ).not.toBe(a);
+    expect(
+      digestRequest({
+        orgId: ORG,
+        taskId: "task-2",
+        requesterId: ACTOR,
+        action: "prepare_brief",
+        inputs,
+      }),
+    ).not.toBe(a);
+    expect(
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: "user-other",
+        action: "prepare_brief",
+        inputs,
+      }),
+    ).not.toBe(a);
+    expect(
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "draft_roadmap",
+        inputs,
+      }),
+    ).not.toBe(a);
+    expect(
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "prepare_brief",
         inputs: [snapshotEntry({ contentDigest: "digest-2" })],
       }),
     ).not.toBe(a);
     // Ref order does not change the digest.
     const two = [snapshotEntry(), snapshotEntry({ kind: "task_notes", id: "t1" })];
     expect(
-      digestRequest({ orgId: ORG, taskId: TASK, requesterId: ACTOR, action: "prepare_brief", inputs: two }),
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "prepare_brief",
+        inputs: two,
+      }),
     ).toBe(
-      digestRequest({ orgId: ORG, taskId: TASK, requesterId: ACTOR, action: "prepare_brief", inputs: [...two].reverse() }),
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "prepare_brief",
+        inputs: [...two].reverse(),
+      }),
     );
   });
 
@@ -182,15 +246,29 @@ describe("requestCanonicalRun", () => {
 
 describe("executeCanonicalRun", () => {
   it("returns not_claimed when another worker holds the run", async () => {
-    const repo = makeRepo({ async claimRun() { return null; } });
-    const result = await executeCanonicalRun(repo, fakeProvider, { runId: "run-1", actorId: ACTOR });
+    const repo = makeRepo({
+      async claimRun() {
+        return null;
+      },
+    });
+    const result = await executeCanonicalRun(repo, fakeProvider, {
+      runId: "run-1",
+      actorId: ACTOR,
+    });
     expect(result.kind).toBe("not_claimed");
     expect(repo.calls.some((c) => c.startsWith("completeRun"))).toBe(false);
   });
 
   it("returns not_claimed when the claim carries no fencing token", async () => {
-    const repo = makeRepo({ async claimRun() { return makeRun({ status: "running", claimToken: null }); } });
-    const result = await executeCanonicalRun(repo, fakeProvider, { runId: "run-1", actorId: ACTOR });
+    const repo = makeRepo({
+      async claimRun() {
+        return makeRun({ status: "running", claimToken: null });
+      },
+    });
+    const result = await executeCanonicalRun(repo, fakeProvider, {
+      runId: "run-1",
+      actorId: ACTOR,
+    });
     expect(result.kind).toBe("not_claimed");
   });
 
@@ -226,7 +304,10 @@ describe("executeCanonicalRun", () => {
         return makeRun({ status: "running", claimToken: "fence-9", claimVersion: 2, attempts: 1 });
       },
     });
-    const result = await executeCanonicalRun(repo, fakeProvider, { runId: "run-1", actorId: ACTOR });
+    const result = await executeCanonicalRun(repo, fakeProvider, {
+      runId: "run-1",
+      actorId: ACTOR,
+    });
     expect(result.kind).toBe("complete");
     expect(repo.calls).toContain("completeRun:fence-9");
     if (result.kind === "complete") {
@@ -253,8 +334,15 @@ describe("executeCanonicalRun", () => {
   });
 
   it("fails the run when the task title cannot be resolved server-side", async () => {
-    const repo = makeRepo({ async readTaskTitle() { return null; } });
-    const result = await executeCanonicalRun(repo, fakeProvider, { runId: "run-1", actorId: ACTOR });
+    const repo = makeRepo({
+      async readTaskTitle() {
+        return null;
+      },
+    });
+    const result = await executeCanonicalRun(repo, fakeProvider, {
+      runId: "run-1",
+      actorId: ACTOR,
+    });
     expect(result.kind).toBe("failed");
     expect(repo.calls.some((c) => c.startsWith("completeRun"))).toBe(false);
   });

@@ -23,8 +23,7 @@ import {
 } from "./steward-canonical-run.server";
 
 export type CanonicalRunCapabilityState =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "result"; result: RequestCanonicalRunResult };
+  { kind: "unavailable"; reason: string } | { kind: "result"; result: RequestCanonicalRunResult };
 
 function capabilityEnabled(): boolean {
   return process.env["STEWARD_CANONICAL_RUNS_ENABLED"] === "true";

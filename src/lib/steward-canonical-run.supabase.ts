@@ -116,7 +116,7 @@ export function createSupabaseCanonicalRunRepository(
       });
       if (error) rethrow(error);
       const rows = data as { content: string; revision: number }[] | null;
-      return rows && rows.length > 0 ? rows[0] : null;
+      return rows && rows.length > 0 ? (rows[0] ?? null) : null;
     },
     async readTaskTitle(taskId, orgId) {
       const { data, error } = await supabase
