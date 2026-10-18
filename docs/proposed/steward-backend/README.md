@@ -89,3 +89,45 @@ PostgreSQL 17 on port 55444, applies fixture + all up patches, runs:
 - Rollback: all down patches leave zero proposed tables.
 
 Latest run: **ALL HARNESS CHECKS PASSED** (exit 0).
+
+
+## Hardening revision (source review follow-up)
+
+- All functions derive the actor from `auth.uid()`; no caller-supplied actor
+  parameter exists anywhere. Every function re-validates active org
+  membership and write role on each call, including replays.
+- Mutation functions are SECURITY DEFINER with pinned search_path so they
+  can write while clients cannot: table grants for `authenticated` are
+  SELECT-only (see `grants.review.sql`) and RLS has select-only policies.
+  Receipts, audit, attestations, links and scope history are immutable —
+  update/delete triggers block all mutation except the function-internal
+  supersede path guarded by a transaction-local flag.
+- Authority checks are NULL-safe (`is distinct from`): a task with no owner
+  or creator is admin-only, never accidentally public.
+- Canonical runs: the request snapshot persists RESOLVED content +
+  sha256 digest per input; execution reads only the snapshot. The request
+  digest binds org + task + requester + action + full input identity, so a
+  reused operation UUID with any changed element conflicts (P0002).
+  Claims issue a fencing token (claim_token/claim_version); complete/fail
+  require the current token and an unexpired lease, so a stale worker
+  cannot complete a reclaimed run. Exhausted-attempt failure is scoped to
+  the requester.
+- Coverage attestations read the stored transcript hash and durable scope
+  version server-side; callers supply neither. Transcript edits, proposal
+  links and scope amendments all invalidate coverage in the same
+  transaction.
+- Proposal links validate the proposal exists in the same conversation and
+  org, never create tasks, and durably bump the scope version.
+- Scope membership (005) is durable: archived required tasks stay in the
+  denominator, deletes are disabled, amendments require a >=10-char reason
+  and are audited; `steward_scope_counts` is a single consistent snapshot
+  (exists-based verified count, no join fan-out).
+- Rollback: `00x.down.sql` preserves all history (drops functions/policies,
+  disables RLS, keeps tables). `teardown.destructive.sql` is a single
+  atomic block that refuses while any history row exists.
+- Harness (`harness/run.sh`): mktemp-owned PGDATA, `listen_addresses=''`,
+  private socket, unprivileged user, no externally supplied path deletion.
+  Tests run as `authenticated` with JWT claims for owner/member/viewer/
+  inactive/cross-org users and cover direct-write denial, spoofing
+  (impossible — no actor param), fencing races, concurrent duplicate
+  requests, and rollback.
