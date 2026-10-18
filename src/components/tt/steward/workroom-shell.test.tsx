@@ -53,13 +53,11 @@ const identity: WorkspaceIdentity = {
   })),
 };
 beforeAll(() => {
-  window.matchMedia = vi
-    .fn()
-    .mockImplementation(() => ({
-      matches: true,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
+  window.matchMedia = vi.fn().mockImplementation(() => ({
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
   global.ResizeObserver = class {
     observe() {}
     unobserve() {}
