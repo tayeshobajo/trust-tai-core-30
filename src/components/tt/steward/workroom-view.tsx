@@ -242,14 +242,22 @@ function ScoreCard({
   meeting,
   receiptsFailed,
   scopeUnavailable = false,
+  serverScore,
 }: {
   meeting: WorkroomMeeting;
   receiptsFailed: boolean;
   scopeUnavailable?: boolean;
+  /** Server-derived score from durable scope/coverage/proposals, when the
+      staged contracts are active. Overrides the local derivation. */
+  serverScore?: { value: number | null; label: string } | null;
 }) {
   /* When receipts could not be read, a numeric score would be computed from
      an empty map — a definitive-looking lie. Show it as unavailable. */
-  const value = receiptsFailed || scopeUnavailable ? null : meeting.score;
+  const value = serverScore
+    ? serverScore.value
+    : receiptsFailed || scopeUnavailable
+      ? null
+      : meeting.score;
   const full = value === 100;
   return (
     <div
@@ -291,7 +299,9 @@ function ScoreCard({
             {value === null ? "—/100" : `${value}/100`}
           </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
-            {receiptsFailed
+            {serverScore
+              ? serverScore.label
+              : receiptsFailed
               ? "Verification unavailable — receipts could not be read"
               : scopeUnavailable
                 ? "Required-work scope unavailable"
@@ -975,8 +985,46 @@ export function WorkroomView({
           meeting={meeting}
           receiptsFailed={receiptsFailed}
           scopeUnavailable={!!linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)}
+          serverScore={backend ? serverMeetingScore(backend.meetingState?.(meeting.id) ?? {}) : null}
         />
       </div>
+
+      {backend ? (
+        <details className="mt-3 rounded-md border border-border bg-card p-3">
+          <summary className="cursor-pointer text-xs font-medium text-foreground">
+            Scope review — coverage, recorded required work, extracted proposals
+          </summary>
+          <div className="mt-2">
+            <ScopeReviewPanel
+              scope={backend.meetingState?.(meeting.id)?.scope}
+              coverage={backend.meetingState?.(meeting.id)?.coverage}
+              proposals={backend.meetingState?.(meeting.id)?.proposals}
+              scopeCapability={backend.capabilities.scope}
+              coverageCapability={backend.capabilities.coverage}
+              proposalCapability={backend.capabilities.proposals}
+              linkTargets={meeting.rows
+                .filter((r) => r.boardTask)
+                .map((r) => ({ id: r.boardTask!.id, title: r.boardTask!.title }))}
+              onAttestCoverage={
+                backend.onAttestCoverage ? () => backend.onAttestCoverage!(meeting.id) : undefined
+              }
+              onSyncProposals={
+                backend.onSyncProposals ? () => backend.onSyncProposals!(meeting.id) : undefined
+              }
+              onLinkProposal={
+                backend.onLinkProposal
+                  ? (input) => backend.onLinkProposal!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
+              onDismissProposal={
+                backend.onDismissProposal
+                  ? (input) => backend.onDismissProposal!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
+            />
+          </div>
+        </details>
+      ) : null}
 
       {meeting.openProposals > 0 ? (
         <Link
