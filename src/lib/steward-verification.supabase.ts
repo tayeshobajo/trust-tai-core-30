@@ -49,6 +49,7 @@ function mapReceipt(row: ReceiptRow): TaskReceipt {
     organizationId: row.organization_id,
     taskId: row.task_id,
     operationId: row.operation_id,
+    kind: row.kind,
     note: row.note,
     actorId: row.actor_id,
     createdAt: row.created_at,
