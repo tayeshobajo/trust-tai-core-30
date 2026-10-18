@@ -37,9 +37,21 @@ alter table public.steward_coverage_attestations enable row level security;
 create policy steward_coverage_attestations_select on public.steward_coverage_attestations
   for select to authenticated using (private.steward_is_active_member(organization_id));
 
+-- Supersede is allowed only from inside the attestation/scope/link
+-- functions, which set the transaction-local flag; every other update or
+-- delete is blocked, so clients cannot rewrite or erase attestation history.
+create or replace function public.steward_guard_coverage_mutation()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if coalesce(current_setting('steward.coverage_mutation', true), '') <> 'on' then
+    raise exception 'history_immutable: coverage attestations change only through steward functions'
+      using errcode = 'P0403';
+  end if;
+  return new;
+end $$;
 drop trigger if exists steward_coverage_immutable on public.steward_coverage_attestations;
 create trigger steward_coverage_immutable before update or delete on public.steward_coverage_attestations
-  for each row execute function public.steward_block_history_mutation();
+  for each row execute function public.steward_guard_coverage_mutation();
 
 -- Attest coverage of the CURRENT stored conversation state. The
 -- conversation must exist in the org; hash and version are read from the
