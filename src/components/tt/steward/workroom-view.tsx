@@ -78,6 +78,9 @@ export interface WorkroomBackend {
   meetingState?: (
     meetingId: string,
   ) => { scope?: ScopeRead; coverage?: CoverageRead; proposals?: ProposalReviewRead } | undefined;
+  /** Consistent one-statement score snapshot (006 patch); when present it
+      is the ONLY source for the score card, nav and bottom explanation. */
+  scoreFor?: (meetingId: string) => MeetingScoreRead | undefined;
   onRequestRun?: (input: {
     taskId: string;
     actionId: string;
@@ -95,8 +98,12 @@ export interface WorkroomBackend {
     note: string;
     operationId: string;
   }) => Promise<ActionOutcome>;
-  onAttestCoverage?: (meetingId: string) => Promise<ActionOutcome>;
-  onSyncProposals?: (meetingId: string) => Promise<ActionOutcome>;
+  onAttestCoverage?: (input: { meetingId: string; operationId: string }) => Promise<ActionOutcome>;
+  onSyncProposals?: (input: { meetingId: string; operationId: string }) => Promise<ActionOutcome>;
+  onSyncRequiredScope?: (input: {
+    meetingId: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
   onLinkProposal?: (input: {
     meetingId: string;
     proposalId: string;
@@ -112,45 +119,34 @@ export interface WorkroomBackend {
 }
 
 /**
- * Server-derived score for one meeting: 100 only when the agreed scope is
- * nonzero, every required item is verified, coverage is confirmed current,
- * and no proposals are pending. Any failed/partial read yields unknown.
- * Returns null when the staged contracts are not active and the view
- * should keep its existing local derivation.
+ * Server-derived score for one meeting, from the CONSISTENT one-statement
+ * snapshot (006 patch): 100 only when the snapshot itself reports the
+ * agreed scope as nonzero, fully verified, coverage current and no
+ * proposals pending. Any failed/partial read yields unknown — a number is
+ * never assembled from mixed or missing component reads. Returns null when
+ * the staged contracts are not active and the view keeps its existing
+ * local derivation.
  */
-export function serverMeetingScore(state: {
-  scope?: ScopeRead;
-  coverage?: CoverageRead;
-  proposals?: ProposalReviewRead;
-}): { value: number | null; label: string } | null {
-  const { scope, coverage, proposals } = state;
-  if (!scope || scope.kind === "unavailable") return null;
-  if (scope.kind === "loading" || coverage?.kind === "loading" || proposals?.kind === "loading") {
-    return { value: null, label: "Reading recorded scope…" };
+export function serverMeetingScore(
+  read: MeetingScoreRead | undefined,
+): { value: number | null; label: string } | null {
+  if (!read || read.kind === "unavailable") return null;
+  if (read.kind === "loading") return { value: null, label: "Reading recorded scope…" };
+  if (read.kind === "rejected") {
+    return { value: null, label: `Score unavailable — ${read.message}` };
   }
-  if (scope.kind === "rejected")
-    return { value: null, label: `Scope unavailable — ${scope.message}` };
-  if (coverage?.kind === "rejected") {
-    return { value: null, label: `Coverage unavailable — ${coverage.message}` };
-  }
-  if (proposals?.kind === "rejected") {
-    return { value: null, label: `Proposal state unavailable — ${proposals.message}` };
-  }
-  const { denominator, verified, pendingProposals } = scope.counts;
-  const coverageCurrent = coverage?.kind === "ready" ? coverage.current : false;
+  const { denominator, verified, pendingProposals, coverageCurrent, complete } = read.snapshot;
   if (denominator === 0) return { value: 0, label: "No agreed scope recorded yet" };
-  const full = verified === denominator && coverageCurrent && pendingProposals === 0;
-  /* A displayed 100 would read as "done" even with unconfirmed coverage or
-     pending proposals — cap below 100 until every condition holds. */
-  const value = full ? 100 : Math.min(Math.round((verified / denominator) * 100), 99);
-  if (!full) {
-    const blockers: string[] = [];
-    if (verified < denominator) blockers.push(`${denominator - verified} not verified`);
-    if (!coverageCurrent) blockers.push("coverage not confirmed");
-    if (pendingProposals > 0) blockers.push(`${pendingProposals} proposals pending`);
-    return { value, label: `${verified} of ${denominator} verified — ${blockers.join("; ")}` };
-  }
-  return { value: 100, label: "All agreed work verified and coverage confirmed" };
+  /* The SQL snapshot computes `complete` from the same statement; a
+     displayed 100 is only ever that durable verdict, never a local
+     recombination of separate reads. */
+  if (complete) return { value: 100, label: "All agreed work verified and coverage confirmed" };
+  const value = Math.min(Math.round((verified / denominator) * 100), 99);
+  const blockers: string[] = [];
+  if (verified < denominator) blockers.push(`${denominator - verified} not verified`);
+  if (!coverageCurrent) blockers.push("coverage not confirmed");
+  if (pendingProposals > 0) blockers.push(`${pendingProposals} proposals pending`);
+  return { value, label: `${verified} of ${denominator} verified — ${blockers.join("; ")}` };
 }
 import type { WorkroomMeeting, WorkroomRow } from "@/domain/steward-workroom";
 import { cn } from "@/lib/utils";
