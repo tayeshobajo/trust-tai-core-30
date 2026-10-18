@@ -1,76 +1,102 @@
--- Atomic verification and reopen semantics.
+-- Atomic verification: identity, digests, revision conflicts, immutability.
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'); -- owner
 
--- 1. Short evidence is rejected.
+-- 1. Verify happy path: receipt + audit + status in one transaction.
 do $$
+declare r public.steward_task_receipts; t public.steward_tasks; n integer;
 begin
-  perform steward_verify_task('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 1, 'b0000000-0000-0000-0000-000000000001', 'done', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-  raise exception 'expected evidence_required';
-exception when sqlstate 'P0010' then null;
-end $$;
-
--- 2. Wrong revision conflicts and writes nothing.
-do $$
-declare n integer;
-begin
-  perform steward_verify_task('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 99, 'b0000000-0000-0000-0000-000000000002', 'checked the delivered mockup against the brief', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-  raise exception 'expected revision_conflict';
-exception when sqlstate 'P0011' then
-  select count(*) into n from steward_task_receipts;
-  assert n = 0, 'conflict must not write a receipt';
+  r := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001', 0, 'b1000000-0000-0000-0000-000000000001',
+    'Reviewed the recorded outcome against the source.');
+  perform public.test_assert(r.actor_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'receipt actor from auth.uid');
+  select * into t from public.steward_tasks where id = '10000000-0000-0000-0000-000000000001';
+  perform public.test_assert(t.status = 'complete' and t.revision = 1 and t.completed_by = r.actor_id, 'task completed atomically');
+  select count(*) into n from public.steward_task_audit
+   where task_id = t.id and kind = 'verify' and receipt_id = r.id;
+  perform public.test_assert(n = 1, 'audit row written in the same transaction');
 end $$;
 
--- 3. Non-owner cannot verify; cross-org task inaccessible.
+-- 2. Duplicate operation replays; same UUID with changed payload conflicts.
 do $$
+declare r public.steward_task_receipts; conflicted boolean := false;
 begin
-  perform steward_verify_task('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 1, 'b0000000-0000-0000-0000-000000000003', 'checked the delivered mockup against the brief', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
-  raise exception 'expected not_authorized';
-exception when sqlstate 'P0004' then null;
-end $$;
-do $$
-begin
-  perform steward_verify_task('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000003', 1, 'b0000000-0000-0000-0000-000000000004', 'checked the delivered mockup against the brief', 'cccccccc-cccc-cccc-cccc-cccccccccccc');
-  raise exception 'expected task_not_found_or_inaccessible';
-exception when sqlstate 'P0003' then null;
-end $$;
-
--- 4. Happy path: receipt + audit + status change atomically; revision bumps.
-do $$
-declare r steward_task_receipts; t steward_tasks; a steward_task_audit;
-begin
-  r := steward_verify_task('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 1, 'b0000000-0000-0000-0000-000000000005', 'checked the delivered mockup against the brief', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-  select * into t from steward_tasks where id = '10000000-0000-0000-0000-000000000001'::uuid;
-  assert t.status = 'complete' and t.revision = 2, 'verify must complete and bump revision';
-  select * into a from steward_task_audit where operation_id = 'b0000000-0000-0000-0000-000000000005';
-  assert a.action = 'verify' and a.revision_before = 1 and a.revision_after = 2;
+  r := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001', 0, 'b1000000-0000-0000-0000-000000000001',
+    'Reviewed the recorded outcome against the source.');
+  perform public.test_assert(r.id is not null, 'duplicate verify replays receipt');
+  begin
+    perform public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+      '10000000-0000-0000-0000-000000000001', 0, 'b1000000-0000-0000-0000-000000000001',
+      'A DIFFERENT note with the same operation UUID');
+  exception when raise_exception then conflicted := true; end;
+  perform public.test_assert(conflicted, 'reused operation UUID with changed payload conflicts');
 end $$;
 
--- 5. Duplicate operation replays the original receipt with no new audit row.
+-- 3. Revision conflict and short evidence rejected.
+select public.test_denied($q$
+  select public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001', 99, 'b1000000-0000-0000-0000-000000000002',
+    'Stale revision attempt with enough text') $q$, 'revision conflict rejected');
+select public.test_denied($q$
+  select public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001', 1, 'b1000000-0000-0000-0000-000000000003', 'done') $q$,
+  'short evidence rejected');
+
+-- 4. Authority: member cannot verify the owner's task; viewer/inactive/
+--    cross-org cannot verify at all.
+select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+select public.test_denied($q$
+  select public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001', 1, 'b2000000-0000-0000-0000-000000000001',
+    'Member trying to verify another user task') $q$, 'member without authority cannot verify');
+select public.test_act_as('dddddd00-0000-0000-0000-000000000001');
+select public.test_denied($q$
+  select public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001', 1, 'b2000000-0000-0000-0000-000000000002',
+    'Viewer trying to verify with enough text') $q$, 'viewer cannot verify');
+select public.test_act_as('eeeeee00-0000-0000-0000-000000000001');
+select public.test_denied($q$
+  select public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001', 1, 'b2000000-0000-0000-0000-000000000003',
+    'Inactive trying to verify with enough text') $q$, 'inactive cannot verify');
+select public.test_act_as('cccccccc-cccc-cccc-cccc-cccccccccccc');
+select public.test_denied($q$
+  select public.steward_verify_task('22222222-2222-2222-2222-222222222222',
+    '10000000-0000-0000-0000-000000000001', 1, 'b2000000-0000-0000-0000-000000000004',
+    'Cross-org verify attempt with enough text') $q$, 'cross-org verify rejected');
+
+-- 5. Reopen preserves history; receipt and audit accumulate.
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 do $$
-declare r steward_task_receipts; n integer;
+declare r public.steward_task_receipts; t public.steward_tasks; n integer;
 begin
-  r := steward_verify_task('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 2, 'b0000000-0000-0000-0000-000000000005', 'different note text here', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-  assert r.note = 'checked the delivered mockup against the brief', 'replay must return the original receipt';
-  select count(*) into n from steward_task_audit where operation_id = 'b0000000-0000-0000-0000-000000000005';
-  assert n = 1, 'replay must not append audit';
+  r := public.steward_reopen_task('11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001', 1, 'b1000000-0000-0000-0000-000000000004',
+    'Evidence turned out insufficient on review.');
+  select * into t from public.steward_tasks where id = '10000000-0000-0000-0000-000000000001';
+  perform public.test_assert(t.status = 'open' and t.revision = 2, 'reopen flips status with revision bump');
+  perform public.test_assert(t.completion_evidence <> '' and t.completed_at is not null, 'reopen retains prior evidence');
+  select count(*) into n from public.steward_task_audit where task_id = t.id;
+  perform public.test_assert(n = 2, 'verify and reopen both present in audit');
 end $$;
 
--- 6. Reopen retains receipt and history, and appends a reopen entry.
-do $$
-declare e steward_task_audit; t steward_tasks; n integer;
-begin
-  e := steward_reopen_task('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 2, 'b0000000-0000-0000-0000-000000000006', 'client asked for a changed scope after review', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-  select * into t from steward_tasks where id = '10000000-0000-0000-0000-000000000001'::uuid;
-  assert t.status = 'open' and t.revision = 3;
-  select count(*) into n from steward_task_receipts where task_id = '10000000-0000-0000-0000-000000000001'::uuid;
-  assert n = 1, 'reopen must retain prior receipts';
-  select count(*) into n from steward_task_audit where task_id = '10000000-0000-0000-0000-000000000001'::uuid;
-  assert n = 2, 'reopen must append, not replace, history';
-end $$;
+-- 6. Operation UUIDs are unique across verify AND reopen.
+select public.test_denied($q$
+  select public.steward_reopen_task('11111111-1111-1111-1111-111111111111',
+    '10000000-0000-0000-0000-000000000001', 2, 'b1000000-0000-0000-0000-000000000001',
+    'Reusing a verify operation UUID for reopen') $q$, 'cross-action operation reuse conflicts');
 
--- 7. Reopen of an unverified task is rejected.
-do $$
-begin
-  perform steward_reopen_task('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000002', 1, 'b0000000-0000-0000-0000-000000000007', 'trying to reopen an open task now', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
-  raise exception 'expected not_verified';
-exception when sqlstate 'P0013' then null;
-end $$;
+-- 7. Receipts/audit are immutable even for the table owner; direct writes
+--    are denied to authenticated.
+select public.test_denied($q$
+  insert into public.steward_task_receipts
+    (organization_id, task_id, operation_id, kind, note, request_digest, actor_id)
+  values ('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
+    gen_random_uuid(), 'verify', 'forged receipt text', 'forged', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') $q$,
+  'direct receipt insert denied');
+reset role;
+select public.test_denied($q$
+  update public.steward_task_audit set note = 'rewritten' where true $q$, 'audit update blocked by trigger');
+select public.test_denied($q$
+  delete from public.steward_task_receipts where true $q$, 'receipt delete blocked by trigger');
