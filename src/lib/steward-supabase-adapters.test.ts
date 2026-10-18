@@ -273,3 +273,92 @@ describe("Supabase adapters match the proposed SQL contract", () => {
     );
   });
 });
+
+describe("transport uncertainty vs known SQL answers (defect B)", () => {
+  it("reinstate sends exactly steward_scope_amend_reinstate's parameters", async () => {
+    const { client, calls } = mockSupabase({
+      id: "i1",
+      organization_id: "o1",
+      conversation_id: "c1",
+      task_id: "t1",
+      classification: "manual_required",
+      removed_at: null,
+      removal_reason: null,
+    });
+    const repo = createSupabaseScopeRepository(client as never);
+    await repo.amendReinstate({
+      orgId: "o1",
+      conversationId: "c1",
+      itemId: "i1",
+      reason: "reinstating after review",
+      operationId: "op-9",
+    });
+    expect(calls[0]!.fn).toBe("steward_scope_amend_reinstate");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
+      sqlParams("005_scope_membership.up.sql", "steward_scope_amend_reinstate").sort(),
+    );
+  });
+
+  it("a lost transport response after the request was sent is UNCERTAIN, never rejected", async () => {
+    const { verifyCanonicalTask } = await import("./steward-verification.server");
+    const repo = {
+      verifyTask: vi.fn(async () => {
+        throw new Error("network response lost after request sent");
+      }),
+    };
+    const result = await verifyCanonicalTask(repo as never, {
+      orgId: "o1",
+      taskId: "t1",
+      expectedRevision: 3,
+      note: "fictional evidence note",
+      operationId: "op-1",
+      actorId: "u1",
+    });
+    expect(result.kind).toBe("uncertain");
+    /* Raw internals never leak into the uncertain message. */
+    if (result.kind === "uncertain") {
+      expect(result.message).not.toContain("network response lost");
+    }
+  });
+
+  it("a known SQL validation answer stays a resolved rejection", async () => {
+    const { verifyCanonicalTask } = await import("./steward-verification.server");
+    const error = new Error("revision_conflict") as Error & { code: string };
+    error.code = "P0001";
+    const repo = {
+      verifyTask: vi.fn(async () => {
+        throw error;
+      }),
+    };
+    const result = await verifyCanonicalTask(repo as never, {
+      orgId: "o1",
+      taskId: "t1",
+      expectedRevision: 3,
+      note: "fictional evidence note",
+      operationId: "op-1",
+      actorId: "u1",
+    });
+    expect(result.kind).toBe("revision_conflict");
+  });
+
+  it("a same-id retry after an uncertain verify replays — the SQL returns the existing receipt, no second mutation", async () => {
+    /* The SQL steward_verify_task is idempotent per operation UUID (harness
+       002 proves it in PostgreSQL); here the adapter must forward the SAME
+       operation id on retry so that guarantee can engage. */
+    const { client, calls } = mockSupabase({ task: null, receipt: RECEIPT_ROW, replayed: true });
+    const repo = createSupabaseVerificationRepository(client as never);
+    const input = {
+      orgId: "o1",
+      taskId: "t1",
+      expectedRevision: 3,
+      note: "fictional evidence note",
+      operationId: "op-1",
+      actorId: "u1",
+    };
+    await repo.verifyTask(input);
+    await repo.verifyTask(input);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]!.args).toEqual(calls[1]!.args);
+    expect(calls[0]!.args.p_operation).toBe("op-1");
+  });
+});
