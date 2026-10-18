@@ -644,7 +644,22 @@ export interface ScopeReviewPanelProps {
   coverageCapability: CapabilityState;
   proposalCapability: CapabilityState;
   linkTargets: { id: string; title: string }[];
-  onAttestCoverage: ((input: { operationId: string }) => Promise<ActionOutcome>) | undefined;
+  /**
+   * The exact source the human reviewed: current transcript hash and
+   * durable scope version from the consistent score snapshot. Attestation
+   * is bound to these — if the source changed since the review, the
+   * server rejects the attestation instead of attesting an unseen
+   * transcript. Null when the snapshot has not been read; attestation is
+   * then not offered.
+   */
+  expectedSource: { transcriptHash: string; scopeVersion: number } | null;
+  onAttestCoverage:
+    | ((input: {
+        operationId: string;
+        expectedTranscriptHash: string;
+        expectedScopeVersion: number;
+      }) => Promise<ActionOutcome>)
+    | undefined;
   onSyncProposals: ((input: { operationId: string }) => Promise<ActionOutcome>) | undefined;
   /** Explicit durable sync of recorded required tasks into meeting scope. */
   onSyncRequiredScope: ((input: { operationId: string }) => Promise<ActionOutcome>) | undefined;
