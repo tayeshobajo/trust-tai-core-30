@@ -5,7 +5,8 @@
  * an isolated test harness with fictional data.
  *
  * Green means verified: status kept AND a valid completion receipt. The
- * score is verified agreed work against confirmed promises; it never claims
+ * score uses confirmed promises plus explicitly added required work; ordinary
+ * business links add no denominator weight or verified credit. It never claims
  * transcript extraction is complete, and never reaches 100 while coverage
  * is unconfirmed or proposals await review.
  */
@@ -778,8 +779,9 @@ export function WorkroomView({
             </span>
             <span className="min-w-0">
               <span
+                title={r.what}
                 className={cn(
-                  "block truncate",
+                  "line-clamp-2 break-words leading-5",
                   r.verified ? "text-muted-foreground" : "text-foreground",
                 )}
               >
@@ -848,7 +850,8 @@ export function WorkroomView({
         <div>
           {meeting.requiredWork ? (
             <p className="mb-1 font-medium">
-              {meeting.requiredWork.total} manually required tasks · verification unavailable · zero
+              {meeting.requiredWork.total} manually required task
+              {meeting.requiredWork.total === 1 ? "" : "s"} · verification unavailable · zero
               verified credit. Required scope remains after archive.
             </p>
           ) : null}
@@ -884,8 +887,9 @@ export function WorkroomView({
               <p className="mt-1 text-muted-foreground">{meeting.remark}</p>
               {meeting.score !== 100 ? (
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  100 requires every confirmed promise verified, transcript coverage confirmed, and
-                  no unreviewed proposals. Work completion, not a grade for people.
+                  100 requires every confirmed promise and manually required task verified,
+                  transcript coverage confirmed, and no unreviewed proposals. Work completion, not a
+                  grade for people.
                 </p>
               ) : null}
             </>
