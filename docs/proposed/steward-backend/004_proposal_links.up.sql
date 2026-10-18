@@ -259,6 +259,8 @@ language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   proposal public.steward_proposal_ledger;
+  digest text;
+  prior public.steward_proposal_decisions;
 begin
   if actor is null or not private.steward_can_write(p_org) then
     raise exception 'not_authorized' using errcode = 'P0401';
@@ -269,11 +271,9 @@ begin
   -- Operation replay bound to the append-only decision audit BEFORE any
   -- state read: same operation + same payload replays the recorded
   -- dismissal; changed payload conflicts.
-  declare
-    digest text := encode(sha256(convert_to(jsonb_build_object(
-      'org', p_org, 'proposal', p_proposal, 'reason', p_reason,
-      'actor', actor)::text, 'utf8')), 'hex');
-    prior public.steward_proposal_decisions;
+  digest := encode(sha256(convert_to(jsonb_build_object(
+    'org', p_org, 'proposal', p_proposal, 'reason', p_reason,
+    'actor', actor)::text, 'utf8')), 'hex');
   begin
     select * into prior from public.steward_proposal_decisions
       where organization_id = p_org and operation_id = p_operation;
