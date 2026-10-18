@@ -1,19 +1,20 @@
 -- PROPOSED, UNAPPLIED. Canonical Steward preparation runner.
+-- Mirrors the REAL repo contracts: public.steward_tasks (20260921160000)
+-- and public.conversations (docs/steward-v1-schema.sql, transcript jsonb).
 -- Identity is ALWAYS derived from auth.uid(); no caller-supplied actor is
--- accepted anywhere. Active org membership + write role are required for
--- every mutation, and replayed operations reauthorize the CURRENT caller.
--- Snapshots persist the resolved immutable input content + digest, not just
--- references, so a run can never silently execute against changed content.
+-- accepted anywhere. claim/complete/fail are WORKER-ONLY (service_role):
+-- a signed-in client can request a run but can never claim, complete or
+-- fail one, so nobody can forge an assistant artifact. The worker path
+-- revalidates the requester's CURRENT membership, role and task authority
+-- on every transition. Snapshots persist resolved immutable content +
+-- digest; execution never rereads mutable sources.
 --
--- Grants are NOT in this file: see grants.review.sql (separate exact review
--- script). RLS is enabled here with restrictive policies so enabling access
--- later cannot expose rows beyond org membership.
+-- Execute is revoked from PUBLIC/anon/authenticated here; the only
+-- activation path is the separately reviewed grants.review.sql.
 
 create schema if not exists private;
 
--- Membership helpers mirror the existing cmd-task-manager contracts
--- (private.is_org_member / cmd_can_write_tasks) and are security definer so
--- RLS policies and functions can check membership without recursion.
+-- Membership helpers mirror the existing cmd-task-manager contracts.
 create or replace function private.steward_is_active_member(org uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists(select 1 from public.organization_memberships m
@@ -22,17 +23,52 @@ $$;
 
 create or replace function private.steward_can_write(org uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select exists(select 1 from public.organization_memberships m
-    where m.organization_id = org and m.user_id = auth.uid() and m.status = 'active'
-      and m.role in ('owner','admin','leadership','project_lead','client_support','team_member','member'))
+  select private.steward_user_can_write(org, auth.uid())
 $$;
 
 create or replace function private.steward_is_admin(org uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select exists(select 1 from public.organization_memberships m
-    where m.organization_id = org and m.user_id = auth.uid() and m.status = 'active'
+  select private.steward_user_is_admin(org, auth.uid())
+$$;
+
+-- Arbitrary-user variants for the WORKER path (service_role), which has no
+-- auth.uid(): the worker revalidates the run's requester on every claim,
+-- complete and fail, so a deactivated or demoted requester's run dies.
+create or replace function private.steward_user_can_write(org uuid, uid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select uid is not null and exists(select 1 from public.organization_memberships m
+    where m.organization_id = org and m.user_id = uid and m.status = 'active'
+      and m.role in ('owner','admin','leadership','project_lead','client_support','team_member','member'))
+$$;
+
+create or replace function private.steward_user_is_admin(org uuid, uid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select uid is not null and exists(select 1 from public.organization_memberships m
+    where m.organization_id = org and m.user_id = uid and m.status = 'active'
       and m.role in ('owner','admin'))
 $$;
+
+-- Task authority for an arbitrary user: creator, current owner, or org
+-- admin. NULL-safe: an ownerless task is admin-only, never public.
+create or replace function private.steward_user_has_task_authority(
+  p_task public.steward_tasks, uid uuid
+) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select uid is not null and (
+    p_task.created_by is not distinct from uid
+    or p_task.owner_user_id is not distinct from uid
+    or private.steward_user_is_admin(p_task.organization_id, uid))
+$$;
+
+-- Additive columns the canonical backend needs on the REAL steward_tasks.
+-- All nullable or defaulted; existing rows and code are unaffected.
+alter table public.steward_tasks
+  add column if not exists revision integer not null default 0,
+  add column if not exists task_visibility text not null default 'business',
+  add column if not exists completion_evidence text,
+  add column if not exists completed_at timestamptz,
+  add column if not exists completed_by uuid,
+  add column if not exists archived_at timestamptz;
 
 create table if not exists public.steward_canonical_runs (
   id uuid primary key default gen_random_uuid(),
@@ -66,22 +102,27 @@ create table if not exists public.steward_canonical_runs (
 
 alter table public.steward_canonical_runs enable row level security;
 
--- Read-only to active org members. ALL writes go through the functions
--- below; there are no insert/update/delete policies, so direct table writes
--- are denied even if table grants are added later.
+-- Read-only to active org members, business-visibility tasks only: runs
+-- over personal tasks are never accepted (pilot scope), and their rows
+-- must not leak org-wide even if one somehow existed.
 create policy steward_canonical_runs_select on public.steward_canonical_runs
-  for select to authenticated using (private.steward_is_active_member(organization_id));
+  for select to authenticated using (
+    private.steward_is_active_member(organization_id)
+    and exists (select 1 from public.steward_tasks t
+                where t.id = task_id and t.task_visibility = 'business'));
 
--- Resolve a selected input ref to its CURRENT stored content. Returns no
--- row when the input does not exist, is outside the org, or is inaccessible
--- to the caller (personal tasks are only visible to their owner).
+-- Resolve a selected input ref to its CURRENT stored content from the REAL
+-- tables. Transcript content is the canonical jsonb text of
+-- public.conversations.transcript; its "revision" is 0 — integrity is
+-- carried by the content digest. Returns no row when the input does not
+-- exist, is outside the org, or is inaccessible to the caller.
 create or replace function public.steward_resolve_input(p_org uuid, p_kind text, p_id uuid)
 returns table(content text, revision integer)
 language plpgsql stable security invoker set search_path = public, pg_temp as $$
 begin
   if p_kind = 'transcript' then
-    return query select c.transcript_text, c.transcript_revision
-      from public.steward_conversations c
+    return query select c.transcript::text, 0
+      from public.conversations c
       where c.id = p_id and c.organization_id = p_org;
   elsif p_kind = 'task_notes' then
     return query select t.notes, t.revision
@@ -93,8 +134,9 @@ end;
 $$;
 
 -- Request a run. Same operation + same payload replays the existing run
--- (after reauthorizing the current caller); same operation + changed
--- payload conflicts; a new operation UUID is a deliberate rerun.
+-- (after reauthorizing the current caller AND the current task state);
+-- same operation + changed payload conflicts; a new operation UUID is a
+-- deliberate rerun. Pilot scope: business-visibility tasks only.
 create or replace function public.steward_request_canonical_run(
   p_org uuid,
   p_task uuid,
@@ -116,16 +158,21 @@ begin
   if actor is null or not private.steward_can_write(p_org) then
     raise exception 'not_authorized' using errcode = 'P0401';
   end if;
+
+  -- Reauthorize the scoped task FIRST, before any replay: ownership or
+  -- visibility changes since the original request must not be bypassed by
+  -- a replayed operation UUID.
   select * into task from public.steward_tasks where id = p_task and organization_id = p_org;
   if not found then
     raise exception 'task_not_found' using errcode = 'P0404';
   end if;
-  -- NULL-safe authority: creator, current owner, or org admin.
-  if task.created_by is distinct from actor
-     and task.owner_user_id is distinct from actor
-     and not private.steward_is_admin(p_org) then
+  if task.task_visibility is distinct from 'business' then
+    raise exception 'personal_tasks_out_of_scope' using errcode = 'P0401';
+  end if;
+  if not private.steward_user_has_task_authority(task, actor) then
     raise exception 'not_authorized' using errcode = 'P0401';
   end if;
+
   if p_action not in ('prepare_brief','prepare_handoff','draft_roadmap','review_output') then
     raise exception 'action_not_allowed' using errcode = 'P0422';
   end if;
@@ -154,7 +201,7 @@ begin
     if existing.request_digest is distinct from digest then
       raise exception 'operation_conflict' using errcode = 'P0002';
     end if;
-    return existing; -- replay after reauthorization above
+    return existing; -- replay after full reauthorization above
   end if;
 
   insert into public.steward_canonical_runs
@@ -174,6 +221,30 @@ exception
 end;
 $$;
 
+-- WORKER-ONLY transitions. claim/complete/fail require the service_role
+-- credential the server already holds — no new secret, no client grant.
+-- Every transition revalidates the requester's CURRENT membership, write
+-- role and task authority, so a deactivated or demoted requester's run
+-- cannot be claimed or finished.
+
+create or replace function private.steward_revalidate_requester(run public.steward_canonical_runs)
+returns void
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare
+  task public.steward_tasks;
+begin
+  if not private.steward_user_can_write(run.organization_id, run.requested_by) then
+    raise exception 'requester_not_authorized' using errcode = 'P0401';
+  end if;
+  select * into task from public.steward_tasks
+    where id = run.task_id and organization_id = run.organization_id;
+  if not found or task.task_visibility is distinct from 'business'
+     or not private.steward_user_has_task_authority(task, run.requested_by) then
+    raise exception 'requester_not_authorized' using errcode = 'P0401';
+  end if;
+end;
+$$;
+
 -- Claim a run. Returns the row WITH the fresh fencing token; a concurrent
 -- or stale claim gets no row.
 create or replace function public.steward_claim_canonical_run(
@@ -182,27 +253,27 @@ create or replace function public.steward_claim_canonical_run(
 ) returns public.steward_canonical_runs
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
-  actor uuid := auth.uid();
   run public.steward_canonical_runs;
 begin
-  if actor is null then
-    raise exception 'not_authorized' using errcode = 'P0401';
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'worker_only' using errcode = 'P0401';
   end if;
   select * into run from public.steward_canonical_runs where id = p_run for update;
-  if not found or not private.steward_can_write(run.organization_id) or run.requested_by <> actor then
-    raise exception 'not_authorized' using errcode = 'P0401';
+  if not found then
+    raise exception 'run_not_found' using errcode = 'P0404';
   end if;
-  -- Exhausted attempts terminally fail (actor-scoped).
+  perform private.steward_revalidate_requester(run);
+  -- Exhausted attempts terminally fail.
   update public.steward_canonical_runs
      set status = 'failed', failure_reason = 'attempts exhausted', updated_at = now()
-   where id = p_run and requested_by = actor
+   where id = p_run
      and status in ('queued','running') and attempts >= max_attempts;
   update public.steward_canonical_runs
      set status = 'running', attempts = attempts + 1,
          claim_token = gen_random_uuid(), claim_version = claim_version + 1,
          lease_expires_at = now() + make_interval(secs => p_lease_seconds),
          updated_at = now()
-   where id = p_run and requested_by = actor
+   where id = p_run
      and (status = 'queued' or (status = 'running' and lease_expires_at <= now()))
   returning * into run;
   return run; -- null composite when the claim was lost
@@ -219,21 +290,25 @@ create or replace function public.steward_complete_canonical_run(
 ) returns public.steward_canonical_runs
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
-  actor uuid := auth.uid();
   run public.steward_canonical_runs;
 begin
-  if actor is null then
-    raise exception 'not_authorized' using errcode = 'P0401';
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'worker_only' using errcode = 'P0401';
   end if;
   if p_artifact is null or char_length(p_artifact) = 0 then
     raise exception 'artifact_required' using errcode = 'P0422';
   end if;
+  select * into run from public.steward_canonical_runs where id = p_run;
+  if not found then
+    raise exception 'run_not_found' using errcode = 'P0404';
+  end if;
+  perform private.steward_revalidate_requester(run);
   update public.steward_canonical_runs
      set status = 'complete', artifact_text = p_artifact,
          artifact_digest = encode(sha256(convert_to(p_artifact, 'utf8')), 'hex'),
          evidence_refs = coalesce(p_evidence_refs, '[]'::jsonb),
          claim_token = null, lease_expires_at = null, updated_at = now()
-   where id = p_run and requested_by = actor
+   where id = p_run
      and status = 'running' and claim_token = p_claim_token
      and lease_expires_at > now()
   returning * into run;
@@ -244,8 +319,8 @@ begin
 end;
 $$;
 
--- Fail a run with the same fencing rules. Requeues while attempts remain,
--- terminally fails at the attempt budget.
+-- Fail a run with the same fencing rules, including an unexpired lease.
+-- Requeues while attempts remain, terminally fails at the attempt budget.
 create or replace function public.steward_fail_canonical_run(
   p_run uuid,
   p_claim_token uuid,
@@ -253,18 +328,23 @@ create or replace function public.steward_fail_canonical_run(
 ) returns public.steward_canonical_runs
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
-  actor uuid := auth.uid();
   run public.steward_canonical_runs;
 begin
-  if actor is null then
-    raise exception 'not_authorized' using errcode = 'P0401';
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'worker_only' using errcode = 'P0401';
   end if;
+  select * into run from public.steward_canonical_runs where id = p_run;
+  if not found then
+    raise exception 'run_not_found' using errcode = 'P0404';
+  end if;
+  perform private.steward_revalidate_requester(run);
   update public.steward_canonical_runs
      set status = case when attempts >= max_attempts then 'failed' else 'queued' end,
          failure_reason = left(coalesce(p_reason, ''), 500),
          claim_token = null, lease_expires_at = null, updated_at = now()
-   where id = p_run and requested_by = actor
+   where id = p_run
      and status = 'running' and claim_token = p_claim_token
+     and lease_expires_at > now()
   returning * into run;
   if not found then
     raise exception 'claim_lost' using errcode = 'P0409';
@@ -272,3 +352,17 @@ begin
   return run;
 end;
 $$;
+
+-- No implicit EXECUTE: activation is only via grants.review.sql.
+revoke all on function public.steward_resolve_input(uuid, text, uuid) from public, anon, authenticated;
+revoke all on function public.steward_request_canonical_run(uuid, uuid, text, uuid, jsonb) from public, anon, authenticated;
+revoke all on function public.steward_claim_canonical_run(uuid, integer) from public, anon, authenticated;
+revoke all on function public.steward_complete_canonical_run(uuid, uuid, text, jsonb) from public, anon, authenticated;
+revoke all on function public.steward_fail_canonical_run(uuid, uuid, text) from public, anon, authenticated;
+revoke all on function private.steward_is_active_member(uuid) from public, anon, authenticated;
+revoke all on function private.steward_can_write(uuid) from public, anon, authenticated;
+revoke all on function private.steward_is_admin(uuid) from public, anon, authenticated;
+revoke all on function private.steward_user_can_write(uuid, uuid) from public, anon, authenticated;
+revoke all on function private.steward_user_is_admin(uuid, uuid) from public, anon, authenticated;
+revoke all on function private.steward_user_has_task_authority(public.steward_tasks, uuid) from public, anon, authenticated;
+revoke all on function private.steward_revalidate_requester(public.steward_canonical_runs) from public, anon, authenticated;
