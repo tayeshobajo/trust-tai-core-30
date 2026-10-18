@@ -25,7 +25,7 @@ do $$
 declare c record;
 begin
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
-  perform public.test_assert(c.denominator = 3, 'archived required task stays in the denominator');
+  perform public.test_assert(c.denominator = 4, 'archived required task stays in the denominator (3 added here + 1 from the coverage suite)');
   perform public.test_assert(c.verified = 0, 'reopened task earns no verified credit');
 end $$;
 
@@ -38,7 +38,7 @@ begin
     '10000000-0000-0000-0000-000000000001', 2, 'd2000000-0000-0000-0000-000000000001',
     'Verified the handoff outcome against the recording.');
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
-  perform public.test_assert(c.denominator = 3 and c.verified = 1, 'one of three verified');
+  perform public.test_assert(c.denominator = 4 and c.verified = 1, 'one of four verified');
 end $$;
 
 -- 4. Idempotent add replay; changed payload with same UUID conflicts;
@@ -90,7 +90,7 @@ begin
     'Human review decided this item is out of scope.', 'd3000000-0000-0000-0000-000000000001');
   perform public.test_assert(i.removed_at is not null, 'amendment marks removal');
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
-  perform public.test_assert(c.denominator = 3, 'amended item leaves the denominator');
+  perform public.test_assert(c.denominator = 4, 'amended item leaves the denominator');
   select count(*) into n from public.steward_scope_audit
    where scope_item_id = i.id and kind = 'amend_remove';
   perform public.test_assert(n = 1, 'amendment audited');
