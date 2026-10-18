@@ -35,10 +35,10 @@ const KNOWN_CODES: Record<string, MutationErrorKind> = {
 export const UNCERTAIN_MUTATION_MESSAGE =
   "The request may have completed, but the response was lost. Retry replays the same operation — it never re-executes.";
 
-export function classifyMutationError(error: unknown): {
-  kind: MutationErrorKind;
-  message: string;
-} {
+export function classifyMutationError(error: unknown):
+  | { kind: "conflict"; message: string }
+  | { kind: "rejected"; message: string }
+  | { kind: "uncertain"; message: string } {
   const code = (error as { code?: string } | null)?.code;
   const known = code ? KNOWN_CODES[code] : undefined;
   if (known) {

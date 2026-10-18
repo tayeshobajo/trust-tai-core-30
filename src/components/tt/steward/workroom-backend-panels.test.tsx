@@ -42,7 +42,7 @@ describe("verification panel operation safety", () => {
     render(
       <VerificationPanel
         capability={enabled}
-        state={{ kind: "ready", task: { status: "open", revision: 3 }, receipts: [] }}
+        state={{ kind: "ready", verified: false, task: { status: "open", revision: 3 }, receipts: [] }}
         task={fictionalTask as never}
         onVerify={onVerify}
         onReopen={undefined}
@@ -78,6 +78,7 @@ describe("verification panel operation safety", () => {
         capability={enabled}
         state={{
           kind: "ready",
+          verified: false,
           task: { status: "open", revision: 3 },
           receipts: [
             {
@@ -124,7 +125,7 @@ describe("verification panel operation safety", () => {
     const { rerender } = render(
       <VerificationPanel
         capability={enabled}
-        state={{ kind: "ready", task: { status: "open", revision: 3 }, receipts: [] }}
+        state={{ kind: "ready", verified: false, task: { status: "open", revision: 3 }, receipts: [] }}
         task={fictionalTask as never}
         onVerify={onVerify}
         onReopen={onReopen}
@@ -181,7 +182,7 @@ describe("verification panel operation safety", () => {
     render(
       <VerificationPanel
         capability={enabled}
-        state={{ kind: "ready", task: { status: "open", revision: 3 }, receipts: [] }}
+        state={{ kind: "ready", verified: false, task: { status: "open", revision: 3 }, receipts: [] }}
         task={fictionalTask as never}
         onVerify={onVerify}
         onReopen={undefined}
@@ -332,6 +333,8 @@ describe("preparation panel honesty", () => {
    remove/reinstate controls. */
 const fictionalProposal = {
   id: "prop-1",
+  sourceKey: "seg-3948",
+  kind: "task" as const,
   statement: "Fictional proposal statement",
   status: "proposed" as const,
   evidence: [{ label: "39:48 roadmap mention" }],
@@ -343,7 +346,7 @@ const scopeReady = {
     {
       id: "item-1",
       taskId: "00000000-0000-4000-8000-000000000099",
-      classification: "manual_required",
+      classification: "manual_required" as const,
       removedAt: null as string | null,
     },
   ],
