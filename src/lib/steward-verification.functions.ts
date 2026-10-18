@@ -22,7 +22,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
-import { createSupabaseVerificationRepository } from "./steward-verification.supabase";
+import {
+  createSupabaseVerificationRepository,
+  readMeetingVerificationProjection,
+} from "./steward-verification.supabase";
 import {
   reopenCanonicalTask,
   verifyCanonicalTask,
@@ -232,16 +235,15 @@ export const getMeetingVerificationProjectionFn = createServerFn({ method: "GET"
         message: `too many tasks for one consistent read (${uniqueIds.length} > ${PROJECTION_LIMIT}); verified counts are unknown, not zero`,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
-    const rls = context.supabase as any;
     // ONE statement snapshot via the proposed read-only RPC: latest
     // receipt per task + current revision together, so a truncated
     // receipt list can never produce a false verified. Requested ids the
     // caller cannot read come back in `missing` — unknown, never false.
-    const { data: rows, error } = await rls.rpc("steward_meeting_verification_projection", {
-      p_org: data.orgId,
-      p_task_ids: uniqueIds,
-    });
+    const { rows, error } = await readMeetingVerificationProjection(
+      context.supabase,
+      data.orgId,
+      uniqueIds,
+    );
     if (error) {
       return { kind: "rejected", message: "the verification projection could not be read" };
     }
