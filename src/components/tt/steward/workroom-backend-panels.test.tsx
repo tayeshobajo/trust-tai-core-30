@@ -240,7 +240,7 @@ describe("scope review source binding", () => {
         onAttestCoverage={onAttest}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Attest coverage|Confirm coverage/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Attest current transcript coverage/ }));
     reject?.(new Error("network dropped"));
     await screen.findByText(/Outcome unknown/);
 
