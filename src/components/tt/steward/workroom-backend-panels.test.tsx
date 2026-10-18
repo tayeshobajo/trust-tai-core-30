@@ -192,9 +192,7 @@ describe("verification panel operation safety", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Verify at revision 3/ }));
     reject?.(new Error("network dropped"));
-    await waitFor(() =>
-      expect(screen.getAllByText(/Outcome unknown/).length).toBeGreaterThan(0),
-    );
+    await waitFor(() => expect(screen.getAllByText(/Outcome unknown/).length).toBeGreaterThan(0));
     const verifyButton = screen.getByRole("button", { name: /Verify at revision 3/ });
     expect((verifyButton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(verifyButton);
@@ -244,9 +242,7 @@ describe("scope review source binding", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Attest current transcript coverage/ }));
     reject?.(new Error("network dropped"));
-    await waitFor(() =>
-      expect(screen.getAllByText(/Outcome unknown/).length).toBeGreaterThan(0),
-    );
+    await waitFor(() => expect(screen.getAllByText(/Outcome unknown/).length).toBeGreaterThan(0));
 
     /* The transcript changed during review: a new hash and scope version
        arrive from a refetch. */

@@ -472,7 +472,10 @@ function useStewardBackend(
       /* The worker envelope wraps the execute outcome; unwrap it
          faithfully so a nested "uncertain"/"failed" is never flattened
          into a generic "result". */
-      const inner = (result as { kind: string; result?: { kind: string; reason?: string; message?: string } });
+      const inner = result as {
+        kind: string;
+        result?: { kind: string; reason?: string; message?: string };
+      };
       if (inner.kind === "result" && inner.result) return outcomeOf(inner.result);
       return outcomeOf(result);
     },

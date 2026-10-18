@@ -213,7 +213,13 @@ function OutcomeNote({ outcome }: { outcome: ActionOutcome | null }) {
 }
 
 /** A failed READ with a real reload action — never wording alone. */
-function RejectedNote({ message, onRetry }: { message: string; onRetry?: (() => void) | undefined }) {
+function RejectedNote({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: (() => void) | undefined;
+}) {
   return (
     <p className="flex flex-wrap items-center gap-2 text-xs text-warning">
       <AlertCircle aria-hidden className="size-3.5" /> {message}
