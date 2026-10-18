@@ -29,7 +29,7 @@ begin
     perform public.steward_verify_task('11111111-1111-1111-1111-111111111111',
       '10000000-0000-0000-0000-000000000001', 0, 'b1000000-0000-0000-0000-000000000001',
       'A DIFFERENT note with the same operation UUID');
-  exception when raise_exception then conflicted := true; end;
+  exception when sqlstate 'P0002' then conflicted := true; end;
   perform public.test_assert(conflicted, 'reused operation UUID with changed payload conflicts');
 end $$;
 
