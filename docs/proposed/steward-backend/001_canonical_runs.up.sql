@@ -275,13 +275,26 @@ begin
      set status = 'failed', failure_reason = 'attempts exhausted', updated_at = now()
    where id = p_run
      and status in ('queued','running') and attempts >= max_attempts;
+  -- An expired running lease means the worker may have crashed AFTER the
+  -- provider call started; the outcome is unknown. The claim-token fence
+  -- blocks duplicate WRITES but not duplicate model EXECUTIONS, so an
+  -- expired running lease is terminalized conservatively as uncertain and
+  -- is never silently re-executed. A deliberate rerun requires a new
+  -- operation UUID (a new run row via steward_request_canonical_run).
+  update public.steward_canonical_runs
+     set status = 'failed',
+         failure_reason = 'uncertain: claim lease expired while running; outcome unknown, not retried',
+         claim_token = null, lease_expires_at = null, updated_at = now()
+   where id = p_run
+     and status = 'running' and lease_expires_at <= now();
+  -- Only known-queued work can be claimed.
   update public.steward_canonical_runs
      set status = 'running', attempts = attempts + 1,
          claim_token = gen_random_uuid(), claim_version = claim_version + 1,
          lease_expires_at = now() + make_interval(secs => p_lease_seconds),
          updated_at = now()
    where id = p_run
-     and (status = 'queued' or (status = 'running' and lease_expires_at <= now()))
+     and status = 'queued'
   returning * into run;
   return run; -- null composite when the claim was lost
 end;
@@ -327,11 +340,17 @@ end;
 $$;
 
 -- Fail a run with the same fencing rules, including an unexpired lease.
--- Requeues while attempts remain, terminally fails at the attempt budget.
+-- DEFAULT IS TERMINAL: an unknown transport/model-call failure is never
+-- blindly retried, because the provider call may already have happened.
+-- Requeue happens ONLY when the worker explicitly attests the failure was
+-- known to occur before the provider call started (p_known_pre_call) and
+-- attempts remain. Anything uncertain must go through
+-- steward_uncertain_canonical_run instead.
 create or replace function public.steward_fail_canonical_run(
   p_run uuid,
   p_claim_token uuid,
-  p_reason text
+  p_reason text,
+  p_known_pre_call boolean default false
 ) returns public.steward_canonical_runs
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -346,7 +365,7 @@ begin
   end if;
   perform private.steward_revalidate_requester(run);
   update public.steward_canonical_runs
-     set status = case when attempts >= max_attempts then 'failed' else 'queued' end,
+     set status = case when p_known_pre_call and attempts < max_attempts then 'queued' else 'failed' end,
          failure_reason = left(coalesce(p_reason, ''), 500),
          claim_token = null, lease_expires_at = null, updated_at = now()
    where id = p_run
@@ -365,7 +384,7 @@ revoke all on function public.steward_resolve_input(uuid, text, uuid) from publi
 revoke all on function public.steward_request_canonical_run(uuid, uuid, text, uuid, jsonb) from public, anon, authenticated;
 revoke all on function public.steward_claim_canonical_run(uuid, integer) from public, anon, authenticated;
 revoke all on function public.steward_complete_canonical_run(uuid, uuid, text, jsonb) from public, anon, authenticated;
-revoke all on function public.steward_fail_canonical_run(uuid, uuid, text) from public, anon, authenticated;
+revoke all on function public.steward_fail_canonical_run(uuid, uuid, text, boolean) from public, anon, authenticated;
 
 -- UNCERTAIN terminal state: the provider call's outcome is unknown (timeout,
 -- abort, lost connection) — the model may or may not have produced work.

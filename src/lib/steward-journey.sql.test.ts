@@ -1,5 +1,6 @@
 /**
- * REAL SQL journey for the staged Steward backend — NOT a Map mock.
+ * REAL SQL journey for the staged Steward backend — NOT a Map mock and
+ * NOT a reimplemented repository.
  *
  * Runs only when STEWARD_JOURNEY_DB points at a disposable PostgreSQL that
  * has the harness fixture plus the UNAPPLIED patches 001–005 and the local
@@ -7,34 +8,34 @@
  * docs/proposed/steward-backend/harness/tests/007_adapter_journey.sh).
  * Without that env var every test here is skipped.
  *
- * The repositories below implement the SAME interfaces as the Supabase
- * adapters (steward-canonical-run.supabase.ts, steward-verification.
- * supabase.ts, steward-proposal-ledger.supabase.ts) over a narrow
- * psql-backed transport, so SQL↔TS mapping defects cannot hide behind
- * in-memory fakes. The provider is fake; no model is ever called.
+ * The ACTUAL Supabase adapters (steward-canonical-run.supabase.ts,
+ * steward-verification.supabase.ts, steward-proposal-ledger.supabase.ts)
+ * are imported and driven over a narrow psql-backed transport that
+ * implements only `rpc(name, args)` and
+ * `from(table).select(cols).eq(...).single()/maybeSingle()` — so SQL↔TS
+ * mapping defects cannot hide behind duplicated mapping code. The
+ * provider is fake; no model is ever called.
  */
 
 import { execFileSync } from "node:child_process";
 import { describe, expect, test } from "vitest";
 
+import { createSupabaseCanonicalRunRepository } from "./steward-canonical-run.supabase";
+import { createSupabaseVerificationRepository } from "./steward-verification.supabase";
+import { createSupabaseProposalLedgerRepository } from "./steward-proposal-ledger.supabase";
 import {
   authorizeWorkerEndpoint,
   executeCanonicalRun,
-  type CanonicalRun,
-  type CanonicalRunRepository,
   OperationConflictError,
+  type CanonicalRunProvider,
+  type CanonicalRunRepository,
 } from "./steward-canonical-run.server";
-import type { CanonicalRunProvider } from "./steward-canonical-run.server";
-import {
-  verifyCanonicalTask,
-  reopenCanonicalTask,
-  type VerificationRepository,
-} from "./steward-verification.server";
+import { verifyCanonicalTask, reopenCanonicalTask } from "./steward-verification.server";
 import {
   registerExtractedProposals,
   dismissLedgerProposal,
-  type ProposalLedgerRepository,
 } from "./steward-proposal-ledger.server";
+import { parseStoredConversation } from "./steward-proposal-ledger.functions";
 import { extractProposals } from "@/data/steward/extract";
 import type { NormalizedConversation } from "@/domain/steward";
 
@@ -91,248 +92,142 @@ function parseJson<T>(raw: string): T {
   return JSON.parse(raw) as T;
 }
 
-/* ------------------------------------------------------------- mapping */
+/** Declared positional parameter order per proposed function. */
+const PARAM_ORDER: Record<string, string[]> = {
+  steward_request_canonical_run: ["p_org", "p_task", "p_action", "p_operation", "p_input_refs"],
+  steward_claim_canonical_run: ["p_run", "p_lease_seconds"],
+  steward_complete_canonical_run: ["p_run", "p_claim_token", "p_artifact", "p_evidence_refs"],
+  steward_fail_canonical_run: ["p_run", "p_claim_token", "p_reason", "p_known_pre_call"],
+  steward_uncertain_canonical_run: ["p_run", "p_claim_token", "p_reason"],
+  steward_verify_task: ["p_org", "p_task", "p_expected_revision", "p_operation", "p_note"],
+  steward_reopen_task: ["p_org", "p_task", "p_expected_revision", "p_operation", "p_reason"],
+  steward_register_proposals: [
+    "p_org",
+    "p_conversation",
+    "p_operation",
+    "p_proposals",
+    "p_transcript",
+  ],
+  steward_dismiss_proposal: ["p_org", "p_conversation", "p_proposal", "p_reason", "p_operation"],
+};
 
-interface RunRow {
-  id: string;
-  organization_id: string;
-  task_id: string;
-  action: CanonicalRun["action"];
-  client_operation_id: string;
-  request_digest: string;
-  input_snapshot: CanonicalRun["inputSnapshot"];
-  status: CanonicalRun["status"];
-  artifact_text: string | null;
-  artifact_digest: string | null;
-  evidence_refs: string[];
-  requested_by: string;
-  attempts: number;
-  max_attempts: number;
-  failure_reason: string | null;
-  claim_token: string | null;
-  claim_version: number;
+function sqlArg(value: unknown): string {
+  if (value === null || value === undefined) return "null";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return lit(value);
+  return `${lit(JSON.stringify(value))}::jsonb`;
 }
 
-function mapRun(row: RunRow): CanonicalRun {
-  return {
-    id: row.id,
-    organizationId: row.organization_id,
-    taskId: row.task_id,
-    action: row.action,
-    clientOperationId: row.client_operation_id,
-    requestDigest: row.request_digest,
-    inputSnapshot: row.input_snapshot,
-    status: row.status,
-    artifactText: row.artifact_text,
-    artifactDigest: row.artifact_digest,
-    evidenceRefs: row.evidence_refs,
-    requestedBy: row.requested_by,
-    attempts: row.attempts,
-    maxAttempts: row.max_attempts,
-    failureReason: row.failure_reason,
-    claimToken: row.claim_token,
-    claimVersion: row.claim_version,
-  };
+interface TransportResult {
+  data: unknown;
+  error: { code?: string; message: string } | null;
 }
 
-function rethrow(error: unknown): never {
-  const err = error as { code?: string; message?: string };
-  if (err.code === "P0002" || err.message?.includes("operation_conflict")) {
-    throw new OperationConflictError("operation_conflict");
-  }
-  throw error;
-}
-
-/* --------------------------------------------------------- repositories */
-
-function createPsqlRunRepository(actorId: string): CanonicalRunRepository {
-  return {
-    async requestRun(input) {
-      try {
-        const refs = JSON.stringify(input.inputRefs.map((r) => ({ kind: r.kind, id: r.id })));
-        const raw = asUser(
-          actorId,
-          `select public.steward_request_canonical_run(${lit(input.orgId)}, ${lit(input.taskId)}, ${lit(input.action)}, ${lit(input.operationId)}, ${lit(refs)}::jsonb)`,
-        );
-        const result = parseJson<{ run: RunRow; replayed: boolean }>(raw);
-        return { run: mapRun(result.run), replayed: result.replayed === true };
-      } catch (error) {
-        rethrow(error);
-      }
-    },
-    async claimRun(runId) {
-      const raw = asWorker(
-        `select row_to_json(f) from public.steward_claim_canonical_run(${lit(runId)}) f`,
-      );
-      if (!raw) return null;
-      const row = parseJson<RunRow | null>(raw);
-      return row?.id ? mapRun(row) : null;
-    },
-    async completeRun(input) {
-      const raw = asWorker(
-        `select row_to_json(f) from public.steward_complete_canonical_run(${lit(input.runId)}, ${lit(input.claimToken)}, ${lit(input.artifactText)}, ${lit(JSON.stringify(input.evidenceRefs))}::jsonb) f`,
-      );
-      return mapRun(parseJson<RunRow>(raw));
-    },
-    async failRun(input) {
-      const raw = asWorker(
-        `select row_to_json(f) from public.steward_fail_canonical_run(${lit(input.runId)}, ${lit(input.claimToken)}, ${lit(input.reason)}) f`,
-      );
-      return mapRun(parseJson<RunRow>(raw));
-    },
-    async markRunUncertain(input) {
-      const raw = asWorker(
-        `select row_to_json(f) from public.steward_uncertain_canonical_run(${lit(input.runId)}, ${lit(input.claimToken)}, ${lit(input.reason)}) f`,
-      );
-      return mapRun(parseJson<RunRow>(raw));
-    },
-    async readInput() {
-      throw new Error("readInput is server-side only, same as the Supabase adapter");
-    },
-    async readTaskTitle(taskId, orgId) {
-      const raw = asUser(
-        actorId,
-        `select title from public.steward_tasks where id = ${lit(taskId)} and organization_id = ${lit(orgId)}`,
-      );
-      return raw || null;
-    },
-  };
-}
-
-function createPsqlVerificationRepository(actorId: string): VerificationRepository {
-  const readTask = (taskId: string) => {
-    const raw = asUser(
-      actorId,
-      `select row_to_json(t) from (select id, status, revision, completion_evidence, completed_at, completed_by from public.steward_tasks where id = ${lit(taskId)} and organization_id = ${lit(ORG)}) t`,
-    );
-    if (!raw) return null;
-    const row = parseJson<{
-      id: string;
-      status: "open" | "complete";
-      revision: number;
-      completion_evidence: string | null;
-      completed_at: string | null;
-      completed_by: string | null;
-    }>(raw);
-    return {
-      id: row.id,
-      status: row.status,
-      revision: row.revision,
-      completionEvidence: row.completion_evidence,
-      completedAt: row.completed_at,
-      completedBy: row.completed_by,
-    };
-  };
-  return {
-    async verifyTask(input) {
-      const raw = asUser(
-        actorId,
-        `select public.steward_verify_task(${lit(input.orgId)}, ${lit(input.taskId)}, ${input.expectedRevision}, ${lit(input.operationId)}, ${lit(input.note)})`,
-      );
-      const result = parseJson<{ receipt: Record<string, unknown>; replayed: boolean }>(raw);
-      const r = result.receipt;
+/**
+ * Narrow psql-backed transport implementing exactly the surface the real
+ * Supabase adapters use: rpc(name, args) and a from()/select()/eq() query
+ * builder with single()/maybeSingle()/awaitable terminals.
+ */
+function createPsqlTransport(role: "authenticated" | "service", userId?: string) {
+  const run = (statement: string): TransportResult => {
+    try {
+      const raw = role === "service" ? asWorker(statement) : asUser(userId!, statement);
+      return { data: raw ? parseJson<unknown>(raw) : null, error: null };
+    } catch (error) {
+      const err = error as SqlError;
       return {
-        task: readTask(input.taskId),
-        receipt: {
-          id: r["id"] as string,
-          organizationId: r["organization_id"] as string,
-          taskId: r["task_id"] as string,
-          operationId: r["operation_id"] as string,
-          note: r["note"] as string,
-          actorId: r["actor_id"] as string,
-          createdAt: r["created_at"] as string,
+        data: null,
+        error: {
+          ...(err.code !== undefined ? { code: err.code } : {}),
+          message: err.message,
         },
-        replayed: result.replayed === true,
       };
-    },
-    async reopenTask(input) {
-      const raw = asUser(
-        actorId,
-        `select public.steward_reopen_task(${lit(input.orgId)}, ${lit(input.taskId)}, ${input.expectedRevision}, ${lit(input.operationId)}, ${lit(input.reason)})`,
-      );
-      const result = parseJson<{ replayed: boolean }>(raw);
-      return { task: readTask(input.taskId), replayed: result.replayed === true };
-    },
+    }
   };
-}
-
-function createPsqlProposalLedgerRepository(actorId: string): ProposalLedgerRepository {
   return {
-    async registerProposals(input) {
-      const proposals = JSON.stringify(
-        input.proposals.map((p) => ({
-          source_key: p.sourceKey,
-          kind: p.kind,
-          statement: p.statement,
-        })),
-      );
-      const raw = asUser(
-        actorId,
-        `select public.steward_register_proposals(${lit(input.orgId)}, ${lit(input.conversationId)}, ${lit(input.operationId)}, ${lit(proposals)}::jsonb, (select transcript from public.conversations where id = ${lit(input.conversationId)}))`,
-      );
-      return Number(raw);
+    async rpc(name: string, args: Record<string, unknown>): Promise<TransportResult> {
+      const order = PARAM_ORDER[name];
+      if (!order) throw new Error(`no param order registered for ${name}`);
+      const positional = order.map((p) => sqlArg(args[p])).join(", ");
+      return run(`select to_jsonb(public.${name}(${positional}))`);
     },
-    async dismissProposal(input) {
-      const raw = asUser(
-        actorId,
-        `select row_to_json(f) from public.steward_dismiss_proposal(${lit(input.orgId)}, ${lit(input.conversationId)}, ${lit(input.proposalId)}, ${lit(input.reason)}, ${lit(input.operationId)}) f`,
-      );
-      const row = parseJson<Record<string, unknown>>(raw);
-      return {
-        id: row["id"] as string,
-        organizationId: row["organization_id"] as string,
-        conversationId: row["conversation_id"] as string,
-        sourceKey: row["source_key"] as string,
-        kind: row["kind"] as string,
-        statement: row["statement"] as string,
-        status: row["status"] as "proposed" | "linked" | "dismissed",
-      };
-    },
-    async ledgerForConversation(orgId, conversationId) {
-      const raw = asUser(
-        actorId,
-        `select coalesce(jsonb_agg(row_to_json(l)), '[]'::jsonb) from (select id, organization_id, conversation_id, source_key, kind, statement, status from public.steward_proposal_ledger where organization_id = ${lit(orgId)} and conversation_id = ${lit(conversationId)}) l`,
-      );
-      const rows = parseJson<Record<string, unknown>[]>(raw);
-      return rows.map((row) => ({
-        id: row["id"] as string,
-        organizationId: row["organization_id"] as string,
-        conversationId: row["conversation_id"] as string,
-        sourceKey: row["source_key"] as string,
-        kind: row["kind"] as string,
-        statement: row["statement"] as string,
-        status: row["status"] as "proposed" | "linked" | "dismissed",
-      }));
-    },
-  };
-}
-
-/** Narrow psql-backed fake of the RLS query builder authorizeWorkerEndpoint uses. */
-function createPsqlRlsClient(callerId: string) {
-  return {
     from(table: string) {
       return {
         select(cols: string) {
           const conditions: string[] = [];
-          const build = () =>
-            `select row_to_json(t) from (select ${cols} from public.${table} where ${conditions.join(" and ")}) t`;
-          const chain: {
-            eq: (col: string, val: string) => typeof chain;
-            maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
-          } = {
+          const sql = () =>
+            `select coalesce(jsonb_agg(row_to_json(t)), '[]'::jsonb) from (select ${cols} from public.${table} where ${conditions.join(" and ")}) t`;
+          const rows = (): TransportResult => run(sql());
+          const chain = {
             eq(col: string, val: string) {
               conditions.push(`${col} = ${lit(val)}`);
               return chain;
             },
-            async maybeSingle() {
-              const raw = asUser(callerId, build());
-              return { data: raw ? parseJson<Record<string, unknown>>(raw) : null };
+            async single(): Promise<TransportResult> {
+              const result = rows();
+              const list = result.data as unknown[] | null;
+              return result.error
+                ? result
+                : { data: list && list.length > 0 ? list[0] : null, error: null };
+            },
+            async maybeSingle(): Promise<TransportResult> {
+              const result = rows();
+              const list = result.data as unknown[] | null;
+              return result.error
+                ? result
+                : { data: list && list.length > 0 ? list[0] : null, error: null };
+            },
+            then(onFulfilled?: (value: TransportResult) => unknown) {
+              return Promise.resolve(rows()).then(onFulfilled);
             },
           };
           return chain;
         },
       };
     },
+  };
+}
+
+/** eslint-disable-next-line @typescript-eslint/no-explicit-any -- narrow test transport */
+type AnyClient = any;
+
+function userClient(userId: string): AnyClient {
+  return createPsqlTransport("authenticated", userId);
+}
+
+function workerClient(): AnyClient {
+  return createPsqlTransport("service");
+}
+
+/**
+ * The real run adapter, composed exactly like the production handler:
+ * request/title reads run as the authenticated caller (RLS), worker
+ * transitions run as service_role.
+ */
+function createJourneyRunRepository(actorId: string): CanonicalRunRepository {
+  const asActor = createSupabaseCanonicalRunRepository(userClient(actorId));
+  const asWorkerRepo = createSupabaseCanonicalRunRepository(workerClient());
+  return {
+    requestRun: (input) => asActor.requestRun(input),
+    readTaskTitle: (taskId, orgId, actor) => asActor.readTaskTitle(taskId, orgId, actor),
+    readInput: (ref, orgId, actor) => asActor.readInput(ref, orgId, actor),
+    claimRun: (runId, actor, lease) => asWorkerRepo.claimRun(runId, actor, lease),
+    completeRun: (input) => asWorkerRepo.completeRun(input),
+    failRun: (input) => asWorkerRepo.failRun(input),
+    markRunUncertain: (input) => asWorkerRepo.markRunUncertain(input),
+  };
+}
+
+/** Narrow psql-backed fake of the RLS query builder authorizeWorkerEndpoint uses. */
+type RlsChain = {
+  eq(col: string, val: string): RlsChain;
+  maybeSingle(): Promise<{ data: Record<string, unknown> | null }>;
+};
+
+function createPsqlRlsClient(callerId: string) {
+  return userClient(callerId) as {
+    from(table: string): { select(cols: string): RlsChain };
   };
 }
 
@@ -355,10 +250,10 @@ function fakeProvider(calls: { count: number }): CanonicalRunProvider {
 
 /* ---------------------------------------------------------------- suite */
 
-describe("steward SQL journey (real disposable PostgreSQL)", () => {
+describe("steward SQL journey (real disposable PostgreSQL, real adapters)", () => {
   journey("request → replay → claim → artifact → verify → replay → reopen", async () => {
-    const runRepo = createPsqlRunRepository(OWNER);
-    const verifyRepo = createPsqlVerificationRepository(OWNER);
+    const runRepo = createJourneyRunRepository(OWNER);
+    const verifyRepo = createSupabaseVerificationRepository(userClient(OWNER));
 
     // 1. Request a canonical preparation run.
     const requested = await runRepo.requestRun({
@@ -454,12 +349,9 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
     });
     if (verified.kind !== "verified")
       throw new Error(`verify rejected: ${JSON.stringify(verified)}`);
-    expect(verified.kind).toBe("verified");
-    if (verified.kind === "verified") {
-      expect(verified.replayed).toBe(false);
-      expect(verified.task?.status).toBe("complete");
-      expect(verified.receipt.note).toContain("Reviewed the draft brief");
-    }
+    expect(verified.replayed).toBe(false);
+    expect(verified.task?.status).toBe("complete");
+    expect(verified.receipt.note).toContain("Reviewed the draft brief");
 
     // 7. Verify replay: same operation returns the same receipt.
     const verifyReplay = await verifyCanonicalTask(verifyRepo, {
@@ -502,62 +394,143 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
     if (reopenReplay.kind === "reopened") expect(reopenReplay.replayed).toBe(true);
   });
 
-  journey("proposal ledger: real extraction output registers and dismisses", async () => {
-    const ledgerRepo = createPsqlProposalLedgerRepository(OWNER);
+  journey("proposal ledger: real stored conversation identity, real extraction", async () => {
+    // A REAL-shape NormalizedConversation as saveConversation stores it:
+    // externalId DIFFERENT from the DB UUID, nonzero segment offsets,
+    // participants, and a provider action item (guarantees a proposal so
+    // this test can never pass vacuously).
+    const storedConversation: NormalizedConversation = {
+      sourceRef: {
+        provider: "fathom",
+        externalId: "fathom-rec-98765",
+        shareToken: "shr-abc123",
+        url: "https://fathom.video/share/shr-abc123",
+      },
+      title: "Soji roadmap call",
+      occurredAt: "2026-10-01T14:00:00.000Z",
+      participants: [
+        { name: "Tai", email: "tai@trusttai.com", emailDomain: "trusttai.com" },
+        { name: "Soji Client", email: "client@soji.example", emailDomain: "soji.example" },
+      ],
+      segments: [
+        { index: 0, speaker: "Tai", at: "00:39:48", text: "We will prepare the roadmap draft." },
+        { index: 1, speaker: "Soji Client", at: "00:40:03", text: "Yes, agreed." },
+      ],
+      sourceActionItems: [
+        {
+          description: "Prepare the Soji roadmap draft",
+          assigneeName: "Tai",
+          at: "00:39:48",
+          url: "https://fathom.video/share/shr-abc123?t=2388",
+        },
+      ],
+    };
+    // Store it in the disposable DB exactly as saveConversation would.
+    asWorker(
+      `update public.conversations set transcript = ${lit(JSON.stringify(storedConversation))}::jsonb where id = ${lit(CONVERSATION)}`,
+    );
 
-    // Real extractor over the REAL stored transcript contract.
-    const transcript = parseJson<{ segments: { speaker: string; text: string; offset: number }[] }>(
+    // Read back through the caller's RLS view and validate the exact
+    // stored object — no reconstruction, no fabricated identity.
+    const storedRaw = parseJson<unknown>(
       asUser(OWNER, `select transcript from public.conversations where id = ${lit(CONVERSATION)}`),
     );
-    const normalized: NormalizedConversation = {
-      sourceRef: { provider: "fathom", externalId: CONVERSATION, url: "" },
-      title: "Soji roadmap call",
-      occurredAt: new Date(0).toISOString(),
-      participants: [],
-      sourceActionItems: [],
-      segments: transcript.segments.map((s, index) => ({
-        index,
-        speaker: s.speaker,
-        at: "00:00:00",
-        text: s.text,
-      })),
-    };
-    const proposals = extractProposals(normalized);
+    const stored = parseStoredConversation(storedRaw);
+    expect(stored, "stored conversation must validate").not.toBeNull();
+    expect(stored!.sourceRef.externalId).toBe("fathom-rec-98765");
+    expect(stored!.sourceRef.shareToken).toBe("shr-abc123");
+    expect(stored!.participants).toHaveLength(2);
+    expect(stored!.segments[1]!.at).toBe("00:40:03");
 
+    // Extraction runs over the EXACT stored object; assert equality with
+    // a direct extraction of the same object, and that it is non-vacuous.
+    const direct = extractProposals(stored!);
+    expect(direct.length).toBeGreaterThan(0);
+    expect(direct.some((p) => p.evidence.length > 0)).toBe(true);
+
+    // Invalid stored shapes fail closed.
+    expect(parseStoredConversation({ segments: [] })).toBeNull();
+    expect(parseStoredConversation({ sourceRef: { provider: "fathom" } })).toBeNull();
+
+    const ledgerRepo = createSupabaseProposalLedgerRepository(userClient(OWNER));
     const registered = await registerExtractedProposals(ledgerRepo, {
       orgId: ORG,
       conversationId: CONVERSATION,
       operationId: "e7a00000-0000-0000-0000-000000000004",
-      proposals: proposals.map((p) => ({ id: p.id, kind: p.kind, statement: p.statement })),
-      transcript,
+      proposals: direct.map((p) => ({
+        id: p.id,
+        kind: p.kind,
+        statement: p.statement,
+        evidence: p.evidence,
+      })),
+      transcript: storedRaw,
       actorId: OWNER,
     });
-    // The fixture transcript may legitimately yield zero proposals; the
-    // contract under test is that registration runs the real extractor and
-    // reports honestly.
     expect(registered.kind).toBe("registered");
     if (registered.kind === "registered") {
-      expect(registered.added).toBe(proposals.length);
+      expect(registered.added).toBe(direct.length);
     }
 
     const ledger = await ledgerRepo.ledgerForConversation(ORG, CONVERSATION);
-    const pending = ledger.filter((p) => p.status === "proposed");
-    if (pending.length > 0) {
-      const dismissed = await dismissLedgerProposal(ledgerRepo, {
-        orgId: ORG,
-        conversationId: CONVERSATION,
-        proposalId: pending[0]!.id,
-        reason: "Reviewed in the room: not an agreed action.",
-        operationId: "e7a00000-0000-0000-0000-000000000005",
-        actorId: OWNER,
-      });
-      expect(dismissed.kind).toBe("dismissed");
-      // Decision audit persisted with the operation.
-      const audit = asUser(
-        OWNER,
-        `select count(*) from public.steward_proposal_decisions where organization_id = ${lit(ORG)} and operation_id = 'e7a00000-0000-0000-0000-000000000005' and kind = 'dismiss'`,
-      );
-      expect(audit).toBe("1");
+    // Earlier harness suites legitimately registered proposals for this
+    // conversation too; assert every freshly extracted key is present.
+    for (const proposal of direct) {
+      expect(
+        ledger.some((row) => row.sourceKey === proposal.id),
+        `ledger must contain ${proposal.id}`,
+      ).toBe(true);
     }
+    // Evidence refs are retained for review, not discarded.
+    expect(ledger.some((p) => (p.evidence?.length ?? 0) > 0)).toBe(true);
+
+    const pending = ledger.filter((p) => p.status === "proposed");
+    expect(pending.length).toBeGreaterThan(0);
+    const dismissed = await dismissLedgerProposal(ledgerRepo, {
+      orgId: ORG,
+      conversationId: CONVERSATION,
+      proposalId: pending[0]!.id,
+      reason: "Reviewed in the room: not an agreed action.",
+      operationId: "e7a00000-0000-0000-0000-000000000005",
+      actorId: OWNER,
+    });
+    expect(dismissed.kind).toBe("dismissed");
+    // Decision audit persisted with the operation.
+    const audit = asUser(
+      OWNER,
+      `select count(*) from public.steward_proposal_decisions where organization_id = ${lit(ORG)} and operation_id = 'e7a00000-0000-0000-0000-000000000005' and kind = 'dismiss'`,
+    );
+    expect(audit).toBe("1");
+  });
+
+  journey("expired running lease terminalizes as uncertain — never re-executed", async () => {
+    const runRepo = createJourneyRunRepository(OWNER);
+    const requested = await runRepo.requestRun({
+      orgId: ORG,
+      taskId: TASK,
+      action: "prepare_brief",
+      operationId: "e7a00000-0000-0000-0000-000000000010",
+      digest: "",
+      inputRefs: [{ kind: "transcript", id: CONVERSATION }],
+      actorId: OWNER,
+    });
+    // Claim with a 1-second lease, then let it expire WITHOUT completing —
+    // simulating a worker that crashed after the provider call started.
+    const claimed = await runRepo.claimRun(requested.run.id, OWNER, 1);
+    expect(claimed?.status).toBe("running");
+    asWorker(`select pg_sleep(1.2)`);
+
+    // A second worker claims: the expired running lease is terminalized as
+    // uncertain and NO claim is granted — zero provider calls happen.
+    const calls = { count: 0 };
+    const second = await executeCanonicalRun(runRepo, fakeProvider(calls), {
+      runId: requested.run.id,
+      actorId: OWNER,
+    });
+    expect(calls.count).toBe(0);
+    expect(second.kind).toBe("not_claimed");
+    const state = asWorker(
+      `select status || '|' || failure_reason from public.steward_canonical_runs where id = ${lit(requested.run.id)}`,
+    );
+    expect(state.startsWith("failed|uncertain:")).toBe(true);
   });
 });

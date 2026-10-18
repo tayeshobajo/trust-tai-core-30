@@ -22,6 +22,7 @@ interface LedgerRow {
   kind: string;
   statement: string;
   status: LedgerProposal["status"];
+  evidence?: unknown[];
 }
 
 function mapRow(row: LedgerRow): LedgerProposal {
@@ -30,6 +31,7 @@ function mapRow(row: LedgerRow): LedgerProposal {
     organizationId: row.organization_id,
     conversationId: row.conversation_id,
     sourceKey: row.source_key,
+    evidence: (row.evidence as unknown[] | undefined) ?? [],
     kind: row.kind,
     statement: row.statement,
     status: row.status,
@@ -57,6 +59,7 @@ export function createSupabaseProposalLedgerRepository(
         p_operation: input.operationId,
         p_proposals: input.proposals.map((p) => ({
           source_key: p.sourceKey,
+          evidence: p.evidence ?? [],
           kind: p.kind,
           statement: p.statement,
         })),
@@ -79,7 +82,9 @@ export function createSupabaseProposalLedgerRepository(
     async ledgerForConversation(orgId, conversationId) {
       const { data, error } = await supabase
         .from("steward_proposal_ledger")
-        .select("id, organization_id, conversation_id, source_key, kind, statement, status")
+        .select(
+          "id, organization_id, conversation_id, source_key, kind, statement, status, evidence",
+        )
         .eq("organization_id", orgId)
         .eq("conversation_id", conversationId);
       if (error) rethrow(error);

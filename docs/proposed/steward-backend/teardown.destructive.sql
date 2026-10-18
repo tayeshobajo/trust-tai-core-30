@@ -17,12 +17,15 @@ begin
        + (select count(*) from public.steward_proposal_links)
        + (select count(*) from public.steward_scope_items)
        + (select count(*) from public.steward_scope_audit)
+       + (select count(*) from public.steward_proposal_ledger)
+       + (select count(*) from public.steward_proposal_decisions)
     into n;
   if n > 0 then
     raise exception 'teardown_refused: % rows of history remain; use the data-preserving down patches', n
       using errcode = 'P0405';
   end if;
   foreach t in array array[
+    'steward_proposal_decisions', 'steward_proposal_ledger',
     'steward_scope_audit', 'steward_scope_items', 'steward_proposal_links',
     'steward_coverage_attestations', 'steward_scope_versions',
     'steward_task_audit', 'steward_task_receipts', 'steward_canonical_runs']

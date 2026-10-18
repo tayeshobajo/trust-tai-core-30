@@ -118,8 +118,9 @@ select public.test_denied($q$
     gen_random_uuid(), 'client fail attempt') $q$,
   'authenticated client cannot fail');
 
--- 7. Fencing via the worker path: claim, lease expiry, reclaim, stale token
---    cannot complete; fail requires an unexpired lease.
+-- 7. Fencing via the worker path: claim, lease expiry terminalizes the run
+--    as uncertain (never silently re-executed); stale token cannot complete;
+--    fail requires an unexpired lease.
 select public.test_act_as_worker();
 set role service_role;
 do $$
@@ -136,15 +137,44 @@ begin
     raise exception 'FAILED: expired-lease fail accepted';
   exception when sqlstate 'P0409' then null; end;
   perform public.test_assert(true, 'fail with expired lease rejected');
+  -- A second claim after lease expiry must NOT re-execute: the expired
+  -- running lease is terminalized as uncertain and no claim is granted.
   r := public.steward_claim_canonical_run(rid);
-  perform public.test_assert(r.status = 'running' and r.attempts = 2 and r.claim_token is distinct from stale,
-    'expired lease reclaimable with fresh token');
-  fresh := r.claim_token;
+  perform public.test_assert(r.id is null, 'expired running lease is not reclaimable');
+  select * into r from public.steward_canonical_runs where id = rid;
+  perform public.test_assert(r.status = 'failed'
+    and r.failure_reason like 'uncertain:%'
+    and r.attempts = 1,
+    'expired running lease terminalized as uncertain, not retried');
   begin
     perform public.steward_complete_canonical_run(rid, stale, 'stale worker artifact');
     raise exception 'FAILED: stale token completed';
   exception when sqlstate 'P0409' then null; end;
   perform public.test_assert(true, 'stale fencing token cannot complete');
+end $$;
+
+-- 7b. A deliberate rerun uses a NEW operation UUID: fresh run, fresh
+--     claim, clean completion. The request runs as the authenticated
+--     owner (the RPC is granted to authenticated only).
+reset role;
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+select public.steward_request_canonical_run(
+  '11111111-1111-1111-1111-111111111111',
+  '10000000-0000-0000-0000-000000000001',
+  'prepare_brief', 'a0000000-0000-0000-0000-0000000000f1',
+  '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
+select public.test_act_as_worker();
+set role service_role;
+do $$
+declare rid uuid; r public.steward_canonical_runs; fresh uuid;
+begin
+  select id into rid from public.steward_canonical_runs
+   where client_operation_id = 'a0000000-0000-0000-0000-0000000000f1';
+  r := public.steward_claim_canonical_run(rid);
+  perform public.test_assert(r.status = 'running' and r.claim_token is not null,
+    'deliberate rerun via new operation claims cleanly');
+  fresh := r.claim_token;
   r := public.steward_complete_canonical_run(rid, fresh, 'current worker artifact');
   perform public.test_assert(r.status = 'complete'
     and r.artifact_digest = encode(sha256(convert_to('current worker artifact','utf8')), 'hex'),
@@ -216,9 +246,35 @@ declare rid uuid; r public.steward_canonical_runs;
 begin
   select id into rid from public.steward_canonical_runs
    where client_operation_id = 'a0000000-0000-0000-0000-000000000005';
+  -- Default fail (unknown transport/model-call failure) is TERMINAL: no
+  -- blind retry of a call that may already have happened.
+  r := public.steward_claim_canonical_run(rid);
+  r := public.steward_fail_canonical_run(rid, r.claim_token, 'unknown transport failure');
+  perform public.test_assert(r.status = 'failed', 'unknown failure fails terminally, no blind retry');
+  r := public.steward_claim_canonical_run(rid);
+  perform public.test_assert(r.id is null, 'terminally failed run cannot be claimed');
+end $$;
+
+-- Explicit known-pre-call failures may requeue within the attempt budget.
+-- Fresh run via a new operation UUID (the f1 run completed in test 7b).
+reset role;
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+select public.steward_request_canonical_run(
+  '11111111-1111-1111-1111-111111111111',
+  '10000000-0000-0000-0000-000000000001',
+  'prepare_brief', 'a0000000-0000-0000-0000-0000000000f2',
+  '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
+select public.test_act_as_worker();
+set role service_role;
+do $$
+declare rid uuid; r public.steward_canonical_runs;
+begin
+  select id into rid from public.steward_canonical_runs
+   where client_operation_id = 'a0000000-0000-0000-0000-0000000000f2';
   for i in 1..3 loop
     r := public.steward_claim_canonical_run(rid);
-    r := public.steward_fail_canonical_run(rid, r.claim_token, 'synthetic provider failure');
+    r := public.steward_fail_canonical_run(rid, r.claim_token, 'synthetic pre-call failure', true);
   end loop;
   perform public.test_assert(r.status = 'failed', 'attempts exhaust to failed');
   r := public.steward_claim_canonical_run(rid);
@@ -234,7 +290,7 @@ declare rid uuid;
 begin
   select (public.steward_request_canonical_run(
       '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
-      'prepare_brief', 'a0000000-0000-0000-0000-0000000000f1'::uuid,
+      'prepare_brief', 'a0000000-0000-0000-0000-0000000000f3'::uuid,
       '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb) -> 'run' ->> 'id')::uuid into rid;
 end $$;
 select public.test_act_as_worker();
@@ -243,7 +299,7 @@ do $$
 declare rid uuid; r public.steward_canonical_runs;
 begin
   select id into rid from public.steward_canonical_runs
-   where client_operation_id = 'a0000000-0000-0000-0000-0000000000f1';
+   where client_operation_id = 'a0000000-0000-0000-0000-0000000000f3';
   r := public.steward_claim_canonical_run(rid);
   r := public.steward_uncertain_canonical_run(rid, r.claim_token, 'provider call timed out');
   perform public.test_assert(r.status = 'failed', 'uncertain run is terminally failed');

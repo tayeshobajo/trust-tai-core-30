@@ -23,6 +23,8 @@ export interface LedgerProposal {
   kind: string;
   statement: string;
   status: "proposed" | "linked" | "dismissed";
+  /** Retained extractor evidence refs for human review. */
+  evidence?: unknown[];
 }
 
 /** Extraction output shape consumed from src/data/steward/extract.ts. */
@@ -31,6 +33,8 @@ export interface ExtractedProposal {
   id: string;
   kind: string;
   statement: string;
+  /** Exact evidence refs from the extractor, retained for review. */
+  evidence?: unknown[];
 }
 
 export class TranscriptChangedError extends Error {
@@ -47,7 +51,7 @@ export interface ProposalLedgerRepository {
     orgId: string;
     conversationId: string;
     operationId: string;
-    proposals: { sourceKey: string; kind: string; statement: string }[];
+    proposals: { sourceKey: string; kind: string; statement: string; evidence?: unknown[] }[];
     /** The exact transcript JSON the extraction ran over. */
     transcript: unknown;
     actorId: string;
@@ -68,8 +72,14 @@ export function toRegistrationPayload(proposals: ExtractedProposal[]): {
   sourceKey: string;
   kind: string;
   statement: string;
+  evidence?: unknown[];
 }[] {
-  return proposals.map((p) => ({ sourceKey: p.id, kind: p.kind, statement: p.statement }));
+  return proposals.map((p) => ({
+    sourceKey: p.id,
+    kind: p.kind,
+    statement: p.statement,
+    ...(p.evidence !== undefined ? { evidence: p.evidence } : {}),
+  }));
 }
 
 export type RegisterProposalsResult =

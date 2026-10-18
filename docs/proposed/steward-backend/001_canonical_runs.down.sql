@@ -5,7 +5,7 @@
 -- SELECT grants from grants.review.sql remain harmless because the policy
 -- still gates every read. RLS is NEVER disabled here.
 drop function if exists public.steward_uncertain_canonical_run;
-drop function if exists public.steward_fail_canonical_run(uuid, uuid, text);
+drop function if exists public.steward_fail_canonical_run(uuid, uuid, text, boolean);
 drop function if exists public.steward_complete_canonical_run(uuid, uuid, text, jsonb);
 drop function if exists public.steward_claim_canonical_run(uuid, integer);
 drop function if exists public.steward_request_canonical_run(uuid, uuid, text, uuid, jsonb);

@@ -15,6 +15,14 @@
  * linked/dismissed decision, and the SQL rejects registration against a
  * transcript that changed since extraction. Model suggestions are never
  * auto-confirmed.
+ *
+ * Extraction identity: the stored `conversations.transcript` JSONB IS the
+ * full `NormalizedConversation` written by `saveConversation`
+ * (sourceRef/participants/segments/sourceActionItems included). It is
+ * validated strictly and passed to `extractProposals` VERBATIM so
+ * `sourceKeyOf` keys match existing commitments. Nothing is fabricated —
+ * no invented provider, externalId, date, or participant. An invalid
+ * stored shape fails closed with an explicit rejection.
  */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -22,7 +30,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { extractProposals } from "@/data/steward/extract";
-import type { NormalizedConversation, TranscriptSegment } from "@/domain/steward";
+import type { NormalizedConversation } from "@/domain/steward";
 import {
   registerExtractedProposals,
   type RegisterProposalsResult,
@@ -30,8 +38,7 @@ import {
 import { createSupabaseProposalLedgerRepository } from "./steward-proposal-ledger.supabase";
 
 export type ProposalLedgerCapabilityState =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "enabled" };
+  { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
 export type ProposalLedgerSyncState =
   | { kind: "unavailable"; reason: string }
@@ -46,39 +53,57 @@ function capabilityEnabled(): boolean {
 const DISABLED_REASON =
   "Proposal ledger sync is not available yet: the reviewed backend contract is not applied. Nothing was read or registered.";
 
-/** Stored transcript JSONB: { segments: [{ speaker, text, offset }] }. */
-interface StoredTranscript {
-  segments?: { speaker?: string; text?: string; offset?: number }[];
+const PROVIDERS = new Set(["fathom", "zoom", "gmeet", "slack", "teams", "calendar", "fixture"]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function toNormalizedConversation(
-  conversationId: string,
-  title: string,
-  transcript: StoredTranscript,
-): NormalizedConversation {
-  const segments: TranscriptSegment[] = (transcript.segments ?? []).map((segment, index) => ({
-    index,
-    speaker: segment.speaker ?? "Unknown",
-    at: offsetToTimestamp(segment.offset ?? 0),
-    text: segment.text ?? "",
-  }));
-  return {
-    sourceRef: { provider: "fathom", externalId: conversationId, url: "" },
-    title,
-    occurredAt: new Date(0).toISOString(),
-    participants: [],
-    sourceActionItems: [],
-    segments,
-  };
+function isString(value: unknown): value is string {
+  return typeof value === "string";
 }
 
-function offsetToTimestamp(offsetSeconds: number): string {
-  const total = Math.max(0, Math.floor(offsetSeconds));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const seconds = total % 60;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+/**
+ * Strictly validate a stored transcript as the full NormalizedConversation
+ * that saveConversation persisted. Returns the object AS STORED (identity
+ * preserved — no reconstruction) or null when the shape is invalid.
+ */
+export function parseStoredConversation(value: unknown): NormalizedConversation | null {
+  if (!isRecord(value)) return null;
+  const sourceRef = value["sourceRef"];
+  if (!isRecord(sourceRef)) return null;
+  if (!isString(sourceRef["provider"]) || !PROVIDERS.has(sourceRef["provider"])) return null;
+  if (!isString(sourceRef["url"])) return null;
+  if (sourceRef["externalId"] !== undefined && !isString(sourceRef["externalId"])) {
+    return null;
+  }
+  if (sourceRef["shareToken"] !== undefined && !isString(sourceRef["shareToken"])) return null;
+  if (!isString(value["title"]) || !isString(value["occurredAt"])) return null;
+
+  const participants = value["participants"];
+  if (!Array.isArray(participants)) return null;
+  for (const participant of participants) {
+    if (!isRecord(participant) || !isString(participant["name"])) return null;
+  }
+
+  const segments = value["segments"];
+  if (!Array.isArray(segments)) return null;
+  for (const segment of segments) {
+    if (!isRecord(segment)) return null;
+    if (typeof segment["index"] !== "number") return null;
+    if (!isString(segment["speaker"]) || !isString(segment["at"]) || !isString(segment["text"])) {
+      return null;
+    }
+  }
+
+  const actionItems = value["sourceActionItems"];
+  if (!Array.isArray(actionItems)) return null;
+  for (const item of actionItems) {
+    if (!isRecord(item) || !isString(item["description"])) return null;
+  }
+
+  if (segments.length === 0) return null;
+  return value as unknown as NormalizedConversation;
 }
 
 const syncInputSchema = z.object({
@@ -117,24 +142,32 @@ export const syncProposalLedgerFn = createServerFn({ method: "POST" })
     if (error) return { kind: "rejected", message: "the conversation could not be read" };
     if (!conversation) return { kind: "rejected", message: "conversation not found" };
 
-    const transcript = (conversation.transcript ?? {}) as StoredTranscript;
-    if (!transcript.segments || transcript.segments.length === 0) {
-      return { kind: "rejected", message: "the conversation has no stored transcript to extract from" };
+    // The stored transcript IS the NormalizedConversation; validate and
+    // extract from the exact stored object so source keys, participants,
+    // provider action items and segment timestamps are preserved. Invalid
+    // shape fails closed — never a silent empty extraction.
+    const stored = parseStoredConversation(conversation.transcript);
+    if (!stored) {
+      return {
+        kind: "rejected",
+        message: "the stored transcript is missing or not a valid normalized conversation",
+      };
     }
-
-    const normalized = toNormalizedConversation(
-      conversation.id as string,
-      (conversation.title as string) ?? "Untitled call",
-      transcript,
-    );
-    const proposals = extractProposals(normalized);
+    const proposals = extractProposals(stored);
 
     const repo = createSupabaseProposalLedgerRepository(context.supabase);
     const result: RegisterProposalsResult = await registerExtractedProposals(repo, {
       orgId: data.orgId,
       conversationId: data.conversationId,
       operationId: data.operationId,
-      proposals: proposals.map((p) => ({ id: p.id, kind: p.kind, statement: p.statement })),
+      // Retain the full review context: kind, statement AND the evidence
+      // references the extractor produced against the stored source.
+      proposals: proposals.map((p) => ({
+        id: p.id,
+        kind: p.kind,
+        statement: p.statement,
+        evidence: p.evidence,
+      })),
       transcript: conversation.transcript,
       actorId: context.userId,
     });
