@@ -36,7 +36,7 @@ function makeRunStore() {
           (err as { code?: string }).code = "P0002";
           throw err;
         }
-        return existing;
+        return { run: existing, replayed: true };
       }
       const run: CanonicalRun = {
         id: `run-${runs.size + 1}`,
@@ -58,7 +58,7 @@ function makeRunStore() {
         claimVersion: 0,
       };
       runs.set(run.id, run);
-      return run;
+      return { run, replayed: false };
     },
     async claimRun(runId) {
       const run = runs.get(runId);

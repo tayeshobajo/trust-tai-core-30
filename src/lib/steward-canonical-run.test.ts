@@ -57,7 +57,7 @@ function makeRepo(
     calls,
     async requestRun(input) {
       calls.push("requestRun");
-      return makeRun({
+      return { run: makeRun({
         requestDigest: input.digest,
         // In-memory repos persist the pre-resolved snapshot, mirroring the
         // SQL function's server-side resolution.

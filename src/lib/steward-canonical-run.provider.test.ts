@@ -51,7 +51,7 @@ describe("createCanonicalRunProvider", () => {
   it("throws before any call when no provider is configured", () => {
     mockRuntimeProviderStatus.mockReturnValue({ configured: false });
     expect(() => createCanonicalRunProvider({ token: "t", organizationId: "o" })).toThrow(
-      /not configured/i,
+      /no provider configured/i,
     );
     expect(mockRuntimeModelCaller).not.toHaveBeenCalled();
   });

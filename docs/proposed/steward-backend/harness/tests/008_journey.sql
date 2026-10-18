@@ -9,13 +9,14 @@ select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 -- 1. Request a preparation run on the member-owned task (owner has admin
 --    authority) with transcript + notes inputs.
 do $$
-declare r public.steward_canonical_runs;
+declare j jsonb; r public.steward_canonical_runs;
 begin
-  r := public.steward_request_canonical_run(
+  j := public.steward_request_canonical_run(
     '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000002',
     'prepare_brief', 'e0000000-0000-0000-0000-000000000001',
     '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"},
       {"kind":"task_notes","id":"10000000-0000-0000-0000-000000000002"}]'::jsonb);
+  r := jsonb_populate_record(null::public.steward_canonical_runs, j->'run');
   perform public.test_assert(r.status = 'queued' and jsonb_array_length(r.input_snapshot) = 2,
     'journey: run queued with two snapshotted inputs');
 end $$;
