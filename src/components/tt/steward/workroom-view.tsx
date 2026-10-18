@@ -893,54 +893,105 @@ export function WorkroomView({
         <span>Status</span>
       </div>
       <div aria-label="Meeting tasks">
-        {visibleRows.map((r) => (
-          <button
-            key={workroomRowKey(r)}
-            type="button"
-            aria-pressed={row ? workroomRowKey(row) === workroomRowKey(r) : false}
-            onClick={(event) => {
-              taskTriggerRef.current = event.currentTarget;
-              pickRow(workroomRowKey(r));
-            }}
-            className={cn(
-              "grid min-h-11 w-full grid-cols-[20px_minmax(0,1fr)] items-center gap-2 border-b border-border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal sm:grid-cols-[20px_minmax(0,1fr)_116px_104px_92px]",
-              r.verified
-                ? "bg-success/10"
-                : row && workroomRowKey(row) === workroomRowKey(r)
-                  ? "bg-secondary"
-                  : "hover:bg-secondary/40",
-            )}
-          >
-            <span className="inline-flex">
-              {r.verified ? (
-                <Check aria-hidden className="size-4 text-success" />
-              ) : (
-                <Circle aria-hidden className="size-4 text-muted-foreground" />
-              )}
-            </span>
-            <span className="min-w-0">
-              <span
-                title={r.what}
+        {visibleRows.map((r) => {
+          const key = workroomRowKey(r);
+          const active = row ? workroomRowKey(row) === key : false;
+          const editable = !!r.boardTask && !!onEditTaskField;
+          const title = displayTitleOf(r.what);
+          const cell = (
+            field: "owner" | "due" | "status",
+            label: string,
+            content: ReactNode,
+            className?: string,
+          ) =>
+            editable ? (
+              <button
+                type="button"
+                aria-label={`${label} for ${title.display}: edit`}
+                title={`Edit ${label.toLowerCase()}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEditTaskField!(r, field);
+                }}
                 className={cn(
-                  "line-clamp-2 break-words leading-5",
-                  r.verified ? "text-muted-foreground" : "text-foreground",
+                  "truncate rounded text-left text-[13px] underline decoration-dotted decoration-muted-foreground/40 underline-offset-4 hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal",
+                  className,
                 )}
               >
-                {r.what}
+                {content}
+              </button>
+            ) : (
+              <span className={cn("truncate text-[13px]", className)}>{content}</span>
+            );
+          return (
+            <div
+              key={key}
+              className={cn(
+                "grid min-h-11 w-full grid-cols-[20px_minmax(0,1fr)] items-center gap-2 border-b border-border px-3 py-2 text-sm transition-colors sm:grid-cols-[20px_minmax(0,1fr)_116px_104px_92px]",
+                r.verified
+                  ? "bg-success/10"
+                  : active
+                    ? "bg-secondary"
+                    : "hover:bg-secondary/40",
+              )}
+            >
+              <button
+                type="button"
+                aria-pressed={active}
+                aria-label={`Open details for ${title.display}`}
+                onClick={(event) => {
+                  taskTriggerRef.current = event.currentTarget;
+                  pickRow(key);
+                }}
+                className="col-span-2 grid grid-cols-[20px_minmax(0,1fr)] items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal sm:col-span-1"
+              >
+                <span className="inline-flex">
+                  {r.verified ? (
+                    <Check aria-hidden className="size-4 text-success" />
+                  ) : (
+                    <Circle aria-hidden className="size-4 text-muted-foreground" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span
+                    title={title.shortened ? title.full : undefined}
+                    className={cn(
+                      "line-clamp-2 break-words leading-5",
+                      r.verified ? "text-muted-foreground" : "text-foreground",
+                    )}
+                  >
+                    {title.display}
+                  </span>
+                  <span className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground sm:hidden">
+                    <span className="truncate">{r.owner.label}</span>
+                    <span aria-hidden>·</span>
+                    <span className="shrink-0">{r.due.label}</span>
+                  </span>
+                </span>
+              </button>
+              <span className="hidden sm:block">{cell("owner", "Owner", r.owner.label)}</span>
+              <span className="hidden sm:block">{cell("due", "Due", r.due.label)}</span>
+              <span className="col-start-2 sm:col-start-auto">
+                {editable ? (
+                  <button
+                    type="button"
+                    aria-label={`Status for ${title.display}: edit`}
+                    title="Edit status"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onEditTaskField!(r, "status");
+                    }}
+                    className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal"
+                  >
+                    <StatusPill row={r} />
+                  </button>
+                ) : (
+                  <StatusPill row={r} />
+                )}
               </span>
-              <span className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground sm:hidden">
-                <span className="truncate">{r.owner.label}</span>
-                <span aria-hidden>·</span>
-                <span className="shrink-0">{r.due.label}</span>
-              </span>
-            </span>
-            <span className="hidden truncate text-[13px] sm:block">{r.owner.label}</span>
-            <span className="hidden truncate text-[13px] sm:block">{r.due.label}</span>
-            <span className="col-start-2 sm:col-start-auto">
-              <StatusPill row={r} />
-            </span>
-          </button>
-        ))}
+            </div>
+          );
+        })}
         {visibleRows.length === 0 ? (
           <div role="status" className="py-10 text-center">
             <p className="font-medium">
