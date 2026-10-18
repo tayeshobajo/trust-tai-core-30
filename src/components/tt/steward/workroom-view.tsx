@@ -473,28 +473,9 @@ function TaskDetail({
         {row.boardTask ? (
           <div className="mt-2 space-y-2">
             <p className="text-xs text-muted-foreground">
-              Linked task source context. Association does not replace email or other recorded
-              sources.
+              Linked task source context is listed under Inputs and audit above. Association does
+              not replace email or other recorded sources.
             </p>
-            {row.boardTask.context_links.map((link, index) => {
-              const href = taskContextHref(link.url);
-              return (
-                <p key={index} className="break-words">
-                  {href ? (
-                    <a
-                      className="text-royal underline"
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {link.label || href}
-                    </a>
-                  ) : (
-                    link.label || "Link unavailable"
-                  )}
-                </p>
-              );
-            })}
           </div>
         ) : commitment && commitment.evidence.length > 0 ? (
           <ul className="mt-2 space-y-2">
