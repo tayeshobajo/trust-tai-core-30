@@ -35,6 +35,7 @@ end $$;
 
 -- 2. Same-timestamp tie: two receipts with identical created_at; the
 --    reopen (inserted second, higher id) must win deterministically.
+reset role;
 do $$
 declare
   t timestamptz := now();
@@ -61,6 +62,7 @@ end $$;
 
 -- 3. Valid current verify: revision-bound credit when the latest verify
 --    receipt's task_revision_after equals the CURRENT revision.
+reset role;
 update public.steward_tasks set status = 'complete', revision = 7
  where id = '10000000-0000-0000-0000-000000000003';
 insert into public.steward_task_receipts
