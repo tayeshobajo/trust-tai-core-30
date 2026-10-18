@@ -238,11 +238,12 @@ begin
   end if;
   return query
     select count(*)::integer,
-           count(*) filter (where t.status = 'complete' and r.id is not null)::integer
+           count(*) filter (
+             where t.status = 'complete'
+               and exists (select 1 from public.steward_task_receipts r
+                            where r.task_id = i.task_id and r.kind = 'verify'))::integer
       from public.steward_scope_items i
       join public.steward_tasks t on t.id = i.task_id
-      left join public.steward_task_receipts r
-        on r.task_id = i.task_id and r.kind = 'verify'
      where i.organization_id = p_org
        and i.conversation_id = p_conversation
        and i.removed_at is null;
