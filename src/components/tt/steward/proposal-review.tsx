@@ -18,6 +18,7 @@ import {
   type ProposalKind,
 } from "@/domain/steward";
 import { groupProposals } from "@/data/steward/extract";
+import { groupRelatedProposals } from "@/domain/steward-proposal-groups";
 
 export interface ConfirmInput {
   proposal: Proposal;
@@ -165,6 +166,7 @@ export function ProposalReview({
   readOnlyBecause?: string;
 }) {
   const grouped = groupProposals(proposals);
+  const overlaps = groupRelatedProposals(proposals);
   const participants = conversation.participants.map((person) => person.name);
   const speakers = Array.from(new Set(conversation.segments.map((segment) => segment.speaker)));
   const names = Array.from(new Set([...participants, ...speakers]));
