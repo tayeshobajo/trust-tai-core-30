@@ -38,13 +38,17 @@ export interface SyncOutcome {
   added: number;
   /** Stored calls whose transcript was upgraded to a fuller read. */
   refreshed: number;
+  /** Equivalent meaningful transcript content; no write needed. */
+  unchanged: number;
+  /** Changed nonempty stored transcripts preserved for review. */
+  preserved: number;
   /** Calls skipped because their transcript is not ready yet. */
   pendingTranscript: number;
   /** True when the source has older calls beyond this bounded pull. */
   hasMore: boolean;
   /** Per-call store or lookup failures, surfaced rather than hidden. */
   errors: string[];
-  /** Calls deliberately left untouched (no identity, uncertain overwrite). */
+  /** Genuine cautions (no identity, changed transcript), not unchanged reads. */
   warnings: string[];
 }
 
@@ -62,6 +66,35 @@ function segmentCount(conversation: { segments?: unknown[] }): number {
 function storedSegmentCount(row: StoredConversation): number {
   const segments = (row.conversation as { segments?: unknown[] } | undefined)?.segments;
   return Array.isArray(segments) ? segments.length : 0;
+}
+
+/** Compare transcript meaning, not provider indexes, links or segment count alone. */
+export function transcriptsEquivalent(
+  stored: NormalizedConversation,
+  incoming: NormalizedConversation,
+): boolean {
+  if (!Array.isArray(stored?.segments) || stored.segments.length !== incoming.segments.length) {
+    return false;
+  }
+  const meaningful = (value: string) => value.replace(/\s+/g, " ").trim();
+  return stored.segments.every((segment, index) => {
+    const next = incoming.segments[index];
+    if (
+      !segment ||
+      !next ||
+      typeof segment.text !== "string" ||
+      typeof segment.speaker !== "string" ||
+      typeof segment.at !== "string"
+    ) {
+      return false;
+    }
+    return (
+      meaningful(segment.text) === meaningful(next.text) &&
+      meaningful(segment.speaker) === meaningful(next.speaker) &&
+      segment.at.trim() === next.at.trim() &&
+      (segment.speakerEmail?.trim() ?? "") === (next.speakerEmail?.trim() ?? "")
+    );
+  });
 }
 
 /**
@@ -93,7 +126,13 @@ interface PlannedWrite {
 async function planCall(
   call: NormalizedConversation,
   organizationId: string,
-  outcome: { errors: string[]; warnings: string[]; pendingTranscript: number },
+  outcome: {
+    errors: string[];
+    warnings: string[];
+    pendingTranscript: number;
+    unchanged: number;
+    preserved: number;
+  },
 ): Promise<PlannedWrite | null> {
   const externalId = call.sourceRef.externalId?.trim() || undefined;
   const shareToken = call.sourceRef.shareToken?.trim() || undefined;
@@ -106,13 +145,6 @@ async function planCall(
     outcome.warnings.push(`“${call.title}” has no stable source identity and was not stored.`);
     return null;
   }
-  /* A call without a transcript is pending, not empty: skip it this pass
-     so an empty read never replaces anything, and retry later. */
-  if (call.segments.length === 0) {
-    outcome.pendingTranscript += 1;
-    return null;
-  }
-
   let existing: StoredConversation | null;
   try {
     existing = await stewardService.findConversationBySource({
@@ -134,14 +166,25 @@ async function planCall(
     return null;
   }
 
+  if (existing && storedSegmentCount(existing) > 0) {
+    if (transcriptsEquivalent(existing.conversation, call)) {
+      outcome.unchanged += 1;
+    } else {
+      outcome.preserved += 1;
+      outcome.warnings.push(`“${call.title}”: transcript changed; stored version preserved.`);
+    }
+    return null;
+  }
+
+  /* An empty read never overwrites anything, and can be retried later. */
+  if (call.segments.length === 0) {
+    outcome.pendingTranscript += 1;
+    return null;
+  }
+
   if (!existing) return { conversation: call, kind: "added" };
 
   if (!isDemonstrablyFuller(existing, call)) {
-    if (storedSegmentCount(existing) > 0) {
-      outcome.warnings.push(
-        `“${call.title}” already has a stored transcript; the fresh read was not demonstrably fuller, so it was left untouched.`,
-      );
-    }
     return null;
   }
 
@@ -198,6 +241,8 @@ export function syncRecentMeetings(input: {
       errors: [] as string[],
       warnings: [] as string[],
       pendingTranscript: 0,
+      unchanged: 0,
+      preserved: 0,
     };
     const planned: PlannedWrite[] = [];
     /* Dedupe repeated identities within one pass. */
@@ -237,6 +282,8 @@ export function syncRecentMeetings(input: {
       checkedAt: outcome.errors.length === 0 ? new Date().toISOString() : null,
       added,
       refreshed,
+      unchanged: outcome.unchanged,
+      preserved: outcome.preserved,
       pendingTranscript: outcome.pendingTranscript,
       hasMore: body["hasMore"] === true,
       errors: outcome.errors,

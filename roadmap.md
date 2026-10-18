@@ -1,5 +1,9 @@
 # Roadmap
 
+## Steward refresh correctness (2026-10-18)
+- [x] Treat meaningful equivalent transcripts as successful unchanged checks; preserve changed reads with aggregated cautions; 38 focused tests and changed-file lint passed; fictional browser status checks passed.
+- [x] Inspect completion/reopen persistence and append-only history only; findings in docs/steward-live-design.md: mutable receipts, best-effort activities, no durable reopen path; no controls, schema changes or live writes.
+
 ## Steward live workroom (2026-10-17)
 - [x] /modules/steward is now the approved three-column workroom on real data; Team moved to /modules/steward/team; eight tabs consolidated into Meetings / Team / More; /meetings/workroom redirects.
 - [x] Verified completion requires status kept AND a current completion receipt; kept-without-receipt shows "Needs verification"; proposals never in the denominator.
