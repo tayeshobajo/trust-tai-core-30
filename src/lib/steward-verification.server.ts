@@ -10,6 +10,8 @@
  * board work.
  */
 
+import { classifyMutationError } from "./steward-mutation-outcome";
+
 export interface TaskReceipt {
   id: string;
   organizationId: string;
@@ -21,6 +23,9 @@ export interface TaskReceipt {
   note: string;
   actorId: string;
   createdAt: string;
+  /** The task revision recorded with the receipt — verified credit exists
+      only while this equals the task's CURRENT revision. */
+  taskRevisionAfter: number;
 }
 
 export interface VerificationTaskState {
@@ -77,7 +82,11 @@ export type VerificationResult =
     }
   | { kind: "revision_conflict"; message: string }
   | { kind: "evidence_required"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  /* Transport/5xx/malformed-response ambiguity AFTER the request was sent:
+     the mutation may have committed. The caller keeps the pending
+     operation and retries with the SAME id — never reports rejection. */
+  | { kind: "uncertain"; message: string };
 
 /** Verify a canonical task atomically. Duplicate operations replay the
  *  existing receipt instead of double-recording. */
@@ -107,7 +116,8 @@ export type ReopenResult =
   | { kind: "reopened"; task: VerificationTaskState | null; replayed: boolean }
   | { kind: "revision_conflict"; message: string }
   | { kind: "evidence_required"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  | { kind: "uncertain"; message: string };
 
 /** Reopen a canonical task atomically. All prior evidence and audit rows
  *  are preserved; the reopen itself is appended to the same audit trail. */
@@ -134,7 +144,7 @@ export async function reopenCanonicalTask(
 }
 
 function mapVerificationError(error: unknown): {
-  kind: "revision_conflict" | "evidence_required" | "rejected";
+  kind: "revision_conflict" | "evidence_required" | "rejected" | "uncertain";
   message: string;
 } {
   const code = (error as { code?: string }).code;
@@ -143,5 +153,12 @@ function mapVerificationError(error: unknown): {
     return { kind: "revision_conflict", message };
   if (code === "P0010" || error instanceof EvidenceRequiredError)
     return { kind: "evidence_required", message };
-  return { kind: "rejected", message };
+  /* Known SQL contract answers (authorization, not-found, operation
+     conflict) are resolved rejections; anything else — transport loss,
+     5xx, malformed response after send — is UNCERTAIN: the mutation may
+     have committed, so the caller keeps the pending operation for a
+     same-id replay instead of reporting rejection. */
+  const classified = classifyMutationError(error);
+  if (classified.kind === "uncertain") return classified;
+  return { kind: "rejected", message: classified.message };
 }

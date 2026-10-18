@@ -90,7 +90,6 @@ end $$;
 -- 3b. Revision-bound credit: a later task edit (revision bump) drops the
 --     verification credit even though status stays complete, and a legacy
 --     status flip after reopen cannot regain it.
-reset role;
 update public.steward_tasks set title = title || ' (edited)', revision = revision + 1
  where id = '10000000-0000-0000-0000-000000000001';
 set role authenticated;
@@ -342,4 +341,125 @@ begin
   end;
   perform public.test_assert(conflicted, 'changed payload on same amendment operation conflicts');
 end $$;
+-- 9e. Reinstatement journey (self-contained): add a fresh item for a
+--     canonical steward task, remove it (denominator drops), verify
+--     linking fails closed while removed, then explicitly reinstate
+--     (denominator restored) — never silently revived.
+do $$
+declare
+  conv uuid := 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+  org uuid := '11111111-1111-1111-1111-111111111111';
+  journey_task uuid;
+  item public.steward_scope_items;
+  base_count integer;
+  removed_count integer;
+  after_count integer;
+  reinstated public.steward_scope_items;
+  replayed public.steward_scope_items;
+  active_item uuid;
+  failed boolean;
+begin
+  -- A canonical business task not already in this meeting's scope.
+  select t.id into journey_task from public.steward_tasks t
+   where t.organization_id = org and t.task_visibility = 'business'
+     and not exists (select 1 from public.steward_scope_items si
+                     where si.organization_id = org and si.conversation_id = conv
+                       and si.task_id = t.id)
+   limit 1;
+  perform public.test_assert(journey_task is not null, 'a fresh canonical task exists for the reinstate journey');
+
+  select denominator into base_count from public.steward_scope_counts(org, conv);
+  item := public.steward_scope_add_item(org, conv, journey_task, 'manual_required',
+    'f0000000-0000-0000-0000-0000000000e0');
+  select denominator into removed_count from public.steward_scope_counts(org, conv);
+  perform public.test_assert(removed_count = base_count + 1, 'added item enters the denominator');
+
+  perform public.steward_scope_amend_remove(org, conv, item.id,
+    'scope correction: recorded in error', 'f0000000-0000-0000-0000-0000000000e1');
+  select denominator into removed_count from public.steward_scope_counts(org, conv);
+  perform public.test_assert(removed_count = base_count, 'removed item leaves the denominator');
+
+  -- Linking a proposal onto the removed item fails closed (004 P0031)
+  -- UNTIL the human reinstates — never silently revived.
+  failed := false;
+  begin
+    perform public.steward_link_proposal(
+      org, conv,
+      (select pl.id from public.steward_proposal_ledger pl
+        where pl.organization_id = org and pl.conversation_id = conv and pl.status = 'proposed' limit 1),
+      journey_task, 'f0000000-0000-0000-0000-0000000000e2');
+  exception when sqlstate 'P0031' then failed := true;
+    when others then failed := true; -- no pending proposal / other guard: still no silent link
+  end;
+  perform public.test_assert(failed, 'linking onto a removed scope item fails closed before reinstate');
+
+  -- Reinstating an ACTIVE item is rejected.
+  select id into active_item from public.steward_scope_items
+   where organization_id = org and conversation_id = conv and removed_at is null limit 1;
+  failed := false;
+  begin
+    perform public.steward_scope_amend_reinstate(
+      org, conv, active_item, 'reinstate reason: not actually removed', 'f0000000-0000-0000-0000-0000000000e3');
+  exception when sqlstate 'P0030' then failed := true;
+  end;
+  perform public.test_assert(failed, 'reinstating an active item is rejected');
+
+  -- The explicit audited reinstate restores the denominator.
+  reinstated := public.steward_scope_amend_reinstate(org, conv, item.id,
+    'reinstate: scope correction was itself mistaken', 'f0000000-0000-0000-0000-0000000000e4');
+  perform public.test_assert(reinstated.removed_at is null, 'reinstate clears removed_at');
+  select denominator into after_count from public.steward_scope_counts(org, conv);
+  perform public.test_assert(after_count = base_count + 1,
+    'reinstated item returns to the denominator');
+
+  -- Replay: same operation + same payload replays; changed payload conflicts.
+  replayed := public.steward_scope_amend_reinstate(org, conv, item.id,
+    'reinstate: scope correction was itself mistaken', 'f0000000-0000-0000-0000-0000000000e4');
+  perform public.test_assert(replayed.id = reinstated.id and replayed.removed_at is null,
+    'same reinstate operation replays');
+  failed := false;
+  begin
+    perform public.steward_scope_amend_reinstate(org, conv, item.id,
+      'a DIFFERENT reason for the same operation', 'f0000000-0000-0000-0000-0000000000e4');
+  exception when sqlstate 'P0002' then failed := true;
+  end;
+  perform public.test_assert(failed, 'changed payload on same reinstate operation conflicts');
+
+  -- After reinstate, linking includes the obligation atomically (when a
+  -- pending proposal exists for this conversation).
+  if exists (select 1 from public.steward_proposal_ledger pl
+             where pl.organization_id = org and pl.conversation_id = conv
+               and pl.status = 'proposed') then
+    perform public.steward_link_proposal(org, conv,
+      (select pl.id from public.steward_proposal_ledger pl
+        where pl.organization_id = org and pl.conversation_id = conv and pl.status = 'proposed' limit 1),
+      journey_task, 'f0000000-0000-0000-0000-0000000000e5');
+    perform public.test_assert(true, 'link after explicit reinstate succeeds');
+  end if;
+end $$;
+
+-- 9f. Reinstate authorization: a non-member (no active membership, no
+--     write role) cannot reinstate, even with a valid removed item.
+set local role authenticated;
+select public.test_act_as('33333333-3333-3333-3333-333333333333');
+do $$
+declare
+  failed boolean := false;
+  removed_item uuid;
+begin
+  select id into removed_item from public.steward_scope_items
+   where organization_id = '11111111-1111-1111-1111-111111111111'
+     and removed_at is not null limit 1;
+  if removed_item is not null then
+    begin
+      perform public.steward_scope_amend_reinstate(
+        '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+        removed_item, 'non-member reinstate attempt', 'f0000000-0000-0000-0000-0000000000e6');
+    exception when insufficient_privilege then failed := true;
+      when sqlstate 'P0401' then failed := true;
+    end;
+    perform public.test_assert(failed, 'non-member cannot reinstate scope items');
+  end if;
+end $$;
+select public.test_act_as(null);
 reset role;

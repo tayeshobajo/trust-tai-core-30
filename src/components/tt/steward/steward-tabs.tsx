@@ -22,7 +22,6 @@ function tabClass(active: boolean) {
 }
 
 const MORE: { section: StewardSection; label: string; to: string }[] = [
-  { section: "tasks", label: "Tasks", to: "/modules/steward/tasks" },
   { section: "agents", label: "Agents", to: "/modules/steward/agents" },
   { section: "scouts", label: "Scouts", to: "/modules/steward/scouts" },
   { section: "ai", label: "Trust Tai AI", to: "/modules/steward/ai" },
@@ -65,6 +64,12 @@ export function StewardTabs({ active }: { active: StewardSection }) {
           <ChevronDown aria-hidden className="size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
+          <DropdownMenuItem asChild>
+            <Link to="/modules/steward/meetings">Meeting list</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/modules/steward/tasks">Tasks</Link>
+          </DropdownMenuItem>
           {MORE.map((item) => (
             <DropdownMenuItem key={item.section} asChild>
               <Link to={item.to}>{item.label}</Link>

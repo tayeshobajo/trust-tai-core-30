@@ -22,6 +22,7 @@ import { z } from "zod";
 import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
 import { createSupabaseCoverageRepository } from "./steward-coverage.supabase";
 import type { CoverageAttestation } from "./steward-coverage.server";
+import { classifyMutationErrorNarrow } from "./steward-mutation-outcome";
 
 export type CoverageCapabilityState = { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
@@ -37,7 +38,10 @@ export type CoverageReadState =
 export type CoverageAttestState =
   | { kind: "unavailable"; reason: string }
   | { kind: "attested"; attestation: CoverageAttestation }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  /* Transport ambiguity after send: the attestation may be durable. The
+     caller keeps the pending operation for a same-id replay. */
+  | { kind: "uncertain"; message: string };
 
 function capabilityEnabled(): boolean {
   return process.env["STEWARD_COVERAGE_ENABLED"] === "true";
@@ -115,11 +119,16 @@ export const attestMeetingCoverageFn = createServerFn({ method: "POST" })
       return { kind: "attested", attestation };
     } catch (error) {
       const message = error instanceof Error ? error.message : "coverage could not be attested";
-      return {
-        kind: "rejected",
-        message: message.includes("source_changed_since_review")
-          ? "The transcript or scope changed since this review was read. Re-read the meeting, then attest again — the changed source was not attested."
-          : message,
-      };
+      if (message.includes("source_changed_since_review")) {
+        return {
+          kind: "rejected",
+          message:
+            "The transcript or scope changed since this review was read. Re-read the meeting, then attest again — the changed source was not attested.",
+        };
+      }
+      /* Known contract answers are resolved rejections; transport/5xx/
+         malformed responses after send are UNCERTAIN — the attestation
+         may be durable, so the same operation must be replayed. */
+      return classifyMutationErrorNarrow(error);
     }
   });

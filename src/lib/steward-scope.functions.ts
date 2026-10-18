@@ -23,6 +23,7 @@ import {
   type ScopeCounts,
   type ScopeItem,
 } from "./steward-scope.supabase";
+import { classifyMutationErrorNarrow } from "./steward-mutation-outcome";
 
 export type ScopeCapabilityState = { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
@@ -34,7 +35,10 @@ export type ScopeReadState =
 export type ScopeMutationState =
   | { kind: "unavailable"; reason: string }
   | { kind: "applied"; item: ScopeItem }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  /* Transport ambiguity after send: the mutation may be durable. The
+     caller keeps the pending operation for a same-id replay. */
+  | { kind: "uncertain"; message: string };
 
 function capabilityEnabled(): boolean {
   return process.env["STEWARD_SCOPE_ENABLED"] === "true";
@@ -119,10 +123,7 @@ export const addScopeItemFn = createServerFn({ method: "POST" })
       });
       return { kind: "applied", item };
     } catch (error) {
-      return {
-        kind: "rejected",
-        message: error instanceof Error ? error.message : "scope item could not be added",
-      };
+      return classifyMutationErrorNarrow(error);
     }
   });
 
@@ -148,10 +149,7 @@ export const syncRequiredScopeFn = createServerFn({ method: "POST" })
       });
       return { kind: "applied" };
     } catch (error) {
-      return {
-        kind: "rejected",
-        message: error instanceof Error ? error.message : "required scope could not be synced",
-      };
+      return classifyMutationErrorNarrow(error);
     }
   });
 
@@ -183,9 +181,41 @@ export const amendScopeItemFn = createServerFn({ method: "POST" })
       });
       return { kind: "applied", item };
     } catch (error) {
-      return {
-        kind: "rejected",
-        message: error instanceof Error ? error.message : "scope amendment could not be applied",
-      };
+      return classifyMutationErrorNarrow(error);
+    }
+  });
+
+/**
+ * Explicit audited REINSTATEMENT of a previously removed scope item.
+ * Never silent: a removed item stays out of the denominator (and blocks
+ * proposal linking) until a human deliberately reinstates it with a
+ * substantive reason. Idempotent per operation UUID; a replay returns the
+ * already-reinstated item, a changed payload conflicts.
+ */
+export const reinstateScopeItemFn = createServerFn({ method: "POST" })
+  .middleware([requireTrustTaiAuth])
+  .inputValidator((data) =>
+    meetingInputSchema
+      .extend({
+        itemId: z.string().uuid(),
+        reason: z.string().min(10).max(4000),
+        operationId: z.string().uuid(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }): Promise<ScopeMutationState> => {
+    if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
+    const repo = createSupabaseScopeRepository(context.supabase);
+    try {
+      const item = await repo.amendReinstate({
+        orgId: data.orgId,
+        conversationId: data.conversationId,
+        itemId: data.itemId,
+        reason: data.reason,
+        operationId: data.operationId,
+      });
+      return { kind: "applied", item };
+    } catch (error) {
+      return classifyMutationErrorNarrow(error);
     }
   });

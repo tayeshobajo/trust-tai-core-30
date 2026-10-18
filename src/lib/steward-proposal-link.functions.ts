@@ -28,6 +28,7 @@ import {
   type ProposalLink,
 } from "./steward-proposal-link.server";
 import type { LedgerProposal } from "./steward-proposal-ledger.server";
+import { classifyMutationError } from "./steward-mutation-outcome";
 
 /** Serialized proposal DTO: evidence is typed so the server-function
     boundary can validate it (the stored column is jsonb). */
@@ -95,7 +96,8 @@ export type ProposalDecisionState =
   | { kind: "linked"; link: ProposalLink; replayed: boolean }
   | { kind: "dismissed"; proposal: SerializedProposal }
   | { kind: "conflict"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  | { kind: "uncertain"; message: string };
 
 function capabilityEnabled(): boolean {
   return process.env["STEWARD_PROPOSAL_LINKS_ENABLED"] === "true";
@@ -241,6 +243,9 @@ export const dismissProposalFn = createServerFn({ method: "POST" })
           message: "this operation was already recorded with different inputs",
         };
       }
-      return { kind: "rejected", message };
+      /* Known contract answers are resolved rejections; transport/5xx/
+         malformed responses after send are UNCERTAIN — the dismissal may
+         be durable, so the same operation must be replayed. */
+      return classifyMutationError(error);
     }
   });

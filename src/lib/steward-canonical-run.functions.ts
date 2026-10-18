@@ -23,6 +23,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
+import { classifyMutationError } from "./steward-mutation-outcome";
 import { trustTaiWriter, trustTaiWriterConfigured } from "./trust-tai-writer.server";
 import { createSupabaseCanonicalRunRepository } from "./steward-canonical-run.supabase";
 import {
@@ -44,7 +45,10 @@ export type CanonicalRunRequestState =
   | { kind: "queued"; runId: string }
   | { kind: "replayed"; runId: string }
   | { kind: "conflict"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  /* Transport ambiguity after send: the run may be queued durably. The
+     caller keeps the pending operation for a same-id replay. */
+  | { kind: "uncertain"; message: string };
 
 export type CanonicalRunWorkerState =
   { kind: "unavailable"; reason: string } | { kind: "result"; result: ExecuteCanonicalRunResult };
@@ -107,7 +111,9 @@ export const requestCanonicalRunFn = createServerFn({ method: "POST" })
           message: "this operation was already requested with different inputs",
         };
       }
-      return { kind: "rejected", message };
+      /* Transport/5xx/malformed failures after send are UNCERTAIN — the
+         run request may be durable; the same operation must be replayed. */
+      return classifyMutationError(error);
     }
   });
 

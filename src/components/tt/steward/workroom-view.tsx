@@ -127,6 +127,31 @@ export interface WorkroomBackend {
     reason: string;
     operationId: string;
   }) => Promise<ActionOutcome>;
+  /** Audited, reasoned scope amendments (005 patch): remove an item from
+      the denominator or explicitly reinstate a removed one. */
+  onRemoveScopeItem?: (input: {
+    meetingId: string;
+    itemId: string;
+    reason: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+  onReinstateScopeItem?: (input: {
+    meetingId: string;
+    itemId: string;
+    reason: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+  /** Bounded canonical verification projection for the visible tasks of
+      one meeting — receipt-backed verified per task id, so full-meeting
+      counts/filters never depend on only the selected task's read. */
+  verificationProjectionFor?: (
+    meetingId: string,
+  ) =>
+    | { kind: "ready"; verified: Record<string, boolean>; truncated: boolean }
+    | { kind: "rejected"; message: string }
+    | { kind: "loading" }
+    | { kind: "unavailable"; reason: string }
+    | undefined;
 }
 
 /**
@@ -832,11 +857,24 @@ export function WorkroomView({
      canonical read says so, and unknown (never false-verified) when that
      read is absent. Commitment rows keep their receipt-derived state. */
   const canonicalVerification = backend?.capabilities.verification.kind === "enabled";
+  const projection = meeting ? backend?.verificationProjectionFor?.(meeting.id) : undefined;
   const rowVerified = (r: WorkroomRow): boolean | null => {
     if (!canonicalVerification) return r.verified;
     if (r.kind === "commitment") return r.verified;
-    const read = r.boardTask ? backend?.verificationFor?.(r.boardTask.id) : undefined;
-    if (read?.kind === "ready" && read.task) return read.task.status === "complete";
+    if (!r.boardTask) return null;
+    /* Full-meeting counts come from the bounded canonical projection —
+       receipt-backed verified per task (complete AND latest verify receipt
+       at the current revision), never raw board status. A failed or
+       partial projection read means unknown, never false-verified. */
+    if (projection?.kind === "ready" && !projection.truncated) {
+      const value = projection.verified[r.boardTask.id];
+      return typeof value === "boolean" ? value : null;
+    }
+    if (projection?.kind === "rejected" || projection?.kind === "loading") return null;
+    /* Fallback for a single selected task: its own canonical read, again
+       receipt-backed only. */
+    const read = backend?.verificationFor?.(r.boardTask.id);
+    if (read?.kind === "ready") return read.verified;
     return null;
   };
   const visibleRows = meeting
@@ -1108,6 +1146,16 @@ export function WorkroomView({
                   ? (input) => backend.onDismissProposal!({ meetingId: meeting.id, ...input })
                   : undefined
               }
+              onRemoveScopeItem={
+                backend.onRemoveScopeItem
+                  ? (input) => backend.onRemoveScopeItem!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
+              onReinstateScopeItem={
+                backend.onReinstateScopeItem
+                  ? (input) => backend.onReinstateScopeItem!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
             />
           </div>
         </details>
@@ -1128,6 +1176,18 @@ export function WorkroomView({
         </Link>
       ) : null}
 
+      {canonicalVerification && projection?.kind === "rejected" ? (
+        <p role="alert" className="mt-2 text-xs text-warning">
+          Canonical verification for this meeting’s tasks could not be read as one projection —
+          verified counts and filters are unknown, not zero. {projection.message}
+        </p>
+      ) : null}
+      {canonicalVerification && projection?.kind === "ready" && projection.truncated ? (
+        <p role="status" className="mt-2 text-xs text-warning">
+          Only part of this meeting’s tasks fit one consistent verification read; verified counts
+          cover the shown subset only.
+        </p>
+      ) : null}
       {linkedRead ? (
         <div
           role={linkedRead.state === "error" ? "alert" : "status"}

@@ -43,7 +43,11 @@ function rethrow(error: { code?: string; message?: string } | null): never {
   if (error?.code === "P0030" || error?.message?.includes("proposal_already_linked")) {
     throw new ProposalLinkConflictError();
   }
-  throw new Error(error?.message ?? "proposal link call failed");
+  /* Preserve the SQL errcode so the server layer can distinguish a KNOWN
+     contract answer from an UNKNOWN transport/5xx failure (uncertain). */
+  const failure = new Error(error?.message ?? "proposal link call failed");
+  if (error?.code) (failure as { code?: string }).code = error.code;
+  throw failure;
 }
 
 /** The client MUST be the authenticated per-request client (RLS as user). */

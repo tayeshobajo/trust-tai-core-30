@@ -9,6 +9,7 @@
 -- guarded empty-data check removes the tables, policies and triggers.
 drop function if exists public.steward_scope_add_item(uuid, uuid, uuid, text, uuid);
 drop function if exists public.steward_scope_sync_required(uuid, uuid, uuid);
+drop function if exists public.steward_scope_amend_reinstate(uuid, uuid, uuid, text, uuid);
 drop function if exists public.steward_scope_amend_remove(uuid, uuid, uuid, text, uuid);
 drop function if exists public.steward_scope_counts(uuid, uuid);
 drop function if exists private.steward_invalidate_scope(uuid, uuid);

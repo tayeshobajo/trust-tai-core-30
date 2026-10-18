@@ -46,6 +46,7 @@ grant execute on function public.steward_dismiss_proposal(uuid, uuid, uuid, text
 grant execute on function public.steward_scope_add_item(uuid, uuid, uuid, text, uuid) to authenticated;
 grant execute on function public.steward_scope_sync_required(uuid, uuid, uuid) to authenticated;
 grant execute on function public.steward_scope_amend_remove(uuid, uuid, uuid, text, uuid) to authenticated;
+grant execute on function public.steward_scope_amend_reinstate(uuid, uuid, uuid, text, uuid) to authenticated;
 grant execute on function public.steward_scope_counts(uuid, uuid) to authenticated;
 
 -- WORKER-ONLY transitions: claim/complete/fail are granted to

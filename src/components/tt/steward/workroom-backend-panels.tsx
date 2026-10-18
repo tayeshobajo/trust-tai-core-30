@@ -64,6 +64,10 @@ export type VerificationRead =
       kind: "ready";
       task: { status: "open" | "complete"; revision: number } | null;
       receipts: ReceiptSnapshot[];
+      /** Receipt-backed verified state (same criterion as the scope SQL):
+          complete AND latest receipt is a verify at the CURRENT revision.
+          Raw board "complete" alone is never verified. */
+      verified: boolean;
     }
   | { kind: "rejected"; message: string }
   | { kind: "loading" };
@@ -74,9 +78,16 @@ export interface ScopeSnapshot {
   pendingProposals: number;
 }
 
+export interface ScopeItemSnapshot {
+  id: string;
+  taskId: string;
+  classification: "transcript" | "manual_required";
+  removedAt: string | null;
+}
+
 export type ScopeRead =
   | { kind: "unavailable"; reason: string }
-  | { kind: "ready"; counts: ScopeSnapshot }
+  | { kind: "ready"; counts: ScopeSnapshot; items: ScopeItemSnapshot[] }
   | { kind: "rejected"; message: string }
   | { kind: "loading" };
 
@@ -174,9 +185,15 @@ function useOperationAttempt<T>() {
         const result = await handler({ ...attempt.payload, operationId: attempt.operationId });
         setOutcome(result);
         /* Resolved outcomes (success, rejection, conflict) end the
-           operation; only a transport failure keeps it pending for a
-           same-id retry. */
-        setPending(null);
+           operation. An UNCERTAIN outcome — a thrown transport failure OR
+           a server-reported ambiguous result — keeps the operation pending
+           for a same-id retry: the mutation may have committed, and only
+           a replay of the same id can reconcile it. */
+        if (result.kind === "uncertain") {
+          setPending(attempt);
+        } else {
+          setPending(null);
+        }
         return result;
       } catch (error) {
         /* Transport ambiguity: the request may have committed. Keep the
@@ -538,7 +555,10 @@ export function VerificationPanel({
     return <p className="mt-2 text-xs text-muted-foreground">{capability.reason}</p>;
   }
 
-  const verified = state?.kind === "ready" && state.task?.status === "complete";
+  /* Receipt-backed only: raw board "complete" without a valid verify
+     receipt at the current revision is NEVER verified and never switches
+     the panel to Reopen. */
+  const verified = state?.kind === "ready" && state.verified;
   const currentRevision =
     state?.kind === "ready" && state.task ? state.task.revision : task.revision;
 
@@ -710,6 +730,16 @@ export interface ScopeReviewPanelProps {
         operationId: string;
       }) => Promise<ActionOutcome>)
     | undefined;
+  /** Audited, reasoned scope amendment: remove an item from the
+      denominator (it stays in history) or explicitly reinstate a removed
+      item. Both are idempotent per operation UUID with the same retry
+      contract as every other mutation. */
+  onRemoveScopeItem:
+    | ((input: { itemId: string; reason: string; operationId: string }) => Promise<ActionOutcome>)
+    | undefined;
+  onReinstateScopeItem:
+    | ((input: { itemId: string; reason: string; operationId: string }) => Promise<ActionOutcome>)
+    | undefined;
   /** Real reload action for failed scope/coverage/proposal reads. */
   onRetryReads?: (() => void) | undefined;
 }
@@ -749,14 +779,54 @@ export function ScopeReviewPanel({
   onSyncRequiredScope,
   onLinkProposal,
   onDismissProposal,
+  onRemoveScopeItem,
+  onReinstateScopeItem,
   onRetryReads,
 }: ScopeReviewPanelProps) {
   const simple = useOperationAttempt<SimpleGesture>();
   const linkAttempt = useOperationAttempt<{ proposalId: string; taskId: string }>();
   const dismissAttempt = useOperationAttempt<{ proposalId: string; reason: string }>();
+  const scopeAttempt = useOperationAttempt<{
+    action: "remove" | "reinstate";
+    itemId: string;
+    reason: string;
+  }>();
+  const [scopeReasons, setScopeReasons] = useState<Record<string, string>>({});
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [linkChoices, setLinkChoices] = useState<Record<string, string>>({});
-  const busy = simple.busy || linkAttempt.busy || dismissAttempt.busy;
+  const busy = simple.busy || linkAttempt.busy || dismissAttempt.busy || scopeAttempt.busy;
+
+  function runScopeAmend(
+    gesture: { action: "remove" | "reinstate"; itemId: string; reason: string },
+    reuse: typeof scopeAttempt.pending,
+  ) {
+    const handler = gesture.action === "remove" ? onRemoveScopeItem : onReinstateScopeItem;
+    if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
+    return scopeAttempt.run(
+      (input) =>
+        handler({ itemId: input.itemId, reason: input.reason, operationId: input.operationId }),
+      gesture,
+      reuse,
+    );
+  }
+
+  async function amendScope(action: "remove" | "reinstate", itemId: string) {
+    /* A new amendment is blocked while one's outcome is unknown. */
+    if (scopeAttempt.pending) return;
+    const reason = (scopeReasons[itemId] ?? "").trim();
+    if (reason.length < 10) return;
+    const result = await runScopeAmend({ action, itemId, reason }, null);
+    if (result.kind === "applied") setScopeReasons((m) => ({ ...m, [itemId]: "" }));
+  }
+
+  async function retryScopeAmend() {
+    /* Replays the EXACT original action + item + reason. */
+    if (!scopeAttempt.pending) return;
+    const result = await runScopeAmend(scopeAttempt.pending.payload, scopeAttempt.pending);
+    if (result.kind === "applied") {
+      setScopeReasons((m) => ({ ...m, [scopeAttempt.pending!.payload.itemId]: "" }));
+    }
+  }
 
   function runRegisterOrSync(action: "register" | "sync", reuse: typeof simple.pending) {
     const handler = action === "register" ? onSyncProposals : onSyncRequiredScope;
@@ -808,18 +878,44 @@ export function ScopeReviewPanel({
       : null;
 
   async function link(proposalId: string) {
+    /* A new link is blocked while a link operation's outcome is unknown:
+       reconcile (retry) the pending operation first, so two different
+       gestures can never share one identity or race. */
+    if (linkAttempt.pending) return;
     const taskId = linkChoices[proposalId] ?? "";
     if (!onLinkProposal || !taskId) return;
     await linkAttempt.run(onLinkProposal, { proposalId, taskId }, null);
   }
 
+  async function retryLink() {
+    /* Replays the EXACT original tuple — proposal and task as first
+       captured — regardless of dropdown changes since. */
+    if (!onLinkProposal || !linkAttempt.pending) return;
+    await linkAttempt.run(onLinkProposal, linkAttempt.pending.payload, linkAttempt.pending);
+  }
+
   async function dismiss(proposalId: string) {
+    if (dismissAttempt.pending) return;
     const reason = (dismissReasons[proposalId] ?? "").trim();
     if (!onDismissProposal || reason.length < 10) return;
     const result = await dismissAttempt.run(onDismissProposal, { proposalId, reason }, null);
     /* Keep the reason text unless the dismissal resolved successfully. */
     if (result.kind === "dismissed") {
       setDismissReasons((m) => ({ ...m, [proposalId]: "" }));
+    }
+  }
+
+  async function retryDismiss() {
+    /* Replays the EXACT original proposal + reason, regardless of edits
+       to the reason field since the first click. */
+    if (!onDismissProposal || !dismissAttempt.pending) return;
+    const result = await dismissAttempt.run(
+      onDismissProposal,
+      dismissAttempt.pending.payload,
+      dismissAttempt.pending,
+    );
+    if (result.kind === "dismissed") {
+      setDismissReasons((m) => ({ ...m, [dismissAttempt.pending!.payload.proposalId]: "" }));
     }
   }
 
@@ -941,7 +1037,9 @@ export function ScopeReviewPanel({
                   type="button"
                   variant="secondary"
                   className="h-8 px-2 text-xs"
-                  disabled={busy || !linkChoices[proposal.id] || !onLinkProposal}
+                  disabled={
+                    busy || !!linkAttempt.pending || !linkChoices[proposal.id] || !onLinkProposal
+                  }
                   onClick={() => void link(proposal.id)}
                 >
                   Link
@@ -963,6 +1061,7 @@ export function ScopeReviewPanel({
                   className="h-8 px-2 text-xs"
                   disabled={
                     busy ||
+                    !!dismissAttempt.pending ||
                     (dismissReasons[proposal.id] ?? "").trim().length < 10 ||
                     !onDismissProposal
                   }
@@ -1006,21 +1105,126 @@ export function ScopeReviewPanel({
         </details>
       ) : null}
       <OutcomeNote outcome={simple.outcome ?? linkAttempt.outcome ?? dismissAttempt.outcome} />
-      {linkAttempt.pending || dismissAttempt.pending ? (
-        <p className="text-xs text-warning">
-          One operation’s outcome is unknown. Re-run the same action — it replays the same operation
-          instead of re-executing.
-        </p>
+      {linkAttempt.pending ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <TTButton
+            type="button"
+            variant="secondary"
+            className="h-8 px-2 text-xs"
+            disabled={linkAttempt.busy}
+            onClick={() => void retryLink()}
+          >
+            <RotateCw aria-hidden className="size-3.5" /> Retry same operation (link)
+          </TTButton>
+          <p className="text-xs text-warning">
+            Outcome unknown — retry replays the exact original link (proposal …
+            {linkAttempt.pending.payload.proposalId.slice(-8)}, task …
+            {linkAttempt.pending.payload.taskId.slice(-8)}); a new link stays blocked until it
+            resolves.
+          </p>
+        </div>
       ) : null}
-      {/* Truthful gap: the audited scope amendment contract (005) exists
-          in the proposed SQL, but removal/reinstatement is not wired into
-          this interface — scope can only grow here, never silently
-          shrink. */}
-      <p className="text-xs text-muted-foreground">
-        Removing or reinstating recorded scope is not supported in this interface yet; the audited
-        amendment contract exists in the proposed backend but is not wired here. Recorded required
-        work can only be added, never quietly dropped.
-      </p>
+      {dismissAttempt.pending ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <TTButton
+            type="button"
+            variant="secondary"
+            className="h-8 px-2 text-xs"
+            disabled={dismissAttempt.busy}
+            onClick={() => void retryDismiss()}
+          >
+            <RotateCw aria-hidden className="size-3.5" /> Retry same operation (dismiss)
+          </TTButton>
+          <p className="text-xs text-warning">
+            Outcome unknown — retry replays the exact original dismissal and reason; a new dismiss
+            stays blocked until it resolves.
+          </p>
+        </div>
+      ) : null}
+      {scope?.kind === "ready" && scope.items.length > 0 ? (
+        <details className="rounded-md border border-border bg-card p-2.5">
+          <summary className="cursor-pointer text-xs font-medium text-foreground">
+            Recorded scope items ({scope.items.length})
+          </summary>
+          <ul className="mt-2 space-y-2">
+            {scope.items.map((item) => {
+              const removed = item.removedAt !== null;
+              const reason = scopeReasons[item.id] ?? "";
+              const handler = removed ? onReinstateScopeItem : onRemoveScopeItem;
+              return (
+                <li key={item.id} className="rounded-md border border-border bg-card p-2">
+                  <p className="text-xs text-foreground">
+                    Task …{item.taskId.slice(-8)} ·{" "}
+                    {item.classification === "manual_required"
+                      ? "added manually"
+                      : "from transcript"}
+                    {removed ? (
+                      <span className="text-warning">
+                        {" "}
+                        · removed from the denominator {item.removedAt?.slice(0, 10)} (kept in
+                        history)
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground"> · counts in the denominator</span>
+                    )}
+                  </p>
+                  {scopeCapability.kind === "enabled" && handler ? (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <input
+                        aria-label={`${removed ? "Reinstate" : "Remove"} reason for task ${item.taskId.slice(-8)}`}
+                        className="h-8 min-w-0 flex-1 rounded-md border border-border bg-card px-2 text-xs"
+                        placeholder={`${removed ? "Reinstate" : "Remove"} reason (at least 10 characters)`}
+                        value={reason}
+                        onChange={(e) =>
+                          setScopeReasons((m) => ({ ...m, [item.id]: e.target.value }))
+                        }
+                      />
+                      <TTButton
+                        type="button"
+                        variant="secondary"
+                        className="h-8 px-2 text-xs"
+                        disabled={busy || !!scopeAttempt.pending || reason.trim().length < 10}
+                        onClick={() => void amendScope(removed ? "reinstate" : "remove", item.id)}
+                      >
+                        {removed ? "Reinstate into scope" : "Remove from scope"}
+                      </TTButton>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {scopeCapability.kind === "unavailable"
+                        ? scopeCapability.reason
+                        : "Scope amendments are not available."}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {scopeAttempt.pending ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <TTButton
+                type="button"
+                variant="secondary"
+                className="h-8 px-2 text-xs"
+                disabled={scopeAttempt.busy}
+                onClick={() => void retryScopeAmend()}
+              >
+                <RotateCw aria-hidden className="size-3.5" /> Retry same operation (
+                {scopeAttempt.pending.payload.action})
+              </TTButton>
+              <p className="text-xs text-warning">
+                Outcome unknown — retry replays the exact original amendment; a new amendment stays
+                blocked until it resolves.
+              </p>
+            </div>
+          ) : null}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Amendments are explicit, reasoned and audited. A removed item keeps its history and
+            blocks proposal linking until a human deliberately reinstates it — scope never shrinks
+            or grows silently.
+          </p>
+        </details>
+      ) : null}
     </div>
   );
 }
