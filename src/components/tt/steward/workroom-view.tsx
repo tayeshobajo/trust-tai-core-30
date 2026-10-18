@@ -1146,6 +1146,16 @@ export function WorkroomView({
                   ? (input) => backend.onDismissProposal!({ meetingId: meeting.id, ...input })
                   : undefined
               }
+              onRemoveScopeItem={
+                backend.onRemoveScopeItem
+                  ? (input) => backend.onRemoveScopeItem!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
+              onReinstateScopeItem={
+                backend.onReinstateScopeItem
+                  ? (input) => backend.onReinstateScopeItem!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
             />
           </div>
         </details>
