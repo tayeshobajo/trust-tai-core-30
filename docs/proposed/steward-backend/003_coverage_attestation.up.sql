@@ -71,6 +71,7 @@ begin
     where organization_id = p_org and conversation_id = p_conversation;
   scope_version := coalesce(scope_version, 1);
 
+  perform set_config('steward.coverage_mutation', 'on', true);
   update public.steward_coverage_attestations
      set superseded_at = now()
    where organization_id = p_org and conversation_id = p_conversation
