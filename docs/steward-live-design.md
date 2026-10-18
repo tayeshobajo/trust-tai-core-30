@@ -33,6 +33,8 @@ Approved reference: `approved-steward-current.png` (1586×992). Fidelity strateg
 
 ## Responsive plan
 
+- 1440: three continuous columns (18/56/26) under a compact 56px header, 10–15 rows visible. 768: rail + main, detail in a Sheet drawer. 375: rail collapses into a drawer, compact title/meta/status rows, first actionable task in the first viewport. Sheets mount only at compact breakpoints, so desktop focus is never trapped; rows are real buttons with aria-pressed and visible focus rings.
+
 ## Refresh correction — 2026-10-18 (preview only)
 
 - Equivalent ordered segment text, speaker, speaker email and timestamp are a normal successful `unchanged` read, with no write and no warning. Text/speaker whitespace is normalized; provider segment indexes, source links and meeting-title changes do not imply changed transcript content. Segment count alone never establishes equivalence.
@@ -42,9 +44,15 @@ Approved reference: `approved-steward-current.png` (1586×992). Fidelity strateg
 ## Completion persistence inspection — source only, not hosted verification
 
 - Existing task completion: `src/data/steward/use-steward-actions.ts` wires `completeTask` in `src/data/steward/actions.ts:133–165`; `src/data/steward/authority.ts:28–45` applies task-origin/completion-path and owner/manager authority. It updates manual `steward_tasks` status or `commitments.status = kept`, then separately attempts receipt storage and an activity event. These writes are not atomic; receipt and activity failures are swallowed.
+- The current meeting review route, `src/routes/modules.steward.meetings.$conversationId.tsx`, confirms proposals and records interpretation/correction outcomes; it does **not** wire completion or reopen. Existing workroom text suggesting completion happens there is therefore not a verified completion path. No UI correction or completion implementation is included in this inspection.
 - `src/data/supabase/steward-task-state.ts:68–99` upserts `steward_task_state` on `organization_id,task_key` with completion actor label, timestamp and note. It is durable mutable current state, **not an append-only receipt ledger**. Workroom reads this table, keyed `commitment:<id>`, and requires kept status plus a valid timestamp and ≥10 trimmed note characters to verify. Receipt reads are capped at 1,000; missing schema currently returns an empty list. These are inspection findings, not changes.
 - `src/data/steward/actions.ts:88–115` records `task.completed` through `src/data/supabase/activities.ts` with a stable per-task source event key. Activity delivery is best effort, not an authoritative append-only complete/reopen sequence. Workroom does not query that history and says history is unavailable.
 - No durable Steward reopen action was found. Reopen in `src/routes/modules.steward.meetings.actions.tsx` is separate session staging; mockup reopen receipts in `src/domain/steward-preview.ts` are fictional in-memory events, not production evidence.
 - Repository policy in `supabase/migrations/20260922090000_steward_task_state_and_role_app_access.sql` is membership-scoped and broader than app task-level completion authority. Hosted policy/schema state was not queried. Persistence, append-only complete/reopen evidence, atomicity/error handling and authority must be reconciled before adding workroom completion controls; no migration or access change was made.
 
-- 1440: three continuous columns (18/56/26) under a compact 56px header, 10–15 rows visible. 768: rail + main, detail in a Sheet drawer. 375: rail collapses into a drawer, compact title/meta/status rows, first actionable task in the first viewport. Sheets mount only at compact breakpoints, so desktop focus is never trapped; rows are real buttons with aria-pressed and visible focus rings.
+## Correction verification
+
+- `bunx vitest run src/data/steward/recent-sync.test.ts src/data/supabase/steward-service.test.ts src/components/tt/steward/workroom-receipts.test.ts src/domain/steward-workroom.test.ts`: exit 0, 38 tests passed (18 refresh tests).
+- `bunx eslint src/data/steward/recent-sync.ts src/data/steward/recent-sync.test.ts src/components/tt/steward/workroom.tsx src/components/tt/steward/workroom-view.tsx`: exit 0.
+- Standalone compiler/build commands were not run: current environment instructions prohibit manual project typechecks/builds; the harness validates automatically. Preview build log reported `build OK` at 2026-10-18T00:48:09Z; no standalone typecheck exit code is claimed.
+- Browser-only fictional props verified successful checked time/unchanged count without Retry, changed-read caution expansion without Retry, and genuine failure with Retry. `/tmp/browser/steward-refresh/check_status.py` exited 0; screenshots `unchanged.png`, `preserved.png`, `failure.png` in the same temporary directory were inspected. No app harness route, committed screenshots or live data were changed; authenticated live refresh remains untested under the no-live-writes constraint.
