@@ -37,6 +37,7 @@ a=$(cat "$TMPDIR_A"); b=$(cat "$TMPDIR_B")
 wins=$(printf '%s\n%s\n' "$a" "$b" | grep -vc LOST || true)
 [ "$wins" -eq 1 ] || { echo "FAIL: expected exactly 1 winning claim, got $wins ($a / $b)"; exit 1; }
 
+echo "claim A=$a B=$b"
 winner=$(printf '%s\n%s\n' "$a" "$b" | grep -v LOST | head -1)
 loser=$(printf '%s\n%s\n' "$a" "$b" | grep LOST | head -1)
 [ "$loser" = "LOST" ] || { echo "FAIL: expected one LOST claim"; exit 1; }

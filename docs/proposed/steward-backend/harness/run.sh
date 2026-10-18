@@ -57,7 +57,7 @@ done
 echo "== grants.review.sql (local harness only)"
 psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/../grants.review.sql"
 
-for t in "$HERE"/tests/0*.sql; do
+for t in "$HERE"/tests/00[1-5]*.sql; do
   echo "== $(basename "$t")"
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$t"
 done
@@ -69,6 +69,7 @@ echo "== rollback (data-preserving)"
 for f in "$HERE"/../00*.down.sql; do
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$f"
 done
+echo "== 007_rollback.sql"
 psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/tests/007_rollback.sql"
 
 echo "ALL HARNESS CHECKS PASSED"
