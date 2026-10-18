@@ -97,8 +97,8 @@ end $$;
 do $$
 declare rid uuid; r steward_canonical_runs;
 begin
-  rid := steward_request_canonical_run('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 'prepare_handoff',
-        'a0000000-0000-0000-0000-000000000005', 'd', '[]'::jsonb, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa').id;
+  select (steward_request_canonical_run('11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 'prepare_handoff',
+        'a0000000-0000-0000-0000-000000000005', 'd', '[]'::jsonb, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')).id into rid;
   r := steward_claim_canonical_run(rid, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 0); -- immediately expired lease
   assert r.status = 'running';
   r := steward_claim_canonical_run(rid, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
