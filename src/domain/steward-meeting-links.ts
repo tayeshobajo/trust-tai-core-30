@@ -65,7 +65,8 @@ export function workroomRowKey(row: WorkroomRow): string {
   return `${row.kind ?? "commitment"}:${row.id}`;
 }
 
-/** No score fields are recomputed from linked work. Defense in depth excludes private/foreign rows. */
+/** Ordinary links leave scores unchanged; explicitly required work adds equal denominator
+ * weight with zero verified credit, including archives. Excludes private/foreign rows. */
 export function appendLinkedBusinessWork(
   meetings: WorkroomMeeting[],
   tasks: readonly BoardTask[],
@@ -126,7 +127,7 @@ export function appendLinkedBusinessWork(
               99,
               Math.round((meeting.done / (meeting.agreed + required.length)) * 100),
             ),
-            remark: `${required.length} manually required tasks await guarded verification. Archived required work remains in scope; recorded delivery does not grant verified credit.`,
+            remark: `${required.length} manually required task${required.length === 1 ? " awaits" : "s await"} guarded verification. Archived required work remains in scope; recorded delivery does not grant verified credit.`,
           }
         : {}),
       linkedWork: {

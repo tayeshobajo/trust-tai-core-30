@@ -2,9 +2,10 @@
  * Steward's meeting workroom on real data — the data wiring.
  *
  * Reads stored conversations, person-confirmed commitments and completion
- * receipts, then hands everything to the presentational WorkroomView. This
- * task view writes nothing: the meeting review page confirms proposals only.
- * Verify/reopen controls await review of atomic completion persistence.
+ * receipts and canonical business work, then passes them to WorkroomView.
+ * Explicit Add task uses the authenticated canonical task service; bounded
+ * open-page sync may store meeting imports. Proposal confirmation stays on
+ * the meeting review page. Verify/reopen remain blocked pending atomic persistence.
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
