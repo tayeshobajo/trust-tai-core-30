@@ -57,14 +57,17 @@ function makeRepo(
     calls,
     async requestRun(input) {
       calls.push("requestRun");
-      return { run: makeRun({
-        requestDigest: input.digest,
-        // In-memory repos persist the pre-resolved snapshot, mirroring the
-        // SQL function's server-side resolution.
-        inputSnapshot:
-          input.snapshot ?? input.inputRefs.map((r) => snapshotEntry({ kind: r.kind, id: r.id })),
-        clientOperationId: input.operationId,
-      }), replayed: false };
+      return {
+        run: makeRun({
+          requestDigest: input.digest,
+          // In-memory repos persist the pre-resolved snapshot, mirroring the
+          // SQL function's server-side resolution.
+          inputSnapshot:
+            input.snapshot ?? input.inputRefs.map((r) => snapshotEntry({ kind: r.kind, id: r.id })),
+          clientOperationId: input.operationId,
+        }),
+        replayed: false,
+      };
     },
     async claimRun() {
       calls.push("claimRun");
@@ -358,13 +361,23 @@ describe("authorizeRunWorkerCaller", () => {
 
   it("denies an unknown or foreign run without disclosing existence", () => {
     expect(
-      authorizeRunWorkerCaller({ run: null, isActiveMember: true, task: BUSINESS_TASK, callerId: ACTOR }),
+      authorizeRunWorkerCaller({
+        run: null,
+        isActiveMember: true,
+        task: BUSINESS_TASK,
+        callerId: ACTOR,
+      }),
     ).toBe("this run is not available to you");
   });
 
   it("denies a caller who is not an active member of the run's org", () => {
     expect(
-      authorizeRunWorkerCaller({ run: RUN, isActiveMember: false, task: BUSINESS_TASK, callerId: ACTOR }),
+      authorizeRunWorkerCaller({
+        run: RUN,
+        isActiveMember: false,
+        task: BUSINESS_TASK,
+        callerId: ACTOR,
+      }),
     ).toBe("this run is not available to you");
   });
 
@@ -383,7 +396,12 @@ describe("authorizeRunWorkerCaller", () => {
 
   it("allows an active member on a business task and the owner on a personal task", () => {
     expect(
-      authorizeRunWorkerCaller({ run: RUN, isActiveMember: true, task: BUSINESS_TASK, callerId: ACTOR }),
+      authorizeRunWorkerCaller({
+        run: RUN,
+        isActiveMember: true,
+        task: BUSINESS_TASK,
+        callerId: ACTOR,
+      }),
     ).toBeNull();
     expect(
       authorizeRunWorkerCaller({
