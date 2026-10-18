@@ -18,10 +18,7 @@ import type {
   VerificationRepository,
   VerificationTaskState,
 } from "./steward-verification.server";
-import {
-  EvidenceRequiredError,
-  RevisionConflictError,
-} from "./steward-verification.server";
+import { EvidenceRequiredError, RevisionConflictError } from "./steward-verification.server";
 
 interface ReceiptRow {
   id: string;
@@ -105,7 +102,11 @@ export function createSupabaseVerificationRepository(
       const task = await readTask(input.orgId, input.taskId);
       // The SQL replays an existing receipt for a duplicate operation; the
       // receipt's operation id tells us whether this call recorded it.
-      return { task, receipt, replayed: receipt.operationId === input.operationId && receipt.note !== input.note };
+      return {
+        task,
+        receipt,
+        replayed: receipt.operationId === input.operationId && receipt.note !== input.note,
+      };
     },
     async reopenTask(input) {
       const { data, error } = await supabase.rpc("steward_reopen_task", {
@@ -118,7 +119,10 @@ export function createSupabaseVerificationRepository(
       if (error) rethrow(error);
       const receipt = mapReceipt(data as ReceiptRow);
       const task = await readTask(input.orgId, input.taskId);
-      return { task, replayed: receipt.operationId === input.operationId && receipt.note !== input.reason };
+      return {
+        task,
+        replayed: receipt.operationId === input.operationId && receipt.note !== input.reason,
+      };
     },
   };
 }

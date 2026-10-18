@@ -13,10 +13,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  CoverageAttestation,
-  CoverageRepository,
-} from "./steward-coverage.server";
+import type { CoverageAttestation, CoverageRepository } from "./steward-coverage.server";
 
 interface AttestationRow {
   id: string;
@@ -47,9 +44,7 @@ function rethrow(error: { code?: string; message?: string } | null): never {
 }
 
 /** The client MUST be the authenticated per-request client (RLS as user). */
-export function createSupabaseCoverageRepository(
-  supabase: SupabaseClient,
-): CoverageRepository & {
+export function createSupabaseCoverageRepository(supabase: SupabaseClient): CoverageRepository & {
   latestAttestation(orgId: string, conversationId: string): Promise<CoverageAttestation | null>;
 } {
   return {

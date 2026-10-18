@@ -12,10 +12,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  ProposalLink,
-  ProposalLinkRepository,
-} from "./steward-proposal-link.server";
+import type { ProposalLink, ProposalLinkRepository } from "./steward-proposal-link.server";
 import { ProposalLinkConflictError } from "./steward-proposal-link.server";
 
 interface LinkRow {
@@ -64,7 +61,10 @@ export function createSupabaseProposalLinkRepository(
       });
       if (error) rethrow(error);
       const link = mapLink(data as LinkRow);
-      return { link, replayed: link.operationId === input.operationId && link.taskId !== input.taskId };
+      return {
+        link,
+        replayed: link.operationId === input.operationId && link.taskId !== input.taskId,
+      };
     },
     async linksForConversation(orgId, conversationId) {
       const { data, error } = await supabase

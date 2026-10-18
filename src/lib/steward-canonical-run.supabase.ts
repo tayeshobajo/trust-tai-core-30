@@ -19,10 +19,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  CanonicalRun,
-  CanonicalRunRepository,
-} from "./steward-canonical-run.server";
+import type { CanonicalRun, CanonicalRunRepository } from "./steward-canonical-run.server";
 import { OperationConflictError } from "./steward-canonical-run.server";
 
 interface RunRow {

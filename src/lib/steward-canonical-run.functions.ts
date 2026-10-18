@@ -31,8 +31,7 @@ import {
 } from "./steward-canonical-run.server";
 
 export type CanonicalRunCapabilityState =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "enabled" };
+  { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
 export type CanonicalRunRequestState =
   | { kind: "unavailable"; reason: string }
@@ -42,8 +41,7 @@ export type CanonicalRunRequestState =
   | { kind: "rejected"; message: string };
 
 export type CanonicalRunWorkerState =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "result"; result: ExecuteCanonicalRunResult };
+  { kind: "unavailable"; reason: string } | { kind: "result"; result: ExecuteCanonicalRunResult };
 
 function capabilityEnabled(): boolean {
   return process.env["STEWARD_CANONICAL_RUNS_ENABLED"] === "true";
@@ -92,7 +90,10 @@ export const requestCanonicalRunFn = createServerFn({ method: "POST" })
       const code = (error as { code?: string }).code;
       const message = error instanceof Error ? error.message : "request failed";
       if (code === "P0002" || message.includes("operation_conflict")) {
-        return { kind: "conflict", message: "this operation was already requested with different inputs" };
+        return {
+          kind: "conflict",
+          message: "this operation was already requested with different inputs",
+        };
       }
       return { kind: "rejected", message };
     }

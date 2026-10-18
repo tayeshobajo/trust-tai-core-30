@@ -96,8 +96,8 @@ describe("Supabase adapters match the proposed SQL contract", () => {
       inputRefs: [{ kind: "transcript", id: "c1" }],
       actorId: "u1",
     });
-    expect(calls[0].fn).toBe("steward_request_canonical_run");
-    expect(Object.keys(calls[0].args).sort()).toEqual(
+    expect(calls[0]!.fn).toBe("steward_request_canonical_run");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("001_canonical_runs.up.sql", "steward_request_canonical_run").sort(),
     );
   });
@@ -106,8 +106,8 @@ describe("Supabase adapters match the proposed SQL contract", () => {
     const { client, calls } = mockSupabase(RUN_ROW);
     const repo = createSupabaseCanonicalRunRepository(client as never);
     await repo.claimRun("r1", "worker", 120);
-    expect(calls[0].fn).toBe("steward_claim_canonical_run");
-    expect(Object.keys(calls[0].args).sort()).toEqual(
+    expect(calls[0]!.fn).toBe("steward_claim_canonical_run");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("001_canonical_runs.up.sql", "steward_claim_canonical_run").sort(),
     );
   });
@@ -116,8 +116,8 @@ describe("Supabase adapters match the proposed SQL contract", () => {
     const { client, calls } = mockSupabase(RUN_ROW);
     const repo = createSupabaseCanonicalRunRepository(client as never);
     await repo.completeRun({ runId: "r1", claimToken: "tok", artifactText: "a", evidenceRefs: [] });
-    expect(calls[0].fn).toBe("steward_complete_canonical_run");
-    expect(Object.keys(calls[0].args).sort()).toEqual(
+    expect(calls[0]!.fn).toBe("steward_complete_canonical_run");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("001_canonical_runs.up.sql", "steward_complete_canonical_run").sort(),
     );
   });
@@ -126,8 +126,8 @@ describe("Supabase adapters match the proposed SQL contract", () => {
     const { client, calls } = mockSupabase(RUN_ROW);
     const repo = createSupabaseCanonicalRunRepository(client as never);
     await repo.failRun({ runId: "r1", claimToken: "tok", reason: "x" });
-    expect(calls[0].fn).toBe("steward_fail_canonical_run");
-    expect(Object.keys(calls[0].args).sort()).toEqual(
+    expect(calls[0]!.fn).toBe("steward_fail_canonical_run");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("001_canonical_runs.up.sql", "steward_fail_canonical_run").sort(),
     );
   });
@@ -152,8 +152,8 @@ describe("Supabase adapters match the proposed SQL contract", () => {
       note: "evidence note here",
       actorId: "u1",
     });
-    expect(calls[0].fn).toBe("steward_verify_task");
-    expect(Object.keys(calls[0].args).sort()).toEqual(
+    expect(calls[0]!.fn).toBe("steward_verify_task");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("002_atomic_verification.up.sql", "steward_verify_task").sort(),
     );
   });
@@ -169,8 +169,8 @@ describe("Supabase adapters match the proposed SQL contract", () => {
       reason: "reopen reason here",
       actorId: "u1",
     });
-    expect(calls[0].fn).toBe("steward_reopen_task");
-    expect(Object.keys(calls[0].args).sort()).toEqual(
+    expect(calls[0]!.fn).toBe("steward_reopen_task");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("002_atomic_verification.up.sql", "steward_reopen_task").sort(),
     );
   });
@@ -194,11 +194,11 @@ describe("Supabase adapters match the proposed SQL contract", () => {
       scopeVersion: 99,
       actorId: "u1",
     });
-    expect(calls[0].fn).toBe("steward_attest_coverage");
-    expect(Object.keys(calls[0].args).sort()).toEqual(
+    expect(calls[0]!.fn).toBe("steward_attest_coverage");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("003_coverage_attestation.up.sql", "steward_attest_coverage").sort(),
     );
-    expect(JSON.stringify(calls[0].args)).not.toContain("caller-hash");
+    expect(JSON.stringify(calls[0]!.args)).not.toContain("caller-hash");
   });
 
   it("linkProposal sends exactly steward_link_proposal's parameters", async () => {
@@ -221,8 +221,8 @@ describe("Supabase adapters match the proposed SQL contract", () => {
       operationId: "op-1",
       actorId: "u1",
     });
-    expect(calls[0].fn).toBe("steward_link_proposal");
-    expect(Object.keys(calls[0].args).sort()).toEqual(
+    expect(calls[0]!.fn).toBe("steward_link_proposal");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("004_proposal_links.up.sql", "steward_link_proposal").sort(),
     );
   });
@@ -245,8 +245,8 @@ describe("Supabase adapters match the proposed SQL contract", () => {
       classification: "manual_required",
       operationId: "op-1",
     });
-    expect(calls[0].fn).toBe("steward_scope_add_item");
-    expect(Object.keys(calls[0].args).sort()).toEqual(
+    expect(calls[0]!.fn).toBe("steward_scope_add_item");
+    expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("005_scope_membership.up.sql", "steward_scope_add_item").sort(),
     );
     await repo.amendRemove({
