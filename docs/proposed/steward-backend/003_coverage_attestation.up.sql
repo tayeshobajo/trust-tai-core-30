@@ -210,7 +210,7 @@ begin
 end;
 $$;
 
-revoke all on function public.steward_attest_coverage(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.steward_attest_coverage(uuid, uuid, uuid, text, integer) from public, anon, authenticated;
 revoke all on function public.steward_current_coverage(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.steward_guard_coverage_mutation() from public, anon, authenticated;
 revoke all on function private.steward_transcript_hash(uuid, uuid) from public, anon, authenticated;
