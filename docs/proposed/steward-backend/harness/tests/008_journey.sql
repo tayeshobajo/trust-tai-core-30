@@ -53,17 +53,19 @@ begin
 exception when sqlstate 'P0030' then null; -- already in scope from 005
 end $$;
 do $$
-declare r public.steward_task_receipts; c record; rev integer;
+declare res jsonb; c record; rev integer;
 begin
   select revision into rev from public.steward_tasks where id = '10000000-0000-0000-0000-000000000002';
-  r := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+  res := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
     '10000000-0000-0000-0000-000000000002', rev, 'e2000000-0000-0000-0000-000000000001',
     'Journey verification against the recorded artifact.');
+  perform public.test_assert((res->>'replayed')::boolean = false, 'journey: fresh verify not replayed');
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
   perform public.test_assert(c.verified = 1, 'journey: verify earns revision-bound credit');
-  r := public.steward_reopen_task('11111111-1111-1111-1111-111111111111',
+  res := public.steward_reopen_task('11111111-1111-1111-1111-111111111111',
     '10000000-0000-0000-0000-000000000002', rev + 1, 'e2000000-0000-0000-0000-000000000002',
     'Journey reopen: artifact needs human polish.');
+  perform public.test_assert((res->>'replayed')::boolean = false, 'journey: fresh reopen not replayed');
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
   perform public.test_assert(c.verified = 0, 'journey: reopen drops the credit');
 end $$;

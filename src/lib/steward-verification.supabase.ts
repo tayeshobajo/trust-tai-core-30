@@ -8,8 +8,11 @@
  * RPC boundary (002_atomic_verification.up.sql):
  * - steward_verify_task(p_org, p_task, p_expected_revision, p_operation, p_note)
  * - steward_reopen_task(p_org, p_task, p_expected_revision, p_operation, p_reason)
- * Both return the steward_task_receipts row; the task state is re-read
- * through RLS afterwards.
+ * Both return jsonb {receipt, replayed}: the explicit replayed flag is the
+ * only reliable replay signal. The task state is re-read through RLS
+ * afterwards; a reread failure does NOT undo the committed transaction —
+ * the durable receipt is returned with task: null so the caller can
+ * reconcile instead of retrying blindly.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -63,6 +66,11 @@ function mapTask(row: TaskRow): VerificationTaskState {
   };
 }
 
+interface RpcResult {
+  receipt: ReceiptRow;
+  replayed: boolean;
+}
+
 function rethrow(error: { code?: string; message?: string } | null): never {
   if (error?.code === "P0001" || error?.message?.includes("revision_conflict")) {
     throw new RevisionConflictError();
@@ -77,14 +85,17 @@ function rethrow(error: { code?: string; message?: string } | null): never {
 export function createSupabaseVerificationRepository(
   supabase: SupabaseClient,
 ): VerificationRepository {
-  async function readTask(orgId: string, taskId: string): Promise<VerificationTaskState> {
+  // Post-commit reread. A failure here does NOT mean the transaction
+  // failed — the receipt is already durable. Return null so the caller
+  // reconciles from the receipt instead of retrying a committed operation.
+  async function readTask(orgId: string, taskId: string): Promise<VerificationTaskState | null> {
     const { data, error } = await supabase
       .from("steward_tasks")
       .select("id, status, revision, completion_evidence, completed_at, completed_by")
       .eq("id", taskId)
       .eq("organization_id", orgId)
       .single();
-    if (error) rethrow(error);
+    if (error) return null;
     return mapTask(data as TaskRow);
   }
 
@@ -98,15 +109,10 @@ export function createSupabaseVerificationRepository(
         p_note: input.note,
       });
       if (error) rethrow(error);
-      const receipt = mapReceipt(data as ReceiptRow);
+      const result = data as RpcResult;
+      const receipt = mapReceipt(result.receipt);
       const task = await readTask(input.orgId, input.taskId);
-      // The SQL replays an existing receipt for a duplicate operation; the
-      // receipt's operation id tells us whether this call recorded it.
-      return {
-        task,
-        receipt,
-        replayed: receipt.operationId === input.operationId && receipt.note !== input.note,
-      };
+      return { task, receipt, replayed: result.replayed === true };
     },
     async reopenTask(input) {
       const { data, error } = await supabase.rpc("steward_reopen_task", {
@@ -117,12 +123,9 @@ export function createSupabaseVerificationRepository(
         p_reason: input.reason,
       });
       if (error) rethrow(error);
-      const receipt = mapReceipt(data as ReceiptRow);
+      const result = data as RpcResult;
       const task = await readTask(input.orgId, input.taskId);
-      return {
-        task,
-        replayed: receipt.operationId === input.operationId && receipt.note !== input.reason,
-      };
+      return { task, replayed: result.replayed === true };
     },
   };
 }

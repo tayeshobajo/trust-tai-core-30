@@ -145,5 +145,98 @@ begin
 end;
 $$;
 
+-- Register extraction output into the ledger. Called by the reviewed
+-- extraction path with the proposals derived from the transcript the
+-- caller READ; that transcript is compared semantically (jsonb equality)
+-- against the stored conversation, so a stale extraction can never
+-- overwrite a newer read. Idempotent per (org, conversation, source_key):
+-- re-extraction of the same transcript upserts the same rows and never
+-- resets a human's linked/dismissed decision. New rows invalidate scope
+-- via the ledger trigger. Model suggestions are NEVER auto-confirmed —
+-- rows start 'proposed' and only a human link/dismiss changes that.
+create or replace function public.steward_register_proposals(
+  p_org uuid,
+  p_conversation uuid,
+  p_operation uuid,
+  p_proposals jsonb, -- [{source_key, kind, statement}]
+  p_transcript jsonb -- the exact transcript the extraction ran over
+) returns integer
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  actor uuid := auth.uid();
+  conv public.conversations;
+  proposal jsonb;
+  added integer := 0;
+begin
+  if actor is null or not private.steward_can_write(p_org) then
+    raise exception 'not_authorized' using errcode = 'P0401';
+  end if;
+  select * into conv from public.conversations
+    where id = p_conversation and organization_id = p_org;
+  if not found then
+    raise exception 'conversation_not_found' using errcode = 'P0404';
+  end if;
+  if p_transcript is distinct from conv.transcript then
+    raise exception 'transcript_changed' using errcode = 'P0001';
+  end if;
+  if p_proposals is null or jsonb_typeof(p_proposals) <> 'array' then
+    raise exception 'proposals_invalid' using errcode = 'P0422';
+  end if;
+  for proposal in select * from jsonb_array_elements(p_proposals) loop
+    if proposal->>'source_key' is null or proposal->>'statement' is null then
+      raise exception 'proposals_invalid' using errcode = 'P0422';
+    end if;
+    insert into public.steward_proposal_ledger
+      (organization_id, conversation_id, source_key, kind, statement)
+    values (p_org, p_conversation, proposal->>'source_key',
+            coalesce(proposal->>'kind', 'action'), proposal->>'statement')
+    on conflict (organization_id, conversation_id, source_key) do nothing;
+    if found then added := added + 1; end if;
+  end loop;
+  return added;
+end;
+$$;
+
+-- Explicit human dismissal of a ledger proposal, with a substantive
+-- reason. Idempotent; the ledger trigger invalidates scope in the same
+-- transaction. Never deletes the row.
+create or replace function public.steward_dismiss_proposal(
+  p_org uuid,
+  p_conversation uuid,
+  p_proposal uuid,
+  p_reason text,
+  p_operation uuid
+) returns public.steward_proposal_ledger
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  actor uuid := auth.uid();
+  proposal public.steward_proposal_ledger;
+begin
+  if actor is null or not private.steward_can_write(p_org) then
+    raise exception 'not_authorized' using errcode = 'P0401';
+  end if;
+  if p_reason is null or char_length(btrim(p_reason)) < 10 then
+    raise exception 'reason_required' using errcode = 'P0010';
+  end if;
+  select * into proposal from public.steward_proposal_ledger
+    where id = p_proposal and organization_id = p_org and conversation_id = p_conversation
+    for update;
+  if not found then
+    raise exception 'proposal_not_found' using errcode = 'P0404';
+  end if;
+  if proposal.status = 'linked' then
+    raise exception 'proposal_already_linked' using errcode = 'P0030';
+  end if;
+  if proposal.status = 'dismissed' then
+    return proposal; -- idempotent replay
+  end if;
+  update public.steward_proposal_ledger set status = 'dismissed' where id = p_proposal
+  returning * into proposal;
+  return proposal;
+end;
+$$;
+
 revoke all on function public.steward_link_proposal(uuid, uuid, uuid, uuid, uuid) from public, anon, authenticated;
+revoke all on function public.steward_register_proposals(uuid, uuid, uuid, jsonb, jsonb) from public, anon, authenticated;
+revoke all on function public.steward_dismiss_proposal(uuid, uuid, uuid, text, uuid) from public, anon, authenticated;
 revoke all on function public.steward_proposal_ledger_invalidate() from public, anon, authenticated;

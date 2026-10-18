@@ -204,14 +204,14 @@ begin
     if existing.request_digest is distinct from digest then
       raise exception 'operation_conflict' using errcode = 'P0002';
     end if;
-    return existing; -- replay after full reauthorization above
+    return jsonb_build_object('run', to_jsonb(existing), 'replayed', true); -- replay after full reauthorization above
   end if;
 
   insert into public.steward_canonical_runs
     (organization_id, task_id, action, client_operation_id, request_digest, input_snapshot, requested_by)
   values (p_org, p_task, p_action, p_operation, digest, snapshot, actor)
   returning * into inserted;
-  return inserted;
+  return jsonb_build_object('run', to_jsonb(inserted), 'replayed', false);
 exception
   when unique_violation then
     -- Concurrent duplicate request: reliably replay the winner's row.

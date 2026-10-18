@@ -152,11 +152,14 @@ end;
 $$;
 
 -- Seed scope from EXISTING canonical state: required-manual board tasks
--- carry an immutable correlation key ("<meeting-uuid>/<operation-uuid>",
--- see the workroom add-required-task flow). This reconciliation is
--- explicit, audited and idempotent — it never creates or edits tasks and
--- never touches transcript commitments, which enter scope through the
--- proposal ledger + human confirmation instead.
+-- carry the immutable correlation key written by the workroom
+-- add-required-task flow: "cmd-meeting-required:v1:<meetingUUID>:<opUUID>"
+-- (see src/domain/steward-required-work.ts — REQUIRED_WORK_PREFIX). This
+-- reconciliation is explicit, audited and idempotent — it never creates
+-- or edits tasks. Confirmed transcript commitments enter the denominator
+-- directly in steward_scope_counts below (they are canonical obligations
+-- already, keyed by conversation_id); the proposal ledger tracks the
+-- still-unconfirmed remainder.
 create or replace function public.steward_scope_sync_required(
   p_org uuid,
   p_conversation uuid,
@@ -181,7 +184,9 @@ begin
      where t.organization_id = p_org
        and t.task_visibility = 'business'
        and t.correlation_id is not null
-       and split_part(t.correlation_id, '/', 1) = p_conversation::text
+       -- Exact repo format: cmd-meeting-required:v1:<meetingUUID>:<opUUID>
+       and t.correlation_id like 'cmd-meeting-required:v1:%'
+       and split_part(t.correlation_id, ':', 3) = p_conversation::text
   loop
     begin
       item := public.steward_scope_add_item(
@@ -263,11 +268,18 @@ $$;
 
 -- Honest counts from ONE snapshot query (partial reads impossible):
 --  denominator: scope items not explicitly removed, INCLUDING items whose
---    task is archived.
---  verified: items whose task is complete AND whose LATEST receipt is a
---    verify whose recorded task_revision_after still equals the task's
---    current revision. A reopen, an edit, or a legacy status flip after
---    reopen changes the revision and drops the credit.
+--    task is archived, PLUS confirmed transcript commitments for this
+--    conversation (canonical obligations already, keyed by
+--    commitments.conversation_id). A commitment is excluded only when its
+--    ledger proposal is linked to a task that is itself in scope — that
+--    task already carries the obligation, so counting both would double
+--    count. Commitment rows NEVER receive verified credit here: no
+--    evidence-backed verification contract exists for them yet, so they
+--    hold the denominator open until one does.
+--  verified: scope items whose task is complete AND whose LATEST receipt
+--    is a verify whose recorded task_revision_after still equals the
+--    task's current revision. A reopen, an edit, or a legacy status flip
+--    after reopen changes the revision and drops the credit.
 --  pending_proposals: ledger proposals neither linked nor dismissed —
 --    any nonzero value gates 100.
 create or replace function public.steward_scope_counts(
@@ -280,7 +292,21 @@ begin
     raise exception 'not_authorized' using errcode = 'P0401';
   end if;
   return query
-    select count(*)::integer,
+    select (count(*)::integer
+            + (select count(*)::integer from public.commitments cm
+                where cm.organization_id = p_org
+                  and cm.conversation_id = p_conversation
+                  and cm.source_app = 'steward'
+                  and cm.status is distinct from 'cancelled'
+                  and not exists (
+                    select 1 from public.steward_proposal_ledger pl
+                    join public.steward_proposal_links lk
+                      on lk.proposal_ledger_id = pl.id
+                    join public.steward_scope_items si
+                      on si.task_id = lk.task_id and si.removed_at is null
+                    where pl.organization_id = p_org
+                      and pl.conversation_id = p_conversation
+                      and pl.source_key = cm.source_key))),
            count(*) filter (
              where t.status = 'complete'
                and exists (
@@ -297,7 +323,7 @@ begin
                and pl.status = 'proposed')
       from public.steward_scope_items i
       join public.steward_tasks t on t.id = i.task_id
-     where i.organization_id = p_org
+      where i.organization_id = p_org
        and i.conversation_id = p_conversation
        and i.removed_at is null;
 end;

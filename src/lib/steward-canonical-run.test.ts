@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  authorizeRunWorkerCaller,
   digestArtifact,
   digestRequest,
   executeCanonicalRun,
@@ -348,5 +349,49 @@ describe("executeCanonicalRun", () => {
     });
     expect(result.kind).toBe("failed");
     expect(repo.calls.some((c) => c.startsWith("completeRun"))).toBe(false);
+  });
+});
+
+describe("authorizeRunWorkerCaller", () => {
+  const RUN = { organizationId: ORG, taskId: TASK };
+  const BUSINESS_TASK = { visibility: "business", ownerUserId: null };
+
+  it("denies an unknown or foreign run without disclosing existence", () => {
+    expect(
+      authorizeRunWorkerCaller({ run: null, isActiveMember: true, task: BUSINESS_TASK, callerId: ACTOR }),
+    ).toBe("this run is not available to you");
+  });
+
+  it("denies a caller who is not an active member of the run's org", () => {
+    expect(
+      authorizeRunWorkerCaller({ run: RUN, isActiveMember: false, task: BUSINESS_TASK, callerId: ACTOR }),
+    ).toBe("this run is not available to you");
+  });
+
+  it("denies when the canonical task is not visible to the caller", () => {
+    expect(
+      authorizeRunWorkerCaller({ run: RUN, isActiveMember: true, task: null, callerId: ACTOR }),
+    ).toBe("this run is not available to you");
+  });
+
+  it("denies a personal task to anyone but its owner", () => {
+    const personal = { visibility: "personal", ownerUserId: "user-other" };
+    expect(
+      authorizeRunWorkerCaller({ run: RUN, isActiveMember: true, task: personal, callerId: ACTOR }),
+    ).toBe("this run is not available to you");
+  });
+
+  it("allows an active member on a business task and the owner on a personal task", () => {
+    expect(
+      authorizeRunWorkerCaller({ run: RUN, isActiveMember: true, task: BUSINESS_TASK, callerId: ACTOR }),
+    ).toBeNull();
+    expect(
+      authorizeRunWorkerCaller({
+        run: RUN,
+        isActiveMember: true,
+        task: { visibility: "personal", ownerUserId: ACTOR },
+        callerId: ACTOR,
+      }),
+    ).toBeNull();
   });
 });

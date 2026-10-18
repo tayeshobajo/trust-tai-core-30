@@ -1,15 +1,61 @@
 -- Proposal links: canonical ledger identity, existence validation,
 -- idempotency, scope invalidation. The ledger mirrors the real extraction
--- contract (source_key, like commitments.source_key); extraction writes
--- are service-side, so the fixture seeds it as service_role.
+-- contract (source_key, like commitments.source_key). Registration runs
+-- through steward_register_proposals as an authenticated writer with the
+-- EXACT transcript the extraction read; the org-B row is seeded as
+-- service_role since no org-B actor ever registers it.
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+do $$
+declare added integer;
+begin
+  added := public.steward_register_proposals(
+    '11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c0000000-0000-0000-0000-000000000001',
+    '[{"source_key":"ext-3948","kind":"action","statement":"Roadmap proposal at 39:48"},
+      {"source_key":"ext-5357","kind":"action","statement":"Mockup proposal at 53:57"}]'::jsonb,
+    '{"segments":[{"speaker":"Tai","text":"Synthetic Soji roadmap discussion.","offset":0}]}'::jsonb);
+  perform public.test_assert(added = 2, 'registration adds both proposals');
+  -- Idempotent re-extraction of the same transcript: nothing new, and a
+  -- human decision taken later is never reset by re-registration.
+  added := public.steward_register_proposals(
+    '11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c0000000-0000-0000-0000-000000000002',
+    '[{"source_key":"ext-3948","kind":"action","statement":"Roadmap proposal at 39:48"},
+      {"source_key":"ext-5357","kind":"action","statement":"Mockup proposal at 53:57"}]'::jsonb,
+    '{"segments":[{"speaker":"Tai","text":"Synthetic Soji roadmap discussion.","offset":0}]}'::jsonb);
+  perform public.test_assert(added = 0, 're-extraction is idempotent');
+end $$;
+-- Stale extraction: transcript the caller read no longer matches stored.
+select public.test_denied($q$
+  select public.steward_register_proposals(
+    '11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c0000000-0000-0000-0000-000000000003',
+    '[{"source_key":"ext-stale","kind":"action","statement":"stale"}]'::jsonb,
+    '{"segments":[{"speaker":"Tai","text":"Older transcript.","offset":0}]}'::jsonb) $q$,
+  'stale transcript registration rejected');
+-- Registration requires write authority.
+select public.test_act_as('dddddd00-0000-0000-0000-000000000001');
+select public.test_denied($q$
+  select public.steward_register_proposals(
+    '11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c0000000-0000-0000-0000-000000000004',
+    '[]'::jsonb,
+    '{"segments":[{"speaker":"Tai","text":"Synthetic Soji roadmap discussion.","offset":0}]}'::jsonb) $q$,
+  'viewer cannot register proposals');
+-- Pin the registered rows to stable fixture IDs for the link tests below.
 set role service_role;
 select public.test_act_as_worker();
+update public.steward_proposal_ledger set id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+ where organization_id = '11111111-1111-1111-1111-111111111111' and source_key = 'ext-3948';
+update public.steward_proposal_ledger set id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+ where organization_id = '11111111-1111-1111-1111-111111111111' and source_key = 'ext-5357';
 insert into public.steward_proposal_ledger
   (id, organization_id, conversation_id, source_key, kind, statement) values
-  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '11111111-1111-1111-1111-111111111111',
-   'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ext-3948', 'action', 'Roadmap proposal at 39:48'),
-  ('ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111',
-   'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ext-5357', 'action', 'Mockup proposal at 53:57'),
   ('eeeeeeee-eeee-eeee-eeee-eeeeeeeee001', '22222222-2222-2222-2222-222222222222',
    'dddddddd-dddd-dddd-dddd-dddddddddd01', 'ext-b1', 'action', 'Org B proposal');
 reset role;
@@ -121,3 +167,45 @@ select public.test_denied($q$
 reset role;
 select public.test_denied($q$
   delete from public.steward_proposal_links where true $q$, 'link delete blocked by trigger');
+
+-- 6. Explicit human dismissal: substantive reason required, idempotent
+--    replay, scope invalidated, linked proposals cannot be dismissed.
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+select public.test_denied($q$
+  select public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    'no', 'c3000000-0000-0000-0000-000000000001') $q$,
+  'thin dismissal reason rejected');
+do $$
+declare p public.steward_proposal_ledger; v integer;
+begin
+  p := public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    'Reviewed: covered by the existing roadmap task.', 'c3000000-0000-0000-0000-000000000002');
+  perform public.test_assert(p.status = 'dismissed', 'proposal dismissed by human');
+  perform public.test_assert(
+    not public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
+    'dismissal invalidates coverage');
+  -- Idempotent replay: same row returned, no error, no duplicate event.
+  p := public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    'Reviewed: covered by the existing roadmap task.', 'c3000000-0000-0000-0000-000000000003');
+  perform public.test_assert(p.status = 'dismissed', 'dismissal replay is idempotent');
+  select version into v from public.steward_scope_versions
+   where organization_id = '11111111-1111-1111-1111-111111111111'
+     and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+  perform public.test_assert(v >= 4, 'dismissal durably bumps scope version');
+end $$;
+select public.test_denied($q$
+  select public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+    'Trying to dismiss a linked proposal.', 'c3000000-0000-0000-0000-000000000004') $q$,
+  'linked proposal cannot be dismissed');
+select public.test_act_as('dddddd00-0000-0000-0000-000000000001');
+select public.test_denied($q$
+  select public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeee001',
+    'Viewer attempting a dismissal here.', 'c3000000-0000-0000-0000-000000000005') $q$,
+  'viewer cannot dismiss');
+reset role;

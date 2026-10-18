@@ -142,7 +142,7 @@ describe("Supabase adapters match the proposed SQL contract", () => {
   });
 
   it("verifyTask sends exactly steward_verify_task's parameters", async () => {
-    const { client, calls } = mockSupabase(RECEIPT_ROW);
+    const { client, calls } = mockSupabase({ receipt: RECEIPT_ROW, replayed: false });
     const repo = createSupabaseVerificationRepository(client as never);
     await repo.verifyTask({
       orgId: "o1",
@@ -159,7 +159,7 @@ describe("Supabase adapters match the proposed SQL contract", () => {
   });
 
   it("reopenTask sends exactly steward_reopen_task's parameters", async () => {
-    const { client, calls } = mockSupabase(RECEIPT_ROW);
+    const { client, calls } = mockSupabase({ receipt: RECEIPT_ROW, replayed: false });
     const repo = createSupabaseVerificationRepository(client as never);
     await repo.reopenTask({
       orgId: "o1",
