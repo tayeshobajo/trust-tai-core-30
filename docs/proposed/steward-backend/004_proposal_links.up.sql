@@ -145,11 +145,20 @@ begin
     return existing; -- idempotent replay after full reauthorization
   end if;
 
-  -- Proposal must exist in this exact conversation and org.
+  -- Proposal must exist in this exact conversation and org. Row lock:
+  -- concurrent link/dismiss decisions serialize here, so a dismissal can
+  -- never be silently overwritten by a racing link (or vice versa).
   select * into proposal from public.steward_proposal_ledger
-    where id = p_proposal and organization_id = p_org and conversation_id = p_conversation;
+    where id = p_proposal and organization_id = p_org and conversation_id = p_conversation
+    for update;
   if not found then
     raise exception 'proposal_not_found' using errcode = 'P0404';
+  end if;
+  -- A prior human dismissal is a decision: linking over it silently is
+  -- forbidden. Re-linking a dismissed proposal needs a new explicit
+  -- human review, not an overwrite.
+  if proposal.status = 'dismissed' then
+    raise exception 'proposal_already_dismissed' using errcode = 'P0032';
   end if;
 
   -- A proposal already linked by a different operation conflicts; linking
@@ -172,23 +181,32 @@ begin
   -- A link is a human confirmation of the obligation: the linked task
   -- enters the required-scope denominator ATOMICALLY in this same
   -- transaction, so a proposal can never be marked linked while its
-  -- obligation silently stays out of the score. Idempotent on
-  -- (org, conversation, task): an existing scope row is kept, never
-  -- duplicated, and a replay of this operation returns above before
-  -- reaching this point.
+  -- obligation silently stays out of the score. Fail closed on a
+  -- previously REMOVED scope item: silently leaving it removed would mark
+  -- the proposal linked with no denominator entry. Reinstatement needs
+  -- its own explicit audited amendment — never a side effect of a link.
   perform set_config('steward.scope_mutation', 'on', true);
-  insert into public.steward_scope_items
-    (organization_id, conversation_id, task_id, classification, operation_id, request_digest, added_by)
-  values (p_org, p_conversation, p_task, 'transcript', p_operation, digest, actor)
-  on conflict (organization_id, conversation_id, task_id) do nothing;
-  if found then
-    insert into public.steward_scope_audit
-      (organization_id, conversation_id, scope_item_id, kind, reason, operation_id, request_digest, actor_id)
-    select p_org, p_conversation, si.id, 'add', 'confirmed by proposal link', p_operation, digest, actor
-      from public.steward_scope_items si
-     where si.organization_id = p_org and si.conversation_id = p_conversation and si.task_id = p_task
-    on conflict (organization_id, operation_id) do nothing;
-  end if;
+  declare
+    prior_item public.steward_scope_items;
+  begin
+    select * into prior_item from public.steward_scope_items
+      where organization_id = p_org and conversation_id = p_conversation and task_id = p_task
+      for update;
+    if found and prior_item.removed_at is not null then
+      raise exception 'scope_item_removed_requires_reinstate' using errcode = 'P0031';
+    end if;
+    if not found then
+      insert into public.steward_scope_items
+        (organization_id, conversation_id, task_id, classification, operation_id, request_digest, added_by)
+      values (p_org, p_conversation, p_task, 'transcript', p_operation, digest, actor)
+      returning * into prior_item;
+      insert into public.steward_scope_audit
+        (organization_id, conversation_id, scope_item_id, kind, reason, operation_id, request_digest, actor_id)
+      values (p_org, p_conversation, prior_item.id, 'add', 'confirmed by proposal link',
+              p_operation, digest, actor)
+      on conflict (organization_id, operation_id) do nothing;
+    end if;
+  end;
 
   return link;
 end;
