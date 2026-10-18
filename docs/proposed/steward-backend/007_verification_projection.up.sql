@@ -64,9 +64,9 @@ begin
            -- Same criterion as steward_scope_counts: complete AND the
            -- latest receipt is a verify whose recorded revision still
            -- equals the task's CURRENT revision.
-           (v.status = 'complete'
+           coalesce(v.status = 'complete'
             and l.kind = 'verify'
-            and l.task_revision_after = v.revision),
+            and l.task_revision_after = v.revision, false),
            (select array_agg(req.id) from req
              where not exists (select 1 from visible v2 where v2.id = req.id))
       from visible v
