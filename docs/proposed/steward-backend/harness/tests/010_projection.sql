@@ -85,15 +85,15 @@ begin
   -- Isolated conversation so the SAME tie tasks can be scored by
   -- steward_scope_counts and compared against the projection.
   insert into public.conversations (id, organization_id, title)
-  values ('dddddddd-dddd-dddd-dddd-dddddddddd02', '11111111-1111-1111-1111-111111111111',
+  values ('dddddddd-dddd-dddd-dddd-ddddddddd7e2', '11111111-1111-1111-1111-111111111111',
           'Projection tie conversation');
   insert into public.steward_scope_items
     (organization_id, conversation_id, task_id, classification, operation_id, request_digest, added_by)
   values
-    ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd02',
+    ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-ddddddddd7e2',
      '10000000-0000-0000-0000-00000000000d', 'manual_required', gen_random_uuid(), 'tie-scope-d',
      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
-    ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd02',
+    ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-ddddddddd7e2',
      '10000000-0000-0000-0000-00000000000e', 'manual_required', gen_random_uuid(), 'tie-scope-e',
      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 end $$;
@@ -119,7 +119,7 @@ begin
     'tie: newer reopen wins over older verify with higher uuid -> FALSE');
   -- Same criterion in the score: exactly the projection's verified set.
   select * into c from public.steward_scope_counts(
-    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd02');
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-ddddddddd7e2');
   perform public.test_assert(c.denominator = 2 and c.verified = 1,
     'scope score counts exactly the projection-verified tie task (2 required, 1 verified)');
 end $$;
