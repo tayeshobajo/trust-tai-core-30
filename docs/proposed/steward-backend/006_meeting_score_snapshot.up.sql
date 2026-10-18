@@ -17,7 +17,7 @@ declare
   actor uuid := auth.uid();
   counts record;
   hash text;
-  v_scope_version integer
+  v_scope_version integer;
   attestation record;
   coverage_current boolean;
 begin
