@@ -14,10 +14,11 @@
  * - Bounded per-action prompt templates; the model returns strict JSON
  *   {artifact, evidence_refs} and every evidence ref must be one of the
  *   supplied input refs — anything else is rejected, never invented.
- * - A bounded timeout aborts a hanging provider call; the run is failed
- *   with an explicit reason so no run is stranded in "running" forever.
- *   A stale/uncertain outcome can never blindly double-execute: the
- *   claim-token fence in SQL rejects the loser.
+ * - A bounded timeout bounds the whole provider path (runtime access +
+ *   call). The runtime accepts NO AbortSignal, so a timed-out call may
+ *   still complete in the background: the outcome is UNKNOWN and the run
+ *   is terminalized as uncertain (never requeued, never silently
+ *   re-executed). A deliberate rerun requires a new operation UUID.
  */
 
 import {
