@@ -264,16 +264,18 @@ begin
   perform public.test_assert(n = 0, 'malformed correlation keys never sync');
 end $$;
 
--- 9c. Cross-meeting dedup: the same task scoped in ANOTHER meeting must
---     not suppress this meeting's confirmed-commitment denominator.
+-- 9c. Cross-meeting dedup: scoping the SAME linked task into ANOTHER
+--     meeting must not suppress THIS meeting's confirmed-commitment
+--     denominator (the exclusion is per-conversation, not global).
+insert into public.conversations (id, organization_id, title, transcript) values
+  ('dddddddd-dddd-dddd-dddd-dddddddddd02', '11111111-1111-1111-1111-111111111111',
+   'Second org A call',
+   '{"segments":[{"speaker":"Tai","text":"Second synthetic call.","offset":0}]}'::jsonb);
 do $$
-declare c record;
+declare before_count integer; after_count integer; c record;
 begin
-  -- Commitment ext-4103's ledger proposal is linked to a task that is in
-  -- scope for THIS conversation (linked earlier in 004_links.sql), so the
-  -- commitment is excluded here. Now scope the SAME linked task into the
-  -- org's second conversation and confirm this conversation's counts are
-  -- unchanged (the exclusion is per-conversation, not global).
+  select denominator into before_count from public.steward_scope_counts(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
   perform public.steward_scope_add_item(
     '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd02',
     (select lk.task_id from public.steward_proposal_links lk
@@ -281,10 +283,14 @@ begin
       where pl.organization_id = '11111111-1111-1111-1111-111111111111'
         and pl.source_key = 'ext-4103' limit 1),
     'manual_required', 'f0000000-0000-0000-0000-0000000000c1');
+  select denominator into after_count from public.steward_scope_counts(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
+  perform public.test_assert(after_count = before_count,
+    'cross-meeting scoping does not suppress this meeting commitment denominator');
   select * into c from public.steward_scope_counts(
     '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd02');
-  perform public.test_assert(c.denominator = 2,
-    'second meeting counts its own scope item plus its own commitment');
+  perform public.test_assert(c.denominator = 1,
+    'second meeting counts its own scope item');
 end $$;
 
 -- 9d. Amendment operation replay: same operation + same payload replays
