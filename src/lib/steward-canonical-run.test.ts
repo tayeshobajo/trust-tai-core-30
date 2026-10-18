@@ -289,11 +289,11 @@ describe("executeCanonicalRun", () => {
   });
 
   it("feeds the provider only the immutable snapshot, never a fresh source read", async () => {
-    let seen: { kind: string; content: string; revision: number }[] = [];
+    let seen: { kind: string; id: string; content: string; revision: number }[] = [];
     const spy: CanonicalRunProvider = {
       async generate(input) {
         seen = input.inputs;
-        return { text: "artifact" };
+        return { text: "artifact", evidenceRefs: ["transcript:conv-1@3"] };
       },
     };
     const repo = makeRepo({
@@ -311,7 +311,7 @@ describe("executeCanonicalRun", () => {
     });
     const result = await executeCanonicalRun(repo, spy, { runId: "run-1", actorId: ACTOR });
     expect(result.kind).toBe("complete");
-    expect(seen).toEqual([{ kind: "transcript", content: "SNAPSHOT content", revision: 3 }]);
+    expect(seen).toEqual([{ kind: "transcript", id: "conv-1", content: "SNAPSHOT content", revision: 3 }]);
   });
 
   it("threads the fencing token into completion with digest and provenance", async () => {
