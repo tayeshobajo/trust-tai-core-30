@@ -56,9 +56,7 @@ begin
       (select id from public.steward_canonical_runs where client_operation_id = 'd0000000-0000-0000-0000-000000000099'),
       gen_random_uuid(), 'stale artifact');
     raise exception 'FAILED: fabricated token completed';
-  exception when raise_exception then
-    if sqlerrm like 'FAILED%' then raise; end if;
-  end;
+  exception when sqlstate 'P0409' then null; end;
   perform public.test_assert(true, 'fabricated fencing token cannot complete');
 end \$\$;
 SQL
