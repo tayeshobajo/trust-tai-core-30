@@ -64,7 +64,7 @@ function makeRepo(
         inputSnapshot:
           input.snapshot ?? input.inputRefs.map((r) => snapshotEntry({ kind: r.kind, id: r.id })),
         clientOperationId: input.operationId,
-      });
+      }), replayed: false };
     },
     async claimRun() {
       calls.push("claimRun");

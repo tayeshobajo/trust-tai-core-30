@@ -85,7 +85,7 @@ const RECEIPT_ROW = {
 
 describe("Supabase adapters match the proposed SQL contract", () => {
   it("requestRun sends exactly steward_request_canonical_run's parameters", async () => {
-    const { client, calls } = mockSupabase(RUN_ROW);
+    const { client, calls } = mockSupabase({ run: RUN_ROW, replayed: false });
     const repo = createSupabaseCanonicalRunRepository(client as never);
     await repo.requestRun({
       orgId: "o1",
