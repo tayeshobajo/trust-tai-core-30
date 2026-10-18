@@ -15,6 +15,8 @@
  * (004) or dismiss changes that.
  */
 
+import { classifyMutationError } from "./steward-mutation-outcome";
+
 export interface LedgerProposal {
   id: string;
   organizationId: string;
@@ -85,7 +87,8 @@ export function toRegistrationPayload(proposals: ExtractedProposal[]): {
 export type RegisterProposalsResult =
   | { kind: "registered"; added: number }
   | { kind: "transcript_changed"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  | { kind: "uncertain"; message: string };
 
 /**
  * Register freshly extracted proposals. Idempotent: re-extraction of the
@@ -119,14 +122,17 @@ export async function registerExtractedProposals(
     if (code === "P0001" || error instanceof TranscriptChangedError) {
       return { kind: "transcript_changed", message };
     }
-    return { kind: "rejected", message };
+    /* Transport/5xx/malformed failures after send are UNCERTAIN — the
+       registration may be durable; the same operation must be replayed. */
+    return classifyMutationError(error);
   }
 }
 
 export type DismissProposalResult =
   | { kind: "dismissed"; proposal: LedgerProposal }
   | { kind: "conflict"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  | { kind: "uncertain"; message: string };
 
 /** Explicit human dismissal with a substantive reason. Never deletes. */
 export async function dismissLedgerProposal(
@@ -150,6 +156,6 @@ export async function dismissLedgerProposal(
     const code = (error as { code?: string }).code;
     const message = error instanceof Error ? error.message : "dismissal failed";
     if (code === "P0030") return { kind: "conflict", message };
-    return { kind: "rejected", message };
+    return classifyMutationError(error);
   }
 }
