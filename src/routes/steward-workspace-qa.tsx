@@ -1,12 +1,6 @@
 /* TEMPORARY fictional QA harness — removed after screenshot verification.
    Renders WorkroomView with in-memory fictional data only; no live reads. */
-import { createRoot } from "react-dom/client";
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import "./styles.css";
@@ -207,9 +201,4 @@ function Qa() {
   );
 }
 
-const rootRoute = createRootRoute({ component: Qa });
-const router = createRouter({
-  routeTree: rootRoute,
-  history: createMemoryHistory({ initialEntries: ["/"] }),
-});
-createRoot(document.getElementById("root")!).render(<RouterProvider router={router} />);
+export const Route = createFileRoute("/steward-workspace-qa")({ component: Qa });
