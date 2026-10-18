@@ -88,6 +88,14 @@ function makeRepo(
       calls.push(`failRun:${input.claimToken}`);
       return makeRun({ status: "failed", failureReason: input.reason, claimToken: null });
     },
+    async markRunUncertain(input) {
+      calls.push(`markRunUncertain:${input.claimToken}`);
+      return makeRun({
+        status: "failed",
+        failureReason: `uncertain: ${input.reason}`,
+        claimToken: null,
+      });
+    },
     async readInput() {
       return { content: "stored transcript content", revision: 1 };
     },
@@ -100,7 +108,7 @@ function makeRepo(
 
 const fakeProvider: CanonicalRunProvider = {
   async generate() {
-    return { text: "draft brief artifact" };
+    return { text: "draft brief artifact", evidenceRefs: ["transcript:conv-1@1"] };
   },
 };
 
