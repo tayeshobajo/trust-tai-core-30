@@ -366,11 +366,18 @@ function useStewardBackend(
     },
     scoreFor: (id) => {
       if (id !== meetingId) return undefined;
-      if (score.data) return score.data;
+      /* A failed refetch must surface the error even when stale data is
+         still cached — a stale 100 after a failed read is never shown. */
       if (score.isError) {
         return rejected("The consistent score snapshot could not be read; retry to reload it.");
       }
-      return score.isPending && caps?.scope.kind === "enabled" ? { kind: "loading" } : undefined;
+      if (score.data) return score.data;
+      if (caps?.scope.kind === "enabled") {
+        return score.isPending ? { kind: "loading" } : undefined;
+      }
+      /* Capability OFF: explicitly unavailable, never a forever-loading
+         "Reading recorded scope…" state. */
+      return { kind: "unavailable", reason: resolvedCaps.scope.reason };
     },
     meetingState: (id) => {
       if (id !== meetingId) return undefined;
@@ -379,13 +386,22 @@ function useStewardBackend(
         coverage?: import("./workroom-backend-panels").CoverageRead;
         proposals?: import("./workroom-backend-panels").ProposalReviewRead;
       } = {};
-      if (scope.data) {
-        state.scope =
-          scope.data.kind === "ready" ? { kind: "ready", counts: scope.data.counts } : scope.data;
+      /* Capability OFF maps to an explicit unavailable state — a disabled
+         query stays isPending forever and must never render as
+         "Reading recorded scope…". */
+      if (resolvedCaps.scope.kind === "unavailable") {
+        state.scope = { kind: "unavailable", reason: resolvedCaps.scope.reason };
       } else if (scope.isError) {
         state.scope = rejected("Recorded scope could not be read; retry to reload it.");
+      } else if (scope.data) {
+        state.scope =
+          scope.data.kind === "ready" ? { kind: "ready", counts: scope.data.counts } : scope.data;
       } else if (scope.isPending) state.scope = { kind: "loading" };
-      if (coverage.data) {
+      if (resolvedCaps.coverage.kind === "unavailable") {
+        state.coverage = { kind: "unavailable", reason: resolvedCaps.coverage.reason };
+      } else if (coverage.isError) {
+        state.coverage = rejected("Coverage state could not be read; retry to reload it.");
+      } else if (coverage.data) {
         state.coverage =
           coverage.data.kind === "ready"
             ? {
