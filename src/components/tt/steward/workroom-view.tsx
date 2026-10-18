@@ -332,6 +332,43 @@ function ScoreCard({
 
 /* ---------------------------------------------------------- detail panel */
 
+/**
+ * Assistant execution status, separate from the accountable human. Wired:
+ * the latest persisted run state. Unwired: the honest staged state.
+ */
+function AssistantExecutionLine({
+  backend,
+  taskId,
+}: {
+  backend?: WorkroomBackend;
+  taskId: string;
+}) {
+  const runs = backend?.runsFor?.(taskId);
+  if (backend?.capabilities.preparation.kind === "enabled" && runs?.kind === "ready") {
+    const latest = runs.runs[0];
+    if (latest) {
+      const label =
+        latest.status === "complete"
+          ? "Draft prepared — awaiting the accountable person's review"
+          : latest.status === "failed"
+            ? latest.failureReason?.startsWith("uncertain:")
+              ? "Outcome uncertain — a deliberate new request is required"
+              : `Failed — ${latest.failureReason ?? "no reason recorded"}`
+            : latest.status === "running"
+              ? "Running"
+              : "Queued";
+      return <p className="text-muted-foreground">Assistant execution: {label}</p>;
+    }
+    return <p className="text-muted-foreground">Assistant execution: Not started</p>;
+  }
+  return (
+    <p className="text-muted-foreground">
+      Assistant execution: Not started — preparation unavailable (run bridge staged, not
+      activated)
+    </p>
+  );
+}
+
 function TaskDetail({
   meeting,
   row,
@@ -363,10 +400,7 @@ function TaskDetail({
           {row.owner.verified ? "" : " · not linked to a teammate"}
         </p>
         {row.boardTask ? (
-          <p className="text-muted-foreground">
-            Assistant execution: Not started — preparation unavailable (run bridge staged, not
-            activated)
-          </p>
+          <AssistantExecutionLine backend={backend} taskId={row.boardTask.id} />
         ) : null}
         <p className="text-muted-foreground">
           Due: {row.due.label}
@@ -386,9 +420,31 @@ function TaskDetail({
             </p>
           ) : null}
           <p className="text-xs text-muted-foreground">
-            Recorded board status is work progress, not verified completion. Verified completion
-            needs the guarded atomic review, which is not available yet.
+            Recorded board status is work progress, not verified completion.
           </p>
+          {backend ? (
+            <VerificationPanel
+              capability={backend.capabilities.verification}
+              state={backend.verificationFor?.(row.boardTask.id)}
+              task={row.boardTask}
+              onVerify={
+                backend.onVerify
+                  ? (input) =>
+                      backend.onVerify!({ taskId: row.boardTask!.id, ...input })
+                  : undefined
+              }
+              onReopen={
+                backend.onReopen
+                  ? (input) =>
+                      backend.onReopen!({ taskId: row.boardTask!.id, ...input })
+                  : undefined
+              }
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Verified completion needs the guarded atomic review, which is not available yet.
+            </p>
+          )}
           <div>
             <p className="font-medium">Next action</p>
             <p className="whitespace-pre-wrap break-words">
@@ -460,15 +516,33 @@ function TaskDetail({
         <p className="flex items-center gap-1.5 font-medium text-foreground">
           <Sparkles aria-hidden className="size-3.5 text-royal" /> AI help
         </p>
-        {row.boardTask ? (
+        {row.boardTask && backend ? (
+          <AiPreparationPanel
+            capability={backend.capabilities.preparation}
+            runs={backend.runsFor?.(row.boardTask.id)}
+            task={row.boardTask}
+            meetingId={meeting.id}
+            actions={PREPARATION_ACTIONS.map((a) => ({
+              id: a.id,
+              label: a.label,
+              summary: a.summary,
+            }))}
+            onRequestRun={
+              backend.onRequestRun
+                ? (input) => backend.onRequestRun!({ taskId: row.boardTask!.id, ...input })
+                : undefined
+            }
+            onExecuteRun={backend.onExecuteRun}
+          />
+        ) : row.boardTask ? (
           <>
             <p className="mt-2 text-[13px] text-muted-foreground">
               Bounded preparation for this task. A draft is review material only — it never
               completes the task, grants verified credit, or delivers the work itself.
             </p>
             <p className="mt-2 rounded-md border border-border bg-card p-2 text-xs text-muted-foreground">
-              Shared blocker: the durable run bridge for canonical tasks has not been built or
-              reviewed yet, so every action below stays unavailable. The legacy runner must never
+              Shared blocker: the durable run bridge for canonical tasks is staged but not
+              activated, so every action below stays unavailable. The legacy runner must never
               auto-complete shared board work.
             </p>
             <ul className="mt-3 space-y-2">
