@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Steward suite navigation regression (2026-10-18)
-- [ ] Restore the existing suite shell around the live workroom without duplicate global controls; preserve standalone mockup and data behavior.
-- [ ] Verify focused tests, lint, automatic build and fictional 1440/768/375 navigation/drawer screenshots; no authenticated session available.
+- [x] Restore the existing suite shell around the live workroom without duplicate global controls; preserve standalone mockup and data behavior.
+- [x] Verify focused tests (41), lint (exit 0), automatic build and fictional 1440/768/375 navigation/drawer screenshots; no authenticated session available. Evidence in docs/steward-sidebar-restoration.md.
 
 ## Steward approved atomic completion (2026-10-18)
 - [ ] Inspect exact hosted columns, constraints, policies and reviewed transaction proposal before implementation — blocked: external schema tool and read-only CLI unavailable; reviewed SQL absent. Read-only metadata request prepared in docs/steward-atomic-schema-inspection.sql.
