@@ -360,7 +360,11 @@ declare
 begin
   select id into target from public.steward_scope_items
    where organization_id = org and conversation_id = conv
-     and removed_at is not null limit 1;
+     and removed_at is not null
+     -- The item removed by 9d above (same-meeting journey), not an item
+     -- removed by an earlier adversarial test in another conversation.
+     and removal_reason = 'scope correction: recorded in error'
+   limit 1;
   perform public.test_assert(target is not null, 'a removed scope item exists for the reinstate journey');
 
   select denominator into before_count from public.steward_scope_counts(org, conv);
