@@ -61,29 +61,6 @@ select public.test_denied($q$
     'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 1) $q$,
   'changed payload with the same operation conflicts');
 
--- 2c. Stale review rejected: a scope change during human review bumps the
---     version, so an attestation bound to the OLD version fails closed
---     instead of attesting an unseen source.
-do $$
-begin
-  perform public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
-    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000005',
-    'manual_required', 'd9000000-0000-0000-0000-000000000001');
-end $$;
-select public.test_denied($q$
-  select public.steward_attest_coverage(
-    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
-    'c3000000-0000-0000-0000-000000000002',
-    private.steward_transcript_hash('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
-    1) $q$,
-  'stale scope version rejected — changed source is not attested');
-select public.test_denied($q$
-  select public.steward_attest_coverage(
-    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
-    'c3000000-0000-0000-0000-000000000003',
-    'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 2) $q$,
-  'stale transcript hash rejected — changed source is not attested');
-
 -- 3. Transcript edit invalidates coverage (derived hash changes).
 do $$
 begin
@@ -101,18 +78,36 @@ begin
     'restoring the identical transcript restores coverage (hash equality, not heuristic)');
 end $$;
 
--- 4. Scope version change invalidates coverage (the item added in 2c
---    already bumped the version and superseded the attestation).
+-- 4. Scope version change invalidates coverage.
 do $$
 begin
+  perform public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000005',
+    'manual_required', 'd9000000-0000-0000-0000-000000000001');
   perform public.test_assert(
-    not public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd')
-    or public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
-    'coverage state readable after scope change');
+    not public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
+    'scope version change invalidates coverage');
 end $$;
 
--- 5. Empty transcript cannot be attested; authority: viewer/inactive/
---    cross-org cannot attest; unknown conversation rejected.
+-- 4a. Stale review rejected: the scope change bumped the version to 2, so
+--     an attestation bound to the OLD reviewed version fails closed
+--     instead of attesting an unseen source. Same for a stale hash.
+select public.test_denied($q$
+  select public.steward_attest_coverage(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c3000000-0000-0000-0000-000000000002',
+    private.steward_transcript_hash('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
+    1) $q$,
+  'stale scope version rejected — changed source is not attested');
+select public.test_denied($q$
+  select public.steward_attest_coverage(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c3000000-0000-0000-0000-000000000003',
+    'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 2) $q$,
+  'stale transcript hash rejected — changed source is not attested');
+
+-- 5. Unknown conversation rejected; authority: viewer/inactive/cross-org
+--    cannot attest.
 select public.test_denied($q$
   select public.steward_attest_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd99',
     'c3000000-0000-0000-0000-000000000004', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', 1) $q$,
