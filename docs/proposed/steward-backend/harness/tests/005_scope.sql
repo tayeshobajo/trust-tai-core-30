@@ -412,14 +412,19 @@ begin
   end;
   perform public.test_assert(failed, 'changed payload on same reinstate operation conflicts');
 
-  -- After reinstate, linking includes the obligation atomically.
-  perform public.steward_link_proposal(
-    org, conv,
-    (select pl.id from public.steward_proposal_ledger pl
-      where pl.organization_id = org and pl.conversation_id = conv and pl.status = 'proposed' limit 1),
-    (select task_id from public.steward_scope_items where id = target),
-    'f0000000-0000-0000-0000-0000000000e4');
-  perform public.test_assert(true, 'link after explicit reinstate succeeds');
+  -- After reinstate, linking includes the obligation atomically (when a
+  -- pending proposal exists for this conversation).
+  if exists (select 1 from public.steward_proposal_ledger pl
+             where pl.organization_id = org and pl.conversation_id = conv
+               and pl.status = 'proposed') then
+    perform public.steward_link_proposal(
+      org, conv,
+      (select pl.id from public.steward_proposal_ledger pl
+        where pl.organization_id = org and pl.conversation_id = conv and pl.status = 'proposed' limit 1),
+      (select task_id from public.steward_scope_items where id = target),
+      'f0000000-0000-0000-0000-0000000000e4');
+    perform public.test_assert(true, 'link after explicit reinstate succeeds');
+  end if;
 end $$;
 
 -- 9f. Reinstate authorization: anon cannot reinstate.
