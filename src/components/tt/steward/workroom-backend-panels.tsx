@@ -124,6 +124,9 @@ export interface MeetingScoreSnapshot {
   coverageCurrent: boolean;
   attestedAt: string | null;
   scopeVersion: number;
+  /** Current server-derived transcript hash, read in the same statement;
+      the value a coverage attestation binds to. */
+  transcriptHash: string | null;
   complete: boolean;
 }
 
@@ -205,6 +208,20 @@ function OutcomeNote({ outcome }: { outcome: ActionOutcome | null }) {
   return (
     <p role="status" className={`rounded-md border border-border bg-card p-2 text-xs ${tone}`}>
       {outcome.message ?? outcome.kind}
+    </p>
+  );
+}
+
+/** A failed READ with a real reload action — never wording alone. */
+function RejectedNote({ message, onRetry }: { message: string; onRetry?: (() => void) | undefined }) {
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-xs text-warning">
+      <AlertCircle aria-hidden className="size-3.5" /> {message}
+      {onRetry ? (
+        <TTButton type="button" variant="secondary" className="h-7 px-2 text-xs" onClick={onRetry}>
+          <RotateCw aria-hidden className="size-3" /> Reload
+        </TTButton>
+      ) : null}
     </p>
   );
 }
