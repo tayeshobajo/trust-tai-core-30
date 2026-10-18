@@ -13,6 +13,15 @@ const BASE = {
   actorId: "user-owner",
 };
 
+const ATTEST = {
+  orgId: BASE.orgId,
+  conversationId: BASE.conversationId,
+  operationId: "op-attest-1",
+  expectedTranscriptHash: BASE.transcriptHash,
+  expectedScopeVersion: BASE.scopeVersion,
+  actorId: BASE.actorId,
+};
+
 function attestation(partial: Partial<CoverageAttestation>): CoverageAttestation {
   return {
     id: "att-1",
@@ -89,8 +98,32 @@ describe("resolveCoverage", () => {
 describe("attestCoverage", () => {
   it("rejects a toy transcript hash", async () => {
     const repo = { attest: async () => attestation({}), currentCoverage: async () => true };
-    await expect(attestCoverage(repo, { ...BASE, transcriptHash: "short" })).rejects.toThrow(
-      "digest",
-    );
+    await expect(
+      attestCoverage(repo, { ...ATTEST, expectedTranscriptHash: "short" }),
+    ).rejects.toThrow("digest");
+  });
+
+  it("rejects a missing scope version binding", async () => {
+    const repo = { attest: async () => attestation({}), currentCoverage: async () => true };
+    await expect(
+      attestCoverage(repo, { ...ATTEST, expectedScopeVersion: 0 }),
+    ).rejects.toThrow("scope version");
+  });
+
+  it("passes the operation id and reviewed source binding to the repository", async () => {
+    const seen: unknown[] = [];
+    const repo = {
+      attest: async (input: unknown) => {
+        seen.push(input);
+        return attestation({});
+      },
+      currentCoverage: async () => true,
+    };
+    await attestCoverage(repo, ATTEST);
+    expect(seen[0]).toMatchObject({
+      operationId: "op-attest-1",
+      expectedTranscriptHash: BASE.transcriptHash,
+      expectedScopeVersion: 1,
+    });
   });
 });

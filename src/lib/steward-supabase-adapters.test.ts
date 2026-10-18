@@ -175,7 +175,7 @@ describe("Supabase adapters match the proposed SQL contract", () => {
     );
   });
 
-  it("attest sends ONLY p_org/p_conversation — never a caller-supplied hash", async () => {
+  it("attest binds the operation id and the reviewed source; the SQL derives the current hash itself", async () => {
     const { client, calls } = mockSupabase({
       id: "a1",
       organization_id: "o1",
@@ -187,12 +187,22 @@ describe("Supabase adapters match the proposed SQL contract", () => {
       superseded_at: null,
     });
     const repo = createSupabaseCoverageRepository(client as never);
-    await repo.attest({ orgId: "o1", conversationId: "c1" });
+    await repo.attest({
+      orgId: "o1",
+      conversationId: "c1",
+      operationId: "op-att-1",
+      expectedTranscriptHash: "reviewed-hash-0123456789",
+      expectedScopeVersion: 2,
+    });
     expect(calls[0]!.fn).toBe("steward_attest_coverage");
     expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("003_coverage_attestation.up.sql", "steward_attest_coverage").sort(),
     );
-    expect(JSON.stringify(calls[0]!.args)).not.toContain("caller-hash");
+    expect(calls[0]!.args).toMatchObject({
+      p_operation: "op-att-1",
+      p_expected_hash: "reviewed-hash-0123456789",
+      p_expected_scope_version: 2,
+    });
   });
 
   it("linkProposal sends exactly steward_link_proposal's parameters", async () => {
