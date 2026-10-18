@@ -1,5 +1,10 @@
 # Roadmap
 
+## Steward approved atomic completion (2026-10-18)
+- [ ] Inspect exact hosted columns, constraints, policies and reviewed transaction proposal before implementation — blocked: external schema tool and read-only CLI unavailable; reviewed SQL absent. Read-only metadata request prepared in docs/steward-atomic-schema-inspection.sql.
+- [ ] Prepare and test the additive invoker RPC in isolated PostgreSQL, including rollback, replay, concurrency and permission isolation — blocked by exact-schema/proposal prerequisite; local PostgreSQL executables available, no RPC applied.
+- [ ] Integrate durable verify/reopen with selected-task history, without optimistic success or live commitment fixtures — blocked until exact-schema atomic RPC passes isolated DB tests; existing controls remain unavailable.
+
 ## Steward read-only task history (2026-10-18)
 - [x] Query selected commitment history through existing member RLS; show recorded events and explicit loading/error/limited coverage, distinct from receipts.
 - [x] Correct completion-route and sync-caution copy; focused tests and lint verified without live writes or completion controls.
