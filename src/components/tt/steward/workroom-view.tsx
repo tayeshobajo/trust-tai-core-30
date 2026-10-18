@@ -737,7 +737,8 @@ export function WorkroomView({
       {sync.warnings.length > 0 ? (
         <details className="border-b border-border px-4 py-1.5 text-xs text-warning">
           <summary className="cursor-pointer">
-            {sync.warnings.length} sync caution{sync.warnings.length === 1 ? "" : "s"} — stored transcripts preserved
+            {sync.warnings.length} sync caution{sync.warnings.length === 1 ? "" : "s"} — stored
+            transcripts preserved
           </summary>
           <ul className="mt-2 space-y-1">
             {sync.warnings.map((warning, index) => (

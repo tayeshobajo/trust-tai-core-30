@@ -165,27 +165,35 @@ describe("recent sync persistence", () => {
     },
   );
 
-  it.each([3, 0])("preserves a stored transcript when a shorter %i-segment read arrives", async (length) => {
-    const call = incoming({ externalId: "42", segments: length });
-    const existing = stored({ sourceExternalId: "42" });
-    existing.conversation = incoming({ externalId: "42", segments: 5 });
-    findConversationBySource.mockResolvedValue(existing);
-    stubFetch([call]);
-    const outcome = await syncRecentMeetings({ organizationId: "o", userId: "u" });
-    expect(outcome.preserved).toBe(1);
-    expect(outcome.unchanged).toBe(0);
-    expect(outcome.pendingTranscript).toBe(0);
-    expect(outcome.checkedAt).not.toBeNull();
-    expect(existing.conversation.segments).toHaveLength(5);
-    expect(saveConversation).not.toHaveBeenCalled();
-  });
+  it.each([3, 0])(
+    "preserves a stored transcript when a shorter %i-segment read arrives",
+    async (length) => {
+      const call = incoming({ externalId: "42", segments: length });
+      const existing = stored({ sourceExternalId: "42" });
+      existing.conversation = incoming({ externalId: "42", segments: 5 });
+      findConversationBySource.mockResolvedValue(existing);
+      stubFetch([call]);
+      const outcome = await syncRecentMeetings({ organizationId: "o", userId: "u" });
+      expect(outcome.preserved).toBe(1);
+      expect(outcome.unchanged).toBe(0);
+      expect(outcome.pendingTranscript).toBe(0);
+      expect(outcome.checkedAt).not.toBeNull();
+      expect(existing.conversation.segments).toHaveLength(5);
+      expect(saveConversation).not.toHaveBeenCalled();
+    },
+  );
 
   it("source failures reject rather than masquerading as unchanged success", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      ok: false,
-      json: async () => ({ error: "Fathom disconnected" }),
-    })));
-    await expect(syncRecentMeetings({ organizationId: "o", userId: "u" })).rejects.toThrow("Fathom disconnected");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        json: async () => ({ error: "Fathom disconnected" }),
+      })),
+    );
+    await expect(syncRecentMeetings({ organizationId: "o", userId: "u" })).rejects.toThrow(
+      "Fathom disconnected",
+    );
     expect(findConversationBySource).not.toHaveBeenCalled();
     expect(saveConversation).not.toHaveBeenCalled();
   });
