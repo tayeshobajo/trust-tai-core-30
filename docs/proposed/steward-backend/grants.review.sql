@@ -17,6 +17,7 @@ grant select on public.steward_coverage_attestations to authenticated;
 grant select on public.steward_scope_versions to authenticated;
 grant select on public.steward_proposal_ledger to authenticated;
 grant select on public.steward_proposal_links to authenticated;
+grant select on public.steward_proposal_decisions to authenticated;
 grant select on public.steward_scope_items to authenticated;
 grant select on public.steward_scope_audit to authenticated;
 
@@ -53,6 +54,7 @@ grant execute on function public.steward_scope_counts(uuid, uuid) to authenticat
 -- and revalidate the requester's current authority on every transition.
 grant execute on function public.steward_claim_canonical_run(uuid, integer) to service_role;
 grant execute on function public.steward_complete_canonical_run(uuid, uuid, text, jsonb) to service_role;
+grant execute on function public.steward_uncertain_canonical_run(uuid, uuid, text) to service_role;
 grant execute on function public.steward_fail_canonical_run(uuid, uuid, text) to service_role;
 
 -- steward_resolve_input and all private.* helpers are internal; not

@@ -87,6 +87,14 @@ function makeRunStore() {
       run.claimToken = null;
       return { ...run };
     },
+    async markRunUncertain(input) {
+      const run = runs.get(input.runId);
+      if (!run || run.claimToken !== input.claimToken) throw new Error("stale_claim");
+      run.status = "failed";
+      run.failureReason = `uncertain: ${input.reason}`;
+      run.claimToken = null;
+      return { ...run };
+    },
     async readInput(ref) {
       if (ref.id === "conv-1") return { content: "stored transcript content", revision: 3 };
       return null;
@@ -148,7 +156,10 @@ function makeVerificationStore() {
 const fakeProvider: CanonicalRunProvider = {
   async generate(input) {
     expect(input.inputs[0]?.content).toBe("stored transcript content");
-    return { text: `Draft brief for: ${input.taskTitle}` };
+    return {
+      text: `Draft brief for: ${input.taskTitle}`,
+      evidenceRefs: ["transcript:conv-1@3"],
+    };
   },
 };
 

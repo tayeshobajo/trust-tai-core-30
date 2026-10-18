@@ -33,8 +33,14 @@ create table if not exists public.steward_scope_audit (
   scope_item_id uuid references public.steward_scope_items(id) on delete restrict,
   kind text not null check (kind in ('add','amend_remove')),
   reason text,
+  -- Append-only operation identity: every mutation carries its client
+  -- operation UUID and payload digest so a retry replays and a changed
+  -- payload conflicts — amendments can never silently repeat.
+  operation_id uuid not null,
+  request_digest text not null,
   actor_id uuid not null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (organization_id, operation_id)
 );
 
 alter table public.steward_scope_items enable row level security;
@@ -102,6 +108,12 @@ begin
   if p_classification not in ('transcript','manual_required') then
     raise exception 'classification_invalid' using errcode = 'P0422';
   end if;
+  -- The FK only proves the conversation EXISTS; it must belong to this
+  -- org, or a member could scope tasks into a foreign meeting.
+  if not exists (select 1 from public.conversations
+                 where id = p_conversation and organization_id = p_org) then
+    raise exception 'conversation_not_found' using errcode = 'P0404';
+  end if;
 
   -- Reauthorize the scoped task FIRST, before any replay.
   select * into task from public.steward_tasks
@@ -142,8 +154,8 @@ begin
   returning * into item;
 
   insert into public.steward_scope_audit
-    (organization_id, conversation_id, scope_item_id, kind, actor_id)
-  values (p_org, p_conversation, item.id, 'add', actor);
+    (organization_id, conversation_id, scope_item_id, kind, operation_id, request_digest, actor_id)
+  values (p_org, p_conversation, item.id, 'add', p_operation, digest, actor);
 
   perform private.steward_invalidate_scope(p_org, p_conversation);
 
@@ -185,7 +197,9 @@ begin
        and t.task_visibility = 'business'
        and t.correlation_id is not null
        -- Exact repo format: cmd-meeting-required:v1:<meetingUUID>:<opUUID>
-       and t.correlation_id like 'cmd-meeting-required:v1:%'
+       -- (see src/domain/steward-required-work.ts). Four parts exactly,
+       -- both trailing parts valid UUIDs — a malformed key never matches.
+       and t.correlation_id ~ '^cmd-meeting-required:v1:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
        and split_part(t.correlation_id, ':', 3) = p_conversation::text
   loop
     begin
@@ -231,14 +245,24 @@ begin
   digest := encode(sha256(convert_to(jsonb_build_object(
     'org', p_org, 'item', p_item, 'reason', p_reason, 'actor', actor)::text, 'utf8')), 'hex');
 
-  select * into existing from public.steward_scope_items
-    where organization_id = p_org and operation_id = p_operation;
-  if found then
-    if existing.request_digest is distinct from digest then
-      raise exception 'operation_conflict' using errcode = 'P0002';
+  -- Operation replay is bound to the append-only audit trail: the same
+  -- operation UUID + same payload returns the already-amended item; the
+  -- same UUID with a changed payload conflicts. Without this a retried
+  -- removal would hit 'already_removed' instead of replaying.
+  declare
+    prior public.steward_scope_audit;
+  begin
+    select * into prior from public.steward_scope_audit
+      where organization_id = p_org and operation_id = p_operation;
+    if found then
+      if prior.request_digest is distinct from digest then
+        raise exception 'operation_conflict' using errcode = 'P0002';
+      end if;
+      select * into existing from public.steward_scope_items
+        where id = prior.scope_item_id;
+      return existing;
     end if;
-    return existing;
-  end if;
+  end;
 
   select * into item from public.steward_scope_items
     where id = p_item and organization_id = p_org and conversation_id = p_conversation
@@ -257,8 +281,8 @@ begin
   returning * into item;
 
   insert into public.steward_scope_audit
-    (organization_id, conversation_id, scope_item_id, kind, reason, actor_id)
-  values (p_org, p_conversation, item.id, 'amend_remove', p_reason, actor);
+    (organization_id, conversation_id, scope_item_id, kind, reason, operation_id, request_digest, actor_id)
+  values (p_org, p_conversation, item.id, 'amend_remove', p_reason, p_operation, digest, actor);
 
   perform private.steward_invalidate_scope(p_org, p_conversation);
 
@@ -304,6 +328,8 @@ begin
                       on lk.proposal_ledger_id = pl.id
                     join public.steward_scope_items si
                       on si.task_id = lk.task_id and si.removed_at is null
+                     and si.organization_id = p_org
+                     and si.conversation_id = p_conversation
                     where pl.organization_id = p_org
                       and pl.conversation_id = p_conversation
                       and pl.source_key = cm.source_key))),

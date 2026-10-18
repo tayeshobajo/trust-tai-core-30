@@ -225,6 +225,34 @@ begin
   perform public.test_assert(r.id is null, 'exhausted run cannot be claimed');
 end $$;
 
+-- 10b. Uncertain terminal: worker marks a timed-out run uncertain; it is
+--      terminally failed (never requeued) and cannot be claimed again.
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+do $$
+declare rid uuid;
+begin
+  select (public.steward_request_canonical_run(
+      '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
+      'prepare_brief', 'a0000000-0000-0000-0000-0000000000f1'::uuid,
+      '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb) -> 'run' ->> 'id')::uuid into rid;
+end $$;
+select public.test_act_as_worker();
+set role service_role;
+do $$
+declare rid uuid; r public.steward_canonical_runs;
+begin
+  select id into rid from public.steward_canonical_runs
+   where client_operation_id = 'a0000000-0000-0000-0000-0000000000f1';
+  r := public.steward_claim_canonical_run(rid);
+  r := public.steward_uncertain_canonical_run(rid, r.claim_token, 'provider call timed out');
+  perform public.test_assert(r.status = 'failed', 'uncertain run is terminally failed');
+  perform public.test_assert(r.failure_reason like 'uncertain:%', 'uncertain reason recorded');
+  r := public.steward_claim_canonical_run(rid);
+  perform public.test_assert(r.id is null, 'uncertain run is never requeued');
+end $$;
+reset role;
+
 -- 11. Direct table writes are denied to authenticated (SELECT-only grant +
 --     no write policies): clients cannot forge runs or artifacts.
 set role authenticated;

@@ -222,7 +222,7 @@ exception
     select * into existing from public.steward_canonical_runs
       where organization_id = p_org and client_operation_id = p_operation;
     if found and existing.request_digest is not distinct from digest then
-      return existing;
+      return jsonb_build_object('run', to_jsonb(existing), 'replayed', true);
     end if;
     raise exception 'operation_conflict' using errcode = 'P0002';
 end;
@@ -366,6 +366,46 @@ revoke all on function public.steward_request_canonical_run(uuid, uuid, text, uu
 revoke all on function public.steward_claim_canonical_run(uuid, integer) from public, anon, authenticated;
 revoke all on function public.steward_complete_canonical_run(uuid, uuid, text, jsonb) from public, anon, authenticated;
 revoke all on function public.steward_fail_canonical_run(uuid, uuid, text) from public, anon, authenticated;
+
+-- UNCERTAIN terminal state: the provider call's outcome is unknown (timeout,
+-- abort, lost connection) — the model may or may not have produced work.
+-- Unlike fail, this NEVER requeues: the run goes terminally to 'failed'
+-- with an 'uncertain:' reason, and only a deliberate NEW operation UUID
+-- can rerun. This prevents blind double-execution of a call that may
+-- already have happened.
+create or replace function public.steward_uncertain_canonical_run(
+  p_run uuid,
+  p_claim_token uuid,
+  p_reason text
+) returns public.steward_canonical_runs
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  run public.steward_canonical_runs;
+begin
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'worker_only' using errcode = 'P0401';
+  end if;
+  select * into run from public.steward_canonical_runs where id = p_run;
+  if not found then
+    raise exception 'run_not_found' using errcode = 'P0404';
+  end if;
+  perform private.steward_revalidate_requester(run);
+  update public.steward_canonical_runs
+     set status = 'failed',
+         failure_reason = left('uncertain: ' || coalesce(p_reason, ''), 500),
+         claim_token = null, lease_expires_at = null, updated_at = now()
+   where id = p_run
+     and status = 'running' and claim_token = p_claim_token
+     and lease_expires_at > now()
+  returning * into run;
+  if not found then
+    raise exception 'claim_lost' using errcode = 'P0409';
+  end if;
+  return run;
+end;
+$$;
+
+revoke all on function public.steward_uncertain_canonical_run(uuid, uuid, text) from public, anon, authenticated;
 -- RLS policies evaluate private.steward_is_active_member as the querying
 -- role, so authenticated must keep EXECUTE on it (it is a read-only
 -- security-definer membership check — safe to call, useless to abuse).

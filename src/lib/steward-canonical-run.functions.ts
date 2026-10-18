@@ -25,7 +25,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createSupabaseCanonicalRunRepository } from "./steward-canonical-run.supabase";
 import {
-  authorizeRunWorkerCaller,
+  authorizeWorkerEndpoint,
   CANONICAL_RUN_ACTIONS,
   executeCanonicalRun,
   type ExecuteCanonicalRunResult,
@@ -73,6 +73,12 @@ export const requestCanonicalRunFn = createServerFn({ method: "POST" })
   .inputValidator((data) => requestInputSchema.parse(data))
   .handler(async ({ data, context }): Promise<CanonicalRunRequestState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
+    // Provider readiness BEFORE queueing: an enabled-but-unconfigured
+    // deployment must report unavailable instead of stranding a queued run.
+    const providerStatus = canonicalRunProviderStatus();
+    if (!providerStatus.configured) {
+      return { kind: "unavailable", reason: providerStatus.reason ?? DISABLED_REASON };
+    }
     const repo = createSupabaseCanonicalRunRepository(context.supabase);
     try {
       // The SQL function derives the actor from auth.uid(), validates
@@ -131,39 +137,14 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
     // indistinguishable from a nonexistent one.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
     const rls = context.supabase as any;
-    const { data: run } = await rls
-      .from("steward_canonical_runs")
-      .select("id, organization_id, task_id")
-      .eq("id", data.runId)
-      .maybeSingle();
-    if (!run) {
-      return { kind: "unavailable", reason: "this run is not available to you" };
-    }
-    const { data: membership } = await rls
-      .from("organization_memberships")
-      .select("organization_id")
-      .eq("organization_id", run.organization_id)
-      .eq("user_id", context.userId)
-      .eq("status", "active")
-      .maybeSingle();
-    if (!membership) {
-      return { kind: "unavailable", reason: "this run is not available to you" };
-    }
-    const { data: task } = await rls
-      .from("steward_tasks")
-      .select("visibility, owner_user_id, created_by")
-      .eq("organization_id", run.organization_id)
-      .eq("id", run.task_id)
-      .maybeSingle();
-    const denial = authorizeRunWorkerCaller({
-      run: { organizationId: run.organization_id, taskId: run.task_id },
-      isActiveMember: Boolean(membership),
-      task,
+    const authorization = await authorizeWorkerEndpoint(rls, {
+      runId: data.runId,
       callerId: context.userId,
     });
-    if (denial) {
-      return { kind: "unavailable", reason: denial };
+    if ("denial" in authorization) {
+      return { kind: "unavailable", reason: authorization.denial };
     }
+    const run = authorization.run;
     const token =
       getRequest()
         .headers.get("authorization")
@@ -172,7 +153,7 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
     const repo = createSupabaseCanonicalRunRepository(supabaseAdmin);
     const result = await executeCanonicalRun(
       repo,
-      createCanonicalRunProvider({ token, organizationId: run.organization_id }),
+      createCanonicalRunProvider({ token, organizationId: run.organizationId }),
       { runId: data.runId, actorId: context.userId },
     );
     return { kind: "result", result };
@@ -181,5 +162,12 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
 export const getCanonicalRunCapability = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async (): Promise<CanonicalRunCapabilityState> => {
-    return capabilityEnabled() ? { kind: "enabled" } : DISABLED;
+    if (!capabilityEnabled()) return DISABLED;
+    // Enabled flag without a configured provider is still unavailable —
+    // report the honest reason so the UI never promises a run that cannot
+    // execute.
+    const providerStatus = canonicalRunProviderStatus();
+    return providerStatus.configured
+      ? { kind: "enabled" }
+      : { kind: "unavailable", reason: providerStatus.reason ?? DISABLED_REASON };
   });

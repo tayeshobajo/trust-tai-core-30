@@ -71,6 +71,9 @@ done
 echo "== 006_concurrency.sh"
 bash "$HERE/tests/006_concurrency.sh" "$DB"
 
+echo "== 007_adapter_journey.sh"
+bash "$HERE/tests/007_adapter_journey.sh" "$DB"
+
 echo "== rollback (data-preserving)"
 for f in "$HERE"/../00*.down.sql; do
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$f"

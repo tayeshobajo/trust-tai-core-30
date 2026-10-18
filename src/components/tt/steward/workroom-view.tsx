@@ -264,7 +264,8 @@ function TaskDetail({
         </p>
         {row.boardTask ? (
           <p className="text-muted-foreground">
-            Assistant execution: Not started — preparation unavailable (run bridge not built yet)
+            Assistant execution: Not started — preparation unavailable (run bridge staged, not
+            activated)
           </p>
         ) : null}
         <p className="text-muted-foreground">

@@ -76,29 +76,39 @@ const RESPONSE_FORMAT = {
   },
 };
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, signal: AbortSignal): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new ProviderCallFailedError(`provider call timed out after ${timeoutMs}ms`));
+      reject(
+        new ProviderOutcomeUncertainError(
+          `provider call timed out after ${timeoutMs}ms; outcome unknown`,
+        ),
+      );
     }, timeoutMs);
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(new ProviderCallFailedError("provider call aborted"));
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
     promise.then(
       (value) => {
         clearTimeout(timer);
-        signal.removeEventListener("abort", onAbort);
         resolve(value);
       },
       (error) => {
         clearTimeout(timer);
-        signal.removeEventListener("abort", onAbort);
         reject(error instanceof Error ? error : new Error(String(error)));
       },
     );
   });
+}
+
+/**
+ * The provider call's outcome is unknown — it timed out or was aborted and
+ * the model may or may not have produced work. Callers must persist this
+ * as a TERMINAL uncertain state (never auto-retry); only a deliberate new
+ * operation UUID may rerun.
+ */
+export class ProviderOutcomeUncertainError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProviderOutcomeUncertainError";
+  }
 }
 
 /**
@@ -118,33 +128,44 @@ export function createCanonicalRunProvider(access: {
   const timeoutMs = access.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   return {
     async generate(input) {
-      const call = await runtimeModelCaller({
-        token: access.token,
-        organizationId: access.organizationId,
-        room: "steward",
-        purpose: "bounded_agent_task",
-      });
-      const controller = new AbortController();
       const refs = input.inputs.map((s, index) => `input:${index + 1} (${s.kind}@${s.revision})`);
-      const response = await withTimeout(
-        call({
-          instructions: `${BASE_INSTRUCTIONS} ${ACTION_INSTRUCTIONS[input.action]}`,
-          input: `Return json only. ${JSON.stringify({
-            action: input.action,
-            task_title: input.taskTitle,
-            inputs: input.inputs.map((s, index) => ({
-              ref: `input:${index + 1}`,
-              kind: s.kind,
-              revision: s.revision,
-              content: s.content,
-            })),
-          })}`,
-          webSearch: false,
-          responseFormat: RESPONSE_FORMAT,
-        }),
-        timeoutMs,
-        controller.signal,
-      );
+      // The WHOLE provider path — including the runtime's access
+      // verification step — is bounded by one timeout. The runtime does
+      // not accept an AbortSignal, so a timed-out call may still be
+      // running underneath: that outcome is UNCERTAIN, never a clean
+      // failure, and must be persisted terminally (no automatic retry).
+      let response: { raw: string };
+      try {
+        response = await withTimeout(
+          (async () => {
+            const call = await runtimeModelCaller({
+              token: access.token,
+              organizationId: access.organizationId,
+              room: "steward",
+              purpose: "bounded_agent_task",
+            });
+            return call({
+              instructions: `${BASE_INSTRUCTIONS} ${ACTION_INSTRUCTIONS[input.action]}`,
+              input: `Return json only. ${JSON.stringify({
+                action: input.action,
+                task_title: input.taskTitle,
+                inputs: input.inputs.map((s, index) => ({
+                  ref: `input:${index + 1}`,
+                  kind: s.kind,
+                  revision: s.revision,
+                  content: s.content,
+                })),
+              })}`,
+              webSearch: false,
+              responseFormat: RESPONSE_FORMAT,
+            });
+          })(),
+          timeoutMs,
+        );
+      } catch (error) {
+        if (error instanceof ProviderOutcomeUncertainError) throw error;
+        throw error instanceof Error ? error : new Error(String(error));
+      }
       let parsed: unknown;
       try {
         parsed = extractJsonObject(response.raw);
@@ -157,7 +178,9 @@ export function createCanonicalRunProvider(access: {
         throw new ProviderCallFailedError("provider returned no usable artifact");
       }
       // Every cited ref must be one of the supplied input refs — the model
-      // can never invent provenance.
+      // can never invent provenance — and an artifact that cites NOTHING is
+      // ungrounded and rejected. Only the actually cited subset is
+      // returned; the caller persists exactly that subset.
       const cited = Array.isArray(evidenceRefs)
         ? evidenceRefs.filter((r): r is string => typeof r === "string")
         : [];
@@ -167,7 +190,18 @@ export function createCanonicalRunProvider(access: {
       if (invalid.length > 0) {
         throw new ProviderCallFailedError("provider cited evidence outside the supplied inputs");
       }
-      return { text: artifact };
+      if (cited.length === 0) {
+        throw new ProviderCallFailedError("provider artifact cites no supplied input");
+      }
+      const citedRefs = cited.map((r) => {
+        const index = Number(r.replace(/^input:/, "")) - 1;
+        const entry = input.inputs[index];
+        if (!entry) {
+          throw new ProviderCallFailedError("provider cited evidence outside the supplied inputs");
+        }
+        return `${entry.kind}:${entry.id}@${entry.revision}`;
+      });
+      return { text: artifact, evidenceRefs: citedRefs };
     },
   };
 }

@@ -231,3 +231,97 @@ select public.test_denied($q$
     '10000000-0000-0000-0000-000000000002', 'manual_required', gen_random_uuid(), 'forged',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') $q$, 'direct scope insert denied');
 reset role;
+
+-- 9. Adversarial: foreign conversation, malformed correlation keys,
+--    cross-meeting dedup, and amendment operation replay/conflict.
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'); -- org A owner
+
+-- 9a. A task cannot be scoped into ANOTHER org's conversation (FK alone
+--     only proves existence).
+select public.test_denied($q$
+  select public.steward_scope_add_item(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd01',
+    '10000000-0000-0000-0000-000000000002', 'manual_required', gen_random_uuid()) $q$,
+  'foreign conversation rejected by add_item');
+
+-- 9b. Malformed correlation keys never sync: wrong part count, non-UUID
+--     operation, prefix lookalikes.
+insert into public.steward_tasks
+  (id, organization_id, title, notes, correlation_id, task_visibility, owner_user_id, created_by, status) values
+  ('10000000-0000-0000-0000-0000000000b1', '11111111-1111-1111-1111-111111111111', 'bad key 1', null,
+   'cmd-meeting-required:v1:dddddddd-dddd-dddd-dddd-dddddddddddd', 'business', null, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open'),
+  ('10000000-0000-0000-0000-0000000000b2', '11111111-1111-1111-1111-111111111111', 'bad key 2', null,
+   'cmd-meeting-required:v1:dddddddd-dddd-dddd-dddd-dddddddddddd:not-a-uuid', 'business', null, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open'),
+  ('10000000-0000-0000-0000-0000000000b3', '11111111-1111-1111-1111-111111111111', 'bad key 3', null,
+   'cmd-meeting-required:v2:dddddddd-dddd-dddd-dddd-dddddddddddd:eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'business', null, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open');
+do $$
+declare n integer;
+begin
+  n := public.steward_scope_sync_required(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'f0000000-0000-0000-0000-0000000000b9');
+  perform public.test_assert(n = 0, 'malformed correlation keys never sync');
+end $$;
+
+-- 9c. Cross-meeting dedup: scoping the SAME linked task into ANOTHER
+--     meeting must not suppress THIS meeting's confirmed-commitment
+--     denominator (the exclusion is per-conversation, not global).
+insert into public.conversations (id, organization_id, title, transcript) values
+  ('dddddddd-dddd-dddd-dddd-dddddddddd02', '11111111-1111-1111-1111-111111111111',
+   'Second org A call',
+   '{"segments":[{"speaker":"Tai","text":"Second synthetic call.","offset":0}]}'::jsonb);
+do $$
+declare before_count integer; after_count integer; c record;
+begin
+  select denominator into before_count from public.steward_scope_counts(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
+  perform public.steward_scope_add_item(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd02',
+    (select lk.task_id from public.steward_proposal_links lk
+      join public.steward_proposal_ledger pl on pl.id = lk.proposal_ledger_id
+      where pl.organization_id = '11111111-1111-1111-1111-111111111111'
+        and pl.source_key = 'ext-3948' limit 1),
+    'manual_required', 'f0000000-0000-0000-0000-0000000000c1');
+  select denominator into after_count from public.steward_scope_counts(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
+  perform public.test_assert(after_count = before_count,
+    'cross-meeting scoping does not suppress this meeting commitment denominator');
+  select * into c from public.steward_scope_counts(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd02');
+  perform public.test_assert(c.denominator = 1,
+    'second meeting counts its own scope item');
+end $$;
+
+-- 9d. Amendment operation replay: same operation + same payload replays
+--     the already-amended item; same operation + changed payload
+--     conflicts — a retried removal can never error as 'already_removed'
+--     or silently double-apply.
+do $$
+declare
+  target uuid;
+  first_item public.steward_scope_items;
+  replayed public.steward_scope_items;
+  conflicted boolean := false;
+begin
+  select id into target from public.steward_scope_items
+   where organization_id = '11111111-1111-1111-1111-111111111111'
+     and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+     and removed_at is null limit 1;
+  first_item := public.steward_scope_amend_remove(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    target, 'scope correction: recorded in error', 'f0000000-0000-0000-0000-0000000000d1');
+  replayed := public.steward_scope_amend_remove(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    target, 'scope correction: recorded in error', 'f0000000-0000-0000-0000-0000000000d1');
+  perform public.test_assert(replayed.id = first_item.id and replayed.removed_at is not null,
+    'same amendment operation replays');
+  begin
+    perform public.steward_scope_amend_remove(
+      '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+      target, 'a DIFFERENT reason for the same operation', 'f0000000-0000-0000-0000-0000000000d1');
+  exception when sqlstate 'P0002' then conflicted := true;
+  end;
+  perform public.test_assert(conflicted, 'changed payload on same amendment operation conflicts');
+end $$;
+reset role;
