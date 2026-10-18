@@ -26,6 +26,7 @@ import {
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { taskContextHref } from "./task-context";
 import { meetingAssociationIds, withMeetingAssociation } from "@/domain/steward-meeting-links";
+import { requiredMeetingId } from "@/domain/steward-required-work";
 
 const control = "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm";
 const errorText = (error: unknown) =>
@@ -419,6 +420,7 @@ export function TaskEditor({
   const completing = input.status === "complete" && task?.status !== "complete";
   const currentOrigin = window.location.origin;
   const associationIds = meetingAssociationIds(input.context_links, currentOrigin);
+  const requiredId = task ? requiredMeetingId(task) : undefined;
   function field<K extends keyof BoardEdit>(name: K, value: BoardEdit[K]) {
     setInput((old) => ({ ...old, [name]: value }));
   }
@@ -619,12 +621,19 @@ export function TaskEditor({
               />
             </label>
             <div className="space-y-2">
+              {requiredId ? (
+                <p className="text-xs text-muted-foreground">
+                  Manually required meeting work. Scope and provenance are locked; archive does not
+                  remove its score weight. Verification is unavailable.
+                </p>
+              ) : null}
               {task && scope === "business" ? (
                 <label className="grid gap-1 text-sm">
                   Associated meeting
                   <select
                     className={control}
                     aria-label="Associated meeting"
+                    disabled={!!requiredId}
                     value={associationIds[0] ?? ""}
                     onChange={(event) =>
                       field(
@@ -684,6 +693,9 @@ export function TaskEditor({
                     Source {index + 1} label
                     <TTInput
                       value={link.label}
+                      disabled={
+                        !!requiredId && meetingAssociationIds([link], currentOrigin).length > 0
+                      }
                       onChange={(e) =>
                         field(
                           "context_links",
@@ -699,6 +711,9 @@ export function TaskEditor({
                     <TTInput
                       type="url"
                       value={link.url}
+                      disabled={
+                        !!requiredId && meetingAssociationIds([link], currentOrigin).length > 0
+                      }
                       onChange={(e) =>
                         field(
                           "context_links",
@@ -711,6 +726,9 @@ export function TaskEditor({
                   </label>
                   <button
                     type="button"
+                    disabled={
+                      !!requiredId && meetingAssociationIds([link], currentOrigin).length > 0
+                    }
                     className="min-h-11 text-sm underline"
                     onClick={() =>
                       field(

@@ -1,6 +1,7 @@
 import type { BoardEdit, BoardTask } from "./cmd-tasks";
 import { BOARD_STATUS_LABEL } from "./cmd-tasks";
 import type { WorkroomMeeting, WorkroomRow } from "./steward-workroom";
+import { requiredMeetingId } from "./steward-required-work";
 
 export const MEETING_ASSOCIATION_LABEL = "Steward meeting association";
 const PRODUCTION_ORIGIN = "https://cmd.trusttai.com";
@@ -77,16 +78,21 @@ export function appendLinkedBusinessWork(
         (task) =>
           task.organization_id === organizationId &&
           task.task_visibility === "business" &&
-          !task.archived_at,
+          (!task.archived_at || !!requiredMeetingId(task)),
       )
       .map((task) => [task.id, task]),
   );
   return meetings.map((meeting) => {
-    const linked = [...unique.values()].filter((task) =>
-      meetingAssociationIds(task.context_links, currentOrigin).includes(meeting.id.toLowerCase()),
+    const required = [...unique.values()].filter(
+      (task) => requiredMeetingId(task) === meeting.id.toLowerCase(),
     );
-    const rows: WorkroomRow[] = linked.map((task) => ({
-      kind: "business-task",
+    const linked = [...unique.values()].filter(
+      (task) =>
+        !requiredMeetingId(task) &&
+        meetingAssociationIds(task.context_links, currentOrigin).includes(meeting.id.toLowerCase()),
+    );
+    const rows: WorkroomRow[] = [...linked, ...required].map((task) => ({
+      kind: requiredMeetingId(task) ? "required-task" : "business-task",
       id: task.id,
       boardTask: task,
       what: task.title,
@@ -97,16 +103,32 @@ export function appendLinkedBusinessWork(
         verified: !!task.owner_user_id,
       },
       due: { label: task.due_at?.slice(0, 10) || "No date", exact: !!task.due_at },
-      status: BOARD_STATUS_LABEL[task.status],
+      status: requiredMeetingId(task)
+        ? "Verification unavailable"
+        : BOARD_STATUS_LABEL[task.status],
       kept: false,
       verified: false,
       receipt: null,
       evidenceCount: task.context_links.length,
-      sourceKey: "linked-business-task",
+      sourceKey: requiredMeetingId(task) ? "manually-required-work" : "linked-business-task",
     }));
     return {
       ...meeting,
-      rows: [...meeting.rows.filter((row) => row.kind !== "business-task"), ...rows],
+      rows: [...meeting.rows.filter((row) => !row.boardTask), ...rows],
+      ...(required.length
+        ? {
+            requiredWork: {
+              total: required.length,
+              verified: 0 as const,
+              denominator: meeting.agreed + required.length,
+            },
+            score: Math.min(
+              99,
+              Math.round((meeting.done / (meeting.agreed + required.length)) * 100),
+            ),
+            remark: `${required.length} manually required tasks await guarded verification. Archived required work remains in scope; recorded delivery does not grant verified credit.`,
+          }
+        : {}),
       linkedWork: {
         total: linked.length,
         open: linked.filter((task) => task.status !== "complete").length,

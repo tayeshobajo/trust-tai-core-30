@@ -1,4 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import {
+  mayAddRequiredWork,
+  RequiredWorkInput,
+  requiredWorkKey,
+  requiredMeetingId,
+  type RequiredWorkDraft,
+} from "@/domain/steward-required-work";
+import { meetingAssociationIds, withMeetingAssociation } from "@/domain/steward-meeting-links";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import {
   BoardTaskSchema,
@@ -20,6 +29,49 @@ function failure(error: { code?: string; message: string }): Error {
 /** All writes use the signed-in client. PostgreSQL RLS and immutable-field triggers are authoritative. */
 export function boardService(client: SupabaseClient = supabase) {
   return {
+    async createRequired(
+      actor: { userId: string; organizationId: string; role: string },
+      input: RequiredWorkDraft,
+    ): Promise<BoardTask> {
+      const draft = RequiredWorkInput.parse(input);
+      if (!mayAddRequiredWork(actor)) throw new Error("Task write access required.");
+      const session = await client.auth.getUser();
+      if (session.error || session.data.user?.id !== actor.userId)
+        throw new Error("Sign in again before adding required work.");
+      // Existing member RLS is authoritative for this narrow stored-meeting read and insertion.
+      const meeting = await client
+        .from("conversations")
+        .select("id")
+        .eq("organization_id", actor.organizationId)
+        .eq("id", draft.meetingId)
+        .single();
+      if (meeting.error || !meeting.data)
+        throw new Error("This stored meeting is unavailable in your workspace.");
+      const key = requiredWorkKey(draft.meetingId, draft.operationId);
+      const result = await this.create(actor.organizationId, "business", key, {
+        title: draft.title,
+        status: "open",
+        next_action: draft.nextAction,
+        blocked_because: "",
+        depends_on_task_id: null,
+        parent_task_id: null,
+        notes: null,
+        due_at: null,
+        owner_user_id: actor.userId,
+        completion_evidence: "",
+        acceptance_criteria: [],
+        context_links: withMeetingAssociation([], draft.meetingId),
+      });
+      if (
+        result.title !== draft.title ||
+        result.next_action !== draft.nextAction ||
+        result.created_by !== actor.userId
+      )
+        throw new Error(
+          "This operation already belongs to different task details. Refresh before trying again.",
+        );
+      return result;
+    },
     async meetingOptions(
       org: string,
     ): Promise<{ meetings: { id: string; title: string }[]; truncated: boolean }> {
@@ -59,6 +111,9 @@ export function boardService(client: SupabaseClient = supabase) {
       key: string,
       input: BoardEdit,
     ): Promise<BoardTask> {
+      z.string().uuid().parse(org);
+      z.enum(["business", "personal"]).parse(visibility);
+      z.string().min(1).max(200).parse(key);
       const patch = BoardEditSchema.parse(input);
       const { data, error } = await client
         .from("steward_tasks")
@@ -90,6 +145,19 @@ export function boardService(client: SupabaseClient = supabase) {
     },
     async update(task: BoardTask, input: BoardEdit): Promise<BoardTask> {
       const patch = BoardEditSchema.parse(input);
+      const requiredId = requiredMeetingId(task);
+      if (requiredId) {
+        const original = task.context_links.filter(
+          (link) => meetingAssociationIds([link]).length > 0,
+        );
+        const incoming = patch.context_links.filter(
+          (link) => meetingAssociationIds([link]).length > 0,
+        );
+        if (JSON.stringify(original) !== JSON.stringify(incoming))
+          throw new Error(
+            "Required meeting scope is locked until audited scope changes are available.",
+          );
+      }
       const { data, error } = await client
         .from("steward_tasks")
         .update(patch)

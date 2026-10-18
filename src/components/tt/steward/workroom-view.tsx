@@ -24,6 +24,7 @@ import {
   List,
   LockKeyhole,
   MoreHorizontal,
+  Plus,
   RotateCw,
   Search,
   Sparkles,
@@ -44,6 +45,8 @@ import type { WorkroomMeeting, WorkroomRow } from "@/domain/steward-workroom";
 import { cn } from "@/lib/utils";
 import { workroomRowKey } from "@/domain/steward-meeting-links";
 import { taskContextHref } from "./task-context";
+import { AddRequiredTask } from "./add-required-task";
+import type { RequiredWorkDraft } from "@/domain/steward-required-work";
 
 type RowFilter = "all" | "open" | "verified";
 
@@ -63,6 +66,7 @@ export interface WorkroomSyncState {
 }
 
 export interface WorkroomViewProps {
+  onAddRequiredTask?: ((draft: RequiredWorkDraft) => Promise<void>) | undefined;
   linkedRead?: { state: "loading" | "error" | "ready"; truncated: boolean; onRetry?: () => void };
   /** Keep suite branding/account in the enclosing AppShell. */
   embedded?: boolean;
@@ -119,13 +123,15 @@ function StatusPill({ row }: { row: WorkroomRow }) {
 function ScoreCard({
   meeting,
   receiptsFailed,
+  scopeUnavailable = false,
 }: {
   meeting: WorkroomMeeting;
   receiptsFailed: boolean;
+  scopeUnavailable?: boolean;
 }) {
   /* When receipts could not be read, a numeric score would be computed from
      an empty map — a definitive-looking lie. Show it as unavailable. */
-  const value = receiptsFailed ? null : meeting.score;
+  const value = receiptsFailed || scopeUnavailable ? null : meeting.score;
   const full = value === 100;
   return (
     <div
@@ -169,9 +175,11 @@ function ScoreCard({
           <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
             {receiptsFailed
               ? "Verification unavailable — receipts could not be read"
-              : value === null
-                ? "Nothing confirmed yet"
-                : `${meeting.done} of ${meeting.agreed} agreed tasks verified`}
+              : scopeUnavailable
+                ? "Required-work scope unavailable"
+                : value === null
+                  ? "Nothing confirmed yet"
+                  : `${meeting.done} of ${meeting.requiredWork?.denominator ?? meeting.agreed} ${meeting.requiredWork ? "required" : "agreed"} tasks verified`}
           </p>
         </div>
       </div>
@@ -215,9 +223,11 @@ function TaskDetail({
       <div>
         <h2 className="text-base font-semibold text-foreground">{row.what}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          {row.kind === "business-task"
-            ? "Linked business task · association is context, not a confirmed meeting commitment"
-            : "Confirmed meeting commitment"}
+          {row.kind === "required-task"
+            ? "Manually added required work · durable task identity, not a transcript commitment"
+            : row.kind === "business-task"
+              ? "Linked business task · association is context, not a confirmed meeting commitment"
+              : "Confirmed meeting commitment"}
         </p>
         <p className="mt-2 text-muted-foreground">
           Owner: {row.owner.label}
@@ -231,6 +241,15 @@ function TaskDetail({
 
       {row.boardTask ? (
         <div className="space-y-3 border-t border-border pt-4">
+          {row.kind === "required-task" ? (
+            <p className="text-sm text-warning">
+              Verification unavailable · zero verified credit. Recorded board status:{" "}
+              {row.boardTask.status}.{" "}
+              {row.boardTask.archived_at
+                ? "Archived; still required."
+                : "Required scope is locked."}
+            </p>
+          ) : null}
           <div>
             <p className="font-medium">Next action</p>
             <p className="whitespace-pre-wrap break-words">
@@ -418,6 +437,7 @@ export function WorkroomView({
   accountSlot,
   historyFor,
   linkedRead,
+  onAddRequiredTask,
 }: WorkroomViewProps) {
   const viewportCompact = useCompact();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -441,6 +461,7 @@ export function WorkroomView({
   const [rowFilter, setRowFilter] = useState<RowFilter>("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [adding, setAdding] = useState<{ id: string; title: string } | null>(null);
   const meetingTriggerRef = useRef<HTMLButtonElement>(null);
   const taskTriggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -452,7 +473,10 @@ export function WorkroomView({
   const owners = meeting ? Array.from(new Set(meeting.rows.map((r) => r.owner.label))).sort() : [];
   const visibleRows = meeting
     ? meeting.rows.filter((r) => {
-        if (rowFilter === "open" && (r.verified || r.boardTask?.status === "complete"))
+        if (
+          rowFilter === "open" &&
+          (r.verified || (r.kind !== "required-task" && r.boardTask?.status === "complete"))
+        )
           return false;
         if (rowFilter === "verified" && !r.verified) return false;
         if (ownerFilter !== "everyone" && r.owner.label !== ownerFilter) return false;
@@ -468,8 +492,8 @@ export function WorkroomView({
     visibleRows[0] ??
     meeting?.rows[0] ??
     null;
-  const rowCommitment = row && row.kind !== "business-task" ? commitmentFor(row.id) : undefined;
-  const rowHistory = row && row.kind !== "business-task" ? historyFor?.(row.id) : undefined;
+  const rowCommitment = row && !row.boardTask ? commitmentFor(row.id) : undefined;
+  const rowHistory = row && !row.boardTask ? historyFor?.(row.id) : undefined;
 
   function selectMeeting(id: string) {
     setSelectedMeeting(id);
@@ -538,17 +562,24 @@ export function WorkroomView({
                   {m.occurredAt.slice(0, 10)} ·{" "}
                   {receiptsFailed
                     ? "verification unavailable"
-                    : `${m.done} of ${m.agreed} verified`}
+                    : `${m.done} of ${m.requiredWork?.denominator ?? m.agreed} verified`}
                 </span>
                 <span
                   className={cn(
                     "shrink-0 rounded px-1.5 py-0.5 font-semibold",
-                    m.score === 100 && !receiptsFailed
+                    m.score === 100 &&
+                      !receiptsFailed &&
+                      (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
                       ? "bg-success/15 text-success"
                       : "bg-warning/15 text-warning",
                   )}
                 >
-                  {receiptsFailed ? "—" : m.score === null ? "Partial" : `${m.score}/100`}
+                  {receiptsFailed ||
+                  (linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated))
+                    ? "—"
+                    : m.score === null
+                      ? "Partial"
+                      : `${m.score}/100`}
                 </span>
               </span>
             </span>
@@ -599,7 +630,11 @@ export function WorkroomView({
             ) : null}
           </div>
         </div>
-        <ScoreCard meeting={meeting} receiptsFailed={receiptsFailed} />
+        <ScoreCard
+          meeting={meeting}
+          receiptsFailed={receiptsFailed}
+          scopeUnavailable={!!linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)}
+        />
       </div>
 
       {meeting.openProposals > 0 ? (
@@ -636,6 +671,16 @@ export function WorkroomView({
       ) : null}
 
       <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 border-b border-border pb-2">
+        {onAddRequiredTask ? (
+          <TTButton
+            variant="secondary"
+            className="h-9 shrink-0 gap-1.5 px-2.5 text-xs"
+            onClick={() => setAdding({ id: meeting.id, title: meeting.title })}
+          >
+            <Plus aria-hidden className="size-3.5" />
+            Add task
+          </TTButton>
+        ) : null}
         <div
           className="flex w-full min-w-0 max-w-full overflow-x-auto xl:w-auto"
           aria-label="Task filters"
@@ -653,7 +698,7 @@ export function WorkroomView({
                 "open",
                 receiptsFailed || (linkedRead && linkedRead.state !== "ready")
                   ? "Open —"
-                  : `Open ${meeting.rows.filter((r) => !r.verified && r.boardTask?.status !== "complete").length}`,
+                  : `Open ${meeting.rows.filter((r) => !r.verified && (r.kind === "required-task" || r.boardTask?.status !== "complete")).length}`,
               ],
               ["verified", receiptsFailed ? "Verified —" : `Verified ${meeting.done}`],
             ] as [RowFilter, string][]
@@ -785,7 +830,8 @@ export function WorkroomView({
         aria-label="Requirements for complete meeting work"
         className={cn(
           "mt-4 flex items-start gap-3 rounded-lg border border-l-2 p-3 text-xs leading-5",
-          meeting.score === 100
+          meeting.score === 100 &&
+            (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
             ? "border-success/20 border-l-success bg-success/5"
             : "border-warning/15 border-l-warning bg-warning/5",
         )}
@@ -793,10 +839,19 @@ export function WorkroomView({
         <AlertCircle
           className={cn(
             "mt-0.5 size-5 shrink-0",
-            meeting.score === 100 ? "text-success" : "text-warning",
+            meeting.score === 100 &&
+              (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
+              ? "text-success"
+              : "text-warning",
           )}
         />
         <div>
+          {meeting.requiredWork ? (
+            <p className="mb-1 font-medium">
+              {meeting.requiredWork.total} manually required tasks · verification unavailable · zero
+              verified credit. Required scope remains after archive.
+            </p>
+          ) : null}
           {meeting.linkedWork?.open ? (
             <p className="mb-1 font-medium">
               {meeting.linkedWork.open} linked business tasks remain recorded open, separately from
@@ -820,7 +875,11 @@ export function WorkroomView({
           ) : (
             <>
               <p className="text-sm font-semibold">
-                {meeting.score === 100 ? "All agreed work verified" : "To reach 100/100"}
+                {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)
+                  ? "Required-work scope unavailable"
+                  : meeting.score === 100
+                    ? "All agreed work verified"
+                    : "To reach 100/100"}
               </p>
               <p className="mt-1 text-muted-foreground">{meeting.remark}</p>
               {meeting.score !== 100 ? (
@@ -1025,6 +1084,14 @@ export function WorkroomView({
             </SheetContent>
           </Sheet>
         </>
+      ) : null}
+      {adding && onAddRequiredTask ? (
+        <AddRequiredTask
+          meetingId={adding.id}
+          meetingTitle={adding.title}
+          onSave={onAddRequiredTask}
+          onClose={() => setAdding(null)}
+        />
       ) : null}
     </div>
   );

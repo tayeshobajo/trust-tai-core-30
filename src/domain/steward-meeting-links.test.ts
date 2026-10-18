@@ -10,6 +10,12 @@ import {
 } from "./steward-meeting-links";
 import { buildWorkroom, receiptKey } from "./steward-workroom";
 import type { Commitment } from "./steward";
+import {
+  requiredWorkKey,
+  requiredMeetingId,
+  mayAddRequiredWork,
+  RequiredWorkInput,
+} from "./steward-required-work";
 
 const id = "00000000-0000-4000-8000-000000000011";
 const task: BoardTask = {
@@ -82,6 +88,61 @@ function meetings() {
   );
 }
 describe("explicit no-schema meeting association", () => {
+  it("drops 100 to 50 immediately for one equal-weight required task and ignores Delivered evidence", () => {
+    const required = {
+      ...task,
+      correlation_id: requiredWorkKey(id, id),
+      status: "complete" as const,
+      completed_at: "2026-10-18T01:00:00Z",
+      completion_evidence: "Delivered with generic evidence",
+    };
+    const projected = appendLinkedBusinessWork(meetings(), [required], "fictional-org")[0];
+    expect(meetings()[0]?.score).toBe(100);
+    expect(projected?.score).toBe(50);
+    expect(projected?.requiredWork).toEqual({ total: 1, verified: 0, denominator: 2 });
+    expect(projected?.rows[1]?.receipt).toBeNull();
+    expect(projected?.rows[1]?.verified).toBe(false);
+    expect(projected?.linkedWork?.total).toBe(0);
+  });
+  it("retains required denominator across archive, removed links and changed association", () => {
+    for (const context_links of [
+      [],
+      withMeetingAssociation([], "00000000-0000-4000-8000-000000000012"),
+    ]) {
+      const required = {
+        ...task,
+        correlation_id: requiredWorkKey(id, id),
+        context_links,
+        archived_at: "2026-10-18T01:00:00Z",
+      };
+      expect(appendLinkedBusinessWork(meetings(), [required], "fictional-org")[0]?.score).toBe(50);
+      expect(requiredMeetingId(required)).toBe(id);
+    }
+  });
+  it("requires valid scoped writer identities and explicit validated task input", () => {
+    expect(mayAddRequiredWork({ userId: id, organizationId: id, role: "member" })).toBe(true);
+    for (const actor of [
+      { userId: "", organizationId: id, role: "member" },
+      { userId: id, organizationId: id, role: "viewer" },
+      { userId: id, organizationId: "", role: "admin" },
+    ])
+      expect(mayAddRequiredWork(actor)).toBe(false);
+    expect(
+      RequiredWorkInput.safeParse({ meetingId: id, operationId: id, title: " ", nextAction: "" })
+        .success,
+    ).toBe(false);
+    expect(
+      RequiredWorkInput.safeParse({
+        meetingId: "bad",
+        operationId: id,
+        title: "Task",
+        nextAction: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      requiredMeetingId({ task_visibility: "personal", correlation_id: requiredWorkKey(id, id) }),
+    ).toBeUndefined();
+  });
   it("normalizes exact production/current HTTPS origin UUID URLs only", () => {
     expect(
       meetingIdFromUrl(

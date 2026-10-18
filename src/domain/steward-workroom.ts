@@ -81,7 +81,7 @@ export interface WorkroomConversationInput {
 }
 
 export interface WorkroomRow {
-  kind?: "commitment" | "business-task";
+  kind?: "commitment" | "business-task" | "required-task";
   boardTask?: BoardTask;
   id: string;
   what: string;
@@ -100,6 +100,7 @@ export interface WorkroomRow {
 
 export interface WorkroomMeeting extends WorkroomConversationInput {
   linkedWork?: { total: number; open: number };
+  requiredWork?: { total: number; verified: 0; denominator: number };
   rows: WorkroomRow[];
   agreed: number;
   /** Verified completions only. */
