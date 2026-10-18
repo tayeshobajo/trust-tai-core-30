@@ -964,12 +964,21 @@ export function ScopeReviewPanel({
         </details>
       ) : null}
       <OutcomeNote outcome={simple.outcome ?? linkAttempt.outcome ?? dismissAttempt.outcome} />
-      {simple.pending || linkAttempt.pending || dismissAttempt.pending ? (
+      {linkAttempt.pending || dismissAttempt.pending ? (
         <p className="text-xs text-warning">
           One operation’s outcome is unknown. Re-run the same action — it replays the same operation
           instead of re-executing.
         </p>
       ) : null}
+      {/* Truthful gap: the audited scope amendment contract (005) exists
+          in the proposed SQL, but removal/reinstatement is not wired into
+          this interface — scope can only grow here, never silently
+          shrink. */}
+      <p className="text-xs text-muted-foreground">
+        Removing or reinstating recorded scope is not supported in this interface yet; the audited
+        amendment contract exists in the proposed backend but is not wired here. Recorded required
+        work can only be added, never quietly dropped.
+      </p>
     </div>
   );
 }
