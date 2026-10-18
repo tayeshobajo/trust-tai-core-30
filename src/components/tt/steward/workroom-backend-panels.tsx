@@ -814,18 +814,44 @@ export function ScopeReviewPanel({
       : null;
 
   async function link(proposalId: string) {
+    /* A new link is blocked while a link operation's outcome is unknown:
+       reconcile (retry) the pending operation first, so two different
+       gestures can never share one identity or race. */
+    if (linkAttempt.pending) return;
     const taskId = linkChoices[proposalId] ?? "";
     if (!onLinkProposal || !taskId) return;
     await linkAttempt.run(onLinkProposal, { proposalId, taskId }, null);
   }
 
+  async function retryLink() {
+    /* Replays the EXACT original tuple — proposal and task as first
+       captured — regardless of dropdown changes since. */
+    if (!onLinkProposal || !linkAttempt.pending) return;
+    await linkAttempt.run(onLinkProposal, linkAttempt.pending.payload, linkAttempt.pending);
+  }
+
   async function dismiss(proposalId: string) {
+    if (dismissAttempt.pending) return;
     const reason = (dismissReasons[proposalId] ?? "").trim();
     if (!onDismissProposal || reason.length < 10) return;
     const result = await dismissAttempt.run(onDismissProposal, { proposalId, reason }, null);
     /* Keep the reason text unless the dismissal resolved successfully. */
     if (result.kind === "dismissed") {
       setDismissReasons((m) => ({ ...m, [proposalId]: "" }));
+    }
+  }
+
+  async function retryDismiss() {
+    /* Replays the EXACT original proposal + reason, regardless of edits
+       to the reason field since the first click. */
+    if (!onDismissProposal || !dismissAttempt.pending) return;
+    const result = await dismissAttempt.run(
+      onDismissProposal,
+      dismissAttempt.pending.payload,
+      dismissAttempt.pending,
+    );
+    if (result.kind === "dismissed") {
+      setDismissReasons((m) => ({ ...m, [dismissAttempt.pending!.payload.proposalId]: "" }));
     }
   }
 
