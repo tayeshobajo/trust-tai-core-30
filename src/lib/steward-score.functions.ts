@@ -24,6 +24,9 @@ export interface MeetingScoreSnapshot {
   coverageCurrent: boolean;
   attestedAt: string | null;
   scopeVersion: number;
+  /** Current server-derived transcript hash — the value a coverage
+      attestation binds to, read in the same consistent statement. */
+  transcriptHash: string | null;
   complete: boolean;
 }
 
@@ -78,6 +81,8 @@ export const getMeetingScoreSnapshotFn = createServerFn({ method: "GET" })
         coverageCurrent: snapshot["coverageCurrent"],
         attestedAt: typeof snapshot["attestedAt"] === "string" ? snapshot["attestedAt"] : null,
         scopeVersion: typeof snapshot["scopeVersion"] === "number" ? snapshot["scopeVersion"] : 0,
+        transcriptHash:
+          typeof snapshot["transcriptHash"] === "string" ? snapshot["transcriptHash"] : null,
         complete: snapshot["complete"],
       },
     };
