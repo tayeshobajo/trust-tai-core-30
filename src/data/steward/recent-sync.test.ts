@@ -20,7 +20,7 @@ vi.mock("@/data/supabase/steward-service", () => ({
   },
 }));
 
-import { callIdentity, syncRecentMeetings } from "./recent-sync";
+import { callIdentity, syncRecentMeetings, transcriptsEquivalent } from "./recent-sync";
 
 const incoming = (over: {
   externalId?: string;
@@ -111,6 +111,83 @@ describe("recent sync persistence", () => {
       externalIds: ["42", "tok"],
       url: "https://f.video/1",
     });
+  });
+
+  it("equivalent nonempty reads succeed unchanged without warnings or duplicate writes", async () => {
+    const call = incoming({ externalId: "42" });
+    const existing = stored({ sourceExternalId: "42", segments: 5 });
+    existing.conversation = {
+      ...call,
+      title: "Older title",
+      segments: call.segments.map((segment) => ({
+        ...segment,
+        index: segment.index + 10,
+        text: `  ${segment.text}\n `,
+        url: "https://example.test/old-link",
+      })),
+    };
+    findConversationBySource.mockResolvedValue(existing);
+    stubFetch([call, call]);
+    const outcome = await syncRecentMeetings({ organizationId: "o", userId: "u" });
+    expect(outcome.unchanged).toBe(1);
+    expect(outcome.preserved).toBe(0);
+    expect(outcome.warnings).toEqual([]);
+    expect(outcome.errors).toEqual([]);
+    expect(outcome.checkedAt).not.toBeNull();
+    expect(outcome.added).toBe(0);
+    expect(outcome.refreshed).toBe(0);
+    expect(findConversationBySource).toHaveBeenCalledTimes(1);
+    expect(saveConversation).not.toHaveBeenCalled();
+    const repeated = await syncRecentMeetings({ organizationId: "o", userId: "u" });
+    expect(repeated.unchanged).toBe(1);
+    expect(saveConversation).not.toHaveBeenCalled();
+  });
+
+  it.each(["text", "speaker", "at", "speakerEmail"] as const)(
+    "changed %s is not equivalent even with the same segment count",
+    async (field) => {
+      const call = incoming({ externalId: "42" });
+      const existing = stored({ sourceExternalId: "42" });
+      existing.conversation = {
+        ...call,
+        segments: call.segments.map((segment) => ({ ...segment, [field]: "changed" })),
+      };
+      expect(transcriptsEquivalent(existing.conversation, call)).toBe(false);
+      findConversationBySource.mockResolvedValue(existing);
+      stubFetch([call]);
+      const outcome = await syncRecentMeetings({ organizationId: "o", userId: "u" });
+      expect(outcome.unchanged).toBe(0);
+      expect(outcome.preserved).toBe(1);
+      expect(outcome.warnings).toHaveLength(1);
+      expect(outcome.errors).toEqual([]);
+      expect(outcome.checkedAt).not.toBeNull();
+      expect(saveConversation).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([3, 0])("preserves a stored transcript when a shorter %i-segment read arrives", async (length) => {
+    const call = incoming({ externalId: "42", segments: length });
+    const existing = stored({ sourceExternalId: "42" });
+    existing.conversation = incoming({ externalId: "42", segments: 5 });
+    findConversationBySource.mockResolvedValue(existing);
+    stubFetch([call]);
+    const outcome = await syncRecentMeetings({ organizationId: "o", userId: "u" });
+    expect(outcome.preserved).toBe(1);
+    expect(outcome.unchanged).toBe(0);
+    expect(outcome.pendingTranscript).toBe(0);
+    expect(outcome.checkedAt).not.toBeNull();
+    expect(existing.conversation.segments).toHaveLength(5);
+    expect(saveConversation).not.toHaveBeenCalled();
+  });
+
+  it("source failures reject rather than masquerading as unchanged success", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: false,
+      json: async () => ({ error: "Fathom disconnected" }),
+    })));
+    await expect(syncRecentMeetings({ organizationId: "o", userId: "u" })).rejects.toThrow("Fathom disconnected");
+    expect(findConversationBySource).not.toHaveBeenCalled();
+    expect(saveConversation).not.toHaveBeenCalled();
   });
 
   it("a match beyond any listing window is found by lookup, not duplicated", async () => {
