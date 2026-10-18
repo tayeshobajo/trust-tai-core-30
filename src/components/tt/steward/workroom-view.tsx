@@ -91,15 +91,25 @@ export interface WorkroomBackend {
   onExecuteRun?: (runId: string) => Promise<ActionOutcome>;
   onVerify?: (input: {
     taskId: string;
+    expectedRevision: number;
     note: string;
     operationId: string;
   }) => Promise<ActionOutcome>;
   onReopen?: (input: {
     taskId: string;
+    expectedRevision: number;
     note: string;
     operationId: string;
   }) => Promise<ActionOutcome>;
-  onAttestCoverage?: (input: { meetingId: string; operationId: string }) => Promise<ActionOutcome>;
+  onAttestCoverage?: (input: {
+    meetingId: string;
+    operationId: string;
+    expectedTranscriptHash: string;
+    expectedScopeVersion: number;
+  }) => Promise<ActionOutcome>;
+  /** Real reload action for failed backend reads (runs, verification,
+      scope, coverage, proposals, score). */
+  onRetryReads?: () => void;
   onSyncProposals?: (input: { meetingId: string; operationId: string }) => Promise<ActionOutcome>;
   onSyncRequiredScope?: (input: {
     meetingId: string;
@@ -441,6 +451,10 @@ function TaskDetail({
           </p>
           {backend ? (
             <VerificationPanel
+              /* Keyed by meeting + canonical task: a pending operation can
+                 never be retargeted onto another task after selection
+                 changes — a new task mounts a fresh panel. */
+              key={`${meeting.id}:${row.boardTask.id}`}
               capability={backend.capabilities.verification}
               state={backend.verificationFor?.(row.boardTask.id)}
               task={row.boardTask}
@@ -454,6 +468,7 @@ function TaskDetail({
                   ? (input) => backend.onReopen!({ taskId: row.boardTask!.id, ...input })
                   : undefined
               }
+              onRetryReads={backend.onRetryReads}
             />
           ) : (
             <p className="text-xs text-muted-foreground">
@@ -533,6 +548,7 @@ function TaskDetail({
         </p>
         {row.boardTask && backend ? (
           <AiPreparationPanel
+            key={`${meeting.id}:${row.boardTask.id}`}
             capability={backend.capabilities.preparation}
             runs={backend.runsFor?.(row.boardTask.id)}
             task={row.boardTask}
