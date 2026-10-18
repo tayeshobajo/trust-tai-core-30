@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as StewardWorkspaceQaRouteImport } from './routes/steward-workspace-qa'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as MockupsCommsFamiliarARouteImport } from './routes/mockups.comms-familiar-a'
@@ -157,11 +156,6 @@ const AuthRoute = AuthRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StewardWorkspaceQaRoute = StewardWorkspaceQaRouteImport.update({
-  id: '/steward-workspace-qa',
-  path: '/steward-workspace-qa',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WelcomeRoute = WelcomeRouteImport.update({
@@ -852,7 +846,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
-  '/steward-workspace-qa': typeof StewardWorkspaceQaRoute
   '/welcome': typeof WelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
@@ -987,7 +980,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
-  '/steward-workspace-qa': typeof StewardWorkspaceQaRoute
   '/welcome': typeof WelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
@@ -1116,7 +1108,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
-  '/steward-workspace-qa': typeof StewardWorkspaceQaRoute
   '/welcome': typeof WelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/mockups/comms-familiar-a': typeof MockupsCommsFamiliarARoute
@@ -1254,7 +1245,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/settings'
-    | '/steward-workspace-qa'
     | '/welcome'
     | '/auth/callback'
     | '/mockups/comms-familiar-a'
@@ -1389,7 +1379,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/steward-workspace-qa'
     | '/welcome'
     | '/auth/callback'
     | '/mockups/comms-familiar-a'
@@ -1517,7 +1506,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/settings'
-    | '/steward-workspace-qa'
     | '/welcome'
     | '/auth/callback'
     | '/mockups/comms-familiar-a'
@@ -1654,7 +1642,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
-  StewardWorkspaceQaRoute: typeof StewardWorkspaceQaRoute
   WelcomeRoute: typeof WelcomeRoute
   MockupsCommsFamiliarARoute: typeof MockupsCommsFamiliarARoute
   MockupsCommsFamiliarBRoute: typeof MockupsCommsFamiliarBRoute
@@ -1753,13 +1740,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/steward-workspace-qa': {
-      id: '/steward-workspace-qa'
-      path: '/steward-workspace-qa'
-      fullPath: '/steward-workspace-qa'
-      preLoaderRoute: typeof StewardWorkspaceQaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/welcome': {
@@ -2890,7 +2870,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
-  StewardWorkspaceQaRoute: StewardWorkspaceQaRoute,
   WelcomeRoute: WelcomeRoute,
   MockupsCommsFamiliarARoute: MockupsCommsFamiliarARoute,
   MockupsCommsFamiliarBRoute: MockupsCommsFamiliarBRoute,
