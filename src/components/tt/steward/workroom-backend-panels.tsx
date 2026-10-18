@@ -796,8 +796,8 @@ export function ScopeReviewPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={busy || !onSyncProposals}
-            onClick={() => void simple.run(onSyncProposals!, {}, null)}
+            disabled={busy || !!simple.pending || !onSyncProposals}
+            onClick={() => void runSimple("register", null)}
           >
             Register extracted proposals
           </TTButton>
@@ -805,15 +805,22 @@ export function ScopeReviewPanel({
           <p className="text-xs text-muted-foreground">{proposalCapability.reason}</p>
         )}
         {coverageCapability.kind === "enabled" ? (
-          <TTButton
-            type="button"
-            variant="secondary"
-            className="h-8 px-2 text-xs"
-            disabled={busy || !onAttestCoverage}
-            onClick={() => void simple.run(onAttestCoverage!, {}, null)}
-          >
-            Attest current transcript coverage
-          </TTButton>
+          expectedSource ? (
+            <TTButton
+              type="button"
+              variant="secondary"
+              className="h-8 px-2 text-xs"
+              disabled={busy || !!simple.pending || !onAttestCoverage}
+              onClick={() => void runSimple("attest", null)}
+            >
+              Attest current transcript coverage
+            </TTButton>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Coverage attestation needs the current score snapshot read first, so the attestation
+              is bound to the exact transcript and scope version reviewed.
+            </p>
+          )
         ) : (
           <p className="text-xs text-muted-foreground">{coverageCapability.reason}</p>
         )}
@@ -822,13 +829,30 @@ export function ScopeReviewPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={busy}
-            onClick={() => void simple.run(onSyncRequiredScope, {}, null)}
+            disabled={busy || !!simple.pending}
+            onClick={() => void runSimple("sync", null)}
           >
             Sync recorded required tasks into scope
           </TTButton>
         ) : null}
       </div>
+      {simple.pending ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <TTButton
+            type="button"
+            variant="secondary"
+            className="h-8 px-2 text-xs"
+            disabled={simple.busy}
+            onClick={() => void runSimple(simple.pending!.payload.action, simple.pending)}
+          >
+            <RotateCw aria-hidden className="size-3.5" /> Retry same operation (
+            {simple.pending.payload.action})
+          </TTButton>
+          <p className="text-xs text-warning">
+            Outcome unknown — retry replays the exact original action and payload.
+          </p>
+        </div>
+      ) : null}
       {coverage?.kind === "ready" ? (
         <p className="text-xs text-muted-foreground">
           Coverage: {coverage.current ? "confirmed for the current transcript" : "not confirmed"}
