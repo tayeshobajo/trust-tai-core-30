@@ -24,7 +24,9 @@ import { z } from "zod";
 import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
 import {
   createSupabaseVerificationRepository,
+  foldVerificationProjection,
   readMeetingVerificationProjection,
+  readSelectedTaskVerification,
 } from "./steward-verification.supabase";
 import {
   reopenCanonicalTask,
@@ -32,7 +34,6 @@ import {
   type ReopenResult,
   type TaskReceipt,
   type VerificationResult,
-  type VerificationTaskState,
 } from "./steward-verification.server";
 
 export type VerificationCapabilityState =
@@ -42,16 +43,24 @@ export type VerificationActionState =
   { kind: "unavailable"; reason: string } | VerificationResult | ReopenResult;
 
 export interface TaskVerificationRead {
-  task: VerificationTaskState | null;
-  receipts: TaskReceipt[];
   /**
-   * Receipt-backed verified state, computed with the SAME criteria as the
-   * scope SQL: the task is complete AND its LATEST receipt is a verify
-   * whose task_revision_after still equals the current revision. Raw board
-   * "complete" status alone — no receipt, or an edit/reopen since — is
-   * NEVER verified. `null` when the task row could not be read.
+   * Current status + revision from the ONE-statement verification
+   * projection — the same snapshot that produced `verified`. This revision
+   * is the one a verify/reopen gesture captures as expectedRevision.
    */
-  verified: boolean | null;
+  task: { id: string; status: "open" | "complete"; revision: number };
+  /** Bounded display history (latest 100, chronological). Never used to
+      derive `verified`. */
+  receipts: TaskReceipt[];
+  /** True when older receipts exist beyond the 100 shown. */
+  historyTruncated: boolean;
+  /**
+   * Receipt-backed verified state from the projection RPC: complete AND the
+   * latest receipt (task_revision_after DESC, created_at DESC, id DESC) is a
+   * verify at the CURRENT revision. Raw board "complete" alone is never
+   * verified.
+   */
+  verified: boolean;
 }
 
 export type VerificationReadState =
@@ -117,8 +126,9 @@ export const reopenCanonicalTaskFn = createServerFn({ method: "POST" })
   });
 
 /**
- * Read the current verification state and durable receipts for one task
- * through RLS. Read-only; available whenever the flag is on.
+ * Read one task's verified truth from the projection RPC (single id) plus a
+ * bounded, disclosed display history. Unknown (missing, personal,
+ * cross-org, inaccessible) is rejected — never inferred from history rows.
  */
 export const getTaskVerificationStateFn = createServerFn({ method: "GET" })
   .middleware([requireTrustTaiAuth])
@@ -127,71 +137,8 @@ export const getTaskVerificationStateFn = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }): Promise<VerificationReadState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
-    const rls = context.supabase as any;
-    const { data: task, error: taskError } = await rls
-      .from("steward_tasks")
-      .select("id, status, revision, completion_evidence, completed_at, completed_by")
-      .eq("id", data.taskId)
-      .eq("organization_id", data.orgId)
-      .maybeSingle();
-    if (taskError) return { kind: "rejected", message: "the task state could not be read" };
-    if (!task) return { kind: "rejected", message: "task not found" };
-    const { data: receipts, error: receiptError } = await rls
-      .from("steward_task_receipts")
-      .select(
-        "id, organization_id, task_id, operation_id, kind, note, actor_id, created_at, task_revision_after",
-      )
-      .eq("organization_id", data.orgId)
-      .eq("task_id", data.taskId)
-      .order("created_at", { ascending: true });
-    if (receiptError) {
-      return { kind: "rejected", message: "the receipt history could not be read" };
-    }
-    const mapped: TaskReceipt[] = (receipts ?? []).map((row: Record<string, unknown>) => ({
-      id: row["id"],
-      organizationId: row["organization_id"],
-      taskId: row["task_id"],
-      operationId: row["operation_id"],
-      kind: row["kind"] === "reopen" ? ("reopen" as const) : ("verify" as const),
-      note: row["note"],
-      actorId: row["actor_id"],
-      createdAt: row["created_at"],
-      taskRevisionAfter:
-        typeof row["task_revision_after"] === "number" ? row["task_revision_after"] : -1,
-    }));
-    return {
-      kind: "ready",
-      read: {
-        task: {
-          id: task.id,
-          status: task.status,
-          revision: task.revision,
-          completionEvidence: task.completion_evidence,
-          completedAt: task.completed_at,
-          completedBy: task.completed_by,
-        },
-        receipts: mapped,
-        verified: receiptBackedVerified({ status: task.status, revision: task.revision }, mapped),
-      },
-    };
+    return readSelectedTaskVerification(context.supabase, data.orgId, data.taskId);
   });
-
-/**
- * The single verified-state criterion, matching the scope SQL exactly:
- * the task is complete AND its LATEST receipt is a verify whose recorded
- * task_revision_after equals the CURRENT revision. A reopen, an edit, or
- * a legacy status flip after reopen changes the revision and drops the
- * credit; raw "complete" with no valid receipt is never verified.
- */
-export function receiptBackedVerified(
-  task: { status: string; revision: number },
-  receipts: { kind: "verify" | "reopen"; taskRevisionAfter: number }[],
-): boolean {
-  if (task.status !== "complete") return false;
-  const latest = receipts.at(-1);
-  return !!latest && latest.kind === "verify" && latest.taskRevisionAfter === task.revision;
-}
 
 export type MeetingVerificationProjectionState =
   | { kind: "unavailable"; reason: string }
@@ -248,15 +195,11 @@ export const getMeetingVerificationProjectionFn = createServerFn({ method: "GET"
     if (error) {
       return { kind: "rejected", message: "the verification projection could not be read" };
     }
-    const verified: Record<string, boolean> = {};
-    const unknown: string[] = [];
-    for (const row of rows ?? []) {
-      if (row.verified === true || row.verified === false) {
-        verified[row.task_id] = row.verified;
-      }
-      for (const missingId of row.missing ?? []) {
-        unknown.push(missingId);
-      }
+    if (!rows) {
+      return { kind: "rejected", message: "the verification projection could not be read" };
     }
+    // Unknown = requested minus returned (covers zero visible rows, where
+    // no row exists to carry `missing`) — never false.
+    const { verified, unknown } = foldVerificationProjection(uniqueIds, rows);
     return { kind: "ready", verified, unknown, truncated: false };
   });

@@ -542,6 +542,69 @@ describe("receipt-backed verified state", () => {
     expect(screen.getByLabelText(/Reopen reason/)).toBeTruthy();
     expect(screen.queryByLabelText(/Completion evidence note/)).toBeNull();
   });
+
+  it("the gesture captures the PROJECTION revision, never the board row's older revision", async () => {
+    const onVerify = vi.fn().mockResolvedValue({ kind: "verified" });
+    render(
+      <VerificationPanel
+        capability={enabled}
+        state={{
+          kind: "ready",
+          verified: false,
+          task: { status: "open", revision: 9 },
+          receipts: [],
+        }}
+        task={{ ...fictionalTask, revision: 3 } as never}
+        onVerify={onVerify}
+        onReopen={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/Completion evidence note/), {
+      target: { value: "Fictional evidence note for the projection test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Verify at revision 9/ }));
+    await waitFor(() => expect(onVerify).toHaveBeenCalledTimes(1));
+    expect(onVerify.mock.calls[0]![0].expectedRevision).toBe(9);
+  });
+
+  it("without a ready projection no verify gesture is possible", () => {
+    const onVerify = vi.fn();
+    render(
+      <VerificationPanel
+        capability={enabled}
+        state={{ kind: "loading" }}
+        task={{ ...fictionalTask, revision: 3 } as never}
+        onVerify={onVerify}
+        onReopen={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/Completion evidence note/), {
+      target: { value: "Fictional evidence note without a projection" },
+    });
+    const button = screen.getByRole("button", { name: /current revision unknown/ });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(button);
+    expect(onVerify).not.toHaveBeenCalled();
+  });
+
+  it("discloses bounded history truncation", () => {
+    render(
+      <VerificationPanel
+        capability={enabled}
+        state={{
+          kind: "ready",
+          verified: false,
+          task: { status: "open", revision: 4 },
+          receipts: [],
+          historyTruncated: true,
+        }}
+        task={{ ...fictionalTask, revision: 4 } as never}
+        onVerify={vi.fn()}
+        onReopen={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Showing the 100 most recent receipts/)).toBeTruthy();
+  });
 });
 
 describe("scope amendment controls", () => {

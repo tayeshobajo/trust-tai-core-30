@@ -375,12 +375,13 @@ function useStewardBackend(
              criterion as the scope SQL — raw board status alone is never
              verified. */
           verified: verification.data.read.verified === true,
-          task: verification.data.read.task
-            ? {
-                status: verification.data.read.task.status === "complete" ? "complete" : "open",
-                revision: verification.data.read.task.revision,
-              }
-            : null,
+          /* Status + revision from the SAME projection snapshot as
+             `verified`; this revision is what a gesture captures. */
+          task: {
+            status: verification.data.read.task.status === "complete" ? "complete" : "open",
+            revision: verification.data.read.task.revision,
+          },
+          historyTruncated: verification.data.read.historyTruncated === true,
           receipts: verification.data.read.receipts.map((receipt) => ({
             id: receipt.id,
             kind: receipt.kind,

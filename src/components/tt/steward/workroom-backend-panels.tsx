@@ -62,8 +62,13 @@ export type VerificationRead =
   | { kind: "unavailable"; reason: string }
   | {
       kind: "ready";
+      /** Status + revision from the verification projection snapshot;
+          the revision a verify/reopen gesture captures. null = unknown. */
       task: { status: "open" | "complete"; revision: number } | null;
+      /** Bounded display history (latest 100, chronological). */
       receipts: ReceiptSnapshot[];
+      /** Older receipts exist beyond those listed. */
+      historyTruncated?: boolean;
       /** Receipt-backed verified state (same criterion as the scope SQL):
           complete AND latest receipt is a verify at the CURRENT revision.
           Raw board "complete" alone is never verified. */
@@ -559,8 +564,11 @@ export function VerificationPanel({
      receipt at the current revision is NEVER verified and never switches
      the panel to Reopen. */
   const verified = state?.kind === "ready" && state.verified;
-  const currentRevision =
-    state?.kind === "ready" && state.task ? state.task.revision : task.revision;
+  /* The gesture captures ONLY the projection's revision — the same
+     snapshot that produced `verified`. No ready projection, no gesture;
+     the board row's revision is never substituted. */
+  const currentRevision: number | null =
+    state?.kind === "ready" && state.task ? state.task.revision : null;
 
   function dispatch(gesture: VerificationGesture, reuse: typeof attempt.pending) {
     /* The handler is chosen from the STORED gesture kind, never from the
@@ -578,6 +586,7 @@ export function VerificationPanel({
     if (attempt.pending) return;
     const trimmed = note.trim();
     if (trimmed.length < 10) return;
+    if (currentRevision === null) return;
     const gesture: VerificationGesture = {
       kind: verified ? "reopen" : "verify",
       taskId: task.id,
@@ -622,6 +631,12 @@ export function VerificationPanel({
           ))}
         </ul>
       ) : null}
+      {state?.kind === "ready" && state.historyTruncated ? (
+        <p className="text-xs text-muted-foreground">
+          Showing the 100 most recent receipts; older history exists and is retained, just not
+          listed here. Verified state comes from the current projection, not this list.
+        </p>
+      ) : null}
       {state?.kind === "rejected" ? (
         <RejectedNote message={state.message} onRetry={onRetryReads} />
       ) : null}
@@ -647,7 +662,13 @@ export function VerificationPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={attempt.busy || !!attempt.pending || note.trim().length < 10 || !onReopen}
+            disabled={
+              attempt.busy ||
+              !!attempt.pending ||
+              currentRevision === null ||
+              note.trim().length < 10 ||
+              !onReopen
+            }
             onClick={() => void act()}
           >
             Reopen (history preserved)
@@ -657,10 +678,19 @@ export function VerificationPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={attempt.busy || !!attempt.pending || note.trim().length < 10 || !onVerify}
+            disabled={
+              attempt.busy ||
+              !!attempt.pending ||
+              currentRevision === null ||
+              note.trim().length < 10 ||
+              !onVerify
+            }
             onClick={() => void act()}
           >
-            <Check aria-hidden className="size-3.5" /> Verify at revision {currentRevision}
+            <Check aria-hidden className="size-3.5" />{" "}
+            {currentRevision === null
+              ? "Verify (current revision unknown)"
+              : `Verify at revision ${currentRevision}`}
           </TTButton>
         )}
         {attempt.pending ? (

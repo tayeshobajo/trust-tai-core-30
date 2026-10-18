@@ -11,13 +11,25 @@ activated" and touch nothing while the flags are unset).
 ## 007 — verification projection (read-only)
 
 `steward_meeting_verification_projection(org, task_ids)` returns, in ONE
-statement snapshot, each requested readable task's status, current
-revision, latest receipt (stable tie-break on id), and the receipt-backed
-verified flag — the same criterion as the scope counts. Requested ids
-that are missing or inaccessible come back in `missing` as explicit
-unknowns, never as false. More than 100 ids is rejected, never silently
-truncated. Read-only: the up patch is revoke-only; the authenticated
-execute grant lives in grants.review.sql.
+statement snapshot, each requested task's status, current revision,
+latest receipt and the receipt-backed verified flag.
+
+- SECURITY DEFINER bypasses table RLS, so visibility is explicit: active
+  org membership gate + `organization_id = p_org` + `task_visibility =
+  'business'`. Personal tasks (the caller's own or another member's) never
+  return a row; status/revision cannot leak.
+- Latest receipt = `task_revision_after DESC, created_at DESC, id DESC`,
+  the SAME criterion `steward_scope_counts` (005) now uses, so a timestamp
+  tie can never be decided by random UUID order.
+- Requested ids with no returned row (including the zero-visible-rows
+  case) are unknown in the adapter, never false. More than 100 ids is
+  rejected, never truncated.
+- The selected-task read uses this projection for one id (verified,
+  status and the revision a gesture captures); receipt history is a
+  separate display-only read, latest 100 with disclosed truncation.
+- Up patch is revoke-only; the authenticated execute grant lives only in
+  grants.review.sql; the down patch drops the read-only function and
+  preserves all history.
 
 ## Scope amendment authority (005, hardened)
 
