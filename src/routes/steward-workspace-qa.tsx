@@ -3,7 +3,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
-import "./styles.css";
+
 import { WorkroomView } from "@/components/tt/steward/workroom-view";
 import type { WorkroomMeeting } from "@/domain/steward-workroom";
 import type { BoardTask } from "@/domain/cmd-tasks";
