@@ -410,10 +410,12 @@ function useStewardBackend(
                 attestedAt: coverage.data.latest?.attestedAt ?? null,
               }
             : coverage.data;
-      } else if (coverage.isError) {
-        state.coverage = rejected("Coverage state could not be read; retry to reload it.");
       } else if (coverage.isPending) state.coverage = { kind: "loading" };
-      if (proposals.data) {
+      if (resolvedCaps.proposals.kind === "unavailable") {
+        state.proposals = { kind: "unavailable", reason: resolvedCaps.proposals.reason };
+      } else if (proposals.isError) {
+        state.proposals = rejected("Proposal review state could not be read; retry to reload it.");
+      } else if (proposals.data) {
         state.proposals =
           proposals.data.kind === "ready"
             ? {
@@ -436,8 +438,6 @@ function useStewardBackend(
                 })),
               }
             : proposals.data;
-      } else if (proposals.isError) {
-        state.proposals = rejected("Proposal review state could not be read; retry to reload it.");
       } else if (proposals.isPending) state.proposals = { kind: "loading" };
       return state;
     },
