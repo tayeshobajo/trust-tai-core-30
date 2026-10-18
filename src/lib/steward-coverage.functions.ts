@@ -81,17 +81,25 @@ export const getMeetingCoverageFn = createServerFn({ method: "GET" })
   });
 
 /**
- * Attest coverage for the CURRENT stored transcript + scope version. An
- * explicit human gesture only; the SQL derives the hash server-side and
- * supersedes any prior attestation atomically, so a retry of the same
- * gesture is naturally safe. The client supplies a stable operation UUID
- * so an uncertain transport can be retried without a new gesture; the SQL
- * is keyed on the transcript hash, so the UUID is trace-only.
+ * Attest coverage of the source the human ACTUALLY REVIEWED. The client
+ * supplies the transcript hash + scope version from the consistent score
+ * snapshot it displayed; the SQL derives the CURRENT stored values itself
+ * and rejects the attestation when they differ, so a transcript or scope
+ * change during review is never silently attested. The operation UUID is
+ * load-bearing: an uncertain-transport retry replays the SAME attestation
+ * (same operation + same reviewed source) instead of attesting whatever
+ * is current at retry time.
  */
 export const attestMeetingCoverageFn = createServerFn({ method: "POST" })
   .middleware([requireTrustTaiAuth])
   .inputValidator((data) =>
-    meetingInputSchema.extend({ operationId: z.string().uuid().optional() }).parse(data),
+    meetingInputSchema
+      .extend({
+        operationId: z.string().uuid(),
+        expectedTranscriptHash: z.string().min(16),
+        expectedScopeVersion: z.number().int().min(1),
+      })
+      .parse(data),
   )
   .handler(async ({ data, context }): Promise<CoverageAttestState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
@@ -100,12 +108,18 @@ export const attestMeetingCoverageFn = createServerFn({ method: "POST" })
       const attestation = await repo.attest({
         orgId: data.orgId,
         conversationId: data.conversationId,
+        operationId: data.operationId,
+        expectedTranscriptHash: data.expectedTranscriptHash,
+        expectedScopeVersion: data.expectedScopeVersion,
       });
       return { kind: "attested", attestation };
     } catch (error) {
+      const message = error instanceof Error ? error.message : "coverage could not be attested";
       return {
         kind: "rejected",
-        message: error instanceof Error ? error.message : "coverage could not be attested",
+        message: message.includes("source_changed_since_review")
+          ? "The transcript or scope changed since this review was read. Re-read the meeting, then attest again — the changed source was not attested."
+          : message,
       };
     }
   });

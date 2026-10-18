@@ -124,6 +124,9 @@ export interface MeetingScoreSnapshot {
   coverageCurrent: boolean;
   attestedAt: string | null;
   scopeVersion: number;
+  /** Current server-derived transcript hash, read in the same statement;
+      the value a coverage attestation binds to. */
+  transcriptHash: string | null;
   complete: boolean;
 }
 
@@ -209,6 +212,26 @@ function OutcomeNote({ outcome }: { outcome: ActionOutcome | null }) {
   );
 }
 
+/** A failed READ with a real reload action — never wording alone. */
+function RejectedNote({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: (() => void) | undefined;
+}) {
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-xs text-warning">
+      <AlertCircle aria-hidden className="size-3.5" /> {message}
+      {onRetry ? (
+        <TTButton type="button" variant="secondary" className="h-7 px-2 text-xs" onClick={onRetry}>
+          <RotateCw aria-hidden className="size-3" /> Reload
+        </TTButton>
+      ) : null}
+    </p>
+  );
+}
+
 /* ---------------------------------------------------------- AI panel */
 
 export interface AiPreparationProps {
@@ -225,6 +248,8 @@ export interface AiPreparationProps {
       }) => Promise<ActionOutcome>)
     | undefined;
   onExecuteRun: ((runId: string) => Promise<ActionOutcome>) | undefined;
+  /** Real reload action for a failed run-history read. */
+  onRetryReads?: (() => void) | undefined;
 }
 
 /**
@@ -241,6 +266,7 @@ export function AiPreparationPanel({
   actions,
   onRequestRun,
   onExecuteRun,
+  onRetryReads,
 }: AiPreparationProps) {
   const enabledActions = actions.filter((action) => !action.disabledReason);
   const [selectedAction, setSelectedAction] = useState(enabledActions[0]?.id ?? "");
@@ -359,7 +385,7 @@ export function AiPreparationPanel({
           <RotateCw aria-hidden className="size-3.5" /> Retry same operation
         </TTButton>
       ) : null}
-      <RunHistory runs={runs} busy={attempt.busy} onExecute={execute} />
+      <RunHistory runs={runs} busy={attempt.busy} onExecute={execute} onRetry={onRetryReads} />
     </div>
   );
 }
@@ -368,19 +394,24 @@ function RunHistory({
   runs,
   busy,
   onExecute,
+  onRetry,
 }: {
   runs: RunsRead | undefined;
   busy: boolean;
   onExecute: (runId: string) => Promise<void>;
+  onRetry?: (() => void) | undefined;
 }) {
   if (!runs || runs.kind === "loading") {
     return <p className="text-xs text-muted-foreground">Reading run history…</p>;
   }
-  if (runs.kind === "unavailable" || runs.kind === "rejected") {
+  if (runs.kind === "rejected") {
+    return <RejectedNote message={runs.message} onRetry={onRetry} />;
+  }
+  if (runs.kind === "unavailable") {
     return (
       <p className="flex items-center gap-1.5 text-xs text-warning">
         <AlertCircle aria-hidden className="size-3.5" />
-        {"reason" in runs ? runs.reason : runs.message}
+        {runs.reason}
       </p>
     );
   }
@@ -452,8 +483,38 @@ export interface VerificationPanelProps {
   capability: CapabilityState;
   state: VerificationRead | undefined;
   task: BoardTask;
-  onVerify: ((input: { note: string; operationId: string }) => Promise<ActionOutcome>) | undefined;
-  onReopen: ((input: { note: string; operationId: string }) => Promise<ActionOutcome>) | undefined;
+  onVerify:
+    | ((input: {
+        taskId: string;
+        expectedRevision: number;
+        note: string;
+        operationId: string;
+      }) => Promise<ActionOutcome>)
+    | undefined;
+  onReopen:
+    | ((input: {
+        taskId: string;
+        expectedRevision: number;
+        note: string;
+        operationId: string;
+      }) => Promise<ActionOutcome>)
+    | undefined;
+  /** Real reload action for a failed verification-state read. */
+  onRetryReads?: (() => void) | undefined;
+}
+
+/**
+ * The immutable gesture tuple: action kind, task identity, the revision
+ * the human reviewed and the exact note are captured ONCE at the first
+ * click. A retry after an uncertain transport replays this exact tuple —
+ * never a handler or revision re-derived from refreshed state, so a
+ * background refetch can never turn a verify retry into a reopen.
+ */
+interface VerificationGesture {
+  kind: "verify" | "reopen";
+  taskId: string;
+  expectedRevision: number;
+  note: string;
 }
 
 /**
@@ -468,27 +529,53 @@ export function VerificationPanel({
   task,
   onVerify,
   onReopen,
+  onRetryReads,
 }: VerificationPanelProps) {
   const [note, setNote] = useState("");
-  const attempt = useOperationAttempt<{ note: string }>();
+  const attempt = useOperationAttempt<VerificationGesture>();
 
   if (capability.kind === "unavailable") {
     return <p className="mt-2 text-xs text-muted-foreground">{capability.reason}</p>;
   }
 
   const verified = state?.kind === "ready" && state.task?.status === "complete";
-  const handler = verified ? onReopen : onVerify;
+  const currentRevision =
+    state?.kind === "ready" && state.task ? state.task.revision : task.revision;
 
-  async function act(reuse: typeof attempt.pending) {
+  function dispatch(gesture: VerificationGesture, reuse: typeof attempt.pending) {
+    /* The handler is chosen from the STORED gesture kind, never from the
+       current verified status — a retry after a successful-but-uncertain
+       verify must replay the verify, not become a reopen. */
+    const handler = gesture.kind === "reopen" ? onReopen : onVerify;
+    if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
+    return attempt.run(handler, gesture, reuse);
+  }
+
+  async function act() {
+    /* A new deliberate action is blocked while an operation's outcome is
+       unknown: reconcile (retry) the pending operation first, so two
+       different gestures can never share one identity or race. */
+    if (attempt.pending) return;
     const trimmed = note.trim();
-    if (!handler || trimmed.length < 10) return;
-    const result = await attempt.run(
-      handler,
-      { note: trimmed },
-      reuse && reuse.payload.note === trimmed ? reuse : null,
-    );
+    if (trimmed.length < 10) return;
+    const gesture: VerificationGesture = {
+      kind: verified ? "reopen" : "verify",
+      taskId: task.id,
+      expectedRevision: currentRevision,
+      note: trimmed,
+    };
+    const result = await dispatch(gesture, null);
     /* The note is cleared only on a resolved success; rejected, conflict
        and uncertain outcomes keep the user's words for correction/retry. */
+    if (result.kind === "verified" || result.kind === "reopened") setNote("");
+  }
+
+  async function retry() {
+    /* Replays the EXACT original tuple — kind, task, revision and note as
+       first captured — regardless of refreshed state or edits to the note
+       field since. */
+    if (!attempt.pending) return;
+    const result = await dispatch(attempt.pending.payload, attempt.pending);
     if (result.kind === "verified" || result.kind === "reopened") setNote("");
   }
 
@@ -516,9 +603,7 @@ export function VerificationPanel({
         </ul>
       ) : null}
       {state?.kind === "rejected" ? (
-        <p className="flex items-center gap-1.5 text-xs text-warning">
-          <AlertCircle aria-hidden className="size-3.5" /> {state.message}
-        </p>
+        <RejectedNote message={state.message} onRetry={onRetryReads} />
       ) : null}
       <label className="block">
         <span className="text-xs font-medium text-foreground">
@@ -542,8 +627,8 @@ export function VerificationPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={attempt.busy || note.trim().length < 10 || !onReopen}
-            onClick={() => void act(null)}
+            disabled={attempt.busy || !!attempt.pending || note.trim().length < 10 || !onReopen}
+            onClick={() => void act()}
           >
             Reopen (history preserved)
           </TTButton>
@@ -552,10 +637,10 @@ export function VerificationPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={attempt.busy || note.trim().length < 10 || !onVerify}
-            onClick={() => void act(null)}
+            disabled={attempt.busy || !!attempt.pending || note.trim().length < 10 || !onVerify}
+            onClick={() => void act()}
           >
-            <Check aria-hidden className="size-3.5" /> Verify at revision {task.revision}
+            <Check aria-hidden className="size-3.5" /> Verify at revision {currentRevision}
           </TTButton>
         )}
         {attempt.pending ? (
@@ -564,12 +649,19 @@ export function VerificationPanel({
             variant="secondary"
             className="h-8 px-2 text-xs"
             disabled={attempt.busy}
-            onClick={() => void act(attempt.pending)}
+            onClick={() => void retry()}
           >
             <RotateCw aria-hidden className="size-3.5" /> Retry same operation
           </TTButton>
         ) : null}
       </div>
+      {attempt.pending ? (
+        <p className="text-xs text-warning">
+          One operation’s outcome is unknown. Retry replays the exact original{" "}
+          {attempt.pending.payload.kind} (task …{attempt.pending.payload.taskId.slice(-8)}, revision{" "}
+          {attempt.pending.payload.expectedRevision}); a new action stays blocked until it resolves.
+        </p>
+      ) : null}
       <OutcomeNote outcome={attempt.outcome} />
     </div>
   );
@@ -585,7 +677,22 @@ export interface ScopeReviewPanelProps {
   coverageCapability: CapabilityState;
   proposalCapability: CapabilityState;
   linkTargets: { id: string; title: string }[];
-  onAttestCoverage: ((input: { operationId: string }) => Promise<ActionOutcome>) | undefined;
+  /**
+   * The exact source the human reviewed: current transcript hash and
+   * durable scope version from the consistent score snapshot. Attestation
+   * is bound to these — if the source changed since the review, the
+   * server rejects the attestation instead of attesting an unseen
+   * transcript. Null when the snapshot has not been read; attestation is
+   * then not offered.
+   */
+  expectedSource: { transcriptHash: string; scopeVersion: number } | null;
+  onAttestCoverage:
+    | ((input: {
+        operationId: string;
+        expectedTranscriptHash: string;
+        expectedScopeVersion: number;
+      }) => Promise<ActionOutcome>)
+    | undefined;
   onSyncProposals: ((input: { operationId: string }) => Promise<ActionOutcome>) | undefined;
   /** Explicit durable sync of recorded required tasks into meeting scope. */
   onSyncRequiredScope: ((input: { operationId: string }) => Promise<ActionOutcome>) | undefined;
@@ -603,6 +710,8 @@ export interface ScopeReviewPanelProps {
         operationId: string;
       }) => Promise<ActionOutcome>)
     | undefined;
+  /** Real reload action for failed scope/coverage/proposal reads. */
+  onRetryReads?: (() => void) | undefined;
 }
 
 /**
@@ -613,6 +722,19 @@ export interface ScopeReviewPanelProps {
  * Linked/dismissed proposals stay visible in the decision history with
  * their reasons and targets — decisions never vanish from review.
  */
+/** The simple one-click operations, tagged so a retry replays the exact
+ *  original action — never whichever button happens to be rendered. */
+type SimpleAction = "register" | "attest" | "sync";
+/* Discriminated: an attestation always carries the exact source binding
+   captured at the click; the other simple operations never do. */
+type SimpleGesture =
+  | {
+      action: "attest";
+      expectedTranscriptHash: string;
+      expectedScopeVersion: number;
+    }
+  | { action: "register" | "sync" };
+
 export function ScopeReviewPanel({
   scope,
   coverage,
@@ -621,18 +743,54 @@ export function ScopeReviewPanel({
   coverageCapability,
   proposalCapability,
   linkTargets,
+  expectedSource,
   onAttestCoverage,
   onSyncProposals,
   onSyncRequiredScope,
   onLinkProposal,
   onDismissProposal,
+  onRetryReads,
 }: ScopeReviewPanelProps) {
-  const simple = useOperationAttempt<Record<string, never>>();
+  const simple = useOperationAttempt<SimpleGesture>();
   const linkAttempt = useOperationAttempt<{ proposalId: string; taskId: string }>();
   const dismissAttempt = useOperationAttempt<{ proposalId: string; reason: string }>();
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [linkChoices, setLinkChoices] = useState<Record<string, string>>({});
   const busy = simple.busy || linkAttempt.busy || dismissAttempt.busy;
+
+  function runRegisterOrSync(action: "register" | "sync", reuse: typeof simple.pending) {
+    const handler = action === "register" ? onSyncProposals : onSyncRequiredScope;
+    if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
+    return simple.run((input) => handler({ operationId: input.operationId }), { action }, reuse);
+  }
+
+  function runAttest(reuse: typeof simple.pending) {
+    if (!onAttestCoverage || !expectedSource)
+      return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
+    /* Captured at the gesture: the attestation is bound to the exact
+       transcript hash + scope version the human reviewed. */
+    const gesture: SimpleGesture = {
+      action: "attest",
+      expectedTranscriptHash: expectedSource.transcriptHash,
+      expectedScopeVersion: expectedSource.scopeVersion,
+    };
+    return simple.run(
+      (input) =>
+        input.action === "attest"
+          ? onAttestCoverage({
+              operationId: input.operationId,
+              expectedTranscriptHash: input.expectedTranscriptHash,
+              expectedScopeVersion: input.expectedScopeVersion,
+            })
+          : Promise.resolve({ kind: "rejected" as const, message: "unexpected operation" }),
+      gesture,
+      reuse,
+    );
+  }
+
+  function runSimple(action: SimpleAction, reuse: typeof simple.pending) {
+    return action === "attest" ? runAttest(reuse) : runRegisterOrSync(action, reuse);
+  }
 
   const pending =
     proposals?.kind === "ready" ? proposals.proposals.filter((p) => p.status === "proposed") : [];
@@ -673,8 +831,8 @@ export function ScopeReviewPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={busy || !onSyncProposals}
-            onClick={() => void simple.run(onSyncProposals!, {}, null)}
+            disabled={busy || !!simple.pending || !onSyncProposals}
+            onClick={() => void runSimple("register", null)}
           >
             Register extracted proposals
           </TTButton>
@@ -682,15 +840,22 @@ export function ScopeReviewPanel({
           <p className="text-xs text-muted-foreground">{proposalCapability.reason}</p>
         )}
         {coverageCapability.kind === "enabled" ? (
-          <TTButton
-            type="button"
-            variant="secondary"
-            className="h-8 px-2 text-xs"
-            disabled={busy || !onAttestCoverage}
-            onClick={() => void simple.run(onAttestCoverage!, {}, null)}
-          >
-            Attest current transcript coverage
-          </TTButton>
+          expectedSource ? (
+            <TTButton
+              type="button"
+              variant="secondary"
+              className="h-8 px-2 text-xs"
+              disabled={busy || !!simple.pending || !onAttestCoverage}
+              onClick={() => void runSimple("attest", null)}
+            >
+              Attest current transcript coverage
+            </TTButton>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Coverage attestation needs the current score snapshot read first, so the attestation
+              is bound to the exact transcript and scope version reviewed.
+            </p>
+          )
         ) : (
           <p className="text-xs text-muted-foreground">{coverageCapability.reason}</p>
         )}
@@ -699,26 +864,50 @@ export function ScopeReviewPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={busy}
-            onClick={() => void simple.run(onSyncRequiredScope, {}, null)}
+            disabled={busy || !!simple.pending}
+            onClick={() => void runSimple("sync", null)}
           >
             Sync recorded required tasks into scope
           </TTButton>
         ) : null}
       </div>
+      {simple.pending ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <TTButton
+            type="button"
+            variant="secondary"
+            className="h-8 px-2 text-xs"
+            disabled={simple.busy}
+            onClick={() => void runSimple(simple.pending!.payload.action, simple.pending)}
+          >
+            <RotateCw aria-hidden className="size-3.5" /> Retry same operation (
+            {simple.pending.payload.action})
+          </TTButton>
+          <p className="text-xs text-warning">
+            Outcome unknown — retry replays the exact original action and payload.
+          </p>
+        </div>
+      ) : null}
       {coverage?.kind === "ready" ? (
         <p className="text-xs text-muted-foreground">
           Coverage: {coverage.current ? "confirmed for the current transcript" : "not confirmed"}
           {coverage.attestedAt ? ` · attested ${coverage.attestedAt.slice(0, 10)}` : ""}
         </p>
+      ) : coverage?.kind === "rejected" ? (
+        <RejectedNote message={coverage.message} onRetry={onRetryReads} />
       ) : null}
       {scope?.kind === "ready" ? (
         <p className="text-xs text-muted-foreground">
           Recorded scope: {scope.counts.denominator} required · {scope.counts.verified} verified ·{" "}
           {scope.counts.pendingProposals} proposals pending review
         </p>
+      ) : scope?.kind === "rejected" ? (
+        <RejectedNote message={scope.message} onRetry={onRetryReads} />
       ) : scopeCapability.kind === "unavailable" ? (
         <p className="text-xs text-muted-foreground">{scopeCapability.reason}</p>
+      ) : null}
+      {proposals?.kind === "rejected" ? (
+        <RejectedNote message={proposals.message} onRetry={onRetryReads} />
       ) : null}
       {proposals?.kind === "ready" && pending.length > 0 ? (
         <ul className="space-y-2">
@@ -817,12 +1006,21 @@ export function ScopeReviewPanel({
         </details>
       ) : null}
       <OutcomeNote outcome={simple.outcome ?? linkAttempt.outcome ?? dismissAttempt.outcome} />
-      {simple.pending || linkAttempt.pending || dismissAttempt.pending ? (
+      {linkAttempt.pending || dismissAttempt.pending ? (
         <p className="text-xs text-warning">
           One operation’s outcome is unknown. Re-run the same action — it replays the same operation
           instead of re-executing.
         </p>
       ) : null}
+      {/* Truthful gap: the audited scope amendment contract (005) exists
+          in the proposed SQL, but removal/reinstatement is not wired into
+          this interface — scope can only grow here, never silently
+          shrink. */}
+      <p className="text-xs text-muted-foreground">
+        Removing or reinstating recorded scope is not supported in this interface yet; the audited
+        amendment contract exists in the proposed backend but is not wired here. Recorded required
+        work can only be added, never quietly dropped.
+      </p>
     </div>
   );
 }

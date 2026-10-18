@@ -49,11 +49,17 @@ export function createSupabaseCoverageRepository(supabase: SupabaseClient): Cove
 } {
   return {
     async attest(input) {
-      // transcriptHash/scopeVersion are intentionally NOT sent: the SQL
-      // derives both from the stored conversation and scope version.
+      /* The SQL derives the CURRENT hash/version itself and rejects the
+         attestation when it differs from the reviewed source the caller
+         binds to — a transcript or scope change during review is never
+         silently attested. The operation UUID makes an uncertain retry
+         replay the same attestation instead of attesting a newer source. */
       const { data, error } = await supabase.rpc("steward_attest_coverage", {
         p_org: input.orgId,
         p_conversation: input.conversationId,
+        p_operation: input.operationId,
+        p_expected_hash: input.expectedTranscriptHash,
+        p_expected_scope_version: input.expectedScopeVersion,
       });
       if (error) rethrow(error);
       return mapAttestation(data as AttestationRow);

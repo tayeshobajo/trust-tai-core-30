@@ -137,7 +137,12 @@ select public.test_denied($q$
 -- 5. Scope changes invalidate coverage: attest, then add an item.
 do $$
 begin
-  perform public.steward_attest_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
+  perform public.steward_attest_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c5000000-0000-0000-0000-000000000000',
+    private.steward_transcript_hash('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
+    coalesce((select version from public.steward_scope_versions
+      where organization_id = '11111111-1111-1111-1111-111111111111'
+        and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'), 1));
   perform public.test_assert(
     public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
     'coverage valid before scope change');

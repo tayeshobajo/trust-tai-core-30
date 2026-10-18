@@ -57,7 +57,7 @@ import { TaskEditor } from "./business-task-board";
 import { AppShell } from "@/components/tt/app-shell";
 import { businessWorkQuery, cmdTasks } from "@/data/supabase/cmd-tasks";
 import { mayAddRequiredWork } from "@/domain/steward-required-work";
-import { appendLinkedBusinessWork } from "@/domain/steward-meeting-links";
+import { appendLinkedBusinessWork, workroomRowKey } from "@/domain/steward-meeting-links";
 import { mayEditBoardTask, type BoardEdit, type BoardTask } from "@/domain/cmd-tasks";
 import { useTaskChoices } from "@/data/steward/task-choices";
 
@@ -311,8 +311,19 @@ function useStewardBackend(
 
   return {
     capabilities: resolvedCaps,
+    /* Real reload for failed reads: refetch every backend query. */
+    onRetryReads: () => {
+      void runs.refetch();
+      void verification.refetch();
+      void scope.refetch();
+      void coverage.refetch();
+      void proposals.refetch();
+      void score.refetch();
+    },
     runsFor: (taskId) => {
       if (taskId !== selectedTaskId) return undefined;
+      /* A failed refetch surfaces the error even with stale data cached. */
+      if (runs.isError) return rejected("Run history could not be read; retry to reload it.");
       if (runs.data) {
         return runs.data.kind === "ready"
           ? {
@@ -331,13 +342,15 @@ function useStewardBackend(
             }
           : runs.data;
       }
-      if (runs.isError) return rejected("Run history could not be read; retry to reload it.");
       return runs.isPending && caps?.preparation.kind === "enabled"
         ? { kind: "loading" }
         : undefined;
     },
     verificationFor: (taskId) => {
       if (taskId !== selectedTaskId) return undefined;
+      if (verification.isError) {
+        return rejected("Verification state could not be read; retry to reload it.");
+      }
       if (verification.data) {
         if (verification.data.kind !== "ready") return verification.data;
         return {
@@ -357,20 +370,26 @@ function useStewardBackend(
           })),
         };
       }
-      if (verification.isError) {
-        return rejected("Verification state could not be read; retry to reload it.");
-      }
       return verification.isPending && caps?.verification.kind === "enabled"
         ? { kind: "loading" }
         : undefined;
     },
     scoreFor: (id) => {
       if (id !== meetingId) return undefined;
-      if (score.data) return score.data;
+      /* A failed refetch must surface the error even when stale data is
+         still cached — a stale 100 after a failed read is never shown. */
       if (score.isError) {
         return rejected("The consistent score snapshot could not be read; retry to reload it.");
       }
-      return score.isPending && caps?.scope.kind === "enabled" ? { kind: "loading" } : undefined;
+      if (score.data) return score.data;
+      if (caps?.scope.kind === "enabled") {
+        return score.isPending ? { kind: "loading" } : undefined;
+      }
+      /* Capability OFF: explicitly unavailable, never a forever-loading
+         "Reading recorded scope…" state. */
+      return resolvedCaps.scope.kind === "unavailable"
+        ? { kind: "unavailable", reason: resolvedCaps.scope.reason }
+        : undefined;
     },
     meetingState: (id) => {
       if (id !== meetingId) return undefined;
@@ -379,13 +398,22 @@ function useStewardBackend(
         coverage?: import("./workroom-backend-panels").CoverageRead;
         proposals?: import("./workroom-backend-panels").ProposalReviewRead;
       } = {};
-      if (scope.data) {
-        state.scope =
-          scope.data.kind === "ready" ? { kind: "ready", counts: scope.data.counts } : scope.data;
+      /* Capability OFF maps to an explicit unavailable state — a disabled
+         query stays isPending forever and must never render as
+         "Reading recorded scope…". */
+      if (resolvedCaps.scope.kind === "unavailable") {
+        state.scope = { kind: "unavailable", reason: resolvedCaps.scope.reason };
       } else if (scope.isError) {
         state.scope = rejected("Recorded scope could not be read; retry to reload it.");
+      } else if (scope.data) {
+        state.scope =
+          scope.data.kind === "ready" ? { kind: "ready", counts: scope.data.counts } : scope.data;
       } else if (scope.isPending) state.scope = { kind: "loading" };
-      if (coverage.data) {
+      if (resolvedCaps.coverage.kind === "unavailable") {
+        state.coverage = { kind: "unavailable", reason: resolvedCaps.coverage.reason };
+      } else if (coverage.isError) {
+        state.coverage = rejected("Coverage state could not be read; retry to reload it.");
+      } else if (coverage.data) {
         state.coverage =
           coverage.data.kind === "ready"
             ? {
@@ -394,10 +422,12 @@ function useStewardBackend(
                 attestedAt: coverage.data.latest?.attestedAt ?? null,
               }
             : coverage.data;
-      } else if (coverage.isError) {
-        state.coverage = rejected("Coverage state could not be read; retry to reload it.");
       } else if (coverage.isPending) state.coverage = { kind: "loading" };
-      if (proposals.data) {
+      if (resolvedCaps.proposals.kind === "unavailable") {
+        state.proposals = { kind: "unavailable", reason: resolvedCaps.proposals.reason };
+      } else if (proposals.isError) {
+        state.proposals = rejected("Proposal review state could not be read; retry to reload it.");
+      } else if (proposals.data) {
         state.proposals =
           proposals.data.kind === "ready"
             ? {
@@ -420,8 +450,6 @@ function useStewardBackend(
                 })),
               }
             : proposals.data;
-      } else if (proposals.isError) {
-        state.proposals = rejected("Proposal review state could not be read; retry to reload it.");
       } else if (proposals.isPending) state.proposals = { kind: "loading" };
       return state;
     },
@@ -441,43 +469,64 @@ function useStewardBackend(
     onExecuteRun: async (runId) => {
       const result = await runCanonicalRunWorkerFn({ data: { runId } });
       await invalidate();
+      /* The worker envelope wraps the execute outcome; unwrap it
+         faithfully so a nested "uncertain"/"failed" is never flattened
+         into a generic "result". */
+      const inner = result as {
+        kind: string;
+        result?: { kind: string; reason?: string; message?: string };
+      };
+      if (inner.kind === "result" && inner.result) return outcomeOf(inner.result);
       return outcomeOf(result);
     },
     onVerify: async (input) => {
-      const task = verification.data?.kind === "ready" ? verification.data.read.task : null;
-      if (!task)
-        return { kind: "rejected", message: "Task state could not be read; not verified." };
+      /* The expected revision comes from the immutable gesture captured at
+         the first click — never re-read from refreshed state, so a retry
+         after an uncertain transport replays the exact original tuple. */
       const result = await verifyCanonicalTaskFn({
         data: {
           orgId: org,
           taskId: input.taskId,
-          expectedRevision: task.revision,
+          expectedRevision: input.expectedRevision,
           operationId: input.operationId,
           note: input.note,
         },
       });
       await invalidate();
+      /* Verified state changes what the business-work projection shows. */
+      await queryClient.invalidateQueries({
+        queryKey: businessWorkQuery(org, identity.userId).queryKey,
+      });
       return outcomeOf(result);
     },
     onReopen: async (input) => {
-      const task = verification.data?.kind === "ready" ? verification.data.read.task : null;
-      if (!task)
-        return { kind: "rejected", message: "Task state could not be read; not reopened." };
       const result = await reopenCanonicalTaskFn({
         data: {
           orgId: org,
           taskId: input.taskId,
-          expectedRevision: task.revision,
+          expectedRevision: input.expectedRevision,
           operationId: input.operationId,
           note: input.note,
         },
       });
       await invalidate();
+      await queryClient.invalidateQueries({
+        queryKey: businessWorkQuery(org, identity.userId).queryKey,
+      });
       return outcomeOf(result);
     },
     onAttestCoverage: async (input) => {
+      /* Bound to the exact transcript hash + scope version the human
+         reviewed; the server rejects drift instead of attesting an unseen
+         source. */
       const result = await attestMeetingCoverageFn({
-        data: { orgId: org, conversationId: input.meetingId, operationId: input.operationId },
+        data: {
+          orgId: org,
+          conversationId: input.meetingId,
+          operationId: input.operationId,
+          expectedTranscriptHash: input.expectedTranscriptHash,
+          expectedScopeVersion: input.expectedScopeVersion,
+        },
       });
       await invalidate();
       return outcomeOf(result);
@@ -536,7 +585,6 @@ function StewardWorkroomContent({
 }) {
   const queryClient = useQueryClient();
   const org = identity.organizationId;
-  const backend = useStewardBackend(identity, selection);
   const business = useQuery(businessWorkQuery(org, identity.userId));
   const conversations = useQuery({
     queryKey: ["steward", "workroom", "conversations", org],
@@ -637,6 +685,21 @@ function StewardWorkroomContent({
       ),
     [meetings, business.data, business.isError, business.isPending, org],
   );
+
+  /* The view defaults to the first row of the selected meeting when the
+     URL carries a meeting only. The backend queries must use the SAME
+     effective selection, or the initially shown task loads no state until
+     the user clicks it again. */
+  const effectiveSelection = useMemo<WorkroomSelection | undefined>(() => {
+    if (!selection?.meetingId) return selection;
+    if (selection.rowKey) return selection;
+    const meeting = linkedMeetings.find((m) => m.id === selection.meetingId);
+    const firstRow = meeting?.rows[0];
+    if (!firstRow) return selection;
+    return { meetingId: selection.meetingId, rowKey: workroomRowKey(firstRow) };
+  }, [selection, linkedMeetings]);
+
+  const backend = useStewardBackend(identity, effectiveSelection);
 
   if (conversations.isPending || commitments.isPending || receipts.isPending) {
     return <p className="p-6 text-sm text-muted-foreground">Reading stored meetings…</p>;

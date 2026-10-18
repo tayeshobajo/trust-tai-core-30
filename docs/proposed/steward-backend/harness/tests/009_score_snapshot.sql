@@ -32,8 +32,14 @@ end $$;
 do $$
 declare snap jsonb;
 begin
-  perform public.steward_attest_coverage(
+  snap := public.steward_meeting_score_snapshot(
     '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
+  perform public.test_assert(snap->>'transcriptHash' is not null,
+    'snapshot exposes the current transcript hash for review binding');
+  perform public.steward_attest_coverage(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c9000000-0000-0000-0000-000000000000',
+    snap->>'transcriptHash', (snap->>'scopeVersion')::integer);
   snap := public.steward_meeting_score_snapshot(
     '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
   perform public.test_assert((snap->>'coverageCurrent')::boolean,

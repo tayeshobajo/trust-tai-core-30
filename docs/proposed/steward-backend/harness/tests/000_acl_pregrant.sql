@@ -19,6 +19,12 @@ begin
     not has_function_privilege('anon', 'public.steward_scope_counts(uuid,uuid)', 'execute'),
     'pre-grant: anon cannot execute counts');
   perform public.test_assert(
-    not has_function_privilege('public', 'public.steward_attest_coverage(uuid,uuid)', 'execute'),
+    not has_function_privilege('public', 'public.steward_attest_coverage(uuid,uuid,uuid,text,integer)', 'execute'),
     'pre-grant: PUBLIC cannot execute attest');
+  perform public.test_assert(
+    not has_function_privilege('authenticated', 'public.steward_meeting_score_snapshot(uuid,uuid)', 'execute'),
+    'pre-grant: authenticated cannot execute the score snapshot');
+  perform public.test_assert(
+    not has_function_privilege('anon', 'public.steward_meeting_score_snapshot(uuid,uuid)', 'execute'),
+    'pre-grant: anon cannot execute the score snapshot');
 end $$;

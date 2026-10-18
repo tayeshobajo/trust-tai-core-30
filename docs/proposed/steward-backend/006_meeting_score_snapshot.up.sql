@@ -56,6 +56,9 @@ begin
     'coverageCurrent', coverage_current,
     'attestedAt', attestation.attested_at,
     'scopeVersion', v_scope_version,
+    -- The current stored transcript hash, so a coverage attestation can
+    -- be bound to the exact source the human reviewed (003).
+    'transcriptHash', hash,
     'complete', counts.denominator > 0
       and counts.verified = counts.denominator
       and counts.pending_proposals = 0
@@ -64,5 +67,6 @@ begin
 end;
 $$;
 
+-- Revoke only. The executable grant lives in grants.review.sql, which is
+-- review-only and applied explicitly by a reviewer after the patches land.
 revoke all on function public.steward_meeting_score_snapshot(uuid, uuid) from public, anon, authenticated;
-grant execute on function public.steward_meeting_score_snapshot(uuid, uuid) to authenticated;

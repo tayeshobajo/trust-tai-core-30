@@ -22,10 +22,18 @@ export interface CoverageAttestation {
 
 /** Minimal repository contract over the proposed SQL functions. */
 export interface CoverageRepository {
-  /* The transcript hash and scope version are derived INSIDE the SQL from
-     the stored conversation — the caller supplies neither, so coverage can
-     never be attested against a caller-invented hash. */
-  attest(input: { orgId: string; conversationId: string }): Promise<CoverageAttestation>;
+  /* The attestation is bound to the exact source the human reviewed: the
+     SQL derives the CURRENT hash/version itself and rejects the call when
+     it differs from expectedTranscriptHash/expectedScopeVersion, so a
+     source change during review is never silently attested. The operation
+     UUID makes an uncertain-transport retry replay the same attestation. */
+  attest(input: {
+    orgId: string;
+    conversationId: string;
+    operationId: string;
+    expectedTranscriptHash: string;
+    expectedScopeVersion: number;
+  }): Promise<CoverageAttestation>;
   currentCoverage(input: { orgId: string; conversationId: string }): Promise<boolean>;
 }
 
@@ -53,20 +61,25 @@ export async function resolveCoverage(
   return { kind: "confirmed", attestation: latest };
 }
 
-/** Record a new attestation. Supersedes any prior current attestation in
- *  the same transaction (handled by the SQL function). */
+/** Record a new attestation bound to the exact reviewed source. The SQL
+ *  supersedes any prior current attestation in the same transaction and
+ *  rejects the call when the stored source drifted from the reviewed one. */
 export async function attestCoverage(
   repo: CoverageRepository,
   input: {
     orgId: string;
     conversationId: string;
-    transcriptHash: string;
-    scopeVersion: number;
+    operationId: string;
+    expectedTranscriptHash: string;
+    expectedScopeVersion: number;
     actorId: string;
   },
 ): Promise<CoverageAttestation> {
-  if (input.transcriptHash.trim().length < 16) {
+  if (input.expectedTranscriptHash.trim().length < 16) {
     throw new Error("a real transcript digest (at least 16 characters) is required");
+  }
+  if (!Number.isInteger(input.expectedScopeVersion) || input.expectedScopeVersion < 1) {
+    throw new Error("a real scope version is required");
   }
   return repo.attest(input);
 }

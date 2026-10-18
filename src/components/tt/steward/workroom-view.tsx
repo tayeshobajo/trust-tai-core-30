@@ -91,15 +91,25 @@ export interface WorkroomBackend {
   onExecuteRun?: (runId: string) => Promise<ActionOutcome>;
   onVerify?: (input: {
     taskId: string;
+    expectedRevision: number;
     note: string;
     operationId: string;
   }) => Promise<ActionOutcome>;
   onReopen?: (input: {
     taskId: string;
+    expectedRevision: number;
     note: string;
     operationId: string;
   }) => Promise<ActionOutcome>;
-  onAttestCoverage?: (input: { meetingId: string; operationId: string }) => Promise<ActionOutcome>;
+  onAttestCoverage?: (input: {
+    meetingId: string;
+    operationId: string;
+    expectedTranscriptHash: string;
+    expectedScopeVersion: number;
+  }) => Promise<ActionOutcome>;
+  /** Real reload action for failed backend reads (runs, verification,
+      scope, coverage, proposals, score). */
+  onRetryReads?: () => void;
   onSyncProposals?: (input: { meetingId: string; operationId: string }) => Promise<ActionOutcome>;
   onSyncRequiredScope?: (input: {
     meetingId: string;
@@ -441,19 +451,16 @@ function TaskDetail({
           </p>
           {backend ? (
             <VerificationPanel
+              /* Keyed by meeting + canonical task: a pending operation can
+                 never be retargeted onto another task after selection
+                 changes — a new task mounts a fresh panel. */
+              key={`${meeting.id}:${row.boardTask.id}`}
               capability={backend.capabilities.verification}
               state={backend.verificationFor?.(row.boardTask.id)}
               task={row.boardTask}
-              onVerify={
-                backend.onVerify
-                  ? (input) => backend.onVerify!({ taskId: row.boardTask!.id, ...input })
-                  : undefined
-              }
-              onReopen={
-                backend.onReopen
-                  ? (input) => backend.onReopen!({ taskId: row.boardTask!.id, ...input })
-                  : undefined
-              }
+              onVerify={backend.onVerify}
+              onReopen={backend.onReopen}
+              onRetryReads={backend.onRetryReads}
             />
           ) : (
             <p className="text-xs text-muted-foreground">
@@ -533,6 +540,7 @@ function TaskDetail({
         </p>
         {row.boardTask && backend ? (
           <AiPreparationPanel
+            key={`${meeting.id}:${row.boardTask.id}`}
             capability={backend.capabilities.preparation}
             runs={backend.runsFor?.(row.boardTask.id)}
             task={row.boardTask}
@@ -557,6 +565,7 @@ function TaskDetail({
                 : undefined
             }
             onExecuteRun={backend.onExecuteRun}
+            onRetryReads={backend.onRetryReads}
           />
         ) : row.boardTask ? (
           <>
@@ -818,14 +827,23 @@ export function WorkroomView({
   const meeting = meetings.find((m) => m.id === selectedMeeting) ?? meetings[0] ?? null;
 
   const owners = meeting ? Array.from(new Set(meeting.rows.map((r) => r.owner.label))).sort() : [];
+  /* When the canonical verification contract is enabled, raw board
+     progress is never treated as verified: a row is verified only when its
+     canonical read says so, and unknown (never false-verified) when that
+     read is absent. Commitment rows keep their receipt-derived state. */
+  const canonicalVerification = backend?.capabilities.verification.kind === "enabled";
+  const rowVerified = (r: WorkroomRow): boolean | null => {
+    if (!canonicalVerification) return r.verified;
+    if (r.kind === "commitment") return r.verified;
+    const read = r.boardTask ? backend?.verificationFor?.(r.boardTask.id) : undefined;
+    if (read?.kind === "ready" && read.task) return read.task.status === "complete";
+    return null;
+  };
   const visibleRows = meeting
     ? meeting.rows.filter((r) => {
-        if (
-          rowFilter === "open" &&
-          (r.verified || (r.kind !== "required-task" && r.boardTask?.status === "complete"))
-        )
-          return false;
-        if (rowFilter === "verified" && !r.verified) return false;
+        const verified = rowVerified(r);
+        if (rowFilter === "open" && verified === true) return false;
+        if (rowFilter === "verified" && verified !== true) return false;
         if (ownerFilter !== "everyone" && r.owner.label !== ownerFilter) return false;
         if (taskQuery.trim() && !r.what.toLowerCase().includes(taskQuery.trim().toLowerCase()))
           return false;
@@ -924,9 +942,18 @@ export function WorkroomView({
                 {(() => {
                   /* The consistent server snapshot, when the staged
                      contract is active, overrides the local derivation for
-                     this row too — nav, card and footer never disagree. */
-                  const navScore = backend?.scoreFor
-                    ? serverMeetingScore(backend.scoreFor(m.id))
+                     this row too — nav, card and footer never disagree.
+                     When the contract is active but THIS meeting's
+                     snapshot has not been read (only the selected meeting
+                     is queried), the row is honestly unknown — never a
+                     stale local 100. */
+                  const canonicalActive =
+                    !!backend?.scoreFor && backend.capabilities.scope.kind === "enabled";
+                  const navScore = canonicalActive
+                    ? (serverMeetingScore(backend.scoreFor!(m.id)) ?? {
+                        value: null,
+                        label: "score not read for this meeting",
+                      })
                     : null;
                   const pillValue = navScore
                     ? navScore.value === null
@@ -1030,6 +1057,9 @@ export function WorkroomView({
           </summary>
           <div className="mt-2">
             <ScopeReviewPanel
+              /* Keyed by meeting: a pending operation can never retarget
+                 onto another meeting after selection changes. */
+              key={meeting.id}
               scope={backend.meetingState?.(meeting.id)?.scope}
               coverage={backend.meetingState?.(meeting.id)?.coverage}
               proposals={backend.meetingState?.(meeting.id)?.proposals}
@@ -1039,6 +1069,20 @@ export function WorkroomView({
               linkTargets={meeting.rows
                 .filter((r) => r.boardTask)
                 .map((r) => ({ id: r.boardTask!.id, title: r.boardTask!.title }))}
+              /* The exact source under review, from the consistent
+                 snapshot: attestation binds to this hash + version, and
+                 the server rejects drift instead of attesting an unseen
+                 source. Null until the snapshot has been read. */
+              expectedSource={(() => {
+                const read = backend.scoreFor?.(meeting.id);
+                return read?.kind === "ready" && read.snapshot.transcriptHash
+                  ? {
+                      transcriptHash: read.snapshot.transcriptHash,
+                      scopeVersion: read.snapshot.scopeVersion,
+                    }
+                  : null;
+              })()}
+              onRetryReads={backend.onRetryReads}
               onAttestCoverage={
                 backend.onAttestCoverage
                   ? (input) => backend.onAttestCoverage!({ meetingId: meeting.id, ...input })
@@ -1128,11 +1172,21 @@ export function WorkroomView({
                  never a stale or zero number. */
               [
                 "open",
-                receiptsFailed || (linkedRead && linkedRead.state !== "ready")
+                receiptsFailed ||
+                (linkedRead && linkedRead.state !== "ready") ||
+                (canonicalVerification && meeting.rows.some((r) => rowVerified(r) === null))
                   ? "Open —"
-                  : `Open ${meeting.rows.filter((r) => !r.verified && (r.kind === "required-task" || r.boardTask?.status !== "complete")).length}`,
+                  : `Open ${meeting.rows.filter((r) => rowVerified(r) !== true).length}`,
               ],
-              ["verified", receiptsFailed ? "Verified —" : `Verified ${meeting.done}`],
+              [
+                "verified",
+                receiptsFailed ||
+                (canonicalVerification && meeting.rows.some((r) => rowVerified(r) === null))
+                  ? "Verified —"
+                  : canonicalVerification
+                    ? `Verified ${meeting.rows.filter((r) => rowVerified(r) === true).length}`
+                    : `Verified ${meeting.done}`,
+              ],
             ] as [RowFilter, string][]
           ).map(([value, label]) => (
             <TTButton
