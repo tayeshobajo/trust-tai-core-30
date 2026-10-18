@@ -8,6 +8,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
+import type { BoardTask } from "@/domain/cmd-tasks";
 import {
   ScopeReviewPanel,
   VerificationPanel,
@@ -15,10 +16,30 @@ import {
 
 const enabled = { kind: "enabled" as const };
 
-const fictionalTask = {
+const fictionalTask: BoardTask = {
   id: "00000000-0000-4000-8000-000000000099",
+  organization_id: "00000000-0000-4000-8000-000000000001",
   title: "Fictional required task — confirm the roadmap scope",
+  task_visibility: "business",
+  owner_user_id: "00000000-0000-4000-8000-0000000000aa",
+  owner_label: "Fictional Owner",
+  created_by: "00000000-0000-4000-8000-0000000000aa",
+  status: "open",
+  next_action: "",
+  blocked_because: "",
+  depends_on_task_id: null,
+  parent_task_id: null,
+  completion_evidence: "",
+  completed_at: null,
+  completed_by: null,
+  archived_at: null,
+  due_at: null,
+  updated_at: "2026-01-05T10:00:00.000Z",
   revision: 3,
+  acceptance_criteria: [],
+  context_links: [],
+  notes: null,
+  correlation_id: null,
 };
 
 const fictionalScope = {
