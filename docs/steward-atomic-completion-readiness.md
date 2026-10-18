@@ -79,6 +79,13 @@ existing RLS and add no tables/policies/grants beyond function execution.
 
 Existing selected-history, receipt, refresh and service regression tests are run
 for preservation only. They do not validate an unimplemented atomic RPC.
+`bunx vitest run src/components/tt/steward/task-history.test.tsx
+src/components/tt/steward/workroom-receipts.test.ts
+src/data/steward/recent-sync.test.ts src/data/supabase/steward-service.test.ts
+src/domain/steward-workroom.test.ts` exited **0**, with **45 tests passing**
+across five files. No TypeScript/UI/service implementation files changed;
+changed-file source lint therefore has no applicable files and was not run.
+The automatic preview log reported **build OK** at 01:15:21 UTC.
 No UI changed, so no new screenshots were captured. Manual project compiler
 and build runs remain prohibited by the environment; automatic preview
 validation supplies build health, not an independently claimed compiler exit.
