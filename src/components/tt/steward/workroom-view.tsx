@@ -556,6 +556,10 @@ export function WorkroomView({
   historyFor,
   linkedRead,
   onAddRequiredTask,
+  selection,
+  onSelect,
+  onEditTaskField,
+  taskById,
 }: WorkroomViewProps) {
   const viewportCompact = useCompact();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -571,8 +575,12 @@ export function WorkroomView({
   }, [embedded]);
   const compact = embedded ? canvasCompact : viewportCompact;
   const TaskArea = embedded ? "section" : "main";
-  const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
-  const [selectedRow, setSelectedRow] = useState<string | null>(null);
+  const [localMeeting, setLocalMeeting] = useState<string | null>(null);
+  const [localRow, setLocalRow] = useState<string | null>(null);
+  /* Controlled (URL) selection when the route provides it; local state in
+     isolated fixtures. */
+  const selectedMeeting = selection ? selection.meetingId : localMeeting;
+  const selectedRow = selection ? selection.rowKey : localRow;
   const [meetingQuery, setMeetingQuery] = useState("");
   const [taskQuery, setTaskQuery] = useState("");
   const [ownerFilter, setOwnerFilter] = useState("everyone");
