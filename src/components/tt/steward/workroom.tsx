@@ -313,6 +313,8 @@ function useStewardBackend(
     capabilities: resolvedCaps,
     runsFor: (taskId) => {
       if (taskId !== selectedTaskId) return undefined;
+      /* A failed refetch surfaces the error even with stale data cached. */
+      if (runs.isError) return rejected("Run history could not be read; retry to reload it.");
       if (runs.data) {
         return runs.data.kind === "ready"
           ? {
@@ -331,13 +333,15 @@ function useStewardBackend(
             }
           : runs.data;
       }
-      if (runs.isError) return rejected("Run history could not be read; retry to reload it.");
       return runs.isPending && caps?.preparation.kind === "enabled"
         ? { kind: "loading" }
         : undefined;
     },
     verificationFor: (taskId) => {
       if (taskId !== selectedTaskId) return undefined;
+      if (verification.isError) {
+        return rejected("Verification state could not be read; retry to reload it.");
+      }
       if (verification.data) {
         if (verification.data.kind !== "ready") return verification.data;
         return {
