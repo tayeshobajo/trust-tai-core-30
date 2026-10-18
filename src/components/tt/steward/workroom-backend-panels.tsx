@@ -718,11 +718,15 @@ export interface ScopeReviewPanelProps {
 /** The simple one-click operations, tagged so a retry replays the exact
  *  original action — never whichever button happens to be rendered. */
 type SimpleAction = "register" | "attest" | "sync";
-interface SimpleGesture {
-  action: SimpleAction;
-  expectedTranscriptHash?: string;
-  expectedScopeVersion?: number;
-}
+/* Discriminated: an attestation always carries the exact source binding
+   captured at the click; the other simple operations never do. */
+type SimpleGesture =
+  | {
+      action: "attest";
+      expectedTranscriptHash: string;
+      expectedScopeVersion: number;
+    }
+  | { action: "register" | "sync" };
 
 export function ScopeReviewPanel({
   scope,
