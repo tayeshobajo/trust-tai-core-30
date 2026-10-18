@@ -1038,11 +1038,41 @@ export function ScopeReviewPanel({
         </details>
       ) : null}
       <OutcomeNote outcome={simple.outcome ?? linkAttempt.outcome ?? dismissAttempt.outcome} />
-      {linkAttempt.pending || dismissAttempt.pending ? (
-        <p className="text-xs text-warning">
-          One operation’s outcome is unknown. Re-run the same action — it replays the same operation
-          instead of re-executing.
-        </p>
+      {linkAttempt.pending ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <TTButton
+            type="button"
+            variant="secondary"
+            className="h-8 px-2 text-xs"
+            disabled={linkAttempt.busy}
+            onClick={() => void retryLink()}
+          >
+            <RotateCw aria-hidden className="size-3.5" /> Retry same operation (link)
+          </TTButton>
+          <p className="text-xs text-warning">
+            Outcome unknown — retry replays the exact original link (proposal …
+            {linkAttempt.pending.payload.proposalId.slice(-8)}, task …
+            {linkAttempt.pending.payload.taskId.slice(-8)}); a new link stays blocked until it
+            resolves.
+          </p>
+        </div>
+      ) : null}
+      {dismissAttempt.pending ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <TTButton
+            type="button"
+            variant="secondary"
+            className="h-8 px-2 text-xs"
+            disabled={dismissAttempt.busy}
+            onClick={() => void retryDismiss()}
+          >
+            <RotateCw aria-hidden className="size-3.5" /> Retry same operation (dismiss)
+          </TTButton>
+          <p className="text-xs text-warning">
+            Outcome unknown — retry replays the exact original dismissal and reason; a new dismiss
+            stays blocked until it resolves.
+          </p>
+        </div>
       ) : null}
       {/* Truthful gap: the audited scope amendment contract (005) exists
           in the proposed SQL, but removal/reinstatement is not wired into
