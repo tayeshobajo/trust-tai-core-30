@@ -1176,6 +1176,18 @@ export function WorkroomView({
         </Link>
       ) : null}
 
+      {canonicalVerification && projection?.kind === "rejected" ? (
+        <p role="alert" className="mt-2 text-xs text-warning">
+          Canonical verification for this meeting’s tasks could not be read as one projection —
+          verified counts and filters are unknown, not zero. {projection.message}
+        </p>
+      ) : null}
+      {canonicalVerification && projection?.kind === "ready" && projection.truncated ? (
+        <p role="status" className="mt-2 text-xs text-warning">
+          Only part of this meeting’s tasks fit one consistent verification read; verified counts
+          cover the shown subset only.
+        </p>
+      ) : null}
       {linkedRead ? (
         <div
           role={linkedRead.state === "error" ? "alert" : "status"}
