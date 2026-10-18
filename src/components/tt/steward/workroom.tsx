@@ -667,10 +667,39 @@ function StewardWorkroomContent({
         onAddRequiredTask={
           mayAddRequiredWork(identity)
             ? async (draft) => {
-                await cmdTasks.createRequired(identity, draft);
+                const created = await cmdTasks.createRequired(identity, draft);
+                /* When the durable scope contract is active, the same
+                   explicit gesture records the new required task in the
+                   meeting scope so the denominator grows immediately. The
+                   same operation UUID traces both writes. A scope failure
+                   is reported honestly: the task exists, and the explicit
+                   "Sync required scope" control retries the scope side. */
+                if (backend.capabilities.scope.kind === "enabled") {
+                  const scopeResult = await addScopeItemFn({
+                    data: {
+                      orgId: org,
+                      conversationId: draft.meetingId,
+                      taskId: created.id,
+                      classification: "manual_required",
+                      operationId: draft.operationId,
+                    },
+                  });
+                  if (scopeResult.kind !== "applied") {
+                    throw new Error(
+                      `The task was recorded, but adding it to the meeting scope failed: ${
+                        "message" in scopeResult
+                          ? scopeResult.message
+                          : "reason" in scopeResult
+                            ? scopeResult.reason
+                            : "unknown error"
+                      }. Use Sync required scope to retry.`,
+                    );
+                  }
+                }
                 await queryClient.invalidateQueries({
                   queryKey: businessWorkQuery(org, identity.userId).queryKey,
                 });
+                await queryClient.invalidateQueries({ queryKey: ["steward"] });
               }
             : undefined
         }
