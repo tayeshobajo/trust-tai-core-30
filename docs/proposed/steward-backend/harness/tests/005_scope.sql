@@ -107,19 +107,21 @@ set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
 -- 4. Idempotent add replay; changed payload with same UUID conflicts;
---    duplicate task in scope conflicts; personal task rejected.
+--    duplicate task in scope conflicts; personal task rejected. Task 2's
+--    add operation (d1…002) is the replayable one; task 1 entered scope
+--    via the 004 link operation, so a fresh add UUID on it must conflict.
 do $$
 declare i public.steward_scope_items;
 begin
   i := public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
-    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000001',
-    'transcript', 'd1000000-0000-0000-0000-000000000001');
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000002',
+    'manual_required', 'd1000000-0000-0000-0000-000000000002');
   perform public.test_assert(i.id is not null, 'same add operation replays');
 end $$;
 select public.test_denied($q$
   select public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
-    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000001',
-    'manual_required', 'd1000000-0000-0000-0000-000000000001') $q$,
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000002',
+    'transcript', 'd1000000-0000-0000-0000-000000000002') $q$,
   'reused add UUID with changed classification conflicts');
 select public.test_denied($q$
   select public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
