@@ -44,7 +44,10 @@ export interface ProposalLinkRepository {
 export type LinkProposalResult =
   | { kind: "linked"; link: ProposalLink; replayed: boolean }
   | { kind: "conflict"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  /* Transport ambiguity after send: the link may be durable. The caller
+     keeps the pending operation for a same-id replay. */
+  | { kind: "uncertain"; message: string };
 
 /**
  * Record an explicit human decision linking a proposal to an EXISTING
@@ -53,6 +56,8 @@ export type LinkProposalResult =
  * conflicts. The task must already exist in the org — linking never creates
  * a duplicate task or commitment.
  */
+
+import { classifyMutationError } from "./steward-mutation-outcome";
 export async function linkProposalToTask(
   repo: ProposalLinkRepository,
   input: {
@@ -73,6 +78,9 @@ export async function linkProposalToTask(
     if (code === "P0030" || error instanceof ProposalLinkConflictError) {
       return { kind: "conflict", message };
     }
-    return { kind: "rejected", message };
+    /* Known contract answers are resolved; anything else (transport loss,
+       5xx, malformed response after send) is UNCERTAIN — the link may
+       have committed, so the same operation must be replayed. */
+    return classifyMutationError(error);
   }
 }
