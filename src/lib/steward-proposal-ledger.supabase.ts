@@ -30,6 +30,7 @@ function mapRow(row: LedgerRow): LedgerProposal {
     organizationId: row.organization_id,
     conversationId: row.conversation_id,
     sourceKey: row.source_key,
+    evidence: (row.evidence as unknown[] | undefined) ?? [],
     kind: row.kind,
     statement: row.statement,
     status: row.status,

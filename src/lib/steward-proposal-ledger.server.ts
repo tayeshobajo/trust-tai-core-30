@@ -23,6 +23,8 @@ export interface LedgerProposal {
   kind: string;
   statement: string;
   status: "proposed" | "linked" | "dismissed";
+  /** Retained extractor evidence refs for human review. */
+  evidence?: unknown[];
 }
 
 /** Extraction output shape consumed from src/data/steward/extract.ts. */
