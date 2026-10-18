@@ -80,9 +80,7 @@ function psql(statements: string): string {
 }
 
 function asUser(userId: string, statement: string): string {
-  return psql(
-    `set role authenticated; select public.test_act_as(${lit(userId)}); ${statement}`,
-  );
+  return psql(`set role authenticated; select public.test_act_as(${lit(userId)}); ${statement}`);
 }
 
 function asWorker(statement: string): string {
@@ -151,9 +149,7 @@ function createPsqlRunRepository(actorId: string): CanonicalRunRepository {
   return {
     async requestRun(input) {
       try {
-        const refs = JSON.stringify(
-          input.inputRefs.map((r) => ({ kind: r.kind, id: r.id })),
-        );
+        const refs = JSON.stringify(input.inputRefs.map((r) => ({ kind: r.kind, id: r.id })));
         const raw = asUser(
           actorId,
           `select public.steward_request_canonical_run(${lit(input.orgId)}, ${lit(input.taskId)}, ${lit(input.action)}, ${lit(input.operationId)}, ${lit(refs)}::jsonb)`,
@@ -456,7 +452,8 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
       note: "Reviewed the draft brief against the recorded call; it matches.",
       actorId: OWNER,
     });
-    if (verified.kind !== "verified") throw new Error(`verify rejected: ${JSON.stringify(verified)}`);
+    if (verified.kind !== "verified")
+      throw new Error(`verify rejected: ${JSON.stringify(verified)}`);
     expect(verified.kind).toBe("verified");
     if (verified.kind === "verified") {
       expect(verified.replayed).toBe(false);
@@ -510,10 +507,7 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
 
     // Real extractor over the REAL stored transcript contract.
     const transcript = parseJson<{ segments: { speaker: string; text: string; offset: number }[] }>(
-      asUser(
-        OWNER,
-        `select transcript from public.conversations where id = ${lit(CONVERSATION)}`,
-      ),
+      asUser(OWNER, `select transcript from public.conversations where id = ${lit(CONVERSATION)}`),
     );
     const normalized: NormalizedConversation = {
       sourceRef: { provider: "fathom", externalId: CONVERSATION, url: "" },

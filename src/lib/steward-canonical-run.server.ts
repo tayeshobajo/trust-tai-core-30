@@ -319,9 +319,18 @@ export async function authorizeWorkerEndpoint(
   rls: {
     from: (table: string) => {
       select: (cols: string) => {
-        eq: (col: string, val: string) => {
-          eq: (col: string, val: string) => {
-            eq: (col: string, val: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => {
+          eq: (
+            col: string,
+            val: string,
+          ) => {
+            eq: (
+              col: string,
+              val: string,
+            ) => {
               maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
             };
             maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
@@ -398,7 +407,11 @@ export async function executeCanonicalRun(
     // is prompt context only, never evidence. Read it inside the guarded
     // section so a read failure finalizes the run honestly instead of
     // escaping as an unhandled rejection that leaves the lease running.
-    const taskTitle = await repo.readTaskTitle(claimed.taskId, claimed.organizationId, input.actorId);
+    const taskTitle = await repo.readTaskTitle(
+      claimed.taskId,
+      claimed.organizationId,
+      input.actorId,
+    );
     if (!taskTitle) {
       const run = await repo.failRun({
         runId: claimed.id,

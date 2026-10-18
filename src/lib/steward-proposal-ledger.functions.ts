@@ -106,7 +106,9 @@ export const syncProposalLedgerFn = createServerFn({ method: "POST" })
 
     // RLS as the caller: a non-member cannot read the conversation, so a
     // non-member cannot register proposals for it either.
-    const { data: conversation, error } = await context.supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- conversations is not in generated types until the UNAPPLIED patches land
+    const rls = context.supabase as any;
+    const { data: conversation, error } = await rls
       .from("conversations")
       .select("id, organization_id, title, transcript")
       .eq("id", data.conversationId)
