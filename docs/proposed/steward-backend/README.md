@@ -7,6 +7,28 @@ off; the live UI keeps showing the precise unavailable reasons (the staged
 server entrypoints are capability-gated OFF — they report "staged, not
 activated" and touch nothing while the flags are unset).
 
+
+## 007 — verification projection (read-only)
+
+`steward_meeting_verification_projection(org, task_ids)` returns, in ONE
+statement snapshot, each requested readable task's status, current
+revision, latest receipt (stable tie-break on id), and the receipt-backed
+verified flag — the same criterion as the scope counts. Requested ids
+that are missing or inaccessible come back in `missing` as explicit
+unknowns, never as false. More than 100 ids is rejected, never silently
+truncated. Read-only: the up patch is revoke-only; the authenticated
+execute grant lives in grants.review.sql.
+
+## Scope amendment authority (005, hardened)
+
+`steward_scope_amend_remove` and `steward_scope_amend_reinstate` require
+the SAME canonical task authority as add/link/verify: business task +
+creator/current owner/admin + active writer, reauthorized BEFORE any
+operation replay (an ownership transfer between the first call and its
+retry denies the retry). The operation digest binds org + conversation +
+item + reason + actor. Regression probe: an unrelated active member
+cannot remove or reinstate another member's scoped task.
+
 ## Security model
 
 - All functions are `security definer` with `set search_path = public, pg_temp`.

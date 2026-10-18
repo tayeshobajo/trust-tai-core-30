@@ -32,6 +32,8 @@ begin
     'post-grant: authenticated can execute the score snapshot');
   perform public.test_assert(
     not has_function_privilege('anon', 'public.steward_meeting_score_snapshot(uuid,uuid)', 'execute'),
+    has_function_privilege('authenticated', 'public.steward_meeting_verification_projection(uuid,uuid[])', 'execute'),
+    not has_function_privilege('anon', 'public.steward_meeting_verification_projection(uuid,uuid[])', 'execute'),
     'post-grant: anon cannot execute the score snapshot');
 end $$;
 
