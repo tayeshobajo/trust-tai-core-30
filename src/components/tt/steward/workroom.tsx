@@ -235,10 +235,16 @@ function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
     <WorkroomView
       embedded
       meetings={linkedMeetings}
-      onAddRequiredTask={mayAddRequiredWork(identity) ? async (draft) => {
-        await cmdTasks.createRequired(identity, draft);
-        await queryClient.invalidateQueries({ queryKey: businessWorkQuery(org, identity.userId).queryKey });
-      } : undefined}
+      onAddRequiredTask={
+        mayAddRequiredWork(identity)
+          ? async (draft) => {
+              await cmdTasks.createRequired(identity, draft);
+              await queryClient.invalidateQueries({
+                queryKey: businessWorkQuery(org, identity.userId).queryKey,
+              });
+            }
+          : undefined
+      }
       linkedRead={{
         state: business.isPending ? "loading" : business.isError ? "error" : "ready",
         truncated: business.data?.truncated ?? false,

@@ -111,12 +111,19 @@ describe("board service mocked transport", () => {
   it("retains required identity on archive and rejects generic removal before transport", async () => {
     const db = transport();
     const service = boardService(db.client);
-    const created = await service.create(org, "business", requiredWorkKey(owner, owner), { ...edit, context_links: withMeetingAssociation([], owner) });
+    const created = await service.create(org, "business", requiredWorkKey(owner, owner), {
+      ...edit,
+      context_links: withMeetingAssociation([], owner),
+    });
     const before = db.operations.length;
-    await expect(service.update(created, { ...edit, context_links: [] })).rejects.toThrow(/scope is locked/);
+    await expect(service.update(created, { ...edit, context_links: [] })).rejects.toThrow(
+      /scope is locked/,
+    );
     expect(db.operations).toHaveLength(before);
     await service.archive(created, true);
-    expect((await service.list(org, "business")).tasks[0]?.correlation_id).toBe(requiredWorkKey(owner, owner));
+    expect((await service.list(org, "business")).tasks[0]?.correlation_id).toBe(
+      requiredWorkKey(owner, owner),
+    );
   });
   it("reads only business work with org+user-specific cache identity", async () => {
     const db = transport();

@@ -83,9 +83,13 @@ export function appendLinkedBusinessWork(
       .map((task) => [task.id, task]),
   );
   return meetings.map((meeting) => {
-    const required = [...unique.values()].filter((task) => requiredMeetingId(task) === meeting.id.toLowerCase());
-    const linked = [...unique.values()].filter((task) => !requiredMeetingId(task) &&
-      meetingAssociationIds(task.context_links, currentOrigin).includes(meeting.id.toLowerCase()),
+    const required = [...unique.values()].filter(
+      (task) => requiredMeetingId(task) === meeting.id.toLowerCase(),
+    );
+    const linked = [...unique.values()].filter(
+      (task) =>
+        !requiredMeetingId(task) &&
+        meetingAssociationIds(task.context_links, currentOrigin).includes(meeting.id.toLowerCase()),
     );
     const rows: WorkroomRow[] = [...linked, ...required].map((task) => ({
       kind: requiredMeetingId(task) ? "required-task" : "business-task",
@@ -99,7 +103,9 @@ export function appendLinkedBusinessWork(
         verified: !!task.owner_user_id,
       },
       due: { label: task.due_at?.slice(0, 10) || "No date", exact: !!task.due_at },
-      status: requiredMeetingId(task) ? "Verification unavailable" : BOARD_STATUS_LABEL[task.status],
+      status: requiredMeetingId(task)
+        ? "Verification unavailable"
+        : BOARD_STATUS_LABEL[task.status],
       kept: false,
       verified: false,
       receipt: null,
@@ -109,11 +115,20 @@ export function appendLinkedBusinessWork(
     return {
       ...meeting,
       rows: [...meeting.rows.filter((row) => !row.boardTask), ...rows],
-      ...(required.length ? {
-        requiredWork: { total: required.length, verified: 0 as const, denominator: meeting.agreed + required.length },
-        score: Math.min(99, Math.round(meeting.done / (meeting.agreed + required.length) * 100)),
-        remark: `${required.length} manually required tasks await guarded verification. Archived required work remains in scope; recorded delivery does not grant verified credit.`,
-      } : {}),
+      ...(required.length
+        ? {
+            requiredWork: {
+              total: required.length,
+              verified: 0 as const,
+              denominator: meeting.agreed + required.length,
+            },
+            score: Math.min(
+              99,
+              Math.round((meeting.done / (meeting.agreed + required.length)) * 100),
+            ),
+            remark: `${required.length} manually required tasks await guarded verification. Archived required work remains in scope; recorded delivery does not grant verified credit.`,
+          }
+        : {}),
       linkedWork: {
         total: linked.length,
         open: linked.filter((task) => task.status !== "complete").length,

@@ -175,10 +175,11 @@ function ScoreCard({
           <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
             {receiptsFailed
               ? "Verification unavailable — receipts could not be read"
-              : scopeUnavailable ? "Required-work scope unavailable"
-              : value === null
-                ? "Nothing confirmed yet"
-                : `${meeting.done} of ${meeting.requiredWork?.denominator ?? meeting.agreed} ${meeting.requiredWork ? "required" : "agreed"} tasks verified`}
+              : scopeUnavailable
+                ? "Required-work scope unavailable"
+                : value === null
+                  ? "Nothing confirmed yet"
+                  : `${meeting.done} of ${meeting.requiredWork?.denominator ?? meeting.agreed} ${meeting.requiredWork ? "required" : "agreed"} tasks verified`}
           </p>
         </div>
       </div>
@@ -222,10 +223,11 @@ function TaskDetail({
       <div>
         <h2 className="text-base font-semibold text-foreground">{row.what}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          {row.kind === "required-task" ? "Manually added required work · durable task identity, not a transcript commitment"
+          {row.kind === "required-task"
+            ? "Manually added required work · durable task identity, not a transcript commitment"
             : row.kind === "business-task"
-            ? "Linked business task · association is context, not a confirmed meeting commitment"
-            : "Confirmed meeting commitment"}
+              ? "Linked business task · association is context, not a confirmed meeting commitment"
+              : "Confirmed meeting commitment"}
         </p>
         <p className="mt-2 text-muted-foreground">
           Owner: {row.owner.label}
@@ -239,7 +241,15 @@ function TaskDetail({
 
       {row.boardTask ? (
         <div className="space-y-3 border-t border-border pt-4">
-          {row.kind === "required-task" ? <p className="text-sm text-warning">Verification unavailable · zero verified credit. Recorded board status: {row.boardTask.status}. {row.boardTask.archived_at ? "Archived; still required." : "Required scope is locked."}</p> : null}
+          {row.kind === "required-task" ? (
+            <p className="text-sm text-warning">
+              Verification unavailable · zero verified credit. Recorded board status:{" "}
+              {row.boardTask.status}.{" "}
+              {row.boardTask.archived_at
+                ? "Archived; still required."
+                : "Required scope is locked."}
+            </p>
+          ) : null}
           <div>
             <p className="font-medium">Next action</p>
             <p className="whitespace-pre-wrap break-words">
@@ -463,7 +473,10 @@ export function WorkroomView({
   const owners = meeting ? Array.from(new Set(meeting.rows.map((r) => r.owner.label))).sort() : [];
   const visibleRows = meeting
     ? meeting.rows.filter((r) => {
-        if (rowFilter === "open" && (r.verified || (r.kind !== "required-task" && r.boardTask?.status === "complete")))
+        if (
+          rowFilter === "open" &&
+          (r.verified || (r.kind !== "required-task" && r.boardTask?.status === "complete"))
+        )
           return false;
         if (rowFilter === "verified" && !r.verified) return false;
         if (ownerFilter !== "everyone" && r.owner.label !== ownerFilter) return false;
@@ -610,7 +623,11 @@ export function WorkroomView({
             ) : null}
           </div>
         </div>
-        <ScoreCard meeting={meeting} receiptsFailed={receiptsFailed} scopeUnavailable={!!linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)} />
+        <ScoreCard
+          meeting={meeting}
+          receiptsFailed={receiptsFailed}
+          scopeUnavailable={!!linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)}
+        />
       </div>
 
       {meeting.openProposals > 0 ? (
@@ -647,7 +664,16 @@ export function WorkroomView({
       ) : null}
 
       <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 border-b border-border pb-2">
-        {onAddRequiredTask ? <TTButton variant="secondary" className="h-9 shrink-0 gap-1.5 px-2.5 text-xs" onClick={() => setAdding({ id: meeting.id, title: meeting.title })}><Plus aria-hidden className="size-3.5" />Add task</TTButton> : null}
+        {onAddRequiredTask ? (
+          <TTButton
+            variant="secondary"
+            className="h-9 shrink-0 gap-1.5 px-2.5 text-xs"
+            onClick={() => setAdding({ id: meeting.id, title: meeting.title })}
+          >
+            <Plus aria-hidden className="size-3.5" />
+            Add task
+          </TTButton>
+        ) : null}
         <div
           className="flex w-full min-w-0 max-w-full overflow-x-auto xl:w-auto"
           aria-label="Task filters"
@@ -809,7 +835,12 @@ export function WorkroomView({
           )}
         />
         <div>
-          {meeting.requiredWork ? <p className="mb-1 font-medium">{meeting.requiredWork.total} manually required tasks · verification unavailable · zero verified credit. Required scope remains after archive.</p> : null}
+          {meeting.requiredWork ? (
+            <p className="mb-1 font-medium">
+              {meeting.requiredWork.total} manually required tasks · verification unavailable · zero
+              verified credit. Required scope remains after archive.
+            </p>
+          ) : null}
           {meeting.linkedWork?.open ? (
             <p className="mb-1 font-medium">
               {meeting.linkedWork.open} linked business tasks remain recorded open, separately from
@@ -833,7 +864,11 @@ export function WorkroomView({
           ) : (
             <>
               <p className="text-sm font-semibold">
-                {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated) ? "Required-work scope unavailable" : meeting.score === 100 ? "All agreed work verified" : "To reach 100/100"}
+                {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)
+                  ? "Required-work scope unavailable"
+                  : meeting.score === 100
+                    ? "All agreed work verified"
+                    : "To reach 100/100"}
               </p>
               <p className="mt-1 text-muted-foreground">{meeting.remark}</p>
               {meeting.score !== 100 ? (
@@ -1039,7 +1074,14 @@ export function WorkroomView({
           </Sheet>
         </>
       ) : null}
-      {adding && onAddRequiredTask ? <AddRequiredTask meetingId={adding.id} meetingTitle={adding.title} onSave={onAddRequiredTask} onClose={() => setAdding(null)} /> : null}
+      {adding && onAddRequiredTask ? (
+        <AddRequiredTask
+          meetingId={adding.id}
+          meetingTitle={adding.title}
+          onSave={onAddRequiredTask}
+          onClose={() => setAdding(null)}
+        />
+      ) : null}
     </div>
   );
 }

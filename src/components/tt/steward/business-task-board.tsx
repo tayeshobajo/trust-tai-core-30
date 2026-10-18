@@ -621,7 +621,12 @@ export function TaskEditor({
               />
             </label>
             <div className="space-y-2">
-              {requiredId ? <p className="text-xs text-muted-foreground">Manually required meeting work. Scope and provenance are locked; archive does not remove its score weight. Verification is unavailable.</p> : null}
+              {requiredId ? (
+                <p className="text-xs text-muted-foreground">
+                  Manually required meeting work. Scope and provenance are locked; archive does not
+                  remove its score weight. Verification is unavailable.
+                </p>
+              ) : null}
               {task && scope === "business" ? (
                 <label className="grid gap-1 text-sm">
                   Associated meeting
@@ -688,7 +693,9 @@ export function TaskEditor({
                     Source {index + 1} label
                     <TTInput
                       value={link.label}
-                      disabled={!!requiredId && meetingAssociationIds([link], currentOrigin).length > 0}
+                      disabled={
+                        !!requiredId && meetingAssociationIds([link], currentOrigin).length > 0
+                      }
                       onChange={(e) =>
                         field(
                           "context_links",
@@ -704,7 +711,9 @@ export function TaskEditor({
                     <TTInput
                       type="url"
                       value={link.url}
-                      disabled={!!requiredId && meetingAssociationIds([link], currentOrigin).length > 0}
+                      disabled={
+                        !!requiredId && meetingAssociationIds([link], currentOrigin).length > 0
+                      }
                       onChange={(e) =>
                         field(
                           "context_links",
@@ -717,7 +726,9 @@ export function TaskEditor({
                   </label>
                   <button
                     type="button"
-                    disabled={!!requiredId && meetingAssociationIds([link], currentOrigin).length > 0}
+                    disabled={
+                      !!requiredId && meetingAssociationIds([link], currentOrigin).length > 0
+                    }
                     className="min-h-11 text-sm underline"
                     onClick={() =>
                       field(
