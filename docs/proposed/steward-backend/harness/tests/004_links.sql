@@ -196,6 +196,34 @@ begin
    where organization_id = '11111111-1111-1111-1111-111111111111'
      and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
   perform public.test_assert(v >= 4, 'dismissal durably bumps scope version');
+
+  -- Decision audit: the dismissal persisted reason, actor, operation and
+  -- digest; the SAME operation replays; a changed payload conflicts.
+  perform public.test_assert(exists(
+    select 1 from public.steward_proposal_decisions d
+     where d.organization_id = '11111111-1111-1111-1111-111111111111'
+       and d.operation_id = 'c3000000-0000-0000-0000-000000000002'
+       and d.kind = 'dismiss'
+       and d.reason = 'Reviewed: covered by the existing roadmap task.'
+       and d.actor_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+    'dismissal decision persisted with reason, actor and operation');
+  p := public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    'Reviewed: covered by the existing roadmap task.', 'c3000000-0000-0000-0000-000000000002');
+  perform public.test_assert(p.status = 'dismissed', 'same dismissal operation replays');
+  begin
+    perform public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
+      'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+      'A DIFFERENT reason on the same operation.', 'c3000000-0000-0000-0000-000000000002');
+    raise exception 'FAILED: changed dismissal payload accepted';
+  exception when sqlstate 'P0002' then
+    perform public.test_assert(true, 'changed dismissal payload conflicts');
+  end;
+  -- Registration recorded its operation too; replaying it adds nothing.
+  perform public.test_assert(exists(
+    select 1 from public.steward_proposal_decisions d
+     where d.organization_id = '11111111-1111-1111-1111-111111111111'
+       and d.kind = 'register'), 'registration decision persisted');
 end $$;
 select public.test_denied($q$
   select public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
