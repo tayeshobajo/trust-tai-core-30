@@ -111,7 +111,8 @@ export type ReopenResult =
   | { kind: "reopened"; task: VerificationTaskState | null; replayed: boolean }
   | { kind: "revision_conflict"; message: string }
   | { kind: "evidence_required"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  | { kind: "uncertain"; message: string };
 
 /** Reopen a canonical task atomically. All prior evidence and audit rows
  *  are preserved; the reopen itself is appended to the same audit trail. */
@@ -138,7 +139,7 @@ export async function reopenCanonicalTask(
 }
 
 function mapVerificationError(error: unknown): {
-  kind: "revision_conflict" | "evidence_required" | "rejected";
+  kind: "revision_conflict" | "evidence_required" | "rejected" | "uncertain";
   message: string;
 } {
   const code = (error as { code?: string }).code;
@@ -147,5 +148,12 @@ function mapVerificationError(error: unknown): {
     return { kind: "revision_conflict", message };
   if (code === "P0010" || error instanceof EvidenceRequiredError)
     return { kind: "evidence_required", message };
-  return { kind: "rejected", message };
+  /* Known SQL contract answers (authorization, not-found, operation
+     conflict) are resolved rejections; anything else — transport loss,
+     5xx, malformed response after send — is UNCERTAIN: the mutation may
+     have committed, so the caller keeps the pending operation for a
+     same-id replay instead of reporting rejection. */
+  const classified = classifyMutationError(error);
+  if (classified.kind === "uncertain") return classified;
+  return { kind: "rejected", message: classified.message };
 }
