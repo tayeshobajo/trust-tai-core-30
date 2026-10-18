@@ -43,7 +43,7 @@ describe("verification panel operation safety", () => {
       <VerificationPanel
         capability={enabled}
         state={{ kind: "ready", task: { status: "open", revision: 3 }, receipts: [] }}
-        task={fictionalTask}
+        task={fictionalTask as never}
         onVerify={onVerify}
         onReopen={undefined}
       />,
@@ -96,7 +96,7 @@ describe("verification panel operation safety", () => {
             },
           ],
         }}
-        task={fictionalTask}
+        task={fictionalTask as never}
         onVerify={undefined}
         onReopen={undefined}
       />,
@@ -125,7 +125,7 @@ describe("verification panel operation safety", () => {
       <VerificationPanel
         capability={enabled}
         state={{ kind: "ready", task: { status: "open", revision: 3 }, receipts: [] }}
-        task={fictionalTask}
+        task={fictionalTask as never}
         onVerify={onVerify}
         onReopen={onReopen}
       />,
@@ -182,7 +182,7 @@ describe("verification panel operation safety", () => {
       <VerificationPanel
         capability={enabled}
         state={{ kind: "ready", task: { status: "open", revision: 3 }, receipts: [] }}
-        task={fictionalTask}
+        task={fictionalTask as never}
         onVerify={onVerify}
         onReopen={undefined}
       />,
@@ -277,7 +277,7 @@ describe("preparation panel honesty", () => {
       <AiPreparationPanel
         capability={enabled}
         runs={{ kind: "ready", runs: [], truncated: false }}
-        task={fictionalTask}
+        task={fictionalTask as never}
         meetingId="00000000-0000-4000-8000-000000000011"
         actions={[
           { id: "prepare_brief", label: "Prepare task brief", summary: "draft" },
@@ -319,7 +319,7 @@ describe("preparation panel honesty", () => {
             },
           ],
         }}
-        task={fictionalTask}
+        task={fictionalTask as never}
         meetingId="00000000-0000-4000-8000-000000000011"
         actions={[{ id: "prepare_brief", label: "Prepare task brief", summary: "draft" }]}
         onRequestRun={undefined}
