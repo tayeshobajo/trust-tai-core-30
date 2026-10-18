@@ -361,9 +361,6 @@ function useStewardBackend(
           })),
         };
       }
-      if (verification.isError) {
-        return rejected("Verification state could not be read; retry to reload it.");
-      }
       return verification.isPending && caps?.verification.kind === "enabled"
         ? { kind: "loading" }
         : undefined;
