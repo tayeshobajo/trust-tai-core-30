@@ -140,13 +140,17 @@ $$;
 -- (after reauthorizing the current caller AND the current task state);
 -- same operation + changed payload conflicts; a new operation UUID is a
 -- deliberate rerun. Pilot scope: business-visibility tasks only.
+-- Return contract: jsonb {run: <steward_canonical_runs row>, replayed:
+-- boolean}. The explicit replayed flag is the ONLY reliable replay signal
+-- — a replayed run is indistinguishable from a fresh one by row content.
+drop function if exists public.steward_request_canonical_run(uuid, uuid, text, uuid, jsonb);
 create or replace function public.steward_request_canonical_run(
   p_org uuid,
   p_task uuid,
   p_action text,
   p_operation uuid,
   p_input_refs jsonb -- [{kind, id}] — content is resolved server-side
-) returns public.steward_canonical_runs
+) returns jsonb
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
