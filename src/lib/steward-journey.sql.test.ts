@@ -452,6 +452,7 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
       note: "Reviewed the draft brief against the recorded call; it matches.",
       actorId: OWNER,
     });
+    if (verified.kind !== "verified") throw new Error(`verify rejected: ${JSON.stringify(verified)}`);
     expect(verified.kind).toBe("verified");
     if (verified.kind === "verified") {
       expect(verified.replayed).toBe(false);
