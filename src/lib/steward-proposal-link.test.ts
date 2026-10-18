@@ -13,7 +13,8 @@ const BASE = {
 function makeRepo(overrides: Partial<ProposalLinkRepository> = {}): ProposalLinkRepository {
   return {
     async linkProposal(input) {
-      return { link: { id: "link-1", ...input, createdAt: "now" }, replayed: false };
+      const { orgId, ...rest } = input;
+      return { link: { id: "link-1", organizationId: orgId, ...rest, createdAt: "now" }, replayed: false };
     },
     async linksForConversation() {
       return [];
