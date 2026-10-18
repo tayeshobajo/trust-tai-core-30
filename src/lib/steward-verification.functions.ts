@@ -22,7 +22,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
-import { createSupabaseVerificationRepository } from "./steward-verification.supabase";
+import {
+  createSupabaseVerificationRepository,
+  readMeetingVerificationProjection,
+} from "./steward-verification.supabase";
 import {
   reopenCanonicalTask,
   verifyCanonicalTask,
@@ -194,8 +197,11 @@ export type MeetingVerificationProjectionState =
   | { kind: "unavailable"; reason: string }
   | {
       kind: "ready";
-      /** taskId → receipt-backed verified, for every requested task. */
+      /** taskId → receipt-backed verified, for every READABLE task. */
       verified: Record<string, boolean>;
+      /** Requested ids that were missing or inaccessible — unknown,
+          never silently counted as unverified. */
+      unknown: string[];
       truncated: boolean;
     }
   | { kind: "rejected"; message: string };
@@ -222,51 +228,35 @@ export const getMeetingVerificationProjectionFn = createServerFn({ method: "GET"
   .handler(async ({ data, context }): Promise<MeetingVerificationProjectionState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
     const uniqueIds = Array.from(new Set(data.taskIds));
-    if (uniqueIds.length === 0) return { kind: "ready", verified: {}, truncated: false };
+    if (uniqueIds.length === 0)
+      return { kind: "ready", verified: {}, unknown: [], truncated: false };
     if (uniqueIds.length > PROJECTION_LIMIT) {
       return {
         kind: "rejected",
         message: `too many tasks for one consistent read (${uniqueIds.length} > ${PROJECTION_LIMIT}); verified counts are unknown, not zero`,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
-    const rls = context.supabase as any;
-    const { data: tasks, error: taskError } = await rls
-      .from("steward_tasks")
-      .select("id, status, revision")
-      .eq("organization_id", data.orgId)
-      .in("id", uniqueIds);
-    if (taskError) {
-      return { kind: "rejected", message: "the task states could not be read" };
-    }
-    const { data: receipts, error: receiptError } = await rls
-      .from("steward_task_receipts")
-      .select("task_id, kind, created_at, task_revision_after")
-      .eq("organization_id", data.orgId)
-      .in("task_id", uniqueIds)
-      .order("created_at", { ascending: true });
-    if (receiptError) {
-      return { kind: "rejected", message: "the receipt history could not be read" };
-    }
-    const receiptsByTask = new Map<
-      string,
-      { kind: "verify" | "reopen"; taskRevisionAfter: number }[]
-    >();
-    for (const row of receipts ?? []) {
-      const list = receiptsByTask.get(row.task_id) ?? [];
-      list.push({
-        kind: row.kind === "reopen" ? "reopen" : "verify",
-        taskRevisionAfter:
-          typeof row.task_revision_after === "number" ? row.task_revision_after : -1,
-      });
-      receiptsByTask.set(row.task_id, list);
+    // ONE statement snapshot via the proposed read-only RPC: latest
+    // receipt per task + current revision together, so a truncated
+    // receipt list can never produce a false verified. Requested ids the
+    // caller cannot read come back in `missing` — unknown, never false.
+    const { rows, error } = await readMeetingVerificationProjection(
+      context.supabase,
+      data.orgId,
+      uniqueIds,
+    );
+    if (error) {
+      return { kind: "rejected", message: "the verification projection could not be read" };
     }
     const verified: Record<string, boolean> = {};
-    for (const task of tasks ?? []) {
-      verified[task.id] = receiptBackedVerified(
-        { status: task.status, revision: task.revision },
-        receiptsByTask.get(task.id) ?? [],
-      );
+    const unknown: string[] = [];
+    for (const row of rows ?? []) {
+      if (row.verified === true || row.verified === false) {
+        verified[row.task_id] = row.verified;
+      }
+      for (const missingId of row.missing ?? []) {
+        unknown.push(missingId);
+      }
     }
-    return { kind: "ready", verified, truncated: false };
+    return { kind: "ready", verified, unknown, truncated: false };
   });

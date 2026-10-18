@@ -740,6 +740,9 @@ export interface ScopeReviewPanelProps {
   onReinstateScopeItem:
     | ((input: { itemId: string; reason: string; operationId: string }) => Promise<ActionOutcome>)
     | undefined;
+  /** Canonical task authority (creator/owner/admin). SQL is
+      authoritative; this only hides controls the actor cannot use. */
+  mayAmendScopeItem?: ((taskId: string) => boolean) | undefined;
   /** Real reload action for failed scope/coverage/proposal reads. */
   onRetryReads?: (() => void) | undefined;
 }
@@ -781,6 +784,7 @@ export function ScopeReviewPanel({
   onDismissProposal,
   onRemoveScopeItem,
   onReinstateScopeItem,
+  mayAmendScopeItem,
   onRetryReads,
 }: ScopeReviewPanelProps) {
   const simple = useOperationAttempt<SimpleGesture>();
@@ -1168,7 +1172,9 @@ export function ScopeReviewPanel({
                       <span className="text-muted-foreground"> · counts in the denominator</span>
                     )}
                   </p>
-                  {scopeCapability.kind === "enabled" && handler ? (
+                  {scopeCapability.kind === "enabled" &&
+                  handler &&
+                  (mayAmendScopeItem?.(item.taskId) ?? false) ? (
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
                       <input
                         aria-label={`${removed ? "Reinstate" : "Remove"} reason for task ${item.taskId.slice(-8)}`}
@@ -1193,7 +1199,9 @@ export function ScopeReviewPanel({
                     <p className="mt-1 text-xs text-muted-foreground">
                       {scopeCapability.kind === "unavailable"
                         ? scopeCapability.reason
-                        : "Scope amendments are not available."}
+                        : mayAmendScopeItem && !mayAmendScopeItem(item.taskId)
+                          ? "Only the task's creator, current owner, or an org admin can amend scope."
+                          : "Scope amendments are not available."}
                     </p>
                   )}
                 </li>

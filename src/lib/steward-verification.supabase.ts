@@ -150,3 +150,31 @@ export function createSupabaseVerificationRepository(
     },
   };
 }
+
+export interface MeetingVerificationProjectionRow {
+  task_id: string;
+  status: string;
+  revision: number;
+  latest_kind: string | null;
+  latest_revision_after: number | null;
+  verified: boolean;
+  missing: string[];
+}
+
+/**
+ * Read-only one-statement verification projection over the caller's RLS
+ * session. Backs getMeetingVerificationProjectionFn; the RPC is the
+ * UNAPPLIED 007 patch, granted only in grants.review.sql.
+ */
+export async function readMeetingVerificationProjection(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed RPC is not in generated types until the UNAPPLIED patch lands
+  supabase: any,
+  orgId: string,
+  taskIds: string[],
+): Promise<{ rows: MeetingVerificationProjectionRow[] | null; error: unknown }> {
+  const { data, error } = await supabase.rpc("steward_meeting_verification_projection", {
+    p_org: orgId,
+    p_task_ids: taskIds,
+  });
+  return { rows: (data as MeetingVerificationProjectionRow[] | null) ?? null, error };
+}

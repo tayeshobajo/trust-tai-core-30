@@ -400,6 +400,7 @@ function renderScopePanel(overrides: Partial<Parameters<typeof ScopeReviewPanel>
       onDismissProposal={undefined}
       onRemoveScopeItem={undefined}
       onReinstateScopeItem={undefined}
+      mayAmendScopeItem={() => true}
       {...overrides}
     />,
   );
@@ -577,6 +578,27 @@ describe("scope amendment controls", () => {
     expect(second.operationId).toBe(first.operationId);
     expect(second.itemId).toBe("item-1");
     expect(second.reason).toBe("recorded against the wrong meeting");
+  });
+
+  it("hides remove/reinstate controls without task authority (SQL guard is authoritative)", () => {
+    renderScopePanel({
+      onRemoveScopeItem: vi.fn(),
+      onReinstateScopeItem: vi.fn(),
+      mayAmendScopeItem: () => false,
+    });
+    fireEvent.click(screen.getByText(/Recorded scope items/));
+    expect(screen.queryByRole("button", { name: /Remove from scope/ })).toBeNull();
+    expect(screen.queryByLabelText(/Remove reason for task/i)).toBeNull();
+  });
+
+  it("hides the controls when no authority predicate is provided at all", () => {
+    renderScopePanel({
+      onRemoveScopeItem: vi.fn(),
+      onReinstateScopeItem: vi.fn(),
+      mayAmendScopeItem: undefined,
+    });
+    fireEvent.click(screen.getByText(/Recorded scope items/));
+    expect(screen.queryByRole("button", { name: /Remove from scope/ })).toBeNull();
   });
 
   it("offers Reinstate for a removed item only when the handler exists", async () => {

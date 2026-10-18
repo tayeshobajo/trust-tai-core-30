@@ -489,7 +489,8 @@ function useStewardBackend(
       if (resolvedCaps.verification.kind === "unavailable") {
         return { kind: "unavailable", reason: resolvedCaps.verification.reason };
       }
-      if (projectionIds.length === 0) return { kind: "ready", verified: {}, truncated: false };
+      if (projectionIds.length === 0)
+        return { kind: "ready", verified: {}, unknown: [], truncated: false };
       if (projection.isError) {
         return {
           kind: "rejected",

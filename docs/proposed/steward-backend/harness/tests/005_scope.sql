@@ -463,3 +463,188 @@ begin
 end $$;
 select public.test_act_as(null);
 reset role;
+
+-- 9g. Canonical task authority on amendments (regression: previously any
+--     active writer could amend ANOTHER member's scoped task). Owner
+--     aaaaaaaa's task 1 is in scope; unrelated active member bbbbbbbb,
+--     viewer, inactive member, and cross-org member must all be denied
+--     on BOTH remove and reinstate. The owner succeeds, and authority
+--     revoked between the first call and its replay must deny the replay.
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+do $$
+declare
+  owner_item uuid;
+begin
+  select id into owner_item from public.steward_scope_items
+   where organization_id = '11111111-1111-1111-1111-111111111111'
+     and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+     and task_id = '10000000-0000-0000-0000-000000000001';
+  perform public.test_assert(owner_item is not null, 'owner task scope item exists');
+  perform set_config('tmp.owner_item', owner_item::text, false);
+end $$;
+-- Normalize state: earlier suites may have left this item removed.
+reset role;
+select set_config('steward.scope_mutation', 'on', false);
+update public.steward_scope_items set removed_at = null, removal_reason = null
+ where id = current_setting('tmp.owner_item')::uuid;
+select set_config('steward.scope_mutation', 'off', false);
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+
+-- Unrelated active member: remove denied.
+select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+select public.test_denied($q$
+  select public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.owner_item')::uuid,
+    'unrelated member removal attempt', 'f1000000-0000-0000-0000-0000000000a1') $q$,
+  'unrelated active member cannot remove another member''s scoped task');
+
+-- Viewer: remove denied (no write role at all).
+select public.test_act_as('dddddd00-0000-0000-0000-000000000001');
+select public.test_denied($q$
+  select public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.owner_item')::uuid,
+    'viewer removal attempt here', 'f1000000-0000-0000-0000-0000000000a2') $q$,
+  'viewer cannot remove scope items');
+
+-- Inactive member: remove denied.
+select public.test_act_as('eeeeee00-0000-0000-0000-000000000001');
+select public.test_denied($q$
+  select public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.owner_item')::uuid,
+    'inactive member removal try', 'f1000000-0000-0000-0000-0000000000a3') $q$,
+  'inactive member cannot remove scope items');
+
+-- Cross-org member: remove denied (org guard + not their task).
+select public.test_act_as('cccccccc-cccc-cccc-cccc-cccccccccccc');
+select public.test_denied($q$
+  select public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.owner_item')::uuid,
+    'cross-org removal attempt', 'f1000000-0000-0000-0000-0000000000a4') $q$,
+  'cross-org member cannot remove scope items');
+
+-- Owner removes their own scoped task: succeeds.
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+do $$
+declare
+  r public.steward_scope_items;
+begin
+  r := public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.owner_item')::uuid,
+    'owner removal with a recorded reason', 'f1000000-0000-0000-0000-0000000000b1');
+  perform public.test_assert(r.removed_at is not null, 'owner can remove their own scoped task');
+end $$;
+
+-- Unrelated active member: reinstate denied (the reproduced probe).
+select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+select public.test_denied($q$
+  select public.steward_scope_amend_reinstate('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.owner_item')::uuid,
+    'unrelated member reinstate try', 'f1000000-0000-0000-0000-0000000000c1') $q$,
+  'unrelated active member cannot reinstate another member''s scoped task');
+
+-- Member CAN amend their OWN scoped task (task 2 is member-owned).
+do $$
+declare
+  member_item uuid;
+  r public.steward_scope_items;
+begin
+  select id into member_item from public.steward_scope_items
+   where organization_id = '11111111-1111-1111-1111-111111111111'
+     and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+     and task_id = '10000000-0000-0000-0000-000000000002';
+  if member_item is not null then
+    r := public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+      'dddddddd-dddd-dddd-dddd-dddddddddddd', member_item,
+      'member removing their own scoped task', 'f1000000-0000-0000-0000-0000000000d1');
+    perform public.test_assert(r.removed_at is not null, 'member can remove their own scoped task');
+    r := public.steward_scope_amend_reinstate('11111111-1111-1111-1111-111111111111',
+      'dddddddd-dddd-dddd-dddd-dddddddddddd', member_item,
+      'member reinstating their own task', 'f1000000-0000-0000-0000-0000000000d2');
+    perform public.test_assert(r.removed_at is null, 'member can reinstate their own scoped task');
+  end if;
+end $$;
+
+-- Authority revoked between first call and replay: the MEMBER removes
+-- their own scoped task 2 with operation f1…b3, then ownership of task 2
+-- transfers to the owner; replaying the SAME operation as the member
+-- must now be denied (reauthorization happens before replay), not
+-- silently replayed. (The owner cannot probe this: they stay org admin.)
+select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+do $$
+declare
+  member_item uuid;
+  r public.steward_scope_items;
+begin
+  select id into member_item from public.steward_scope_items
+   where organization_id = '11111111-1111-1111-1111-111111111111'
+     and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+     and task_id = '10000000-0000-0000-0000-000000000002';
+  perform set_config('tmp.member_item', member_item::text, false);
+  r := public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', member_item,
+    'member removal before revocation', 'f1000000-0000-0000-0000-0000000000b3');
+  perform public.test_assert(r.removed_at is not null, 'member removal recorded for replay probe');
+end $$;
+reset role;
+update public.steward_tasks
+   set owner_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+       created_by = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+ where id = '10000000-0000-0000-0000-000000000002';
+set role authenticated;
+select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+select public.test_denied($q$
+  select public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.member_item')::uuid,
+    'member removal before revocation', 'f1000000-0000-0000-0000-0000000000b3') $q$,
+  'replay after ownership transfer is denied, not silently replayed');
+-- Restore fixtures: owner (task authority via ownership) reinstates the
+-- member item, ownership back to the member.
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+do $$
+declare r public.steward_scope_items;
+begin
+  r := public.steward_scope_amend_reinstate('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.member_item')::uuid,
+    'restoring member scope after probe', 'f1000000-0000-0000-0000-0000000000e3');
+  perform public.test_assert(r.removed_at is null, 'member scope restored after authority probe');
+end $$;
+reset role;
+update public.steward_tasks
+   set owner_user_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+       created_by = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+ where id = '10000000-0000-0000-0000-000000000002';
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+select public.test_denied($q$
+  select public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.owner_item')::uuid,
+    'owner removal before revocation', 'f1000000-0000-0000-0000-0000000000b2') $q$,
+  'replay after ownership transfer is denied, not silently replayed');
+-- Restore fixtures: owner (still org admin) reinstates, ownership back.
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+do $$
+declare r public.steward_scope_items;
+begin
+  r := public.steward_scope_amend_reinstate('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    current_setting('tmp.owner_item')::uuid,
+    'restoring scope after authority probe', 'f1000000-0000-0000-0000-0000000000e2');
+  perform public.test_assert(r.removed_at is null, 'scope restored after authority probe');
+end $$;
+reset role;
+update public.steward_tasks
+   set owner_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+ where id = '10000000-0000-0000-0000-000000000001';
+set role authenticated;
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
