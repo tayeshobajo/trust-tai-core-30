@@ -678,13 +678,27 @@ export function WorkroomView({
             className={cn(
               "grid h-auto min-h-[72px] w-full grid-cols-[20px_minmax(0,1fr)] items-start gap-3 rounded-none border-l-2 px-4 py-3 text-left",
               meeting?.id === m.id
-                ? "border-l-royal bg-secondary text-foreground"
+                ? "border-l-royal bg-royal/10 text-foreground"
                 : "border-l-transparent",
             )}
           >
             <CalendarDays className={cn("mt-1", meeting?.id === m.id && "text-royal")} />
             <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold leading-5">{m.title}</span>
+              <span className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "truncate text-sm leading-5",
+                    meeting?.id === m.id ? "font-bold" : "font-semibold",
+                  )}
+                >
+                  {m.title}
+                </span>
+                {meeting?.id === m.id ? (
+                  <span className="shrink-0 rounded border border-royal/40 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em] text-royal">
+                    Current
+                  </span>
+                ) : null}
+              </span>
               <span className="mt-1 flex items-center justify-between gap-1 text-xs text-muted-foreground">
                 <span>
                   {m.occurredAt.slice(0, 10)} ·{" "}
