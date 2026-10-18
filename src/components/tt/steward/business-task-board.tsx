@@ -378,6 +378,7 @@ export function TaskEditor({
   meetingsLoading = false,
   meetingsError = false,
   meetingsTruncated = false,
+  focusField,
 }: {
   task: BoardTask | null;
   scope: TaskVisibility;
@@ -390,6 +391,8 @@ export function TaskEditor({
   meetingsLoading?: boolean;
   meetingsError?: boolean;
   meetingsTruncated?: boolean;
+  /** Open with a specific field focused (e.g. from the workroom Owner/Due/Status cells). */
+  focusField?: "owner" | "due" | "status";
 }) {
   const [openingElement] = useState(() => document.activeElement as HTMLElement | null);
   const [input, setInput] = useState<BoardEdit>(() =>
