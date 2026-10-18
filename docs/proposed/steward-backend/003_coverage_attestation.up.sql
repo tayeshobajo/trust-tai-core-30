@@ -30,7 +30,13 @@ create table if not exists public.steward_coverage_attestations (
   scope_version integer not null,
   attested_by uuid not null,
   attested_at timestamptz not null default now(),
-  superseded_at timestamptz
+  superseded_at timestamptz,
+  -- Append-only operation identity: the client operation UUID + payload
+  -- digest make an uncertain-transport retry replay the SAME attestation
+  -- instead of attesting a newer, unreviewed transcript.
+  operation_id uuid,
+  request_digest text,
+  unique (organization_id, operation_id)
 );
 
 create index if not exists steward_coverage_attestations_conv_idx
