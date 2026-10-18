@@ -37,7 +37,11 @@ describe("linkProposalToTask", () => {
   it("replays the same operation idempotently", async () => {
     const repo = makeRepo({
       async linkProposal(input) {
-        return { link: { id: "link-1", ...input, createdAt: "now" }, replayed: true };
+        const { orgId, ...rest } = input;
+        return {
+          link: { id: "link-1", organizationId: orgId, ...rest, createdAt: "now" },
+          replayed: true,
+        };
       },
     });
     const result = await linkProposalToTask(repo, BASE);
