@@ -42,7 +42,9 @@ function StatCard({
 
 function XpBar({ level }: { level: LevelInfo }) {
   const pct =
-    level.xpForLevel > 0 ? Math.min(100, Math.round((level.xpIntoLevel / level.xpForLevel) * 100)) : 100;
+    level.xpForLevel > 0
+      ? Math.min(100, Math.round((level.xpIntoLevel / level.xpForLevel) * 100))
+      : 100;
   return (
     <div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
@@ -100,7 +102,12 @@ export function StatRow({
         label="Time saved by AI"
         value={timeSavedLabel}
         detail={
-          <p className={cn("text-xs text-muted-foreground", minutesSaved <= 0 && "text-muted-foreground/70")}>
+          <p
+            className={cn(
+              "text-xs text-muted-foreground",
+              minutesSaved <= 0 && "text-muted-foreground/70",
+            )}
+          >
             {minutesSaved <= 0 ? "Nothing recorded yet." : "From real agent estimates only."}
           </p>
         }

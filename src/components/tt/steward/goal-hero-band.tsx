@@ -102,12 +102,15 @@ export function GoalHeroBand({
         <ProgressRing pct={progress?.pct ?? 0} />
         <div className="min-w-0 flex-1">
           <p className="tt-eyebrow">Goal for the week</p>
-          <h2 className="mt-1.5 max-w-3xl font-display text-xl font-semibold leading-tight text-foreground">{goal.title}</h2>
+          <h2 className="mt-1.5 max-w-3xl font-display text-xl font-semibold leading-tight text-foreground">
+            {goal.title}
+          </h2>
           <p className="mt-2 text-sm font-semibold text-foreground">
             {progress ? clearedLine(progress.agentCleared) : clearedLine(0)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Your Captain proposed this goal based on your priorities. Review and confirm to get started.
+            Your Captain proposed this goal based on your priorities. Review and confirm to get
+            started.
           </p>
         </div>
 

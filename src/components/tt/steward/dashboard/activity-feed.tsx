@@ -85,7 +85,9 @@ export function ActivityFeed({
     <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card p-3">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2 border-b border-border px-1 pb-2">
         <div className="min-w-0 flex items-center gap-2">
-          <h2 className="font-display text-base font-semibold text-foreground">AI teammate activity</h2>
+          <h2 className="font-display text-base font-semibold text-foreground">
+            AI teammate activity
+          </h2>
           <Info aria-hidden className="size-3.5 text-muted-foreground" />
           <span className="text-[10px] text-muted-foreground">Internal and reversible only</span>
         </div>
@@ -104,7 +106,9 @@ export function ActivityFeed({
               key={activity.id}
               className="flex min-h-12 items-center gap-2 border-b border-border px-1 py-1.5 last:border-b-0"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary">{iconFor(activity.eventType)}</span>
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary">
+                {iconFor(activity.eventType)}
+              </span>
               <div className="min-w-0 flex-1">
                 <p
                   className={cn(
@@ -154,7 +158,11 @@ export function ActivityFeed({
             ? "Nothing cleared for you yet this week."
             : `${clearedCount} action${clearedCount === 1 ? "" : "s"} cleared for you this week`}
         </span>
-        {hours > 0 ? <span>That is {hours} hour{hours === 1 ? "" : "s"} saved.</span> : null}
+        {hours > 0 ? (
+          <span>
+            That is {hours} hour{hours === 1 ? "" : "s"} saved.
+          </span>
+        ) : null}
       </div>
     </div>
   );

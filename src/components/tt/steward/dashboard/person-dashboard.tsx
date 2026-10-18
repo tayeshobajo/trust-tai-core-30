@@ -63,7 +63,11 @@ export function PersonDashboard({
   onOpenTask?: (task: StewardTask) => void;
 }) {
   const streakDays = useMemo(
-    () => computeStreakDays(read.activities.map((event) => event.occurredAt), read.now),
+    () =>
+      computeStreakDays(
+        read.activities.map((event) => event.occurredAt),
+        read.now,
+      ),
     [read.activities, read.now],
   );
 

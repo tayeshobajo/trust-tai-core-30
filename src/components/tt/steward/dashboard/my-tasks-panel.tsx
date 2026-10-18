@@ -66,7 +66,12 @@ function TaskListRow({
   const completion = completeAuthority(task, actor);
   const reassignment = reassignAuthority(task, actor);
   return (
-    <li className={cn("flex min-h-10 items-center gap-2 border-b border-border px-2 py-1.5 last:border-b-0", done && "bg-success/[0.03]")}>
+    <li
+      className={cn(
+        "flex min-h-10 items-center gap-2 border-b border-border px-2 py-1.5 last:border-b-0",
+        done && "bg-success/[0.03]",
+      )}
+    >
       <span title={completion.because ?? undefined} className="inline-flex">
         <Checkbox
           aria-label={done ? `${task.title} is complete` : `Mark ${task.title} complete`}
@@ -80,12 +85,20 @@ function TaskListRow({
           <button
             type="button"
             onClick={() => onOpen(task)}
-            className={cn("truncate text-left text-xs font-medium text-foreground hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", done && "text-muted-foreground line-through")}
+            className={cn(
+              "truncate text-left text-xs font-medium text-foreground hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              done && "text-muted-foreground line-through",
+            )}
           >
             {task.title}
           </button>
         ) : (
-          <p className={cn("truncate text-xs font-medium text-foreground", done && "text-muted-foreground line-through")}>
+          <p
+            className={cn(
+              "truncate text-xs font-medium text-foreground",
+              done && "text-muted-foreground line-through",
+            )}
+          >
             {task.title}
           </p>
         )}
@@ -93,7 +106,12 @@ function TaskListRow({
           {task.companyLabel ?? task.projectName ?? task.sourceLabel}
         </span>
       </div>
-      <span className={cn("shrink-0 text-[10px]", task.overdue ? "text-destructive" : "text-muted-foreground")}>
+      <span
+        className={cn(
+          "shrink-0 text-[10px]",
+          task.overdue ? "text-destructive" : "text-muted-foreground",
+        )}
+      >
         {task.dueAt ? task.dueAt.slice(0, 10) : "No date"}
       </span>
       <span
@@ -162,7 +180,11 @@ export function MyTasksPanel({
 }) {
   const [page, setPage] = useState(1);
   const orderedTasks = useMemo(
-    () => [...tasks].sort((a, b) => Number(a.state === "complete") - Number(b.state === "complete") || a.rank - b.rank),
+    () =>
+      [...tasks].sort(
+        (a, b) =>
+          Number(a.state === "complete") - Number(b.state === "complete") || a.rank - b.rank,
+      ),
     [tasks],
   );
   const openTasks = useMemo(() => tasks.filter((task) => task.state !== "complete"), [tasks]);
@@ -197,7 +219,13 @@ export function MyTasksPanel({
         <h2 className="font-display text-base font-semibold text-foreground">My tasks</h2>
         <div className="flex items-center gap-2">
           {onCreate ? (
-            <TTButton type="button" size="sm" onClick={onCreate} disabled={!taskStorageAvailable} className="h-7 px-2.5 text-[11px]">
+            <TTButton
+              type="button"
+              size="sm"
+              onClick={onCreate}
+              disabled={!taskStorageAvailable}
+              className="h-7 px-2.5 text-[11px]"
+            >
               <Plus aria-hidden className="size-3.5" /> New task
             </TTButton>
           ) : null}
@@ -218,13 +246,15 @@ export function MyTasksPanel({
           {groups.map((group) =>
             grouped[group].length > 0 ? (
               <section key={group} className="mt-2 first:mt-0">
-                <p className={cn(
-                  "rounded-md px-3 py-1 text-[10px] font-semibold",
-                  group === "overdue" && "bg-destructive/8 text-destructive",
-                  group === "due_soon" && "bg-warning/10 text-warning",
-                  group === "later" && "bg-secondary text-muted-foreground",
-                  group === "done" && "bg-success/10 text-success",
-                )}>
+                <p
+                  className={cn(
+                    "rounded-md px-3 py-1 text-[10px] font-semibold",
+                    group === "overdue" && "bg-destructive/8 text-destructive",
+                    group === "due_soon" && "bg-warning/10 text-warning",
+                    group === "later" && "bg-secondary text-muted-foreground",
+                    group === "done" && "bg-success/10 text-success",
+                  )}
+                >
                   {GROUP_LABEL[group]} ({grouped[group].length})
                 </p>
                 <ul>

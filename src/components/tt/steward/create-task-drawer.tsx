@@ -83,9 +83,7 @@ function Pill({
       onClick={onClick}
       className={cn(
         PILL_BASE,
-        active
-          ? "bg-foreground text-background"
-          : "text-muted-foreground hover:text-foreground",
+        active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
       )}
     >
       {children}
@@ -169,7 +167,7 @@ export function CreateTaskDrawer({
       ownerLabel: owner.label,
       priority,
       assigneeKind: kind,
-      aiMode: kind === "agent" ? (aiMode || null) : null,
+      aiMode: kind === "agent" ? aiMode || null : null,
       status,
       subtasks: subtasks.filter((entry) => entry.text.trim()),
       acceptanceCriteria: criteria.filter((entry) => entry.trim()),
@@ -188,7 +186,8 @@ export function CreateTaskDrawer({
       return;
     }
     form.setValue("assignTo", kind);
-    if (kind === "agent") form.setValue("aiMode", (aiMode || undefined) as ManualAiMode | undefined);
+    if (kind === "agent")
+      form.setValue("aiMode", (aiMode || undefined) as ManualAiMode | undefined);
     const valid = await form.trigger();
     if (!valid) return;
     await onCreate(buildInput(status, kind), { assignToAI: kind === "agent" });
@@ -267,15 +266,9 @@ export function CreateTaskDrawer({
           <div>
             <TTField label="Task title">
               {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-              <TTInput
-                autoFocus
-                placeholder="What needs doing?"
-                {...form.register("title")}
-              />
+              <TTInput autoFocus placeholder="What needs doing?" {...form.register("title")} />
             </TTField>
-            {titleError ? (
-              <p className="mt-1.5 text-xs text-destructive">{titleError}</p>
-            ) : null}
+            {titleError ? <p className="mt-1.5 text-xs text-destructive">{titleError}</p> : null}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -338,52 +331,48 @@ export function CreateTaskDrawer({
             <span className="text-sm font-medium text-foreground">Priority</span>
             <div className="flex flex-wrap gap-1">
               {PRIORITIES.map((value) => (
-                <Pill
-                  key={value}
-                  active={priority === value}
-                  onClick={() => setPriority(value)}
-                >
+                <Pill key={value} active={priority === value} onClick={() => setPriority(value)}>
                   {PRIORITY_LABEL[value]}
                 </Pill>
               ))}
             </div>
           </div>
 
-          {allowAgentCreate ? <div className="space-y-2">
-            <span className="text-sm font-medium text-foreground">Assign to</span>
-            <div className="flex flex-wrap gap-1">
-              <Pill active={assignTo === "human"} onClick={() => setAssignTo("human")}>
-                Teammate
-              </Pill>
-              <Pill active={assignTo === "agent"} onClick={() => setAssignTo("agent")}>
-                AI teammate
-              </Pill>
-            </div>
-            {assignTo === "agent" ? (
-              <div className="space-y-2 pt-1">
-                <select
-                  value={aiMode}
-                  onChange={(event) => setAiMode(event.target.value as ManualAiMode | "")}
-                  className={SELECT_CLASS}
-                  aria-label="AI mode"
-                >
-                  <option value="">Pick how far it may go</option>
-                  {(Object.keys(MANUAL_AI_MODE_LABEL) as ManualAiMode[]).map((mode) => (
-                    <option key={mode} value={mode}>
-                      {MANUAL_AI_MODE_LABEL[mode]}
-                    </option>
-                  ))}
-                </select>
-                {aiModeError ? (
-                  <p className="text-xs text-destructive">{aiModeError}</p>
-                ) : null}
-                <p className="text-xs text-muted-foreground">
-                  AI only completes internal, reversible work. Anything external or irreversible
-                  waits for a person.
-                </p>
+          {allowAgentCreate ? (
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-foreground">Assign to</span>
+              <div className="flex flex-wrap gap-1">
+                <Pill active={assignTo === "human"} onClick={() => setAssignTo("human")}>
+                  Teammate
+                </Pill>
+                <Pill active={assignTo === "agent"} onClick={() => setAssignTo("agent")}>
+                  AI teammate
+                </Pill>
               </div>
-            ) : null}
-          </div> : null}
+              {assignTo === "agent" ? (
+                <div className="space-y-2 pt-1">
+                  <select
+                    value={aiMode}
+                    onChange={(event) => setAiMode(event.target.value as ManualAiMode | "")}
+                    className={SELECT_CLASS}
+                    aria-label="AI mode"
+                  >
+                    <option value="">Pick how far it may go</option>
+                    {(Object.keys(MANUAL_AI_MODE_LABEL) as ManualAiMode[]).map((mode) => (
+                      <option key={mode} value={mode}>
+                        {MANUAL_AI_MODE_LABEL[mode]}
+                      </option>
+                    ))}
+                  </select>
+                  {aiModeError ? <p className="text-xs text-destructive">{aiModeError}</p> : null}
+                  <p className="text-xs text-muted-foreground">
+                    AI only completes internal, reversible work. Anything external or irreversible
+                    waits for a person.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* ---- subtasks --------------------------------------------------- */}
           <div className="space-y-2">
@@ -597,15 +586,17 @@ export function CreateTaskDrawer({
           >
             Create task
           </TTButton>
-          {allowAgentCreate ? <TTButton
-            type="button"
-            variant="signal"
-            pending={pending}
-            disabled={!canAssignAI}
-            onClick={() => void submit("open", "agent")}
-          >
-            Create and assign to AI
-          </TTButton> : null}
+          {allowAgentCreate ? (
+            <TTButton
+              type="button"
+              variant="signal"
+              pending={pending}
+              disabled={!canAssignAI}
+              onClick={() => void submit("open", "agent")}
+            >
+              Create and assign to AI
+            </TTButton>
+          ) : null}
         </div>
       </aside>
     </div>

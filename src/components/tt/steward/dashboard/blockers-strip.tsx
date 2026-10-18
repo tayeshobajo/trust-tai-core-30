@@ -8,16 +8,12 @@ import { AlertTriangle, Coffee } from "lucide-react";
 import type { StewardTask } from "@/domain/steward-accountability";
 
 function blockersOf(tasks: StewardTask[]): StewardTask[] {
-  return tasks.filter((task) => task.state === "blocked" || (task.overdue && task.state !== "complete"));
+  return tasks.filter(
+    (task) => task.state === "blocked" || (task.overdue && task.state !== "complete"),
+  );
 }
 
-export function BlockersStrip({
-  tasks,
-  scope,
-}: {
-  tasks: StewardTask[];
-  scope: "self" | "team";
-}) {
+export function BlockersStrip({ tasks, scope }: { tasks: StewardTask[]; scope: "self" | "team" }) {
   const blockers = blockersOf(tasks);
 
   if (blockers.length === 0) {
@@ -28,9 +24,13 @@ export function BlockersStrip({
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">No blockers right now</p>
-          <p className="text-[11px] text-muted-foreground">You are all clear. If something needs your attention, it will show up here.</p>
+          <p className="text-[11px] text-muted-foreground">
+            You are all clear. If something needs your attention, it will show up here.
+          </p>
         </div>
-        <p className="hidden text-[11px] text-muted-foreground sm:block">Keep the momentum going.</p>
+        <p className="hidden text-[11px] text-muted-foreground sm:block">
+          Keep the momentum going.
+        </p>
       </div>
     );
   }

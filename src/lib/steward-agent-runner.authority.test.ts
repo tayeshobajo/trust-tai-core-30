@@ -6,19 +6,35 @@ const me = "u-1";
 
 describe("agent execution authority", () => {
   it("rejects view-only roles even for their own task", () => {
-    expect(agentExecutionAuthority({ role: "viewer", userId: me, createdBy: me, ownerUserId: null }).ok).toBe(false);
+    expect(
+      agentExecutionAuthority({ role: "viewer", userId: me, createdBy: me, ownerUserId: null }).ok,
+    ).toBe(false);
   });
   it("rejects members running someone else's task", () => {
-    expect(agentExecutionAuthority({ role: "member", userId: me, createdBy: "u-2", ownerUserId: "u-3" }).ok).toBe(false);
+    expect(
+      agentExecutionAuthority({ role: "member", userId: me, createdBy: "u-2", ownerUserId: "u-3" })
+        .ok,
+    ).toBe(false);
   });
   it("allows creator or owner, and owner/admin roles", () => {
-    expect(agentExecutionAuthority({ role: "member", userId: me, createdBy: me, ownerUserId: null }).ok).toBe(true);
-    expect(agentExecutionAuthority({ role: "team_member", userId: me, createdBy: "x", ownerUserId: me }).ok).toBe(true);
-    expect(agentExecutionAuthority({ role: "admin", userId: me, createdBy: "x", ownerUserId: "y" }).ok).toBe(true);
+    expect(
+      agentExecutionAuthority({ role: "member", userId: me, createdBy: me, ownerUserId: null }).ok,
+    ).toBe(true);
+    expect(
+      agentExecutionAuthority({ role: "team_member", userId: me, createdBy: "x", ownerUserId: me })
+        .ok,
+    ).toBe(true);
+    expect(
+      agentExecutionAuthority({ role: "admin", userId: me, createdBy: "x", ownerUserId: "y" }).ok,
+    ).toBe(true);
   });
 });
 
-function fakeWriter(opts: { taskUpdated: number; priorFeed: number; insertError?: { code: string } | null }) {
+function fakeWriter(opts: {
+  taskUpdated: number;
+  priorFeed: number;
+  insertError?: { code: string } | null;
+}) {
   const inserts: unknown[] = [];
   const chain = (result: unknown) => {
     const c: Record<string, unknown> = {};
@@ -33,7 +49,10 @@ function fakeWriter(opts: { taskUpdated: number; priorFeed: number; insertError?
         if (table === "steward_tasks") {
           return chain({ data: Array(opts.taskUpdated).fill({ id: "t" }), error: null });
         }
-        const c = chain({ data: Array(opts.priorFeed).fill({ id: "a" }), error: null }) as Record<string, unknown>;
+        const c = chain({ data: Array(opts.priorFeed).fill({ id: "a" }), error: null }) as Record<
+          string,
+          unknown
+        >;
         c["insert"] = (row: unknown) => {
           inserts.push(row);
           return Promise.resolve({ error: opts.insertError ?? null });
