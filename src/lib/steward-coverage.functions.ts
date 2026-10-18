@@ -83,11 +83,16 @@ export const getMeetingCoverageFn = createServerFn({ method: "GET" })
 /**
  * Attest coverage for the CURRENT stored transcript + scope version. An
  * explicit human gesture only; the SQL derives the hash server-side and
- * supersedes any prior attestation atomically.
+ * supersedes any prior attestation atomically, so a retry of the same
+ * gesture is naturally safe. The client supplies a stable operation UUID
+ * so an uncertain transport can be retried without a new gesture; the SQL
+ * is keyed on the transcript hash, so the UUID is trace-only.
  */
 export const attestMeetingCoverageFn = createServerFn({ method: "POST" })
   .middleware([requireTrustTaiAuth])
-  .inputValidator((data) => meetingInputSchema.parse(data))
+  .inputValidator((data) =>
+    meetingInputSchema.extend({ operationId: z.string().uuid().optional() }).parse(data),
+  )
   .handler(async ({ data, context }): Promise<CoverageAttestState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
     const repo = createSupabaseCoverageRepository(context.supabase);

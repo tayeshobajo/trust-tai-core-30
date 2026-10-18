@@ -38,7 +38,13 @@ import {
   getCoverageCapabilityFn,
   getMeetingCoverageFn,
 } from "@/lib/steward-coverage.functions";
-import { getMeetingScopeFn, getScopeCapabilityFn } from "@/lib/steward-scope.functions";
+import {
+  addScopeItemFn,
+  getMeetingScopeFn,
+  getScopeCapabilityFn,
+  syncRequiredScopeFn,
+} from "@/lib/steward-scope.functions";
+import { getMeetingScoreSnapshotFn } from "@/lib/steward-score.functions";
 import {
   dismissProposalFn,
   getProposalLinkCapabilityFn,
