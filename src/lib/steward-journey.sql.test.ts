@@ -447,7 +447,7 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
     const verified = await verifyCanonicalTask(verifyRepo, {
       orgId: ORG,
       taskId: TASK,
-      expectedRevision: 1,
+      expectedRevision: 0,
       operationId: "e7a00000-0000-0000-0000-000000000002",
       note: "Reviewed the draft brief against the recorded call; it matches.",
       actorId: OWNER,
@@ -463,7 +463,7 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
     const verifyReplay = await verifyCanonicalTask(verifyRepo, {
       orgId: ORG,
       taskId: TASK,
-      expectedRevision: 1,
+      expectedRevision: 0,
       operationId: "e7a00000-0000-0000-0000-000000000002",
       note: "Reviewed the draft brief against the recorded call; it matches.",
       actorId: OWNER,
@@ -475,7 +475,7 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
     const reopened = await reopenCanonicalTask(verifyRepo, {
       orgId: ORG,
       taskId: TASK,
-      expectedRevision: 2,
+      expectedRevision: 1,
       operationId: "e7a00000-0000-0000-0000-000000000003",
       reason: "Scope changed in the follow-up call; the brief is outdated.",
       actorId: OWNER,
@@ -488,7 +488,7 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
     const reopenReplay = await reopenCanonicalTask(verifyRepo, {
       orgId: ORG,
       taskId: TASK,
-      expectedRevision: 2,
+      expectedRevision: 1,
       operationId: "e7a00000-0000-0000-0000-000000000003",
       reason: "Scope changed in the follow-up call; the brief is outdated.",
       actorId: OWNER,
@@ -512,6 +512,7 @@ describe("steward SQL journey (real disposable PostgreSQL)", () => {
       title: "Soji roadmap call",
       occurredAt: new Date(0).toISOString(),
       participants: [],
+      sourceActionItems: [],
       segments: transcript.segments.map((s, index) => ({
         index,
         speaker: s.speaker,

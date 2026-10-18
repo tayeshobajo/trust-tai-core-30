@@ -67,6 +67,7 @@ function toNormalizedConversation(
     title,
     occurredAt: new Date(0).toISOString(),
     participants: [],
+    sourceActionItems: [],
     segments,
   };
 }
