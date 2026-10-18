@@ -14,23 +14,70 @@ vi.mock("@/data/steward/recent-sync", () => ({ syncRecentMeetings: () => new Pro
 vi.mock("@/hooks/use-presence", () => ({ usePresence: vi.fn() }));
 vi.mock("@/lib/workspace", () => ({ signOut: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, params: _params, children, ...props }: React.PropsWithChildren<{ to: string; params?: unknown }>) => <a href={to} {...props}>{children}</a>,
+  Link: ({
+    to,
+    params: _params,
+    children,
+    ...props
+  }: React.PropsWithChildren<{ to: string; params?: unknown }>) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
   useNavigate: () => vi.fn(),
-  useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => unknown }) => select({ location: { pathname: "/modules/steward" } }),
+  useRouterState: ({
+    select,
+  }: {
+    select: (state: { location: { pathname: string } }) => unknown;
+  }) => select({ location: { pathname: "/modules/steward" } }),
 }));
 
 const identity: WorkspaceIdentity = {
-  userId: "fictional-user", email: "review@example.invalid", name: "Fictional reviewer", firstName: "Fictional",
-  organizationId: "fictional-org", organizationName: "Fictional review", organizationSlug: "fictional", role: "member", canManage: false, avatarUrl: null,
-  apps: ["home", "steward", "scout"].map((appId) => ({ appId, level: "work", visible: true, canWork: true, canManage: false, because: "fictional fixture" })),
+  userId: "fictional-user",
+  email: "review@example.invalid",
+  name: "Fictional reviewer",
+  firstName: "Fictional",
+  organizationId: "fictional-org",
+  organizationName: "Fictional review",
+  organizationSlug: "fictional",
+  role: "member",
+  canManage: false,
+  avatarUrl: null,
+  apps: ["home", "steward", "scout"].map((appId) => ({
+    appId,
+    level: "work",
+    visible: true,
+    canWork: true,
+    canManage: false,
+    because: "fictional fixture",
+  })),
 };
 beforeAll(() => {
-  window.matchMedia = vi.fn().mockImplementation(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
-  global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+  window.matchMedia = vi
+    .fn()
+    .mockImplementation(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+  global.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
 });
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 function setup(child: React.ReactNode) {
-  return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{child}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      {child}
+    </QueryClientProvider>,
+  );
 }
 describe("Steward suite-shell regression", () => {
   it("retains authorized suite navigation during loading and empty reads", async () => {
@@ -47,13 +94,18 @@ describe("Steward suite-shell regression", () => {
   });
   it("retains suite navigation when stored meetings fail", async () => {
     service.conversations.mockRejectedValue(new Error("fixture unavailable"));
-    service.commitments.mockResolvedValue([]); service.list.mockResolvedValue([]);
+    service.commitments.mockResolvedValue([]);
+    service.list.mockResolvedValue([]);
     setup(<StewardWorkroom identity={identity} />);
     await screen.findByText(/Couldn’t read stored meetings/);
     expect(screen.getByRole("link", { name: "Home" })).toBeTruthy();
   });
   it("opens a named app drawer and closes it on navigation", async () => {
-    setup(<AppShell identity={identity} canvas="workroom">Fictional content</AppShell>);
+    setup(
+      <AppShell identity={identity} canvas="workroom">
+        Fictional content
+      </AppShell>,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Open app navigation" }));
     const dialog = screen.getByRole("dialog", { name: "App navigation" });
     expect(dialog).toBeTruthy();
