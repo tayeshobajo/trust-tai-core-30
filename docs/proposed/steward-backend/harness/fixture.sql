@@ -13,6 +13,8 @@ create role authenticated nologin;
 create role service_role nologin bypassrls;
 
 create schema if not exists auth;
+create schema if not exists private;
+grant usage on schema private to authenticated, service_role;
 create or replace function auth.uid() returns uuid language sql stable as $$
   select coalesce(
     nullif(current_setting('request.jwt.claim.sub', true), ''),
