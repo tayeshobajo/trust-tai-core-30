@@ -365,7 +365,7 @@ begin
   end if;
   perform private.steward_revalidate_requester(run);
   update public.steward_canonical_runs
-     set status = case when attempts >= max_attempts then 'failed' else 'queued' end,
+     set status = case when p_known_pre_call and attempts < max_attempts then 'queued' else 'failed' end,
          failure_reason = left(coalesce(p_reason, ''), 500),
          claim_token = null, lease_expires_at = null, updated_at = now()
    where id = p_run
