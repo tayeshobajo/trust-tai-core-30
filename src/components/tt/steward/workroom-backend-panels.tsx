@@ -1172,7 +1172,9 @@ export function ScopeReviewPanel({
                       <span className="text-muted-foreground"> · counts in the denominator</span>
                     )}
                   </p>
-                  {scopeCapability.kind === "enabled" && handler ? (
+                  {scopeCapability.kind === "enabled" &&
+                  handler &&
+                  (mayAmendScopeItem?.(item.taskId) ?? false) ? (
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
                       <input
                         aria-label={`${removed ? "Reinstate" : "Remove"} reason for task ${item.taskId.slice(-8)}`}
