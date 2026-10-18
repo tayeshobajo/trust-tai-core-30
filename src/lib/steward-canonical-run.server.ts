@@ -110,6 +110,17 @@ export interface CanonicalRunRepository {
     evidenceRefs: string[];
   }): Promise<CanonicalRun>;
   failRun(input: { runId: string; claimToken: string; reason: string }): Promise<CanonicalRun>;
+  /**
+   * Terminal UNCERTAIN transition: the provider outcome is unknown (the
+   * call may still have completed server-side), so the run is failed
+   * permanently — never requeued. A deliberate new operation UUID is the
+   * only way to rerun.
+   */
+  markRunUncertain(input: {
+    runId: string;
+    claimToken: string;
+    reason: string;
+  }): Promise<CanonicalRun>;
   /** Resolve a selected input ref to stored content; null if inaccessible. */
   readInput(
     ref: CanonicalRunInputRef,
@@ -128,8 +139,8 @@ export interface CanonicalRunProvider {
   generate(input: {
     action: CanonicalRunAction;
     taskTitle: string;
-    inputs: { kind: string; content: string; revision: number }[];
-  }): Promise<{ text: string }>;
+    inputs: { kind: string; id: string; content: string; revision: number }[];
+  }): Promise<{ text: string; evidenceRefs: string[] }>;
 }
 
 function sha256(text: string): string {
@@ -363,7 +374,8 @@ export async function authorizeWorkerEndpoint(
 export type ExecuteCanonicalRunResult =
   | { kind: "complete"; run: CanonicalRun }
   | { kind: "not_claimed" }
-  | { kind: "failed"; run: CanonicalRun };
+  | { kind: "failed"; run: CanonicalRun }
+  | { kind: "uncertain"; run: CanonicalRun };
 
 /**
  * Stage 2: claim and execute. The provider receives ONLY the immutable
@@ -381,36 +393,51 @@ export async function executeCanonicalRun(
   if (!claimed || !claimed.claimToken) return { kind: "not_claimed" };
   const claimToken = claimed.claimToken;
 
-  const taskTitle = await repo.readTaskTitle(claimed.taskId, claimed.organizationId, input.actorId);
-  if (!taskTitle) {
-    const run = await repo.failRun({
-      runId: claimed.id,
-      claimToken,
-      reason: "task became inaccessible",
-    });
-    return { kind: "failed", run };
-  }
-
   try {
+    // The task title is mutable and read AFTER the snapshot was frozen; it
+    // is prompt context only, never evidence. Read it inside the guarded
+    // section so a read failure finalizes the run honestly instead of
+    // escaping as an unhandled rejection that leaves the lease running.
+    const taskTitle = await repo.readTaskTitle(claimed.taskId, claimed.organizationId, input.actorId);
+    if (!taskTitle) {
+      const run = await repo.failRun({
+        runId: claimed.id,
+        claimToken,
+        reason: "task became inaccessible",
+      });
+      return { kind: "failed", run };
+    }
+
     const output = await provider.generate({
       action: claimed.action,
       taskTitle,
       inputs: claimed.inputSnapshot.map((s) => ({
         kind: s.kind,
+        id: s.id,
         content: s.content,
         revision: s.revision,
       })),
     });
+    // Persist EXACTLY the cited subset the provider returned — never all
+    // inputs as if cited. The provider rejects empty/invalid citations, so
+    // output.evidenceRefs is a validated non-empty subset at this point.
     const run = await repo.completeRun({
       runId: claimed.id,
       claimToken,
       artifactText: output.text,
-      evidenceRefs: claimed.inputSnapshot.map((s) => `${s.kind}:${s.id}@${s.revision}`),
+      evidenceRefs: output.evidenceRefs,
     });
     return { kind: "complete", run };
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "provider failure";
-    const run = await repo.failRun({ runId: claimed.id, claimToken, reason: reason.slice(0, 500) });
+    const reason = (error instanceof Error ? error.message : "provider failure").slice(0, 480);
+    // Uncertain outcomes (timeout/abort — the call may still have
+    // completed) are TERMINAL: persist honestly, never auto-retry. Only a
+    // deliberate new operation UUID can rerun.
+    if (error instanceof Error && error.name === "ProviderOutcomeUncertainError") {
+      const run = await repo.markRunUncertain({ runId: claimed.id, claimToken, reason });
+      return { kind: "uncertain", run };
+    }
+    const run = await repo.failRun({ runId: claimed.id, claimToken, reason });
     return { kind: "failed", run };
   }
 }

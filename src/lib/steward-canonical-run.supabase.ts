@@ -118,6 +118,15 @@ export function createSupabaseCanonicalRunRepository(
       if (error) rethrow(error);
       return mapRun(data as RunRow);
     },
+    async markRunUncertain(input) {
+      const { data, error } = await supabase.rpc("steward_uncertain_canonical_run", {
+        p_run: input.runId,
+        p_claim_token: input.claimToken,
+        p_reason: input.reason,
+      });
+      if (error) rethrow(error);
+      return mapRun(data as RunRow);
+    },
     async readInput() {
       // steward_resolve_input is NOT granted to authenticated: input
       // resolution and snapshotting happen inside steward_request_canonical_run.
