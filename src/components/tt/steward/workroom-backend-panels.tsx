@@ -594,8 +594,8 @@ export function VerificationPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={attempt.busy || note.trim().length < 10 || !onReopen}
-            onClick={() => void act(null)}
+            disabled={attempt.busy || !!attempt.pending || note.trim().length < 10 || !onReopen}
+            onClick={() => void act()}
           >
             Reopen (history preserved)
           </TTButton>
@@ -604,10 +604,10 @@ export function VerificationPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={attempt.busy || note.trim().length < 10 || !onVerify}
-            onClick={() => void act(null)}
+            disabled={attempt.busy || !!attempt.pending || note.trim().length < 10 || !onVerify}
+            onClick={() => void act()}
           >
-            <Check aria-hidden className="size-3.5" /> Verify at revision {task.revision}
+            <Check aria-hidden className="size-3.5" /> Verify at revision {currentRevision}
           </TTButton>
         )}
         {attempt.pending ? (
@@ -616,12 +616,19 @@ export function VerificationPanel({
             variant="secondary"
             className="h-8 px-2 text-xs"
             disabled={attempt.busy}
-            onClick={() => void act(attempt.pending)}
+            onClick={() => void retry()}
           >
             <RotateCw aria-hidden className="size-3.5" /> Retry same operation
           </TTButton>
         ) : null}
       </div>
+      {attempt.pending ? (
+        <p className="text-xs text-warning">
+          One operation’s outcome is unknown. Retry replays the exact original{" "}
+          {attempt.pending.payload.kind} (task …{attempt.pending.payload.taskId.slice(-8)}, revision{" "}
+          {attempt.pending.payload.expectedRevision}); a new action stays blocked until it resolves.
+        </p>
+      ) : null}
       <OutcomeNote outcome={attempt.outcome} />
     </div>
   );
