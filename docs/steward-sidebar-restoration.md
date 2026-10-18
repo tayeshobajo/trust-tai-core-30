@@ -1,0 +1,17 @@
+# Steward suite sidebar restoration
+
+## Compact token/component/asset plan (before implementation)
+- Reuse `AppShell` and its permission-filtered `NavList`, shared account controls, existing `BrandLogo` and registry icons. Keep the normal suite rail at desktop and a named app-navigation Sheet at compact widths.
+- Add an opt-in workroom canvas to `AppShell`: no page gutters or reading-width cap. Other rooms retain their existing layout.
+- Embed the real Steward workroom beneath the single suite header; retain its room title/More menu, meetings, all-outstanding link, selected-task source/history and existing data wiring. Hide only its duplicate brand/account header controls in embedded mode.
+- Size meeting/task/detail columns against the available canvas using container breakpoints; compact drawers use that same available-width decision.
+- Reuse `background`, `card`, `sidebar`, `cloud`, `secondary`, `border`, `royal` and existing status tokens, Sora/Manrope typography, 1px dividers and existing Lucide icons. No assets, fonts, palettes or routing changes.
+- Keep the standalone/mockup presentation unchanged. Atomic completion stays blocked; no database work.
+
+## Verification
+- Focused command: `bunx vitest run --config vitest.tracker.config.ts src/components/tt/steward/workroom-shell.test.tsx src/components/tt/steward/task-history.test.tsx src/components/tt/steward/workroom-receipts.test.ts src/data/steward/recent-sync.test.ts src/domain/steward-workroom.test.ts` — exit 0, 41 tests passed.
+- Changed-file command: `bunx eslint src/components/tt/app-shell.tsx src/components/tt/steward/workroom.tsx src/components/tt/steward/workroom-view.tsx src/components/tt/steward/workroom-shell.test.tsx` — final exit 0. Initial formatting-only failure was corrected; no dependency changes.
+- Browser command: `python3 /tmp/browser/steward-sidebar/check_navigation.py` — final exit 0. Actual shared AppShell/WorkroomView rendered with fictional props, empty org/user IDs (no presence writes), no data services, network writes blocked. Temporary Vite entry and harness removed. No application auth bypass or app-route edits.
+- At 1440×900, suite rail, meetings rail and selected details are visible; at 768×1024 and 375×812, separate app/meeting drawers and task drawers work. Enter selects tasks; Escape closes all drawers and restores trigger focus. Home → Steward → Scout → browser Back was exercised in the fictional router. Loading/empty/error retained suite rail or app toggle. No horizontal document overflow; no runtime errors. Long titles wrap. Screenshots inspected after drawer animation settled.
+- Screenshots: `/tmp/browser/steward-sidebar/1440-populated.png`, `768-populated.png`, `375-populated.png`; compact `768-apps.png`, `375-apps.png`, `768-meetings.png`, `375-meetings.png`, `768-task-drawer.png`, `375-task-drawer.png`; each width also has `-loading.png`, `-empty.png`, `-error.png`. Copies delivered in Files under `steward-sidebar-qa/`; no hosted screenshot URL was provisioned.
+- Automatic preview diagnostic reports `build OK`; manual build/typecheck not run (environment prohibition). Authenticated preview is unavailable (`no_supabase`): populated real-data navigation remains unverified. Fictional router checks do not prove deployed routing. No database/atomic completion work, production publishing or data/history/sync changes.

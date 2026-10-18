@@ -20,6 +20,7 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 
 import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
 import { TaskHistory } from "./task-history";
+import { AppShell } from "@/components/tt/app-shell";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 const FOCUS_THROTTLE_MS = 60 * 1000;
@@ -131,6 +132,14 @@ function useRecentSync(identity: WorkspaceIdentity) {
 /* ---------------------------------------------------------- wiring */
 
 export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
+  return (
+    <AppShell identity={identity} canvas="workroom">
+      <StewardWorkroomContent identity={identity} />
+    </AppShell>
+  );
+}
+
+function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
   const org = identity.organizationId;
   const conversations = useQuery({
     queryKey: ["steward", "workroom", "conversations", org],
@@ -209,6 +218,7 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
 
   return (
     <WorkroomView
+      embedded
       meetings={meetings}
       commitmentFor={commitmentById}
       receiptsFailed={receipts.isError}
@@ -245,16 +255,7 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
           ))}
         </WorkroomMoreMenu>
       }
-      accountSlot={
-        <Link
-          to="/settings/profile"
-          aria-label={`Account settings — signed in as ${identity.email}`}
-          title={identity.email}
-          className="hidden size-8 items-center justify-center rounded-full bg-secondary text-xs text-muted-foreground hover:bg-secondary/70 sm:flex"
-        >
-          {identity.email.slice(0, 2).toUpperCase()}
-        </Link>
-      }
+      accountSlot={null}
     />
   );
 }
