@@ -139,8 +139,10 @@ export function serverMeetingScore(state: {
   const { denominator, verified, pendingProposals } = scope.counts;
   const coverageCurrent = coverage?.kind === "ready" ? coverage.current : false;
   if (denominator === 0) return { value: 0, label: "No agreed scope recorded yet" };
-  const value = Math.round((verified / denominator) * 100);
   const full = verified === denominator && coverageCurrent && pendingProposals === 0;
+  /* A displayed 100 would read as "done" even with unconfirmed coverage or
+     pending proposals — cap below 100 until every condition holds. */
+  const value = full ? 100 : Math.min(Math.round((verified / denominator) * 100), 99);
   if (!full) {
     const blockers: string[] = [];
     if (verified < denominator) blockers.push(`${denominator - verified} not verified`);
