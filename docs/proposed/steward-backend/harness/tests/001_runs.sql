@@ -156,12 +156,13 @@ end $$;
 set role authenticated;
 select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- member
 do $$
-declare r public.steward_canonical_runs;
+declare j jsonb; r public.steward_canonical_runs;
 begin
-  r := public.steward_request_canonical_run(
+  j := public.steward_request_canonical_run(
     '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000002',
     'prepare_brief', 'b0000000-0000-0000-0000-000000000009',
     '[{"kind":"task_notes","id":"10000000-0000-0000-0000-000000000002"}]'::jsonb);
+  r := jsonb_populate_record(null::public.steward_canonical_runs, j->'run');
   perform public.test_assert(r.status = 'queued', 'member run queued before deactivation');
 end $$;
 reset role;
@@ -203,10 +204,11 @@ select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 do $$
 declare rid uuid;
 begin
-  select id into rid from public.steward_request_canonical_run(
-    '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
-    'prepare_brief', 'a0000000-0000-0000-0000-000000000005',
-    '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
+  select (j->'run'->>'id')::uuid into rid from (
+    select public.steward_request_canonical_run(
+      '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
+      'prepare_brief', 'a0000000-0000-0000-0000-000000000005',
+      '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb)) j;
 end $$;
 select public.test_act_as_worker();
 set role service_role;
