@@ -19,9 +19,10 @@ claim() {
         'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')), 'LOST')"
 }
 
-a=$(claim) & pa=$!
-b=$(claim) & pb=$!
+claim > /tmp/steward-claim-a.out & pa=$!
+claim > /tmp/steward-claim-b.out & pb=$!
 wait $pa; wait $pb
+a=$(cat /tmp/steward-claim-a.out); b=$(cat /tmp/steward-claim-b.out)
 
 wins=$(printf '%s\n%s\n' "$a" "$b" | grep -vc LOST)
 [ "$wins" -eq 1 ] || { echo "FAIL: expected exactly 1 winning claim, got $wins ($a / $b)"; exit 1; }
