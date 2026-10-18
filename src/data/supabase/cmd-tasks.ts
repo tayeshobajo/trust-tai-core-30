@@ -48,7 +48,7 @@ export function boardService(client: SupabaseClient = supabase) {
       if (meeting.error || !meeting.data)
         throw new Error("This stored meeting is unavailable in your workspace.");
       const key = requiredWorkKey(draft.meetingId, draft.operationId);
-      return this.create(actor.organizationId, "business", key, {
+      const result = await this.create(actor.organizationId, "business", key, {
         title: draft.title,
         status: "open",
         next_action: draft.nextAction,
@@ -62,6 +62,8 @@ export function boardService(client: SupabaseClient = supabase) {
         acceptance_criteria: [],
         context_links: withMeetingAssociation([], draft.meetingId),
       });
+      if (result.title !== draft.title || result.next_action !== draft.nextAction || result.created_by !== actor.userId) throw new Error("This operation already belongs to different task details. Refresh before trying again.");
+      return result;
     },
     async meetingOptions(
       org: string,

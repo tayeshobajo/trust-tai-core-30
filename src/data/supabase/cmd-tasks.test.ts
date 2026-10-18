@@ -39,6 +39,7 @@ function transport() {
   const operations: string[] = [];
   let issue: MockError | null = null;
   const client = {
+    auth: { getUser: async () => ({ data: { user: { id: owner } }, error: null }) },
     from: () => {
       let op = "read";
       let patch: Partial<BoardTask> = {};
@@ -108,6 +109,25 @@ function transport() {
   return { client, rows, operations, fail: (value: MockError) => (issue = value) };
 }
 describe("board service mocked transport", () => {
+  it("creates required business work once, scopes meeting read and rejects replay payload changes", async () => {
+    const db = transport();
+    const service = boardService(db.client);
+    await service.create(org, "business", "stored-meeting-fixture", edit);
+    // The mock uses one collection for both tables; owner-matching identity stands for the narrow meeting read.
+    const meetingId = "00000000-0000-4000-8000-000000000020";
+    const actor = { organizationId: org, userId: owner, role: "member" };
+    const draft = { meetingId, operationId: owner, title: "Required manual work", nextAction: "Check result" };
+    const first = await service.createRequired(actor, draft);
+    const replay = await service.createRequired(actor, draft);
+    expect(replay.correlation_id).toBe(first.correlation_id);
+    expect(db.rows).toHaveLength(2);
+    expect(first.status).toBe("open");
+    expect(first.task_visibility).toBe("business");
+    await expect(service.createRequired(actor, { ...draft, title: "Different" })).rejects.toThrow(/different task details/);
+    await expect(service.createRequired({ ...actor, role: "viewer" }, draft)).rejects.toThrow(/write access/);
+    await expect(service.createRequired({ ...actor, userId: org }, draft)).rejects.toThrow(/Sign in/);
+    await expect(service.createRequired({ ...actor, organizationId: owner }, draft)).rejects.toThrow(/unavailable/);
+  });
   it("retains required identity on archive and rejects generic removal before transport", async () => {
     const db = transport();
     const service = boardService(db.client);

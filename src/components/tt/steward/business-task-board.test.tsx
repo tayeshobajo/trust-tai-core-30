@@ -7,6 +7,7 @@ import { BusinessTaskBoard, TaskEditor } from "./business-task-board";
 import type { BoardTask } from "@/domain/cmd-tasks";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import axe from "axe-core";
+import { requiredWorkKey } from "@/domain/steward-required-work";
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   personalCounts: vi.fn(),
@@ -96,6 +97,12 @@ function editor(
   return onSave;
 }
 describe("board UI with mocked transport", () => {
+  it("locks required association and source fields in the generic editor", () => {
+    editor({ ...task, correlation_id: requiredWorkKey(owner, owner), context_links: [{ label: "Steward meeting association", url: `https://cmd.trusttai.com/modules/steward/meetings/${owner}` }] });
+    expect((screen.getByLabelText("Associated meeting") as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Source 1 URL") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Remove link 1" }) as HTMLButtonElement).disabled).toBe(true);
+  });
   it("saves a reversible meeting link with retained evidence and reports revision conflict", async () => {
     const save = editor(
       {
