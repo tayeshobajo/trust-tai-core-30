@@ -80,3 +80,15 @@
 - [x] Approved 18/56/26 layout with compact 56px shell; keyboard-selectable rows; Sheets only at compact breakpoints
 - [x] Sync: disconnected source is explicit 503; late-transcript upgrades; added vs refreshed; last-success retained; Retry
 - [x] Visual QA via temporary fictional harness (deleted after): 1440/768/375 screenshots, no overflow, drawers verified
+
+## Steward task workspace slice (2026-10-18, c89cc155)
+- [x] URL-persisted meeting/task selection + strong Current styling
+- [x] Display-only title normalization (canonical titles untouched)
+- [x] Owner/Due/Status cells open revision-guarded TaskEditor with field focus
+- [x] Expanded task detail: next action, dependencies, notes provenance, criteria, collapsed inputs/audit
+- [x] Bounded AI preparation catalog — all Unavailable pending canonical run bridge (DRAFT, unapplied)
+- [x] Read-only proposal overlap grouping; link-to-existing blocked pending contract (DRAFT, unapplied)
+- [ ] Atomic completion/reopen RPC — blocked: reviewed SQL unavailable
+- [ ] Durable transcript-coverage attestation — blocked
+- [ ] Canonical run bridge + proposal link contract — proposed, unapplied
+- [ ] Hosted required-task enforcement — unverified
