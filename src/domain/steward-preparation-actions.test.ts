@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  CANONICAL_RUN_BRIDGE,
-  preparationAvailability,
-} from "./steward-preparation-actions";
+import { CANONICAL_RUN_BRIDGE, preparationAvailability } from "./steward-preparation-actions";
 
 describe("bounded preparation catalog", () => {
   it("the canonical run bridge is unavailable with a precise reason", () => {
@@ -12,7 +9,11 @@ describe("bounded preparation catalog", () => {
   });
 
   it("offers nothing when the task has no recorded context", () => {
-    const actions = preparationAvailability({ context_links: [], notes: null, acceptance_criteria: [] });
+    const actions = preparationAvailability({
+      context_links: [],
+      notes: null,
+      acceptance_criteria: [],
+    });
     expect(actions.every((a) => !a.offered)).toBe(true);
     expect(actions[0]!.because).toContain("No recorded context");
   });

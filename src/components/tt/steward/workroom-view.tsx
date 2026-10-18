@@ -349,7 +349,12 @@ function TaskDetail({
                 <li key={action.id} className="rounded-md border border-border bg-card p-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[13px] font-medium text-foreground">{action.label}</p>
-                    <TTButton type="button" variant="secondary" className="h-8 px-2 text-xs" disabled>
+                    <TTButton
+                      type="button"
+                      variant="secondary"
+                      className="h-8 px-2 text-xs"
+                      disabled
+                    >
                       Unavailable
                     </TTButton>
                   </div>
@@ -936,11 +941,7 @@ export function WorkroomView({
               key={key}
               className={cn(
                 "grid min-h-11 w-full grid-cols-[20px_minmax(0,1fr)] items-center gap-2 border-b border-border px-3 py-2 text-sm transition-colors sm:grid-cols-[20px_minmax(0,1fr)_116px_104px_92px]",
-                r.verified
-                  ? "bg-success/10"
-                  : active
-                    ? "bg-secondary"
-                    : "hover:bg-secondary/40",
+                r.verified ? "bg-success/10" : active ? "bg-secondary" : "hover:bg-secondary/40",
               )}
             >
               <button

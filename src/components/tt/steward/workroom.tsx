@@ -285,88 +285,88 @@ function StewardWorkroomContent({
 
   return (
     <>
-    <WorkroomView
-      embedded
-      meetings={linkedMeetings}
-      {...(selection ? { selection } : {})}
-      {...(onSelect ? { onSelect } : {})}
-      taskById={taskById}
-      mayEditTask={(task) => mayEditBoardTask(task, actor)}
-      onEditTaskField={(row, field) => {
-        const task = row.boardTask;
-        if (!task || !mayEditBoardTask(task, actor)) return;
-        setEditing({ task, field });
-      }}
-      onAddRequiredTask={
-        mayAddRequiredWork(identity)
-          ? async (draft) => {
-              await cmdTasks.createRequired(identity, draft);
-              await queryClient.invalidateQueries({
-                queryKey: businessWorkQuery(org, identity.userId).queryKey,
-              });
-            }
-          : undefined
-      }
-      linkedRead={{
-        state: business.isPending ? "loading" : business.isError ? "error" : "ready",
-        truncated: business.data?.truncated ?? false,
-        onRetry: () => void business.refetch(),
-      }}
-      commitmentFor={commitmentById}
-      receiptsFailed={receipts.isError}
-      sync={sync}
-      historyFor={(commitmentId) => (
-        <TaskHistory
-          key={`${org}:${identity.userId}:${commitmentId}`}
-          organizationId={org}
-          userId={identity.userId}
-          commitmentId={commitmentId}
-        />
-      )}
-      headerMenu={
-        <WorkroomMoreMenu>
-          {(
-            [
-              ["/", "Suite home"],
-              ["/modules/steward/team", "Team"],
-              ["/modules/steward/tasks", "All outstanding work"],
-              ["/modules/steward/board", "Business task board"],
-              ["/modules/steward/agents", "Agents"],
-              ["/modules/steward/scouts", "Scouts"],
-              ["/modules/steward/ai", "Trust Tai AI"],
-              ["/modules/steward/timeline", "Timeline"],
-              ["/modules/steward/memory", "Memory"],
-            ] as const
-          ).map(([to, label]) => (
-            <Link
-              key={to}
-              to={to}
-              className="block rounded px-3 py-2 text-sm text-foreground hover:bg-secondary"
-            >
-              {label}
-            </Link>
-          ))}
-        </WorkroomMoreMenu>
-      }
-      accountSlot={null}
-    />
-    {editing ? (
-      <TaskEditor
-        key={`${editing.task.id}:${editing.task.revision}`}
-        task={editing.task}
-        scope="business"
-        identity={identity}
-        tasks={business.data?.tasks ?? []}
-        people={choices.data?.people ?? []}
-        meetingOptions={meetingRead.data?.meetings ?? []}
-        meetingsLoading={meetingRead.isPending}
-        meetingsError={meetingRead.isError}
-        meetingsTruncated={meetingRead.data?.truncated ?? false}
-        focusField={editing.field}
-        onClose={() => setEditing(null)}
-        onSave={saveEdit}
+      <WorkroomView
+        embedded
+        meetings={linkedMeetings}
+        {...(selection ? { selection } : {})}
+        {...(onSelect ? { onSelect } : {})}
+        taskById={taskById}
+        mayEditTask={(task) => mayEditBoardTask(task, actor)}
+        onEditTaskField={(row, field) => {
+          const task = row.boardTask;
+          if (!task || !mayEditBoardTask(task, actor)) return;
+          setEditing({ task, field });
+        }}
+        onAddRequiredTask={
+          mayAddRequiredWork(identity)
+            ? async (draft) => {
+                await cmdTasks.createRequired(identity, draft);
+                await queryClient.invalidateQueries({
+                  queryKey: businessWorkQuery(org, identity.userId).queryKey,
+                });
+              }
+            : undefined
+        }
+        linkedRead={{
+          state: business.isPending ? "loading" : business.isError ? "error" : "ready",
+          truncated: business.data?.truncated ?? false,
+          onRetry: () => void business.refetch(),
+        }}
+        commitmentFor={commitmentById}
+        receiptsFailed={receipts.isError}
+        sync={sync}
+        historyFor={(commitmentId) => (
+          <TaskHistory
+            key={`${org}:${identity.userId}:${commitmentId}`}
+            organizationId={org}
+            userId={identity.userId}
+            commitmentId={commitmentId}
+          />
+        )}
+        headerMenu={
+          <WorkroomMoreMenu>
+            {(
+              [
+                ["/", "Suite home"],
+                ["/modules/steward/team", "Team"],
+                ["/modules/steward/tasks", "All outstanding work"],
+                ["/modules/steward/board", "Business task board"],
+                ["/modules/steward/agents", "Agents"],
+                ["/modules/steward/scouts", "Scouts"],
+                ["/modules/steward/ai", "Trust Tai AI"],
+                ["/modules/steward/timeline", "Timeline"],
+                ["/modules/steward/memory", "Memory"],
+              ] as const
+            ).map(([to, label]) => (
+              <Link
+                key={to}
+                to={to}
+                className="block rounded px-3 py-2 text-sm text-foreground hover:bg-secondary"
+              >
+                {label}
+              </Link>
+            ))}
+          </WorkroomMoreMenu>
+        }
+        accountSlot={null}
       />
-    ) : null}
+      {editing ? (
+        <TaskEditor
+          key={`${editing.task.id}:${editing.task.revision}`}
+          task={editing.task}
+          scope="business"
+          identity={identity}
+          tasks={business.data?.tasks ?? []}
+          people={choices.data?.people ?? []}
+          meetingOptions={meetingRead.data?.meetings ?? []}
+          meetingsLoading={meetingRead.isPending}
+          meetingsError={meetingRead.isError}
+          meetingsTruncated={meetingRead.data?.truncated ?? false}
+          focusField={editing.field}
+          onClose={() => setEditing(null)}
+          onSave={saveEdit}
+        />
+      ) : null}
     </>
   );
 }
