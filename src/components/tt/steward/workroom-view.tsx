@@ -127,6 +127,31 @@ export interface WorkroomBackend {
     reason: string;
     operationId: string;
   }) => Promise<ActionOutcome>;
+  /** Audited, reasoned scope amendments (005 patch): remove an item from
+      the denominator or explicitly reinstate a removed one. */
+  onRemoveScopeItem?: (input: {
+    meetingId: string;
+    itemId: string;
+    reason: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+  onReinstateScopeItem?: (input: {
+    meetingId: string;
+    itemId: string;
+    reason: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+  /** Bounded canonical verification projection for the visible tasks of
+      one meeting — receipt-backed verified per task id, so full-meeting
+      counts/filters never depend on only the selected task's read. */
+  verificationProjectionFor?: (
+    meetingId: string,
+  ) =>
+    | { kind: "ready"; verified: Record<string, boolean>; truncated: boolean }
+    | { kind: "rejected"; message: string }
+    | { kind: "loading" }
+    | { kind: "unavailable"; reason: string }
+    | undefined;
 }
 
 /**
