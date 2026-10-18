@@ -13,6 +13,8 @@
 -- activation path is the separately reviewed grants.review.sql.
 
 create schema if not exists private;
+create extension if not exists pgcrypto; -- sha256 digests
+create extension if not exists "uuid-ossp"; -- deterministic sync operation UUIDs
 
 -- Membership helpers mirror the existing cmd-task-manager contracts.
 create or replace function private.steward_is_active_member(org uuid) returns boolean
