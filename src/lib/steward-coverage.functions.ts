@@ -97,7 +97,6 @@ export const attestMeetingCoverageFn = createServerFn({ method: "POST" })
       const attestation = await repo.attest({
         orgId: data.orgId,
         conversationId: data.conversationId,
-        actorId: context.userId,
       });
       return { kind: "attested", attestation };
     } catch (error) {

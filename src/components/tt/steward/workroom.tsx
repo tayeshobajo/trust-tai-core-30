@@ -317,46 +317,71 @@ function useStewardBackend(
         : runs.isPending && caps?.preparation.kind === "enabled"
           ? { kind: "loading" }
           : undefined,
-    verificationFor: (taskId) =>
-      taskId === selectedTaskId && verification.data
-        ? verification.data
-        : verification.isPending && caps?.verification.kind === "enabled"
-          ? { kind: "loading" }
-          : undefined,
-    meetingState: (id) =>
-      id === meetingId
-        ? {
-            scope: scope.data ?? (scope.isPending ? { kind: "loading" } : undefined),
-            coverage: coverage.data
-              ? coverage.data.kind === "ready"
-                ? {
-                    kind: "ready",
-                    current: coverage.data.current,
-                    attestedAt: coverage.data.latest?.createdAt ?? null,
-                  }
-                : coverage.data
-              : coverage.isPending
-                ? { kind: "loading" }
-                : undefined,
-            proposals: proposals.data
-              ? proposals.data.kind === "ready"
-                ? {
-                    kind: "ready",
-                    proposals: proposals.data.proposals.map((proposal) => ({
-                      id: proposal.id,
-                      sourceKey: proposal.sourceKey,
-                      kind: proposal.kind,
-                      statement: proposal.statement,
-                      status: proposal.status,
-                      evidence: proposal.evidence.map((ref) => ({ label: ref.label })),
-                    })),
-                  }
-                : proposals.data
-              : proposals.isPending
-                ? { kind: "loading" }
-                : undefined,
-          }
-        : undefined,
+    verificationFor: (taskId) => {
+      if (taskId !== selectedTaskId) return undefined;
+      if (verification.data) {
+        if (verification.data.kind !== "ready") return verification.data;
+        return {
+          kind: "ready",
+          task: verification.data.read.task
+            ? {
+                status: verification.data.read.task.status === "complete" ? "complete" : "open",
+                revision: verification.data.read.task.revision,
+              }
+            : null,
+          receipts: verification.data.read.receipts.map((receipt) => ({
+            id: receipt.id,
+            note: receipt.note,
+            actorId: receipt.actorId,
+            createdAt: receipt.createdAt,
+          })),
+        };
+      }
+      return verification.isPending && caps?.verification.kind === "enabled"
+        ? { kind: "loading" }
+        : undefined;
+    },
+    meetingState: (id) => {
+      if (id !== meetingId) return undefined;
+      const state: {
+        scope?: import("./workroom-backend-panels").ScopeRead;
+        coverage?: import("./workroom-backend-panels").CoverageRead;
+        proposals?: import("./workroom-backend-panels").ProposalReviewRead;
+      } = {};
+      if (scope.data) {
+        state.scope =
+          scope.data.kind === "ready"
+            ? { kind: "ready", counts: scope.data.counts }
+            : scope.data;
+      } else if (scope.isPending) state.scope = { kind: "loading" };
+      if (coverage.data) {
+        state.coverage =
+          coverage.data.kind === "ready"
+            ? {
+                kind: "ready",
+                current: coverage.data.current,
+                attestedAt: coverage.data.latest?.attestedAt ?? null,
+              }
+            : coverage.data;
+      } else if (coverage.isPending) state.coverage = { kind: "loading" };
+      if (proposals.data) {
+        state.proposals =
+          proposals.data.kind === "ready"
+            ? {
+                kind: "ready",
+                proposals: proposals.data.proposals.map((proposal) => ({
+                  id: proposal.id,
+                  sourceKey: proposal.sourceKey,
+                  kind: proposal.kind,
+                  statement: proposal.statement,
+                  status: proposal.status,
+                  evidence: proposal.evidence.map((ref) => ({ label: ref.label })),
+                })),
+              }
+            : proposals.data;
+      } else if (proposals.isPending) state.proposals = { kind: "loading" };
+      return state;
+    },
     onRequestRun: async (input) => {
       const result = await requestCanonicalRunFn({
         data: {
