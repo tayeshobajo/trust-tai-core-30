@@ -46,6 +46,9 @@ const task = {
 } as BoardTask;
 const commitment = {
   id,
+  organizationId: "org",
+  createdAt: "2026-10-18T01:00:00Z",
+  updatedAt: "2026-10-18T01:00:00Z",
   conversationId: id,
   what: "Confirmed promise",
   status: "open",

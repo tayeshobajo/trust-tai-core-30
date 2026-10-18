@@ -347,10 +347,10 @@ export function BusinessTaskBoard({
           identity={identity}
           tasks={tasks}
           people={choices.data?.people ?? []}
-          meetingOptions={meetingRead.data?.meetings}
+          meetingOptions={meetingRead.data?.meetings ?? []}
           meetingsLoading={meetingRead.isPending}
           meetingsError={meetingRead.isError}
-          meetingsTruncated={meetingRead.data?.truncated}
+          meetingsTruncated={meetingRead.data?.truncated ?? false}
           onClose={() => setEditor(null)}
           onSave={async (input) => {
             if (editor.task) await cmdTasks.update(editor.task, input);
