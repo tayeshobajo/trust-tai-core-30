@@ -90,10 +90,14 @@ begin
   perform public.test_assert(r.verified = false, 'post-verify edit drops credit');
 end $$;
 
--- 4. Legacy complete with NO receipt: never verified.
+-- 4. Legacy complete with NO receipt: never verified. A FRESH task —
+--    earlier suites may have given the shared fixtures receipts.
 reset role;
-update public.steward_tasks set status = 'complete', revision = 3
- where id = '10000000-0000-0000-0000-00000000000a';
+insert into public.steward_tasks
+  (id, organization_id, title, notes, correlation_id, task_visibility, owner_user_id, created_by, status, archived_at)
+values ('10000000-0000-0000-0000-00000000000c', '11111111-1111-1111-1111-111111111111',
+  'Legacy complete probe', 'Complete with no receipt at all.', null, 'business',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'complete', null);
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 do $$
@@ -101,7 +105,7 @@ declare r record;
 begin
   select * into r from public.steward_meeting_verification_projection(
     '11111111-1111-1111-1111-111111111111',
-    array['10000000-0000-0000-0000-00000000000a']::uuid[]);
+    array['10000000-0000-0000-0000-00000000000c']::uuid[]);
   perform public.test_assert(r.verified = false and r.latest_kind is null,
     'legacy complete without a receipt is not verified');
 end $$;
