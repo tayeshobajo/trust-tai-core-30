@@ -595,7 +595,8 @@ begin
 end $$;
 reset role;
 update public.steward_tasks
-   set owner_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+   set owner_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+       created_by = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
  where id = '10000000-0000-0000-0000-000000000002';
 set role authenticated;
 select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
@@ -619,7 +620,8 @@ begin
 end $$;
 reset role;
 update public.steward_tasks
-   set owner_user_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+   set owner_user_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+       created_by = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
  where id = '10000000-0000-0000-0000-000000000002';
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
