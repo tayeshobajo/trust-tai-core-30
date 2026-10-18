@@ -136,7 +136,13 @@ function createPsqlTransport(role: "authenticated" | "service", userId?: string)
       return { data: raw ? parseJson<unknown>(raw) : null, error: null };
     } catch (error) {
       const err = error as SqlError;
-      return { data: null, error: { code: err.code, message: err.message } };
+      return {
+        data: null,
+        error: {
+          ...(err.code !== undefined ? { code: err.code } : {}),
+          message: err.message,
+        },
+      };
     }
   };
   return {
@@ -205,7 +211,7 @@ function createJourneyRunRepository(actorId: string): CanonicalRunRepository {
   return {
     requestRun: (input) => asActor.requestRun(input),
     readTaskTitle: (taskId, orgId) => asActor.readTaskTitle(taskId, orgId),
-    readInput: () => asActor.readInput(),
+    readInput: (ref) => asActor.readInput(ref),
     claimRun: (runId, actor, lease) => asWorkerRepo.claimRun(runId, actor, lease),
     completeRun: (input) => asWorkerRepo.completeRun(input),
     failRun: (input) => asWorkerRepo.failRun(input),
