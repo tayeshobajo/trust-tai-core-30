@@ -178,3 +178,66 @@ export async function readMeetingVerificationProjection(
   });
   return { rows: (data as MeetingVerificationProjectionRow[] | null) ?? null, error };
 }
+
+/**
+ * Fold projection rows into per-task truth for the REQUESTED ids. Any
+ * requested id without a returned row — including the zero-visible-rows
+ * case, where the RPC returns no row to carry `missing` — is UNKNOWN,
+ * never false. Only rows with an explicit boolean count as known.
+ */
+export function foldVerificationProjection(
+  requestedIds: string[],
+  rows: MeetingVerificationProjectionRow[],
+): { verified: Record<string, boolean>; byTask: Record<string, MeetingVerificationProjectionRow>; unknown: string[] } {
+  const requested = new Set(requestedIds);
+  const verified: Record<string, boolean> = {};
+  const byTask: Record<string, MeetingVerificationProjectionRow> = {};
+  for (const row of rows) {
+    if (!requested.has(row.task_id)) continue;
+    if (row.verified !== true && row.verified !== false) continue;
+    verified[row.task_id] = row.verified;
+    byTask[row.task_id] = row;
+  }
+  const unknown = requestedIds.filter((id) => !(id in verified));
+  return { verified, byTask, unknown: Array.from(new Set(unknown)) };
+}
+
+export const TASK_HISTORY_LIMIT = 100;
+
+/**
+ * Bounded, display-only receipt history for ONE task: newest first
+ * (created_at DESC, id DESC), LIMIT 101 so truncation is detected, trimmed
+ * to 100 and reversed to chronological order. NEVER used to derive the
+ * verified state — that comes only from the projection RPC.
+ */
+export async function readTaskVerificationHistory(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed table is not in generated types until the UNAPPLIED patch lands
+  supabase: any,
+  orgId: string,
+  taskId: string,
+): Promise<{ receipts: TaskReceipt[]; truncated: boolean; error: unknown }> {
+  const { data, error } = await supabase
+    .from("steward_task_receipts")
+    .select(
+      "id, organization_id, task_id, operation_id, kind, note, actor_id, created_at, task_revision_after",
+    )
+    .eq("organization_id", orgId)
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(TASK_HISTORY_LIMIT + 1);
+  if (error) return { receipts: [], truncated: false, error };
+  const rows = (data as ReceiptRow[] | null) ?? [];
+  const truncated = rows.length > TASK_HISTORY_LIMIT;
+  const receipts = rows
+    .slice(0, TASK_HISTORY_LIMIT)
+    .reverse()
+    .map((row) =>
+      mapReceipt({
+        ...row,
+        kind: row.kind === "reopen" ? "reopen" : "verify",
+        task_revision_after: typeof row.task_revision_after === "number" ? row.task_revision_after : -1,
+      }),
+    );
+  return { receipts, truncated, error: null };
+}
