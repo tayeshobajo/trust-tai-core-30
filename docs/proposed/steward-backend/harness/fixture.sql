@@ -26,10 +26,6 @@ create or replace function auth.role() returns text language sql stable as $$
 $$;
 
 grant usage on schema public, auth to authenticated, anon, service_role;
-grant select, insert, update, delete on public.organizations,
-  public.organization_memberships, public.steward_tasks,
-  public.steward_conversations, public.steward_proposals
-  to authenticated, service_role;
 
 create table public.organizations (id uuid primary key, slug text);
 create table public.organization_memberships (
@@ -123,6 +119,11 @@ insert into public.steward_proposals
    'dddddddd-dddd-dddd-dddd-dddddddddddd', 'Mockup proposal at 53:57', 3237),
   ('eeeeeeee-eeee-eeee-eeee-eeeeeeeee001', '22222222-2222-2222-2222-222222222222',
    'dddddddd-dddd-dddd-dddd-dddddddddd01', 'Org B proposal', 10);
+
+grant select, insert, update, delete on public.organizations,
+  public.organization_memberships, public.steward_tasks,
+  public.steward_conversations, public.steward_proposals
+  to authenticated, service_role;
 
 -- Test helpers.
 create or replace function public.test_assert(ok boolean, label text) returns void
