@@ -21,14 +21,15 @@ begin
 end $$;
 
 -- 2. Counts: denominator 4 including the ARCHIVED task (3 added here + 1
---    from the coverage suite); verified 0 (task 1 was verified then
---    reopened in 002); one pending ledger proposal gates 100.
+--    from the coverage suite); verified 1 — task 2 was verified in 002 and
+--    its revision still matches, while task 1 was verified then reopened
+--    and earns nothing; one pending ledger proposal gates 100.
 do $$
 declare c record;
 begin
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
   perform public.test_assert(c.denominator = 4, 'archived required task stays in the denominator');
-  perform public.test_assert(c.verified = 0, 'reopened task earns no verified credit');
+  perform public.test_assert(c.verified = 1, 'only the still-valid verification counts');
   perform public.test_assert(c.pending_proposals = 1, 'unlinked ledger proposal counts as pending');
 end $$;
 
@@ -41,7 +42,7 @@ begin
     '10000000-0000-0000-0000-000000000001', 2, 'd2000000-0000-0000-0000-000000000001',
     'Verified the handoff outcome against the recording.');
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
-  perform public.test_assert(c.denominator = 4 and c.verified = 1, 'one of four verified');
+  perform public.test_assert(c.denominator = 4 and c.verified = 2, 'two of four verified');
 end $$;
 
 -- 3b. Revision-bound credit: a later task edit (revision bump) drops the
@@ -56,7 +57,7 @@ do $$
 declare c record;
 begin
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
-  perform public.test_assert(c.verified = 0, 'post-verify edit drops revision-bound credit');
+  perform public.test_assert(c.verified = 1, 'post-verify edit drops only that task credit');
 end $$;
 reset role;
 update public.steward_tasks set title = 'Prepare Soji handoff' where id = '10000000-0000-0000-0000-000000000001';
