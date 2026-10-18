@@ -38,7 +38,13 @@ import {
   getCoverageCapabilityFn,
   getMeetingCoverageFn,
 } from "@/lib/steward-coverage.functions";
-import { getMeetingScopeFn, getScopeCapabilityFn } from "@/lib/steward-scope.functions";
+import {
+  addScopeItemFn,
+  getMeetingScopeFn,
+  getScopeCapabilityFn,
+  syncRequiredScopeFn,
+} from "@/lib/steward-scope.functions";
+import { getMeetingScoreSnapshotFn } from "@/lib/steward-score.functions";
 import {
   dismissProposalFn,
   getProposalLinkCapabilityFn,
@@ -268,6 +274,14 @@ function useStewardBackend(
     enabled: !!meetingId && caps?.proposals.kind === "enabled",
     queryFn: () => getProposalReviewStateFn({ data: { orgId: org, conversationId: meetingId! } }),
   });
+  /* The consistent one-statement score snapshot. Every score surface
+     (card, nav, footer) reads this; a failed read is an explicit rejected
+     state, never a silently dropped or locally recombined number. */
+  const score = useQuery({
+    queryKey: ["steward", "score-snapshot", org, meetingId],
+    enabled: !!meetingId && caps?.scope.kind === "enabled",
+    queryFn: () => getMeetingScoreSnapshotFn({ data: { orgId: org, conversationId: meetingId! } }),
+  });
 
   const unavailable: CapabilityState = {
     kind: "unavailable",
@@ -291,13 +305,19 @@ function useStewardBackend(
     await queryClient.invalidateQueries({ queryKey: ["steward"] });
   }
 
+  /* A query that rejected after loading must surface an explicit
+     rejected/retry state — never silently collapse to undefined. */
+  const rejected = (message: string) => ({ kind: "rejected" as const, message });
+
   return {
     capabilities: resolvedCaps,
-    runsFor: (taskId) =>
-      taskId === selectedTaskId && runs.data
-        ? runs.data.kind === "ready"
+    runsFor: (taskId) => {
+      if (taskId !== selectedTaskId) return undefined;
+      if (runs.data) {
+        return runs.data.kind === "ready"
           ? {
               kind: "ready",
+              truncated: runs.data.truncated,
               runs: runs.data.runs.map((run) => ({
                 id: run.id,
                 action: run.action,
@@ -309,10 +329,13 @@ function useStewardBackend(
                 clientOperationId: run.clientOperationId,
               })),
             }
-          : runs.data
-        : runs.isPending && caps?.preparation.kind === "enabled"
-          ? { kind: "loading" }
-          : undefined,
+          : runs.data;
+      }
+      if (runs.isError) return rejected("Run history could not be read; retry to reload it.");
+      return runs.isPending && caps?.preparation.kind === "enabled"
+        ? { kind: "loading" }
+        : undefined;
+    },
     verificationFor: (taskId) => {
       if (taskId !== selectedTaskId) return undefined;
       if (verification.data) {
@@ -327,15 +350,27 @@ function useStewardBackend(
             : null,
           receipts: verification.data.read.receipts.map((receipt) => ({
             id: receipt.id,
+            kind: receipt.kind,
             note: receipt.note,
             actorId: receipt.actorId,
             createdAt: receipt.createdAt,
           })),
         };
       }
+      if (verification.isError) {
+        return rejected("Verification state could not be read; retry to reload it.");
+      }
       return verification.isPending && caps?.verification.kind === "enabled"
         ? { kind: "loading" }
         : undefined;
+    },
+    scoreFor: (id) => {
+      if (id !== meetingId) return undefined;
+      if (score.data) return score.data;
+      if (score.isError) {
+        return rejected("The consistent score snapshot could not be read; retry to reload it.");
+      }
+      return score.isPending && caps?.scope.kind === "enabled" ? { kind: "loading" } : undefined;
     },
     meetingState: (id) => {
       if (id !== meetingId) return undefined;
@@ -347,6 +382,8 @@ function useStewardBackend(
       if (scope.data) {
         state.scope =
           scope.data.kind === "ready" ? { kind: "ready", counts: scope.data.counts } : scope.data;
+      } else if (scope.isError) {
+        state.scope = rejected("Recorded scope could not be read; retry to reload it.");
       } else if (scope.isPending) state.scope = { kind: "loading" };
       if (coverage.data) {
         state.coverage =
@@ -357,6 +394,8 @@ function useStewardBackend(
                 attestedAt: coverage.data.latest?.attestedAt ?? null,
               }
             : coverage.data;
+      } else if (coverage.isError) {
+        state.coverage = rejected("Coverage state could not be read; retry to reload it.");
       } else if (coverage.isPending) state.coverage = { kind: "loading" };
       if (proposals.data) {
         state.proposals =
@@ -371,8 +410,18 @@ function useStewardBackend(
                   status: proposal.status,
                   evidence: proposal.evidence.map((ref) => ({ label: ref.label })),
                 })),
+                decisions: proposals.data.decisions.map((decision) => ({
+                  proposalId: decision.proposalId,
+                  kind: decision.kind,
+                  reason: decision.reason,
+                  actorId: decision.actorId,
+                  createdAt: decision.createdAt,
+                  taskId: decision.taskId,
+                })),
               }
             : proposals.data;
+      } else if (proposals.isError) {
+        state.proposals = rejected("Proposal review state could not be read; retry to reload it.");
       } else if (proposals.isPending) state.proposals = { kind: "loading" };
       return state;
     },
@@ -426,16 +475,23 @@ function useStewardBackend(
       await invalidate();
       return outcomeOf(result);
     },
-    onAttestCoverage: async (id) => {
+    onAttestCoverage: async (input) => {
       const result = await attestMeetingCoverageFn({
-        data: { orgId: org, conversationId: id },
+        data: { orgId: org, conversationId: input.meetingId, operationId: input.operationId },
       });
       await invalidate();
       return outcomeOf(result);
     },
-    onSyncProposals: async (id) => {
+    onSyncProposals: async (input) => {
       const result = await syncProposalLedgerFn({
-        data: { orgId: org, conversationId: id, operationId: crypto.randomUUID() },
+        data: { orgId: org, conversationId: input.meetingId, operationId: input.operationId },
+      });
+      await invalidate();
+      return outcomeOf(result);
+    },
+    onSyncRequiredScope: async (input) => {
+      const result = await syncRequiredScopeFn({
+        data: { orgId: org, conversationId: input.meetingId, operationId: input.operationId },
       });
       await invalidate();
       return outcomeOf(result);
@@ -611,10 +667,39 @@ function StewardWorkroomContent({
         onAddRequiredTask={
           mayAddRequiredWork(identity)
             ? async (draft) => {
-                await cmdTasks.createRequired(identity, draft);
+                const created = await cmdTasks.createRequired(identity, draft);
+                /* When the durable scope contract is active, the same
+                   explicit gesture records the new required task in the
+                   meeting scope so the denominator grows immediately. The
+                   same operation UUID traces both writes. A scope failure
+                   is reported honestly: the task exists, and the explicit
+                   "Sync required scope" control retries the scope side. */
+                if (backend.capabilities.scope.kind === "enabled") {
+                  const scopeResult = await addScopeItemFn({
+                    data: {
+                      orgId: org,
+                      conversationId: draft.meetingId,
+                      taskId: created.id,
+                      classification: "manual_required",
+                      operationId: draft.operationId,
+                    },
+                  });
+                  if (scopeResult.kind !== "applied") {
+                    throw new Error(
+                      `The task was recorded, but adding it to the meeting scope failed: ${
+                        "message" in scopeResult
+                          ? scopeResult.message
+                          : "reason" in scopeResult
+                            ? scopeResult.reason
+                            : "unknown error"
+                      }. Use Sync required scope to retry.`,
+                    );
+                  }
+                }
                 await queryClient.invalidateQueries({
                   queryKey: businessWorkQuery(org, identity.userId).queryKey,
                 });
+                await queryClient.invalidateQueries({ queryKey: ["steward"] });
               }
             : undefined
         }

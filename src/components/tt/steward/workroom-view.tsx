@@ -41,6 +41,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import type { MeetingScoreRead } from "./workroom-backend-panels";
 import type { Commitment } from "@/domain/steward";
 import type { BoardTask } from "@/domain/cmd-tasks";
 import { displayTitleOf } from "@/domain/steward-display-title";
@@ -78,6 +79,9 @@ export interface WorkroomBackend {
   meetingState?: (
     meetingId: string,
   ) => { scope?: ScopeRead; coverage?: CoverageRead; proposals?: ProposalReviewRead } | undefined;
+  /** Consistent one-statement score snapshot (006 patch); when present it
+      is the ONLY source for the score card, nav and bottom explanation. */
+  scoreFor?: (meetingId: string) => MeetingScoreRead | undefined;
   onRequestRun?: (input: {
     taskId: string;
     actionId: string;
@@ -95,8 +99,12 @@ export interface WorkroomBackend {
     note: string;
     operationId: string;
   }) => Promise<ActionOutcome>;
-  onAttestCoverage?: (meetingId: string) => Promise<ActionOutcome>;
-  onSyncProposals?: (meetingId: string) => Promise<ActionOutcome>;
+  onAttestCoverage?: (input: { meetingId: string; operationId: string }) => Promise<ActionOutcome>;
+  onSyncProposals?: (input: { meetingId: string; operationId: string }) => Promise<ActionOutcome>;
+  onSyncRequiredScope?: (input: {
+    meetingId: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
   onLinkProposal?: (input: {
     meetingId: string;
     proposalId: string;
@@ -112,45 +120,34 @@ export interface WorkroomBackend {
 }
 
 /**
- * Server-derived score for one meeting: 100 only when the agreed scope is
- * nonzero, every required item is verified, coverage is confirmed current,
- * and no proposals are pending. Any failed/partial read yields unknown.
- * Returns null when the staged contracts are not active and the view
- * should keep its existing local derivation.
+ * Server-derived score for one meeting, from the CONSISTENT one-statement
+ * snapshot (006 patch): 100 only when the snapshot itself reports the
+ * agreed scope as nonzero, fully verified, coverage current and no
+ * proposals pending. Any failed/partial read yields unknown — a number is
+ * never assembled from mixed or missing component reads. Returns null when
+ * the staged contracts are not active and the view keeps its existing
+ * local derivation.
  */
-export function serverMeetingScore(state: {
-  scope?: ScopeRead;
-  coverage?: CoverageRead;
-  proposals?: ProposalReviewRead;
-}): { value: number | null; label: string } | null {
-  const { scope, coverage, proposals } = state;
-  if (!scope || scope.kind === "unavailable") return null;
-  if (scope.kind === "loading" || coverage?.kind === "loading" || proposals?.kind === "loading") {
-    return { value: null, label: "Reading recorded scope…" };
+export function serverMeetingScore(
+  read: MeetingScoreRead | undefined,
+): { value: number | null; label: string } | null {
+  if (!read || read.kind === "unavailable") return null;
+  if (read.kind === "loading") return { value: null, label: "Reading recorded scope…" };
+  if (read.kind === "rejected") {
+    return { value: null, label: `Score unavailable — ${read.message}` };
   }
-  if (scope.kind === "rejected")
-    return { value: null, label: `Scope unavailable — ${scope.message}` };
-  if (coverage?.kind === "rejected") {
-    return { value: null, label: `Coverage unavailable — ${coverage.message}` };
-  }
-  if (proposals?.kind === "rejected") {
-    return { value: null, label: `Proposal state unavailable — ${proposals.message}` };
-  }
-  const { denominator, verified, pendingProposals } = scope.counts;
-  const coverageCurrent = coverage?.kind === "ready" ? coverage.current : false;
+  const { denominator, verified, pendingProposals, coverageCurrent, complete } = read.snapshot;
   if (denominator === 0) return { value: 0, label: "No agreed scope recorded yet" };
-  const full = verified === denominator && coverageCurrent && pendingProposals === 0;
-  /* A displayed 100 would read as "done" even with unconfirmed coverage or
-     pending proposals — cap below 100 until every condition holds. */
-  const value = full ? 100 : Math.min(Math.round((verified / denominator) * 100), 99);
-  if (!full) {
-    const blockers: string[] = [];
-    if (verified < denominator) blockers.push(`${denominator - verified} not verified`);
-    if (!coverageCurrent) blockers.push("coverage not confirmed");
-    if (pendingProposals > 0) blockers.push(`${pendingProposals} proposals pending`);
-    return { value, label: `${verified} of ${denominator} verified — ${blockers.join("; ")}` };
-  }
-  return { value: 100, label: "All agreed work verified and coverage confirmed" };
+  /* The SQL snapshot computes `complete` from the same statement; a
+     displayed 100 is only ever that durable verdict, never a local
+     recombination of separate reads. */
+  if (complete) return { value: 100, label: "All agreed work verified and coverage confirmed" };
+  const value = Math.min(Math.round((verified / denominator) * 100), 99);
+  const blockers: string[] = [];
+  if (verified < denominator) blockers.push(`${denominator - verified} not verified`);
+  if (!coverageCurrent) blockers.push("coverage not confirmed");
+  if (pendingProposals > 0) blockers.push(`${pendingProposals} proposals pending`);
+  return { value, label: `${verified} of ${denominator} verified — ${blockers.join("; ")}` };
 }
 import type { WorkroomMeeting, WorkroomRow } from "@/domain/steward-workroom";
 import { cn } from "@/lib/utils";
@@ -544,6 +541,15 @@ function TaskDetail({
               id: a.id,
               label: a.label,
               summary: a.summary,
+              /* review_output needs an actual stored output record as
+                 input; only transcript and task notes are supported input
+                 kinds today, and a URL mentioned in notes is never read. */
+              ...(a.id === "review_output"
+                ? {
+                    disabledReason:
+                      "only the meeting transcript and task notes can be preparation inputs; a recorded output link is not read or fetched, so there is no stored output to review yet.",
+                  }
+                : {}),
             }))}
             onRequestRun={
               backend.onRequestRun
@@ -915,31 +921,51 @@ export function WorkroomView({
                 ) : null}
               </span>
               <span className="mt-1 flex items-center justify-between gap-1 text-xs text-muted-foreground">
-                <span>
-                  {m.occurredAt.slice(0, 10)} ·{" "}
-                  {receiptsFailed
-                    ? "verification unavailable"
-                    : (m.requiredWork?.denominator ?? m.agreed) === 0
-                      ? "scope review pending"
-                      : `${m.done} of ${m.requiredWork?.denominator ?? m.agreed} verified`}
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded px-1.5 py-0.5 font-semibold",
-                    m.score === 100 &&
+                {(() => {
+                  /* The consistent server snapshot, when the staged
+                     contract is active, overrides the local derivation for
+                     this row too — nav, card and footer never disagree. */
+                  const navScore = backend?.scoreFor
+                    ? serverMeetingScore(backend.scoreFor(m.id))
+                    : null;
+                  const pillValue = navScore
+                    ? navScore.value === null
+                      ? "—"
+                      : `${navScore.value}/100`
+                    : receiptsFailed ||
+                        (linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated))
+                      ? "—"
+                      : m.score === null
+                        ? "Partial"
+                        : `${m.score}/100`;
+                  const pillFull = navScore
+                    ? navScore.value === 100
+                    : m.score === 100 &&
                       !receiptsFailed &&
-                      (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
-                      ? "bg-success/15 text-success"
-                      : "bg-warning/15 text-warning",
-                  )}
-                >
-                  {receiptsFailed ||
-                  (linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated))
-                    ? "—"
-                    : m.score === null
-                      ? "Partial"
-                      : `${m.score}/100`}
-                </span>
+                      (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated));
+                  return (
+                    <>
+                      <span>
+                        {m.occurredAt.slice(0, 10)} ·{" "}
+                        {navScore
+                          ? (navScore.label ?? "score unavailable")
+                          : receiptsFailed
+                            ? "verification unavailable"
+                            : (m.requiredWork?.denominator ?? m.agreed) === 0
+                              ? "scope review pending"
+                              : `${m.done} of ${m.requiredWork?.denominator ?? m.agreed} verified`}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded px-1.5 py-0.5 font-semibold",
+                          pillFull ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
+                        )}
+                      >
+                        {pillValue}
+                      </span>
+                    </>
+                  );
+                })()}
               </span>
             </span>
           </TTButton>
@@ -993,9 +1019,7 @@ export function WorkroomView({
           meeting={meeting}
           receiptsFailed={receiptsFailed}
           scopeUnavailable={!!linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)}
-          serverScore={
-            backend ? serverMeetingScore(backend.meetingState?.(meeting.id) ?? {}) : null
-          }
+          serverScore={backend?.scoreFor ? serverMeetingScore(backend.scoreFor(meeting.id)) : null}
         />
       </div>
 
@@ -1016,10 +1040,19 @@ export function WorkroomView({
                 .filter((r) => r.boardTask)
                 .map((r) => ({ id: r.boardTask!.id, title: r.boardTask!.title }))}
               onAttestCoverage={
-                backend.onAttestCoverage ? () => backend.onAttestCoverage!(meeting.id) : undefined
+                backend.onAttestCoverage
+                  ? (input) => backend.onAttestCoverage!({ meetingId: meeting.id, ...input })
+                  : undefined
               }
               onSyncProposals={
-                backend.onSyncProposals ? () => backend.onSyncProposals!(meeting.id) : undefined
+                backend.onSyncProposals
+                  ? (input) => backend.onSyncProposals!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
+              onSyncRequiredScope={
+                backend.onSyncRequiredScope
+                  ? (input) => backend.onSyncRequiredScope!({ meetingId: meeting.id, ...input })
+                  : undefined
               }
               onLinkProposal={
                 backend.onLinkProposal
@@ -1274,80 +1307,105 @@ export function WorkroomView({
         ) : null}
       </div>
 
-      <footer
-        aria-label="Requirements for complete meeting work"
-        className={cn(
-          "mt-4 flex items-start gap-3 rounded-lg border border-l-2 p-3 text-xs leading-5",
+      {(() => {
+        /* The consistent server snapshot, when active, is the only source
+           for the footer verdict — it can never disagree with the card or
+           the nav row, and a failed snapshot read is unknown, never 100. */
+        const serverScore = backend?.scoreFor
+          ? serverMeetingScore(backend.scoreFor(meeting.id))
+          : null;
+        const localFull =
           meeting.score === 100 &&
-            (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
-            ? "border-success/20 border-l-success bg-success/5"
-            : "border-warning/15 border-l-warning bg-warning/5",
-        )}
-      >
-        <AlertCircle
-          className={cn(
-            "mt-0.5 size-5 shrink-0",
-            meeting.score === 100 &&
-              (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
-              ? "text-success"
-              : "text-warning",
-          )}
-        />
-        <div>
-          {meeting.requiredWork ? (
-            <p className="mb-1 font-medium">
-              {meeting.requiredWork.total} manually required task
-              {meeting.requiredWork.total === 1 ? "" : "s"} · verification unavailable · zero
-              verified credit. Required scope remains after archive.
-            </p>
-          ) : null}
-          {meeting.linkedWork?.open ? (
-            <p className="mb-1 font-medium">
-              {meeting.linkedWork.open} linked business tasks remain recorded open, separately from
-              agreed-work verification.
-            </p>
-          ) : null}
-          {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated) ? (
-            <p className="mb-1 font-medium">
-              Linked-work coverage unavailable or incomplete; all-work completion cannot be
-              established.
-            </p>
-          ) : null}
-          {receiptsFailed ? (
-            <>
-              <p className="text-sm font-semibold">Verification unavailable</p>
-              <p className="mt-1 text-muted-foreground">
-                Completion receipts could not be read, so verified status and the path to 100 are
-                unavailable rather than guessed. Nothing is shown as verified.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-semibold">
-                {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)
-                  ? "Required-work scope unavailable"
-                  : meeting.agreed === 0 && meeting.rows.length > 0
-                    ? `${meeting.rows.length} recorded task${meeting.rows.length === 1 ? "" : "s"}; scope review pending`
-                    : meeting.score === 100
-                      ? "All agreed work verified"
-                      : "To reach 100/100"}
-              </p>
-              <p className="mt-1 text-muted-foreground">
-                {meeting.agreed === 0 && meeting.rows.length > 0
-                  ? "Recorded work is listed, but nothing is confirmed as agreed meeting work yet, and verification is unavailable until the guarded atomic review exists. Reaching 100 is not possible today."
-                  : meeting.remark}
-              </p>
-              {meeting.score !== 100 ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  100 requires every confirmed promise and manually required task verified,
-                  transcript coverage confirmed, and no unreviewed proposals. Work completion, not a
-                  grade for people.
+          (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated));
+        const full = serverScore ? serverScore.value === 100 : localFull;
+        return (
+          <footer
+            aria-label="Requirements for complete meeting work"
+            className={cn(
+              "mt-4 flex items-start gap-3 rounded-lg border border-l-2 p-3 text-xs leading-5",
+              full
+                ? "border-success/20 border-l-success bg-success/5"
+                : "border-warning/15 border-l-warning bg-warning/5",
+            )}
+          >
+            <AlertCircle
+              className={cn("mt-0.5 size-5 shrink-0", full ? "text-success" : "text-warning")}
+            />
+            <div>
+              {meeting.requiredWork ? (
+                <p className="mb-1 font-medium">
+                  {meeting.requiredWork.total} manually required task
+                  {meeting.requiredWork.total === 1 ? "" : "s"} · verification unavailable · zero
+                  verified credit. Required scope remains after archive.
                 </p>
               ) : null}
-            </>
-          )}
-        </div>
-      </footer>
+              {meeting.linkedWork?.open ? (
+                <p className="mb-1 font-medium">
+                  {meeting.linkedWork.open} linked business tasks remain recorded open, separately
+                  from agreed-work verification.
+                </p>
+              ) : null}
+              {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated) ? (
+                <p className="mb-1 font-medium">
+                  Linked-work coverage unavailable or incomplete; all-work completion cannot be
+                  established.
+                </p>
+              ) : null}
+              {receiptsFailed ? (
+                <>
+                  <p className="text-sm font-semibold">Verification unavailable</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Completion receipts could not be read, so verified status and the path to 100
+                    are unavailable rather than guessed. Nothing is shown as verified.
+                  </p>
+                </>
+              ) : serverScore ? (
+                <>
+                  <p className="text-sm font-semibold">
+                    {serverScore.value === null
+                      ? "Score unavailable"
+                      : serverScore.value === 100
+                        ? "All agreed work verified"
+                        : "To reach 100/100"}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">{serverScore.label}</p>
+                  {serverScore.value !== 100 ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      100 requires every confirmed promise and manually required task verified,
+                      transcript coverage confirmed, and no unreviewed proposals. Work completion,
+                      not a grade for people.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold">
+                    {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)
+                      ? "Required-work scope unavailable"
+                      : meeting.agreed === 0 && meeting.rows.length > 0
+                        ? `${meeting.rows.length} recorded task${meeting.rows.length === 1 ? "" : "s"}; scope review pending`
+                        : meeting.score === 100
+                          ? "All agreed work verified"
+                          : "To reach 100/100"}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    {meeting.agreed === 0 && meeting.rows.length > 0
+                      ? "Recorded work is listed, but nothing is confirmed as agreed meeting work yet, and verification is unavailable until the guarded atomic review exists. Reaching 100 is not possible today."
+                      : meeting.remark}
+                  </p>
+                  {meeting.score !== 100 ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      100 requires every confirmed promise and manually required task verified,
+                      transcript coverage confirmed, and no unreviewed proposals. Work completion,
+                      not a grade for people.
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </footer>
+        );
+      })()}
     </>
   ) : (
     <div className="flex flex-col items-start gap-3 p-2">

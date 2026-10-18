@@ -27,6 +27,7 @@ function makeRepo(overrides: Partial<VerificationRepository> = {}): Verification
         },
         receipt: {
           id: "rcpt-1",
+          kind: "verify",
           organizationId: input.orgId,
           taskId: input.taskId,
           operationId: input.operationId,
@@ -71,6 +72,7 @@ describe("verifyCanonicalTask", () => {
           },
           receipt: {
             id: "r",
+            kind: "verify",
             organizationId: input.orgId,
             taskId: input.taskId,
             operationId: input.operationId,
@@ -129,6 +131,7 @@ describe("verifyCanonicalTask", () => {
           },
           receipt: {
             id: "rcpt-1",
+            kind: "verify",
             organizationId: input.orgId,
             taskId: input.taskId,
             operationId: input.operationId,
@@ -176,6 +179,7 @@ describe("durable result preservation", () => {
           task: null, // RLS reread failed after the RPC committed
           receipt: {
             id: "rcpt-1",
+            kind: "verify",
             organizationId: input.orgId,
             taskId: input.taskId,
             operationId: input.operationId,

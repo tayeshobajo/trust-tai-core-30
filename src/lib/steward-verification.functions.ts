@@ -151,6 +151,7 @@ export const getTaskVerificationStateFn = createServerFn({ method: "GET" })
           organizationId: row["organization_id"],
           taskId: row["task_id"],
           operationId: row["operation_id"],
+          kind: row["kind"] === "reopen" ? ("reopen" as const) : ("verify" as const),
           note: row["note"],
           actorId: row["actor_id"],
           createdAt: row["created_at"],

@@ -15,6 +15,9 @@ export interface TaskReceipt {
   organizationId: string;
   taskId: string;
   operationId: string;
+  /** Durable event kind — verify receipts and reopen receipts must never
+      be rendered as the same thing. */
+  kind: "verify" | "reopen";
   note: string;
   actorId: string;
   createdAt: string;

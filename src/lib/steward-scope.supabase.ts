@@ -107,5 +107,22 @@ export function createSupabaseScopeRepository(supabase: SupabaseClient) {
         pendingProposals: row.pending_proposals,
       };
     },
+    /** Explicit, audited, idempotent sync of recorded required-manual
+        tasks into the meeting scope. Never creates or edits tasks; prior
+        human decisions (linked/dismissed proposals, amendments) are
+        preserved by the SQL. */
+    async syncRequired(input: {
+      orgId: string;
+      conversationId: string;
+      operationId: string;
+    }): Promise<{ added: number }> {
+      const { data, error } = await supabase.rpc("steward_scope_sync_required", {
+        p_org: input.orgId,
+        p_conversation: input.conversationId,
+        p_operation: input.operationId,
+      });
+      if (error) rethrow(error);
+      return { added: typeof data === "number" ? data : 0 };
+    },
   };
 }

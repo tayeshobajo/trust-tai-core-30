@@ -93,6 +93,22 @@ begin
    where organization_id = '11111111-1111-1111-1111-111111111111'
      and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
   perform public.test_assert(v >= 3, 'link durably bumps scope version');
+  -- The link atomically adds the confirmed task to the required-scope
+  -- denominator in the same transaction, with an audit row.
+  perform public.test_assert(exists(
+    select 1 from public.steward_scope_items si
+     where si.organization_id = '11111111-1111-1111-1111-111111111111'
+       and si.conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+       and si.task_id = '10000000-0000-0000-0000-000000000001'
+       and si.classification = 'transcript'
+       and si.removed_at is null),
+    'link atomically adds the task to required scope');
+  perform public.test_assert(exists(
+    select 1 from public.steward_scope_audit sa
+     where sa.organization_id = '11111111-1111-1111-1111-111111111111'
+       and sa.operation_id = 'c1000000-0000-0000-0000-000000000001'
+       and sa.kind = 'add'),
+    'link scope addition is audited');
 end $$;
 
 -- 2. Same operation replays; different operation on linked proposal

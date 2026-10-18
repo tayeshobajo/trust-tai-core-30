@@ -31,7 +31,15 @@ export interface AgentRunOutcome {
   feedRecorded?: boolean;
 }
 
-const EXECUTE_ROLES = new Set(["owner", "admin", "leadership", "project_lead", "client_support", "team_member", "member"]);
+const EXECUTE_ROLES = new Set([
+  "owner",
+  "admin",
+  "leadership",
+  "project_lead",
+  "client_support",
+  "team_member",
+  "member",
+]);
 
 /**
  * Server execute authority. Read access is not execute access: view-only roles
@@ -50,7 +58,10 @@ export function agentExecutionAuthority(input: {
   }
   if (role === "owner" || role === "admin") return { ok: true };
   if (input.createdBy === input.userId || input.ownerUserId === input.userId) return { ok: true };
-  return { ok: false, because: "Only the person who created or owns this task can start AI work on it." };
+  return {
+    ok: false,
+    because: "Only the person who created or owns this task can start AI work on it.",
+  };
 }
 
 /**
@@ -210,7 +221,11 @@ export async function loadAgentProspect(
   return toProspectContext((data ?? null) as Row | null);
 }
 
-export const callStewardAgentModel: StewardAgentModelCall = async (task, people = [], prospect = null) => {
+export const callStewardAgentModel: StewardAgentModelCall = async (
+  task,
+  people = [],
+  prospect = null,
+) => {
   const token = task.correlationId?.startsWith("runtime-token:")
     ? task.correlationId.slice("runtime-token:".length)
     : "";
@@ -236,7 +251,12 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task, people 
         url: link.url,
       })),
       scout_profile: prospect
-        ? { ref: prospect.ref, name: prospect.name, facts: prospect.facts, unknown: prospect.unknown }
+        ? {
+            ref: prospect.ref,
+            name: prospect.name,
+            facts: prospect.facts,
+            unknown: prospect.unknown,
+          }
         : null,
       scout_people: people.map((p) => ({
         ref: p.ref,
@@ -276,7 +296,9 @@ export const callStewardAgentModel: StewardAgentModelCall = async (task, people 
     throw new AgentRunUnavailable("The AI result had no usable evidence. The task stayed open.");
   }
   const named = (parsed as { people_named?: unknown }).people_named;
-  const peopleNamed = Array.isArray(named) ? named.filter((n): n is string => typeof n === "string") : [];
+  const peopleNamed = Array.isArray(named)
+    ? named.filter((n): n is string => typeof n === "string")
+    : [];
   return { ...safe, peopleNamed, model: response.model, runId: null };
 };
 
@@ -356,7 +378,9 @@ export async function executeStewardAgentTask(input: {
             task,
             agentId: input.agentId,
             runId: existingId,
-            evidenceRefs: Array.isArray(row["evidence_refs"]) ? (row["evidence_refs"] as string[]) : [],
+            evidenceRefs: Array.isArray(row["evidence_refs"])
+              ? (row["evidence_refs"] as string[])
+              : [],
             settledAt: String(row["settled_at"] ?? new Date().toISOString()),
           });
           return {
@@ -371,7 +395,12 @@ export async function executeStewardAgentTask(input: {
         if (status === "failed" && row["requested_by"] === input.userId && risk.executable) {
           const reopened = await input.writer
             .from("steward_agent_runs")
-            .update({ status: "working", safe_error: null, settled_at: null, started_at: new Date().toISOString() })
+            .update({
+              status: "working",
+              safe_error: null,
+              settled_at: null,
+              started_at: new Date().toISOString(),
+            })
             .eq("organization_id", input.organizationId)
             .eq("id", existingId)
             .eq("status", "failed")
@@ -409,9 +438,12 @@ function safeFailureReason(error: unknown): string {
   if (error instanceof AgentRunUnavailable) return error.message;
   const name = error instanceof Error ? error.constructor.name : "";
   const message = error instanceof Error ? error.message : "";
-  if (message === "forbidden") return "AI access could not be verified for this workspace. The task stayed open.";
-  if (name === "ProviderNotConfiguredError") return "The AI model isn't set up on the server yet. The task stayed open.";
-  if (name === "ProviderCallFailedError") return "The AI model didn't respond successfully. The task stayed open; run it again.";
+  if (message === "forbidden")
+    return "AI access could not be verified for this workspace. The task stayed open.";
+  if (name === "ProviderNotConfiguredError")
+    return "The AI model isn't set up on the server yet. The task stayed open.";
+  if (name === "ProviderCallFailedError")
+    return "The AI model didn't respond successfully. The task stayed open; run it again.";
   return "The AI task failed safely. The task stayed open.";
 }
 
@@ -421,7 +453,10 @@ async function runModelAndSettle(
   runId: string,
 ): Promise<AgentRunOutcome> {
   try {
-    const runtimeTask: ManualTaskRecord = { ...task, correlationId: `runtime-token:${input.token}` };
+    const runtimeTask: ManualTaskRecord = {
+      ...task,
+      correlationId: `runtime-token:${input.token}`,
+    };
     const people = await loadAgentPeople(input.client, input.organizationId, task);
     const prospect = await loadAgentProspect(input.client, input.organizationId, task);
     const result = await (input.callModel ?? callStewardAgentModel)(runtimeTask, people, prospect);

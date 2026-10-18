@@ -13,7 +13,13 @@ describe("personal dashboard pagination", () => {
   it("shows five activities per page independently", () => {
     const activities = Array.from({ length: 11 }, (_, index) => `activity-${index + 1}`);
     const view = paginate(activities, 2, 5);
-    expect(view.rows).toEqual(["activity-6", "activity-7", "activity-8", "activity-9", "activity-10"]);
+    expect(view.rows).toEqual([
+      "activity-6",
+      "activity-7",
+      "activity-8",
+      "activity-9",
+      "activity-10",
+    ]);
     expect(view).toMatchObject({ page: 2, pageCount: 3, total: 11, from: 6, to: 10 });
   });
 

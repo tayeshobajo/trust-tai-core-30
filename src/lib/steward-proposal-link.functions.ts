@@ -70,12 +70,23 @@ function serializeProposal(proposal: LedgerProposal): SerializedProposal {
 export type ProposalLinkCapabilityState =
   { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
+/** Durable human decision from the append-only audit, for review history. */
+export interface ProposalDecisionRead {
+  proposalId: string | null;
+  kind: "register" | "link" | "dismiss";
+  reason: string | null;
+  actorId: string;
+  createdAt: string;
+  taskId: string | null;
+}
+
 export type ProposalReviewReadState =
   | { kind: "unavailable"; reason: string }
   | {
       kind: "ready";
       proposals: SerializedProposal[];
       links: ProposalLink[];
+      decisions: ProposalDecisionRead[];
     }
   | { kind: "rejected"; message: string };
 
@@ -122,7 +133,41 @@ export const getProposalReviewStateFn = createServerFn({ method: "GET" })
         ledger.ledgerForConversation(data.orgId, data.conversationId),
         links.linksForConversation(data.orgId, data.conversationId),
       ]);
-      return { kind: "ready", proposals: proposals.map(serializeProposal), links: existingLinks };
+      /* Durable decision history: linked/dismissed proposals must stay
+         reviewable with their reasons and targets, never hidden. */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
+      const rls = context.supabase as any;
+      const { data: decisionRows, error: decisionError } = await rls
+        .from("steward_proposal_decisions")
+        .select("proposal_ledger_id, kind, reason, actor_id, created_at")
+        .eq("organization_id", data.orgId)
+        .eq("conversation_id", data.conversationId)
+        .order("created_at", { ascending: true });
+      if (decisionError) {
+        return { kind: "rejected", message: "the proposal decision history could not be read" };
+      }
+      const taskByProposal = new Map(
+        existingLinks.map((link) => [link.proposalId, link.taskId] as const),
+      );
+      const decisions: ProposalDecisionRead[] = (decisionRows ?? []).map(
+        (row: Record<string, unknown>) => {
+          const proposalId = (row["proposal_ledger_id"] as string | null) ?? null;
+          return {
+            proposalId,
+            kind: (row["kind"] as ProposalDecisionRead["kind"]) ?? "register",
+            reason: (row["reason"] as string | null) ?? null,
+            actorId: row["actor_id"] as string,
+            createdAt: row["created_at"] as string,
+            taskId: proposalId ? (taskByProposal.get(proposalId) ?? null) : null,
+          };
+        },
+      );
+      return {
+        kind: "ready",
+        proposals: proposals.map(serializeProposal),
+        links: existingLinks,
+        decisions,
+      };
     } catch (error) {
       return {
         kind: "rejected",

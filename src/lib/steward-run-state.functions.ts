@@ -17,7 +17,7 @@ import type { CanonicalRun } from "./steward-canonical-run.server";
 
 export type RunReadState =
   | { kind: "unavailable"; reason: string }
-  | { kind: "ready"; runs: CanonicalRun[] }
+  | { kind: "ready"; runs: CanonicalRun[]; truncated: boolean }
   | { kind: "rejected"; message: string };
 
 const DISABLED_REASON =
@@ -40,15 +40,19 @@ export const getTaskCanonicalRunsFn = createServerFn({ method: "GET" })
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
     const rls = context.supabase as any;
+    /* Fetch one row beyond the page so truncation is detected and
+       disclosed — older history is never silently omitted. */
     const { data: rows, error } = await rls
       .from("steward_canonical_runs")
       .select(COLUMNS)
       .eq("organization_id", data.orgId)
       .eq("task_id", data.taskId)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(21);
     if (error) return { kind: "rejected", message: "the run history could not be read" };
-    const runs: CanonicalRun[] = (rows ?? []).map((row: Record<string, unknown>) => ({
+    const truncated = (rows ?? []).length > 20;
+    const page = (rows ?? []).slice(0, 20);
+    const runs: CanonicalRun[] = page.map((row: Record<string, unknown>) => ({
       id: row["id"] as string,
       organizationId: row["organization_id"] as string,
       taskId: row["task_id"] as string,
@@ -67,5 +71,5 @@ export const getTaskCanonicalRunsFn = createServerFn({ method: "GET" })
       claimToken: (row["claim_token"] as string | null) ?? null,
       claimVersion: row["claim_version"] as number,
     }));
-    return { kind: "ready", runs };
+    return { kind: "ready", runs, truncated };
   });

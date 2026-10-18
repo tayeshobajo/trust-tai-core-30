@@ -10,12 +10,20 @@
  * so the view layer mirrors the small read shapes it needs instead of
  * importing them.
  *
+ * Operation identity: every mutation gesture creates its operation UUID
+ * ONCE and keeps it with the exact payload. A transport failure leaves the
+ * outcome UNKNOWN — the panel keeps the pending operation and offers a
+ * retry with the SAME id and payload (the server replays instead of
+ * re-executing). A fresh UUID is generated only for a deliberate new
+ * operation. User input (evidence notes, dismiss reasons, link choices) is
+ * preserved across rejected/conflict/uncertain outcomes.
+ *
  * While every capability flag is OFF the panels render the honest
  * unavailable state with the server-supplied reason — no task or model
  * mutation can be triggered from mount, selection, or timers.
  */
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AlertCircle, Check, RotateCw, Sparkles } from "lucide-react";
 
 import { TTButton } from "@/components/tt/primitives";
@@ -38,16 +46,24 @@ export interface RunSnapshot {
 
 export type RunsRead =
   | { kind: "unavailable"; reason: string }
-  | { kind: "ready"; runs: RunSnapshot[] }
+  | { kind: "ready"; runs: RunSnapshot[]; truncated: boolean }
   | { kind: "rejected"; message: string }
   | { kind: "loading" };
+
+export interface ReceiptSnapshot {
+  id: string;
+  kind: "verify" | "reopen";
+  note: string;
+  actorId: string;
+  createdAt: string;
+}
 
 export type VerificationRead =
   | { kind: "unavailable"; reason: string }
   | {
       kind: "ready";
       task: { status: "open" | "complete"; revision: number } | null;
-      receipts: { id: string; note: string; actorId: string; createdAt: string }[];
+      receipts: ReceiptSnapshot[];
     }
   | { kind: "rejected"; message: string }
   | { kind: "loading" };
@@ -79,9 +95,41 @@ export interface ProposalSnapshot {
   evidence: { label: string }[];
 }
 
+/** Durable human decision on a proposal, for the decision history. */
+export interface ProposalDecisionSnapshot {
+  proposalId: string | null;
+  kind: "register" | "link" | "dismiss";
+  reason: string | null;
+  actorId: string;
+  createdAt: string;
+  /** Link target task id, when the decision linked a proposal. */
+  taskId: string | null;
+}
+
 export type ProposalReviewRead =
   | { kind: "unavailable"; reason: string }
-  | { kind: "ready"; proposals: ProposalSnapshot[] }
+  | {
+      kind: "ready";
+      proposals: ProposalSnapshot[];
+      decisions: ProposalDecisionSnapshot[];
+    }
+  | { kind: "rejected"; message: string }
+  | { kind: "loading" };
+
+/** Consistent one-statement meeting score snapshot (006 patch). */
+export interface MeetingScoreSnapshot {
+  denominator: number;
+  verified: number;
+  pendingProposals: number;
+  coverageCurrent: boolean;
+  attestedAt: string | null;
+  scopeVersion: number;
+  complete: boolean;
+}
+
+export type MeetingScoreRead =
+  | { kind: "unavailable"; reason: string }
+  | { kind: "ready"; snapshot: MeetingScoreSnapshot }
   | { kind: "rejected"; message: string }
   | { kind: "loading" };
 
@@ -91,6 +139,76 @@ export interface ActionOutcome {
   message?: string;
 }
 
+/* ---------------------------------------------------------- operations */
+
+interface PendingOperation<T> {
+  operationId: string;
+  payload: T;
+}
+
+/**
+ * One in-flight-or-uncertain mutation attempt. The operation UUID and the
+ * exact payload are created once per deliberate gesture and survive a
+ * transport failure, so a retry replays the SAME operation instead of
+ * re-executing. `reset` (a fresh UUID) is only for a deliberate new
+ * operation after the previous one resolved.
+ */
+function useOperationAttempt<T>() {
+  const [pending, setPending] = useState<PendingOperation<T> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [outcome, setOutcome] = useState<ActionOutcome | null>(null);
+
+  const run = useCallback(
+    async (
+      handler: (input: T & { operationId: string }) => Promise<ActionOutcome>,
+      payload: T,
+      reuse: PendingOperation<T> | null,
+    ) => {
+      const attempt = reuse ?? { operationId: crypto.randomUUID(), payload };
+      setBusy(true);
+      setOutcome(null);
+      try {
+        const result = await handler({ ...attempt.payload, operationId: attempt.operationId });
+        setOutcome(result);
+        /* Resolved outcomes (success, rejection, conflict) end the
+           operation; only a transport failure keeps it pending for a
+           same-id retry. */
+        setPending(null);
+        return result;
+      } catch (error) {
+        /* Transport ambiguity: the request may have committed. Keep the
+           operation id + payload and report uncertainty honestly. */
+        setPending(attempt);
+        const message = error instanceof Error ? error.message : "the request did not complete";
+        const uncertain: ActionOutcome = {
+          kind: "uncertain",
+          message: `Outcome unknown — ${message}. Retry replays the same operation; it never re-executes.`,
+        };
+        setOutcome(uncertain);
+        return uncertain;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
+
+  return { pending, busy, outcome, run, setOutcome };
+}
+
+function OutcomeNote({ outcome }: { outcome: ActionOutcome | null }) {
+  if (!outcome) return null;
+  const tone =
+    outcome.kind === "uncertain" || outcome.kind === "conflict" || outcome.kind === "rejected"
+      ? "text-warning"
+      : "text-muted-foreground";
+  return (
+    <p role="status" className={`rounded-md border border-border bg-card p-2 text-xs ${tone}`}>
+      {outcome.message ?? outcome.kind}
+    </p>
+  );
+}
+
 /* ---------------------------------------------------------- AI panel */
 
 export interface AiPreparationProps {
@@ -98,7 +216,7 @@ export interface AiPreparationProps {
   runs: RunsRead | undefined;
   task: BoardTask;
   meetingId: string;
-  actions: { id: string; label: string; summary: string }[];
+  actions: { id: string; label: string; summary: string; disabledReason?: string }[];
   onRequestRun:
     | ((input: {
         actionId: string;
@@ -124,11 +242,14 @@ export function AiPreparationPanel({
   onRequestRun,
   onExecuteRun,
 }: AiPreparationProps) {
-  const [selectedAction, setSelectedAction] = useState(actions[0]?.id ?? "");
+  const enabledActions = actions.filter((action) => !action.disabledReason);
+  const [selectedAction, setSelectedAction] = useState(enabledActions[0]?.id ?? "");
   const [useTranscript, setUseTranscript] = useState(true);
   const [useNotes, setUseNotes] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<ActionOutcome | null>(null);
+  const attempt = useOperationAttempt<{
+    actionId: string;
+    inputRefs: { kind: "transcript" | "task_notes"; id: string }[];
+  }>();
 
   if (capability.kind === "unavailable") {
     return (
@@ -145,31 +266,26 @@ export function AiPreparationPanel({
 
   async function request() {
     if (!onRequestRun || inputRefs.length === 0 || !selectedAction) return;
-    setBusy(true);
-    setOutcome(null);
-    try {
-      /* A fresh operation UUID per deliberate request; a retry of the SAME
-         request reuses the UUID so it replays instead of re-executing. */
-      setOutcome(
-        await onRequestRun({
-          actionId: selectedAction,
-          inputRefs,
-          operationId: crypto.randomUUID(),
-        }),
-      );
-    } finally {
-      setBusy(false);
-    }
+    await attempt.run(onRequestRun, { actionId: selectedAction, inputRefs }, null);
+  }
+
+  async function retry() {
+    if (!onRequestRun || !attempt.pending) return;
+    await attempt.run(onRequestRun, attempt.pending.payload, attempt.pending);
   }
 
   async function execute(runId: string) {
     if (!onExecuteRun) return;
-    setBusy(true);
-    setOutcome(null);
+    attempt.setOutcome(null);
     try {
-      setOutcome(await onExecuteRun(runId));
-    } finally {
-      setBusy(false);
+      attempt.setOutcome(await onExecuteRun(runId));
+    } catch (error) {
+      attempt.setOutcome({
+        kind: "uncertain",
+        message: `Execution outcome unknown — ${
+          error instanceof Error ? error.message : "the request did not complete"
+        }. Re-read the run history before trying again; a failed reread is not proof of failure.`,
+      });
     }
   }
 
@@ -208,7 +324,7 @@ export function AiPreparationPanel({
           value={selectedAction}
           onChange={(e) => setSelectedAction(e.target.value)}
         >
-          {actions.map((action) => (
+          {enabledActions.map((action) => (
             <option key={action.id} value={action.id}>
               {action.label}
             </option>
@@ -218,21 +334,32 @@ export function AiPreparationPanel({
           type="button"
           variant="secondary"
           className="h-8 px-2 text-xs"
-          disabled={busy || inputRefs.length === 0 || !onRequestRun}
+          disabled={attempt.busy || inputRefs.length === 0 || !onRequestRun || !selectedAction}
           onClick={() => void request()}
         >
           <Sparkles aria-hidden className="size-3.5" /> Request preparation
         </TTButton>
       </div>
-      {outcome ? (
-        <p
-          role="status"
-          className="rounded-md border border-border bg-card p-2 text-xs text-muted-foreground"
+      {actions
+        .filter((action) => action.disabledReason)
+        .map((action) => (
+          <p key={action.id} className="text-xs text-muted-foreground">
+            {action.label}: not offered — {action.disabledReason}
+          </p>
+        ))}
+      <OutcomeNote outcome={attempt.outcome} />
+      {attempt.pending ? (
+        <TTButton
+          type="button"
+          variant="secondary"
+          className="h-8 px-2 text-xs"
+          disabled={attempt.busy}
+          onClick={() => void retry()}
         >
-          {outcome.message ?? outcome.kind}
-        </p>
+          <RotateCw aria-hidden className="size-3.5" /> Retry same operation
+        </TTButton>
       ) : null}
-      <RunHistory runs={runs} busy={busy} onExecute={execute} />
+      <RunHistory runs={runs} busy={attempt.busy} onExecute={execute} />
     </div>
   );
 }
@@ -251,7 +378,8 @@ function RunHistory({
   }
   if (runs.kind === "unavailable" || runs.kind === "rejected") {
     return (
-      <p className="text-xs text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-xs text-warning">
+        <AlertCircle aria-hidden className="size-3.5" />
         {"reason" in runs ? runs.reason : runs.message}
       </p>
     );
@@ -260,50 +388,61 @@ function RunHistory({
     return <p className="text-xs text-muted-foreground">No preparation runs recorded yet.</p>;
   }
   return (
-    <ul className="space-y-2">
-      {runs.runs.map((run) => (
-        <li key={run.id} className="rounded-md border border-border bg-card p-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[13px] font-medium text-foreground">
-              {run.action} ·{" "}
-              {run.status === "failed" && run.failureReason?.startsWith("uncertain:")
-                ? "uncertain"
-                : run.status}
-            </p>
-            {run.status === "queued" ? (
-              <TTButton
-                type="button"
-                variant="secondary"
-                className="h-8 px-2 text-xs"
-                disabled={busy}
-                onClick={() => void onExecute(run.id)}
-              >
-                <RotateCw aria-hidden className="size-3.5" /> Run now
-              </TTButton>
+    <div className="space-y-2">
+      <ul className="space-y-2">
+        {runs.runs.map((run) => (
+          <li key={run.id} className="rounded-md border border-border bg-card p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium text-foreground">
+                {run.action} ·{" "}
+                {run.status === "failed" && run.failureReason?.startsWith("uncertain:")
+                  ? "uncertain"
+                  : run.status}
+              </p>
+              {run.status === "queued" ? (
+                <TTButton
+                  type="button"
+                  variant="secondary"
+                  className="h-8 px-2 text-xs"
+                  disabled={busy}
+                  onClick={() => void onExecute(run.id)}
+                >
+                  <RotateCw aria-hidden className="size-3.5" /> Run now
+                </TTButton>
+              ) : null}
+              {run.status === "running" ? (
+                <span className="text-xs text-muted-foreground">running…</span>
+              ) : null}
+            </div>
+            {run.status === "failed" ? (
+              <p className="mt-1 text-xs text-warning">
+                {run.failureReason ?? "Failed"} — a deliberate rerun needs a new request.
+              </p>
             ) : null}
-          </div>
-          {run.status === "failed" ? (
-            <p className="mt-1 text-xs text-warning">
-              {run.failureReason ?? "Failed"} — a deliberate rerun needs a new request.
-            </p>
-          ) : null}
-          {run.artifactText ? (
-            <details className="mt-1">
-              <summary className="cursor-pointer text-xs font-medium text-foreground">
-                Draft artifact (review material, not delivery)
-              </summary>
-              <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-muted-foreground">
-                {run.artifactText}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Cited inputs: {run.evidenceRefs.join(", ") || "none recorded"} · digest{" "}
-                {run.artifactDigest?.slice(0, 12) ?? "unavailable"}…
-              </p>
-            </details>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+            {run.artifactText ? (
+              <details className="mt-1">
+                <summary className="cursor-pointer text-xs font-medium text-foreground">
+                  Draft artifact (review material, not delivery)
+                </summary>
+                <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-muted-foreground">
+                  {run.artifactText}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Cited inputs: {run.evidenceRefs.join(", ") || "none recorded"} · digest{" "}
+                  {run.artifactDigest?.slice(0, 12) ?? "unavailable"}…
+                </p>
+              </details>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {runs.truncated ? (
+        <p className="text-xs text-muted-foreground">
+          Showing the 20 most recent runs; older history exists and is retained, just not listed
+          here.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -320,7 +459,8 @@ export interface VerificationPanelProps {
 /**
  * Evidence review: verify with a substantive note against the expected
  * revision, reopen with a reason. Receipts and audit history are durable;
- * board "Delivered" status alone never counts.
+ * board "Delivered" status alone never counts. Verify and reopen receipts
+ * render distinctly — a reopen is never styled as proof.
  */
 export function VerificationPanel({
   capability,
@@ -330,25 +470,26 @@ export function VerificationPanel({
   onReopen,
 }: VerificationPanelProps) {
   const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<ActionOutcome | null>(null);
+  const attempt = useOperationAttempt<{ note: string }>();
 
   if (capability.kind === "unavailable") {
     return <p className="mt-2 text-xs text-muted-foreground">{capability.reason}</p>;
   }
 
   const verified = state?.kind === "ready" && state.task?.status === "complete";
+  const handler = verified ? onReopen : onVerify;
 
-  async function act(handler: typeof onVerify) {
-    if (!handler || note.trim().length < 10) return;
-    setBusy(true);
-    setOutcome(null);
-    try {
-      setOutcome(await handler({ note: note.trim(), operationId: crypto.randomUUID() }));
-      setNote("");
-    } finally {
-      setBusy(false);
-    }
+  async function act(reuse: typeof attempt.pending) {
+    const trimmed = note.trim();
+    if (!handler || trimmed.length < 10) return;
+    const result = await attempt.run(
+      handler,
+      { note: trimmed },
+      reuse && reuse.payload.note === trimmed ? reuse : null,
+    );
+    /* The note is cleared only on a resolved success; rejected, conflict
+       and uncertain outcomes keep the user's words for correction/retry. */
+    if (result.kind === "verified" || result.kind === "reopened") setNote("");
   }
 
   return (
@@ -358,11 +499,17 @@ export function VerificationPanel({
           {state.receipts.map((receipt) => (
             <li
               key={receipt.id}
-              className="rounded-md border border-success/30 bg-success/5 px-3 py-2"
+              className={
+                receipt.kind === "verify"
+                  ? "rounded-md border border-success/30 bg-success/5 px-3 py-2"
+                  : "rounded-md border border-warning/40 bg-warning/5 px-3 py-2"
+              }
             >
               <p className="text-foreground">“{receipt.note}”</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Durable receipt · {receipt.createdAt.slice(0, 16).replace("T", " ")}
+                {receipt.kind === "verify" ? "Verified" : "Reopened"} · durable receipt ·{" "}
+                {receipt.createdAt.slice(0, 16).replace("T", " ")} · actor{" "}
+                {receipt.actorId.slice(0, 8)}…
               </p>
             </li>
           ))}
@@ -389,14 +536,14 @@ export function VerificationPanel({
           }
         />
       </label>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {verified ? (
           <TTButton
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={busy || note.trim().length < 10 || !onReopen}
-            onClick={() => void act(onReopen)}
+            disabled={attempt.busy || note.trim().length < 10 || !onReopen}
+            onClick={() => void act(null)}
           >
             Reopen (history preserved)
           </TTButton>
@@ -405,18 +552,25 @@ export function VerificationPanel({
             type="button"
             variant="secondary"
             className="h-8 px-2 text-xs"
-            disabled={busy || note.trim().length < 10 || !onVerify}
-            onClick={() => void act(onVerify)}
+            disabled={attempt.busy || note.trim().length < 10 || !onVerify}
+            onClick={() => void act(null)}
           >
             <Check aria-hidden className="size-3.5" /> Verify at revision {task.revision}
           </TTButton>
         )}
+        {attempt.pending ? (
+          <TTButton
+            type="button"
+            variant="secondary"
+            className="h-8 px-2 text-xs"
+            disabled={attempt.busy}
+            onClick={() => void act(attempt.pending)}
+          >
+            <RotateCw aria-hidden className="size-3.5" /> Retry same operation
+          </TTButton>
+        ) : null}
       </div>
-      {outcome ? (
-        <p role="status" className="text-xs text-muted-foreground">
-          {outcome.message ?? outcome.kind}
-        </p>
-      ) : null}
+      <OutcomeNote outcome={attempt.outcome} />
     </div>
   );
 }
@@ -431,8 +585,10 @@ export interface ScopeReviewPanelProps {
   coverageCapability: CapabilityState;
   proposalCapability: CapabilityState;
   linkTargets: { id: string; title: string }[];
-  onAttestCoverage: (() => Promise<ActionOutcome>) | undefined;
-  onSyncProposals: (() => Promise<ActionOutcome>) | undefined;
+  onAttestCoverage: ((input: { operationId: string }) => Promise<ActionOutcome>) | undefined;
+  onSyncProposals: ((input: { operationId: string }) => Promise<ActionOutcome>) | undefined;
+  /** Explicit durable sync of recorded required tasks into meeting scope. */
+  onSyncRequiredScope: ((input: { operationId: string }) => Promise<ActionOutcome>) | undefined;
   onLinkProposal:
     | ((input: {
         proposalId: string;
@@ -452,8 +608,10 @@ export interface ScopeReviewPanelProps {
 /**
  * Meeting scope review: explicit extraction registration, the pending
  * proposal list with source evidence, human link-to-existing-task or
- * reasoned dismiss, and explicit coverage attestation. Nothing here
- * auto-confirms; a link alone is not agreement.
+ * reasoned dismiss, explicit required-scope sync, and explicit coverage
+ * attestation. Nothing here auto-confirms; a link alone is not agreement.
+ * Linked/dismissed proposals stay visible in the decision history with
+ * their reasons and targets — decisions never vanish from review.
  */
 export function ScopeReviewPanel({
   scope,
@@ -465,28 +623,47 @@ export function ScopeReviewPanel({
   linkTargets,
   onAttestCoverage,
   onSyncProposals,
+  onSyncRequiredScope,
   onLinkProposal,
   onDismissProposal,
 }: ScopeReviewPanelProps) {
-  const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<ActionOutcome | null>(null);
+  const simple = useOperationAttempt<Record<string, never>>();
+  const linkAttempt = useOperationAttempt<{ proposalId: string; taskId: string }>();
+  const dismissAttempt = useOperationAttempt<{ proposalId: string; reason: string }>();
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [linkChoices, setLinkChoices] = useState<Record<string, string>>({});
-
-  async function act(handler: (() => Promise<ActionOutcome> | undefined) | undefined) {
-    if (!handler) return;
-    setBusy(true);
-    setOutcome(null);
-    try {
-      const result = await handler();
-      if (result) setOutcome(result);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const busy = simple.busy || linkAttempt.busy || dismissAttempt.busy;
 
   const pending =
     proposals?.kind === "ready" ? proposals.proposals.filter((p) => p.status === "proposed") : [];
+  const decided =
+    proposals?.kind === "ready" ? proposals.proposals.filter((p) => p.status !== "proposed") : [];
+  const decisions = proposals?.kind === "ready" ? proposals.decisions : [];
+  const decisionFor = (proposalId: string) =>
+    decisions
+      .filter((d) => d.proposalId === proposalId && d.kind !== "register")
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .at(-1);
+  const targetTitle = (taskId: string | null) =>
+    taskId
+      ? (linkTargets.find((t) => t.id === taskId)?.title ?? `task ${taskId.slice(0, 8)}…`)
+      : null;
+
+  async function link(proposalId: string) {
+    const taskId = linkChoices[proposalId] ?? "";
+    if (!onLinkProposal || !taskId) return;
+    await linkAttempt.run(onLinkProposal, { proposalId, taskId }, null);
+  }
+
+  async function dismiss(proposalId: string) {
+    const reason = (dismissReasons[proposalId] ?? "").trim();
+    if (!onDismissProposal || reason.length < 10) return;
+    const result = await dismissAttempt.run(onDismissProposal, { proposalId, reason }, null);
+    /* Keep the reason text unless the dismissal resolved successfully. */
+    if (result.kind === "dismissed") {
+      setDismissReasons((m) => ({ ...m, [proposalId]: "" }));
+    }
+  }
 
   return (
     <div className="space-y-3 text-[13px]">
@@ -497,7 +674,7 @@ export function ScopeReviewPanel({
             variant="secondary"
             className="h-8 px-2 text-xs"
             disabled={busy || !onSyncProposals}
-            onClick={() => void act(onSyncProposals)}
+            onClick={() => void simple.run(onSyncProposals!, {}, null)}
           >
             Register extracted proposals
           </TTButton>
@@ -510,13 +687,24 @@ export function ScopeReviewPanel({
             variant="secondary"
             className="h-8 px-2 text-xs"
             disabled={busy || !onAttestCoverage}
-            onClick={() => void act(onAttestCoverage)}
+            onClick={() => void simple.run(onAttestCoverage!, {}, null)}
           >
             Attest current transcript coverage
           </TTButton>
         ) : (
           <p className="text-xs text-muted-foreground">{coverageCapability.reason}</p>
         )}
+        {scopeCapability.kind === "enabled" && onSyncRequiredScope ? (
+          <TTButton
+            type="button"
+            variant="secondary"
+            className="h-8 px-2 text-xs"
+            disabled={busy}
+            onClick={() => void simple.run(onSyncRequiredScope, {}, null)}
+          >
+            Sync recorded required tasks into scope
+          </TTButton>
+        ) : null}
       </div>
       {coverage?.kind === "ready" ? (
         <p className="text-xs text-muted-foreground">
@@ -565,15 +753,7 @@ export function ScopeReviewPanel({
                   variant="secondary"
                   className="h-8 px-2 text-xs"
                   disabled={busy || !linkChoices[proposal.id] || !onLinkProposal}
-                  onClick={() =>
-                    void act(() =>
-                      onLinkProposal?.({
-                        proposalId: proposal.id,
-                        taskId: linkChoices[proposal.id] ?? "",
-                        operationId: crypto.randomUUID(),
-                      }),
-                    )
-                  }
+                  onClick={() => void link(proposal.id)}
                 >
                   Link
                 </TTButton>
@@ -597,15 +777,7 @@ export function ScopeReviewPanel({
                     (dismissReasons[proposal.id] ?? "").trim().length < 10 ||
                     !onDismissProposal
                   }
-                  onClick={() =>
-                    void act(() =>
-                      onDismissProposal?.({
-                        proposalId: proposal.id,
-                        reason: (dismissReasons[proposal.id] ?? "").trim(),
-                        operationId: crypto.randomUUID(),
-                      }),
-                    )
-                  }
+                  onClick={() => void dismiss(proposal.id)}
                 >
                   Dismiss
                 </TTButton>
@@ -616,9 +788,39 @@ export function ScopeReviewPanel({
       ) : proposals?.kind === "ready" ? (
         <p className="text-xs text-muted-foreground">No proposals pending review.</p>
       ) : null}
-      {outcome ? (
-        <p role="status" className="text-xs text-muted-foreground">
-          {outcome.message ?? outcome.kind}
+      {decided.length > 0 ? (
+        <details className="rounded-md border border-border bg-card p-2.5">
+          <summary className="cursor-pointer text-xs font-medium text-foreground">
+            Decision history ({decided.length} resolved)
+          </summary>
+          <ul className="mt-2 space-y-2">
+            {decided.map((proposal) => {
+              const decision = decisionFor(proposal.id);
+              return (
+                <li key={proposal.id} className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">{proposal.statement}</span> —{" "}
+                  {proposal.status === "linked" ? (
+                    <>
+                      linked to {targetTitle(decision?.taskId ?? null) ?? "a task"}; the obligation
+                      counts in the required-work denominator
+                    </>
+                  ) : (
+                    <>dismissed{decision?.reason ? `: “${decision.reason}”` : ""}</>
+                  )}
+                  {decision
+                    ? ` · ${decision.createdAt.slice(0, 16).replace("T", " ")} · actor ${decision.actorId.slice(0, 8)}…`
+                    : ""}
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      ) : null}
+      <OutcomeNote outcome={simple.outcome ?? linkAttempt.outcome ?? dismissAttempt.outcome} />
+      {simple.pending || linkAttempt.pending || dismissAttempt.pending ? (
+        <p className="text-xs text-warning">
+          One operation’s outcome is unknown. Re-run the same action — it replays the same operation
+          instead of re-executing.
         </p>
       ) : null}
     </div>

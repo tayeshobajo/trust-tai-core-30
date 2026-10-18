@@ -63,7 +63,7 @@ psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/../grants.review.sql"
 echo "== 000b_acl_postgrant.sql"
 psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/tests/000b_acl_postgrant.sql"
 
-for t in "$HERE"/tests/00[1-5]*.sql "$HERE"/tests/008_journey.sql; do
+for t in "$HERE"/tests/00[1-5]*.sql "$HERE"/tests/008_journey.sql "$HERE"/tests/009_score_snapshot.sql; do
   echo "== $(basename "$t")"
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$t"
 done

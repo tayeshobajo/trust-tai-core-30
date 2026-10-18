@@ -169,6 +169,27 @@ begin
   -- version and supersedes coverage in this same transaction).
   update public.steward_proposal_ledger set status = 'linked' where id = p_proposal;
 
+  -- A link is a human confirmation of the obligation: the linked task
+  -- enters the required-scope denominator ATOMICALLY in this same
+  -- transaction, so a proposal can never be marked linked while its
+  -- obligation silently stays out of the score. Idempotent on
+  -- (org, conversation, task): an existing scope row is kept, never
+  -- duplicated, and a replay of this operation returns above before
+  -- reaching this point.
+  perform set_config('steward.scope_mutation', 'on', true);
+  insert into public.steward_scope_items
+    (organization_id, conversation_id, task_id, classification, operation_id, request_digest, added_by)
+  values (p_org, p_conversation, p_task, 'transcript', p_operation, digest, actor)
+  on conflict (organization_id, conversation_id, task_id) do nothing;
+  if found then
+    insert into public.steward_scope_audit
+      (organization_id, conversation_id, scope_item_id, kind, reason, operation_id, request_digest, actor_id)
+    select p_org, p_conversation, si.id, 'add', 'confirmed by proposal link', p_operation, digest, actor
+      from public.steward_scope_items si
+     where si.organization_id = p_org and si.conversation_id = p_conversation and si.task_id = p_task
+    on conflict (organization_id, operation_id) do nothing;
+  end if;
+
   return link;
 end;
 $$;

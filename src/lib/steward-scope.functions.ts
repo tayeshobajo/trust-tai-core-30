@@ -127,6 +127,35 @@ export const addScopeItemFn = createServerFn({ method: "POST" })
   });
 
 /**
+ * Explicit durable sync of recorded required-manual tasks into the
+ * meeting scope. Idempotent per operation UUID; never creates or edits
+ * tasks and never resets prior human decisions. Runs only from an explicit
+ * user gesture — never on mount, selection, or timers.
+ */
+export const syncRequiredScopeFn = createServerFn({ method: "POST" })
+  .middleware([requireTrustTaiAuth])
+  .inputValidator((data) =>
+    meetingInputSchema.extend({ operationId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }): Promise<ScopeMutationState | { kind: "applied" }> => {
+    if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
+    const repo = createSupabaseScopeRepository(context.supabase);
+    try {
+      await repo.syncRequired({
+        orgId: data.orgId,
+        conversationId: data.conversationId,
+        operationId: data.operationId,
+      });
+      return { kind: "applied" };
+    } catch (error) {
+      return {
+        kind: "rejected",
+        message: error instanceof Error ? error.message : "required scope could not be synced",
+      };
+    }
+  });
+
+/**
  * Amend scope by removing an item — explicit, reasoned, audited. The item
  * stays in history; the operation UUID makes retries replay-safe.
  */
