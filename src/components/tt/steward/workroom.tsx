@@ -218,9 +218,11 @@ function useStewardBackend(
         getScopeCapabilityFn(),
         getProposalLinkCapabilityFn(),
       ]);
-      const normalize = (
-        value: { kind: string; reason?: string; message?: string },
-      ): CapabilityState =>
+      const normalize = (value: {
+        kind: string;
+        reason?: string;
+        message?: string;
+      }): CapabilityState =>
         value.kind === "enabled" || value.kind === "actions"
           ? { kind: "enabled" }
           : {
@@ -249,8 +251,7 @@ function useStewardBackend(
   const verification = useQuery({
     queryKey: ["steward", "verification", org, selectedTaskId],
     enabled: !!selectedTaskId && caps?.verification.kind === "enabled",
-    queryFn: () =>
-      getTaskVerificationStateFn({ data: { orgId: org, taskId: selectedTaskId! } }),
+    queryFn: () => getTaskVerificationStateFn({ data: { orgId: org, taskId: selectedTaskId! } }),
   });
   const scope = useQuery({
     queryKey: ["steward", "scope", org, meetingId],
@@ -265,8 +266,7 @@ function useStewardBackend(
   const proposals = useQuery({
     queryKey: ["steward", "proposal-review", org, meetingId],
     enabled: !!meetingId && caps?.proposals.kind === "enabled",
-    queryFn: () =>
-      getProposalReviewStateFn({ data: { orgId: org, conversationId: meetingId! } }),
+    queryFn: () => getProposalReviewStateFn({ data: { orgId: org, conversationId: meetingId! } }),
   });
 
   const unavailable: CapabilityState = {
@@ -346,9 +346,7 @@ function useStewardBackend(
       } = {};
       if (scope.data) {
         state.scope =
-          scope.data.kind === "ready"
-            ? { kind: "ready", counts: scope.data.counts }
-            : scope.data;
+          scope.data.kind === "ready" ? { kind: "ready", counts: scope.data.counts } : scope.data;
       } else if (scope.isPending) state.scope = { kind: "loading" };
       if (coverage.data) {
         state.coverage =
@@ -398,7 +396,8 @@ function useStewardBackend(
     },
     onVerify: async (input) => {
       const task = verification.data?.kind === "ready" ? verification.data.read.task : null;
-      if (!task) return { kind: "rejected", message: "Task state could not be read; not verified." };
+      if (!task)
+        return { kind: "rejected", message: "Task state could not be read; not verified." };
       const result = await verifyCanonicalTaskFn({
         data: {
           orgId: org,
@@ -413,7 +412,8 @@ function useStewardBackend(
     },
     onReopen: async (input) => {
       const task = verification.data?.kind === "ready" ? verification.data.read.task : null;
-      if (!task) return { kind: "rejected", message: "Task state could not be read; not reopened." };
+      if (!task)
+        return { kind: "rejected", message: "Task state could not be read; not reopened." };
       const result = await reopenCanonicalTaskFn({
         data: {
           orgId: org,

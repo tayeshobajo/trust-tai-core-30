@@ -176,8 +176,8 @@ export function AiPreparationPanel({
   return (
     <div className="mt-2 space-y-3">
       <p className="text-[13px] text-muted-foreground">
-        Bounded preparation for this task. A draft is review material only — it never completes
-        the task, grants verified credit, or delivers the work itself.
+        Bounded preparation for this task. A draft is review material only — it never completes the
+        task, grants verified credit, or delivers the work itself.
       </p>
       <fieldset className="rounded-md border border-border bg-card p-2.5">
         <legend className="px-1 text-xs font-medium text-foreground">Stored inputs</legend>
@@ -334,11 +334,7 @@ export function VerificationPanel({
   const [outcome, setOutcome] = useState<ActionOutcome | null>(null);
 
   if (capability.kind === "unavailable") {
-    return (
-      <p className="mt-2 text-xs text-muted-foreground">
-        {capability.reason}
-      </p>
-    );
+    return <p className="mt-2 text-xs text-muted-foreground">{capability.reason}</p>;
   }
 
   const verified = state?.kind === "ready" && state.task?.status === "complete";
@@ -438,10 +434,18 @@ export interface ScopeReviewPanelProps {
   onAttestCoverage: (() => Promise<ActionOutcome>) | undefined;
   onSyncProposals: (() => Promise<ActionOutcome>) | undefined;
   onLinkProposal:
-    | ((input: { proposalId: string; taskId: string; operationId: string }) => Promise<ActionOutcome>)
+    | ((input: {
+        proposalId: string;
+        taskId: string;
+        operationId: string;
+      }) => Promise<ActionOutcome>)
     | undefined;
   onDismissProposal:
-    | ((input: { proposalId: string; reason: string; operationId: string }) => Promise<ActionOutcome>)
+    | ((input: {
+        proposalId: string;
+        reason: string;
+        operationId: string;
+      }) => Promise<ActionOutcome>)
     | undefined;
 }
 
@@ -547,9 +551,7 @@ export function ScopeReviewPanel({
                   aria-label={`Link ${proposal.statement} to an existing task`}
                   className="h-8 max-w-full rounded-md border border-border bg-card px-2 text-xs"
                   value={linkChoices[proposal.id] ?? ""}
-                  onChange={(e) =>
-                    setLinkChoices((m) => ({ ...m, [proposal.id]: e.target.value }))
-                  }
+                  onChange={(e) => setLinkChoices((m) => ({ ...m, [proposal.id]: e.target.value }))}
                 >
                   <option value="">Link to existing task…</option>
                   {linkTargets.map((target) => (
@@ -591,7 +593,9 @@ export function ScopeReviewPanel({
                   variant="secondary"
                   className="h-8 px-2 text-xs"
                   disabled={
-                    busy || (dismissReasons[proposal.id] ?? "").trim().length < 10 || !onDismissProposal
+                    busy ||
+                    (dismissReasons[proposal.id] ?? "").trim().length < 10 ||
+                    !onDismissProposal
                   }
                   onClick={() =>
                     void act(() =>

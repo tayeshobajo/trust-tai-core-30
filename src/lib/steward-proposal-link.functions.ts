@@ -55,7 +55,9 @@ function serializeProposal(proposal: LedgerProposal): SerializedProposal {
     evidence: evidence
       .filter(
         (ref): ref is { label: string; url?: string; kind?: string } =>
-          !!ref && typeof ref === "object" && typeof (ref as { label?: unknown }).label === "string",
+          !!ref &&
+          typeof ref === "object" &&
+          typeof (ref as { label?: unknown }).label === "string",
       )
       .map((ref) => ({
         label: ref.label,
@@ -66,8 +68,7 @@ function serializeProposal(proposal: LedgerProposal): SerializedProposal {
 }
 
 export type ProposalLinkCapabilityState =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "enabled" };
+  { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
 export type ProposalReviewReadState =
   | { kind: "unavailable"; reason: string }
@@ -125,7 +126,8 @@ export const getProposalReviewStateFn = createServerFn({ method: "GET" })
     } catch (error) {
       return {
         kind: "rejected",
-        message: error instanceof Error ? error.message : "the proposal review queue could not be read",
+        message:
+          error instanceof Error ? error.message : "the proposal review queue could not be read",
       };
     }
   });
@@ -135,7 +137,11 @@ export const linkProposalFn = createServerFn({ method: "POST" })
   .middleware([requireTrustTaiAuth])
   .inputValidator((data) =>
     meetingInputSchema
-      .extend({ proposalId: z.string().uuid(), taskId: z.string().uuid(), operationId: z.string().uuid() })
+      .extend({
+        proposalId: z.string().uuid(),
+        taskId: z.string().uuid(),
+        operationId: z.string().uuid(),
+      })
       .parse(data),
   )
   .handler(async ({ data, context }): Promise<ProposalDecisionState> => {
@@ -182,9 +188,13 @@ export const dismissProposalFn = createServerFn({ method: "POST" })
       return { kind: "dismissed", proposal: serializeProposal(proposal) };
     } catch (error) {
       const code = (error as { code?: string }).code;
-      const message = error instanceof Error ? error.message : "the proposal could not be dismissed";
+      const message =
+        error instanceof Error ? error.message : "the proposal could not be dismissed";
       if (code === "P0002" || message.includes("operation_conflict")) {
-        return { kind: "conflict", message: "this operation was already recorded with different inputs" };
+        return {
+          kind: "conflict",
+          message: "this operation was already recorded with different inputs",
+        };
       }
       return { kind: "rejected", message };
     }

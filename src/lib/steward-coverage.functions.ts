@@ -23,9 +23,7 @@ import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
 import { createSupabaseCoverageRepository } from "./steward-coverage.supabase";
 import type { CoverageAttestation } from "./steward-coverage.server";
 
-export type CoverageCapabilityState =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "enabled" };
+export type CoverageCapabilityState = { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
 export type CoverageReadState =
   | { kind: "unavailable"; reason: string }

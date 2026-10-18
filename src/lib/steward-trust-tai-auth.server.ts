@@ -44,9 +44,7 @@ export const requireTrustTaiAuth = createMiddleware({ type: "function" }).server
       global: {
         fetch: (input, init) => {
           const headers = new Headers(
-            typeof Request !== "undefined" && input instanceof Request
-              ? input.headers
-              : undefined,
+            typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
           );
           if (init?.headers) {
             new Headers(init.headers).forEach((value, name) => headers.set(name, value));

@@ -85,8 +85,16 @@ export interface WorkroomBackend {
     operationId: string;
   }) => Promise<ActionOutcome>;
   onExecuteRun?: (runId: string) => Promise<ActionOutcome>;
-  onVerify?: (input: { taskId: string; note: string; operationId: string }) => Promise<ActionOutcome>;
-  onReopen?: (input: { taskId: string; note: string; operationId: string }) => Promise<ActionOutcome>;
+  onVerify?: (input: {
+    taskId: string;
+    note: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+  onReopen?: (input: {
+    taskId: string;
+    note: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
   onAttestCoverage?: (meetingId: string) => Promise<ActionOutcome>;
   onSyncProposals?: (meetingId: string) => Promise<ActionOutcome>;
   onLinkProposal?: (input: {
@@ -120,7 +128,8 @@ export function serverMeetingScore(state: {
   if (scope.kind === "loading" || coverage?.kind === "loading" || proposals?.kind === "loading") {
     return { value: null, label: "Reading recorded scope…" };
   }
-  if (scope.kind === "rejected") return { value: null, label: `Scope unavailable — ${scope.message}` };
+  if (scope.kind === "rejected")
+    return { value: null, label: `Scope unavailable — ${scope.message}` };
   if (coverage?.kind === "rejected") {
     return { value: null, label: `Coverage unavailable — ${coverage.message}` };
   }
@@ -302,19 +311,19 @@ function ScoreCard({
             {serverScore
               ? serverScore.label
               : receiptsFailed
-              ? "Verification unavailable — receipts could not be read"
-              : scopeUnavailable
-                ? "Required-work scope unavailable"
-                : value === null
-                  ? (() => {
-                      const recorded =
-                        (meeting.requiredWork?.denominator ?? meeting.agreed) +
-                        (meeting.linkedWork?.total ?? 0);
-                      return recorded > 0
-                        ? `${recorded} recorded tasks · scope review pending`
-                        : "Nothing confirmed yet";
-                    })()
-                  : `${meeting.done} of ${meeting.requiredWork?.denominator ?? meeting.agreed} ${meeting.requiredWork ? "required" : "agreed"} tasks verified`}
+                ? "Verification unavailable — receipts could not be read"
+                : scopeUnavailable
+                  ? "Required-work scope unavailable"
+                  : value === null
+                    ? (() => {
+                        const recorded =
+                          (meeting.requiredWork?.denominator ?? meeting.agreed) +
+                          (meeting.linkedWork?.total ?? 0);
+                        return recorded > 0
+                          ? `${recorded} recorded tasks · scope review pending`
+                          : "Nothing confirmed yet";
+                      })()
+                    : `${meeting.done} of ${meeting.requiredWork?.denominator ?? meeting.agreed} ${meeting.requiredWork ? "required" : "agreed"} tasks verified`}
           </p>
         </div>
       </div>
@@ -373,8 +382,7 @@ function AssistantExecutionLine({
   }
   return (
     <p className="text-muted-foreground">
-      Assistant execution: Not started — preparation unavailable (run bridge staged, not
-      activated)
+      Assistant execution: Not started — preparation unavailable (run bridge staged, not activated)
     </p>
   );
 }
@@ -439,14 +447,12 @@ function TaskDetail({
               task={row.boardTask}
               onVerify={
                 backend.onVerify
-                  ? (input) =>
-                      backend.onVerify!({ taskId: row.boardTask!.id, ...input })
+                  ? (input) => backend.onVerify!({ taskId: row.boardTask!.id, ...input })
                   : undefined
               }
               onReopen={
                 backend.onReopen
-                  ? (input) =>
-                      backend.onReopen!({ taskId: row.boardTask!.id, ...input })
+                  ? (input) => backend.onReopen!({ taskId: row.boardTask!.id, ...input })
                   : undefined
               }
             />
@@ -985,7 +991,9 @@ export function WorkroomView({
           meeting={meeting}
           receiptsFailed={receiptsFailed}
           scopeUnavailable={!!linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)}
-          serverScore={backend ? serverMeetingScore(backend.meetingState?.(meeting.id) ?? {}) : null}
+          serverScore={
+            backend ? serverMeetingScore(backend.meetingState?.(meeting.id) ?? {}) : null
+          }
         />
       </div>
 

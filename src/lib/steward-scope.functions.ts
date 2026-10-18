@@ -24,9 +24,7 @@ import {
   type ScopeItem,
 } from "./steward-scope.supabase";
 
-export type ScopeCapabilityState =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "enabled" };
+export type ScopeCapabilityState = { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
 export type ScopeReadState =
   | { kind: "unavailable"; reason: string }

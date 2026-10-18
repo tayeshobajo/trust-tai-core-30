@@ -33,13 +33,10 @@ import {
 } from "./steward-verification.server";
 
 export type VerificationCapabilityState =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "enabled" };
+  { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
 export type VerificationActionState =
-  | { kind: "unavailable"; reason: string }
-  | VerificationResult
-  | ReopenResult;
+  { kind: "unavailable"; reason: string } | VerificationResult | ReopenResult;
 
 export interface TaskVerificationRead {
   task: VerificationTaskState | null;
