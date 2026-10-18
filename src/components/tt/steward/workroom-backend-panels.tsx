@@ -174,9 +174,15 @@ function useOperationAttempt<T>() {
         const result = await handler({ ...attempt.payload, operationId: attempt.operationId });
         setOutcome(result);
         /* Resolved outcomes (success, rejection, conflict) end the
-           operation; only a transport failure keeps it pending for a
-           same-id retry. */
-        setPending(null);
+           operation. An UNCERTAIN outcome — a thrown transport failure OR
+           a server-reported ambiguous result — keeps the operation pending
+           for a same-id retry: the mutation may have committed, and only
+           a replay of the same id can reconcile it. */
+        if (result.kind === "uncertain") {
+          setPending(attempt);
+        } else {
+          setPending(null);
+        }
         return result;
       } catch (error) {
         /* Transport ambiguity: the request may have committed. Keep the
