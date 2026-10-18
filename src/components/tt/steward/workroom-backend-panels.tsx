@@ -794,7 +794,38 @@ export function ScopeReviewPanel({
   const [scopeReasons, setScopeReasons] = useState<Record<string, string>>({});
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [linkChoices, setLinkChoices] = useState<Record<string, string>>({});
-  const busy = simple.busy || linkAttempt.busy || dismissAttempt.busy;
+  const busy = simple.busy || linkAttempt.busy || dismissAttempt.busy || scopeAttempt.busy;
+
+  function runScopeAmend(
+    gesture: { action: "remove" | "reinstate"; itemId: string; reason: string },
+    reuse: typeof scopeAttempt.pending,
+  ) {
+    const handler = gesture.action === "remove" ? onRemoveScopeItem : onReinstateScopeItem;
+    if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
+    return scopeAttempt.run(
+      (input) => handler({ itemId: input.itemId, reason: input.reason, operationId: input.operationId }),
+      gesture,
+      reuse,
+    );
+  }
+
+  async function amendScope(action: "remove" | "reinstate", itemId: string) {
+    /* A new amendment is blocked while one's outcome is unknown. */
+    if (scopeAttempt.pending) return;
+    const reason = (scopeReasons[itemId] ?? "").trim();
+    if (reason.length < 10) return;
+    const result = await runScopeAmend({ action, itemId, reason }, null);
+    if (result.kind === "applied") setScopeReasons((m) => ({ ...m, [itemId]: "" }));
+  }
+
+  async function retryScopeAmend() {
+    /* Replays the EXACT original action + item + reason. */
+    if (!scopeAttempt.pending) return;
+    const result = await runScopeAmend(scopeAttempt.pending.payload, scopeAttempt.pending);
+    if (result.kind === "applied") {
+      setScopeReasons((m) => ({ ...m, [scopeAttempt.pending!.payload.itemId]: "" }));
+    }
+  }
 
   function runRegisterOrSync(action: "register" | "sync", reuse: typeof simple.pending) {
     const handler = action === "register" ? onSyncProposals : onSyncRequiredScope;
