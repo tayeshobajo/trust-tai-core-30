@@ -27,6 +27,12 @@ begin
   perform public.test_assert(
     not has_function_privilege('anon', 'public.steward_request_canonical_run(uuid,uuid,text,uuid,jsonb)', 'execute'),
     'post-grant: anon cannot execute request');
+  perform public.test_assert(
+    has_function_privilege('authenticated', 'public.steward_meeting_score_snapshot(uuid,uuid)', 'execute'),
+    'post-grant: authenticated can execute the score snapshot');
+  perform public.test_assert(
+    not has_function_privilege('anon', 'public.steward_meeting_score_snapshot(uuid,uuid)', 'execute'),
+    'post-grant: anon cannot execute the score snapshot');
 end $$;
 
 -- Behavioral proof, not just ACL metadata: a signed-in client attempting
