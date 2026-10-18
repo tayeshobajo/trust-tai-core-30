@@ -23,9 +23,9 @@ claim() {
   psql "$DB" -q -v ON_ERROR_STOP=1 -tA <<'SQL' 2>/dev/null | grep -E '^[0-9a-f-]{36}$|^LOST$'
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-select coalesce((select (claim_token)::text from public.steward_claim_canonical_run(
+select coalesce((select (c).claim_token::text from public.steward_claim_canonical_run(
     (select id from public.steward_canonical_runs
-      where client_operation_id = 'd0000000-0000-0000-0000-000000000099'))), 'LOST');
+      where client_operation_id = 'd0000000-0000-0000-0000-000000000099')) c), 'LOST');
 SQL
 }
 
