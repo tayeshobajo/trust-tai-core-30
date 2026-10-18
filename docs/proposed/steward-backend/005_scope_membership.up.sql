@@ -83,7 +83,7 @@ create or replace function public.steward_scope_add_item(
   p_classification text,
   p_operation uuid
 ) returns public.steward_scope_items
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   task public.steward_tasks;
@@ -162,7 +162,7 @@ create or replace function public.steward_scope_amend_remove(
   p_reason text,
   p_operation uuid
 ) returns public.steward_scope_items
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   item public.steward_scope_items;

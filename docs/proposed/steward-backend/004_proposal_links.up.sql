@@ -35,7 +35,7 @@ create or replace function public.steward_link_proposal(
   p_task uuid,
   p_operation uuid
 ) returns public.steward_proposal_links
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   proposal public.steward_proposals;

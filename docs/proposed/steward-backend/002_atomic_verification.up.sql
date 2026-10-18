@@ -63,7 +63,7 @@ create or replace function public.steward_verify_task(
   p_operation uuid,
   p_note text
 ) returns public.steward_task_receipts
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   task public.steward_tasks;
@@ -128,7 +128,7 @@ create or replace function public.steward_reopen_task(
   p_operation uuid,
   p_reason text
 ) returns public.steward_task_receipts
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   task public.steward_tasks;

@@ -102,7 +102,7 @@ create or replace function public.steward_request_canonical_run(
   p_operation uuid,
   p_input_refs jsonb -- [{kind, id}] — content is resolved server-side
 ) returns public.steward_canonical_runs
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   task public.steward_tasks;
@@ -180,7 +180,7 @@ create or replace function public.steward_claim_canonical_run(
   p_run uuid,
   p_lease_seconds integer default 300
 ) returns public.steward_canonical_runs
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   run public.steward_canonical_runs;
@@ -217,7 +217,7 @@ create or replace function public.steward_complete_canonical_run(
   p_artifact text,
   p_evidence_refs jsonb default '[]'::jsonb
 ) returns public.steward_canonical_runs
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   run public.steward_canonical_runs;
@@ -251,7 +251,7 @@ create or replace function public.steward_fail_canonical_run(
   p_claim_token uuid,
   p_reason text
 ) returns public.steward_canonical_runs
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   run public.steward_canonical_runs;

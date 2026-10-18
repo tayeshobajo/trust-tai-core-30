@@ -49,7 +49,7 @@ create or replace function public.steward_attest_coverage(
   p_org uuid,
   p_conversation uuid
 ) returns public.steward_coverage_attestations
-language plpgsql security invoker set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   conv public.steward_conversations;
