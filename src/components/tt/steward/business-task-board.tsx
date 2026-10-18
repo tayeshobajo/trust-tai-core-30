@@ -434,7 +434,9 @@ export function TaskEditor({
     if (!target) return;
     event.preventDefault();
     target.focus();
-    target.scrollIntoView({ block: "center" });
+    // jsdom (and some embedded webviews) lack scrollIntoView; focus is the
+    // essential part, scrolling is best-effort.
+    target.scrollIntoView?.({ block: "center" });
   }
   const editable = !task
     ? BOARD_WRITE_ROLES.includes(identity.role)
