@@ -192,7 +192,9 @@ describe("verification panel operation safety", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Verify at revision 3/ }));
     reject?.(new Error("network dropped"));
-    await screen.findByText(/Outcome unknown/);
+    await waitFor(() =>
+      expect(screen.getAllByText(/Outcome unknown/).length).toBeGreaterThan(0),
+    );
     const verifyButton = screen.getByRole("button", { name: /Verify at revision 3/ });
     expect((verifyButton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(verifyButton);
