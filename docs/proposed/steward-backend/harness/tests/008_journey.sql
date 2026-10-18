@@ -2,6 +2,7 @@
 -- claim → complete (artifact) → human verify → reopen → re-verify →
 -- coverage attest → scope counts. Proves the stages compose with the same
 -- contracts the TS adapters call.
+reset role;
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
@@ -40,6 +41,7 @@ end $$;
 
 -- 3. Human verifies with evidence (revision-bound), then reopens; credit
 --    appears and disappears honestly in scope counts.
+reset role;
 set role authenticated;
 select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- task owner
 do $$
@@ -70,6 +72,7 @@ end $$;
 reset role;
 update public.steward_tasks set status = 'complete'
  where id = '10000000-0000-0000-0000-000000000002';
+reset role;
 set role authenticated;
 select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
 do $$
@@ -83,6 +86,7 @@ update public.steward_tasks set status = 'open'
  where id = '10000000-0000-0000-0000-000000000002';
 
 -- 5. Coverage attestation over the real conversation composes with scope.
+reset role;
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 do $$
