@@ -467,7 +467,14 @@ describe("steward SQL journey (real disposable PostgreSQL, real adapters)", () =
     }
 
     const ledger = await ledgerRepo.ledgerForConversation(ORG, CONVERSATION);
-    expect(ledger.length).toBe(direct.length);
+    // Earlier harness suites legitimately registered proposals for this
+    // conversation too; assert every freshly extracted key is present.
+    for (const proposal of direct) {
+      expect(
+        ledger.some((row) => row.sourceKey === proposal.id),
+        `ledger must contain ${proposal.id}`,
+      ).toBe(true);
+    }
     // Evidence refs are retained for review, not discarded.
     expect(ledger.some((p) => (p.evidence?.length ?? 0) > 0)).toBe(true);
 
