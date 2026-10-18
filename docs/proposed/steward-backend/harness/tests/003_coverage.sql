@@ -41,7 +41,7 @@ end $$;
 do $$
 begin
   perform public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
-    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000002',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000005',
     'manual_required', 'd9000000-0000-0000-0000-000000000001');
   perform public.test_assert(
     not public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
