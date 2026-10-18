@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Steward final title cleanup (2026-10-18)
-- [ ] Allow compact two-line task titles without changing stored text; correct comments and required-work copy.
-- [ ] Run focused tests/lint and automatic preview checks; inspect fictional long titles at 1440 and 375, with no live writes or publication.
+- [x] Allow compact two-line task titles without changing stored text; correct comments and required-work copy.
+- [x] Run focused tests/lint and automatic preview checks; inspect fictional long titles at 1440 and 375, with no live writes or publication.
 
 ## Steward manually required meeting work (2026-10-18)
 - [x] Add explicit meeting Add task, required provenance and archive-retaining scope projection with zero verified credit; retain ordinary linking behavior.
