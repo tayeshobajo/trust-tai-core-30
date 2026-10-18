@@ -40,13 +40,14 @@ end $$;
 -- 4. Scope version change invalidates coverage.
 do $$
 begin
-  insert into public.steward_scope_versions (organization_id, conversation_id, version)
-  values ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 2);
+  perform public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000002',
+    'manual_required', 'd9000000-0000-0000-0000-000000000001');
   perform public.test_assert(
     not public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
     'scope version change invalidates coverage');
-  delete from public.steward_scope_versions
-   where organization_id = '11111111-1111-1111-1111-111111111111';
+  -- Scope item stays (deletes are disabled by design); re-attest to restore
+  -- a valid baseline for later suites.
 end $$;
 
 -- 5. Authority: viewer/inactive/cross-org cannot attest; unknown
