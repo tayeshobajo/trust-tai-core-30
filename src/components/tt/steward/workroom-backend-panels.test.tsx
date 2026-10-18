@@ -42,7 +42,12 @@ describe("verification panel operation safety", () => {
     render(
       <VerificationPanel
         capability={enabled}
-        state={{ kind: "ready", verified: false, task: { status: "open", revision: 3 }, receipts: [] }}
+        state={{
+          kind: "ready",
+          verified: false,
+          task: { status: "open", revision: 3 },
+          receipts: [],
+        }}
         task={fictionalTask as never}
         onVerify={onVerify}
         onReopen={undefined}
@@ -125,7 +130,12 @@ describe("verification panel operation safety", () => {
     const { rerender } = render(
       <VerificationPanel
         capability={enabled}
-        state={{ kind: "ready", verified: false, task: { status: "open", revision: 3 }, receipts: [] }}
+        state={{
+          kind: "ready",
+          verified: false,
+          task: { status: "open", revision: 3 },
+          receipts: [],
+        }}
         task={fictionalTask as never}
         onVerify={onVerify}
         onReopen={onReopen}
@@ -143,7 +153,12 @@ describe("verification panel operation safety", () => {
     rerender(
       <VerificationPanel
         capability={enabled}
-        state={{ kind: "ready", verified: false, task: { status: "complete", revision: 4 }, receipts: [] }}
+        state={{
+          kind: "ready",
+          verified: false,
+          task: { status: "complete", revision: 4 },
+          receipts: [],
+        }}
         task={{ ...fictionalTask, revision: 4, status: "complete" } as never}
         onVerify={onVerify}
         onReopen={onReopen}
@@ -182,7 +197,12 @@ describe("verification panel operation safety", () => {
     render(
       <VerificationPanel
         capability={enabled}
-        state={{ kind: "ready", verified: false, task: { status: "open", revision: 3 }, receipts: [] }}
+        state={{
+          kind: "ready",
+          verified: false,
+          task: { status: "open", revision: 3 },
+          receipts: [],
+        }}
         task={fictionalTask as never}
         onVerify={onVerify}
         onReopen={undefined}

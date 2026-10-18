@@ -803,7 +803,8 @@ export function ScopeReviewPanel({
     const handler = gesture.action === "remove" ? onRemoveScopeItem : onReinstateScopeItem;
     if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
     return scopeAttempt.run(
-      (input) => handler({ itemId: input.itemId, reason: input.reason, operationId: input.operationId }),
+      (input) =>
+        handler({ itemId: input.itemId, reason: input.reason, operationId: input.operationId }),
       gesture,
       reuse,
     );
@@ -1036,7 +1037,9 @@ export function ScopeReviewPanel({
                   type="button"
                   variant="secondary"
                   className="h-8 px-2 text-xs"
-                  disabled={busy || !!linkAttempt.pending || !linkChoices[proposal.id] || !onLinkProposal}
+                  disabled={
+                    busy || !!linkAttempt.pending || !linkChoices[proposal.id] || !onLinkProposal
+                  }
                   onClick={() => void link(proposal.id)}
                 >
                   Link
@@ -1152,7 +1155,9 @@ export function ScopeReviewPanel({
                 <li key={item.id} className="rounded-md border border-border bg-card p-2">
                   <p className="text-xs text-foreground">
                     Task …{item.taskId.slice(-8)} ·{" "}
-                    {item.classification === "manual_required" ? "added manually" : "from transcript"}
+                    {item.classification === "manual_required"
+                      ? "added manually"
+                      : "from transcript"}
                     {removed ? (
                       <span className="text-warning">
                         {" "}
@@ -1178,9 +1183,7 @@ export function ScopeReviewPanel({
                         type="button"
                         variant="secondary"
                         className="h-8 px-2 text-xs"
-                        disabled={
-                          busy || !!scopeAttempt.pending || reason.trim().length < 10
-                        }
+                        disabled={busy || !!scopeAttempt.pending || reason.trim().length < 10}
                         onClick={() => void amendScope(removed ? "reinstate" : "remove", item.id)}
                       >
                         {removed ? "Reinstate into scope" : "Remove from scope"}

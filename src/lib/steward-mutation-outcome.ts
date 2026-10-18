@@ -35,7 +35,9 @@ const KNOWN_CODES: Record<string, MutationErrorKind> = {
 export const UNCERTAIN_MUTATION_MESSAGE =
   "The request may have completed, but the response was lost. Retry replays the same operation — it never re-executes.";
 
-export function classifyMutationError(error: unknown):
+export function classifyMutationError(
+  error: unknown,
+):
   | { kind: "conflict"; message: string }
   | { kind: "rejected"; message: string }
   | { kind: "uncertain"; message: string } {
@@ -49,7 +51,10 @@ export function classifyMutationError(error: unknown):
      typed errors without preserving the errcode. */
   const message = error instanceof Error ? error.message : "";
   if (message.includes("operation_conflict")) {
-    return { kind: "conflict", message: "this operation was already recorded with different inputs" };
+    return {
+      kind: "conflict",
+      message: "this operation was already recorded with different inputs",
+    };
   }
   if (
     message.includes("revision_conflict") ||

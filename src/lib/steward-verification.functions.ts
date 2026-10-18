@@ -154,7 +154,8 @@ export const getTaskVerificationStateFn = createServerFn({ method: "GET" })
       note: row["note"],
       actorId: row["actor_id"],
       createdAt: row["created_at"],
-      taskRevisionAfter: typeof row["task_revision_after"] === "number" ? row["task_revision_after"] : -1,
+      taskRevisionAfter:
+        typeof row["task_revision_after"] === "number" ? row["task_revision_after"] : -1,
     }));
     return {
       kind: "ready",
@@ -168,10 +169,7 @@ export const getTaskVerificationStateFn = createServerFn({ method: "GET" })
           completedBy: task.completed_by,
         },
         receipts: mapped,
-        verified: receiptBackedVerified(
-          { status: task.status, revision: task.revision },
-          mapped,
-        ),
+        verified: receiptBackedVerified({ status: task.status, revision: task.revision }, mapped),
       },
     };
   });
@@ -189,9 +187,7 @@ export function receiptBackedVerified(
 ): boolean {
   if (task.status !== "complete") return false;
   const latest = receipts.at(-1);
-  return (
-    !!latest && latest.kind === "verify" && latest.taskRevisionAfter === task.revision
-  );
+  return !!latest && latest.kind === "verify" && latest.taskRevisionAfter === task.revision;
 }
 
 export type MeetingVerificationProjectionState =
@@ -252,12 +248,16 @@ export const getMeetingVerificationProjectionFn = createServerFn({ method: "GET"
     if (receiptError) {
       return { kind: "rejected", message: "the receipt history could not be read" };
     }
-    const receiptsByTask = new Map<string, { kind: "verify" | "reopen"; taskRevisionAfter: number }[]>();
+    const receiptsByTask = new Map<
+      string,
+      { kind: "verify" | "reopen"; taskRevisionAfter: number }[]
+    >();
     for (const row of receipts ?? []) {
       const list = receiptsByTask.get(row.task_id) ?? [];
       list.push({
         kind: row.kind === "reopen" ? "reopen" : "verify",
-        taskRevisionAfter: typeof row.task_revision_after === "number" ? row.task_revision_after : -1,
+        taskRevisionAfter:
+          typeof row.task_revision_after === "number" ? row.task_revision_after : -1,
       });
       receiptsByTask.set(row.task_id, list);
     }

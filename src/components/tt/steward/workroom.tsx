@@ -294,8 +294,7 @@ function useStewardBackend(
   const projectionIds = meetingTaskIds.slice().sort();
   const projection = useQuery({
     queryKey: ["steward", "verification-projection", org, meetingId, projectionIds],
-    enabled:
-      !!meetingId && caps?.verification.kind === "enabled" && projectionIds.length > 0,
+    enabled: !!meetingId && caps?.verification.kind === "enabled" && projectionIds.length > 0,
     queryFn: () =>
       getMeetingVerificationProjectionFn({ data: { orgId: org, taskIds: projectionIds } }),
   });
