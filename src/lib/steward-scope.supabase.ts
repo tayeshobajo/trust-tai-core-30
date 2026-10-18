@@ -50,7 +50,11 @@ function mapItem(row: ScopeItemRow): ScopeItem {
 }
 
 function rethrow(error: { code?: string; message?: string } | null): never {
-  throw new Error(error?.message ?? "scope call failed");
+  /* Preserve the SQL errcode so the entrypoint can distinguish a KNOWN
+     contract answer from an UNKNOWN transport/5xx failure (uncertain). */
+  const failure = new Error(error?.message ?? "scope call failed");
+  if (error?.code) (failure as { code?: string }).code = error.code;
+  throw failure;
 }
 
 /** The client MUST be the authenticated per-request client (RLS as user). */
@@ -81,6 +85,24 @@ export function createSupabaseScopeRepository(supabase: SupabaseClient) {
       operationId: string;
     }): Promise<ScopeItem> {
       const { data, error } = await supabase.rpc("steward_scope_amend_remove", {
+        p_org: input.orgId,
+        p_conversation: input.conversationId,
+        p_item: input.itemId,
+        p_reason: input.reason,
+        p_operation: input.operationId,
+      });
+      if (error) rethrow(error);
+      return mapItem(data as ScopeItemRow);
+    },
+    /** Explicit audited reinstatement of a removed item — never silent. */
+    async amendReinstate(input: {
+      orgId: string;
+      conversationId: string;
+      itemId: string;
+      reason: string;
+      operationId: string;
+    }): Promise<ScopeItem> {
+      const { data, error } = await supabase.rpc("steward_scope_amend_reinstate", {
         p_org: input.orgId,
         p_conversation: input.conversationId,
         p_item: input.itemId,
