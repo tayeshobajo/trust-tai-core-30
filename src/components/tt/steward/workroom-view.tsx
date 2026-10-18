@@ -414,8 +414,12 @@ function TaskDetail({
               <p className="text-muted-foreground">No input links recorded.</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Revision {row.boardTask.revision} · updated {row.boardTask.updated_at.slice(0, 10)} ·
-              created by {row.boardTask.created_by === row.boardTask.owner_user_id ? "the owner" : "a teammate"}.
+              Revision {row.boardTask.revision} · updated{" "}
+              {row.boardTask.updated_at?.slice(0, 10) || "date unavailable"} · created by{" "}
+              {row.boardTask.created_by === row.boardTask.owner_user_id
+                ? "the owner"
+                : "a teammate"}
+              .
             </p>
           </div>
         </details>

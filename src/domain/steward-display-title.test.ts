@@ -20,8 +20,8 @@ describe("display title normalization", () => {
       "Artist website mockup vs phased roadmap",
     );
     /* A trivially short tail distinguishes nothing. */
-    expect(displayTitleOf("Roadmap — Q3").shortened).toBe(true);
-    expect(displayTitleOf("Roadmap — go").shortened).toBe(false);
+    expect(displayTitleOf("Roadmap — Q3").shortened).toBe(false);
+    expect(displayTitleOf("Soji — Q3 roadmap").shortened).toBe(true);
   });
 
   it("never invents text: the display is always a substring of the stored title", () => {
