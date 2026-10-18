@@ -252,9 +252,14 @@ function TaskDetail({
               : "Confirmed meeting commitment"}
         </p>
         <p className="mt-2 text-muted-foreground">
-          Owner: {row.owner.label}
+          Accountable person: {row.owner.label}
           {row.owner.verified ? "" : " · not linked to a teammate"}
         </p>
+        {row.boardTask ? (
+          <p className="text-muted-foreground">
+            Assistant execution: Not started — preparation unavailable (run bridge not built yet)
+          </p>
+        ) : null}
         <p className="text-muted-foreground">
           Due: {row.due.label}
           {row.due.exact ? "" : " · not an exact date"}
