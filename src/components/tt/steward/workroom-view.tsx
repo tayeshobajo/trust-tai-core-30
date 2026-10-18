@@ -1021,10 +1021,19 @@ export function WorkroomView({
                 .filter((r) => r.boardTask)
                 .map((r) => ({ id: r.boardTask!.id, title: r.boardTask!.title }))}
               onAttestCoverage={
-                backend.onAttestCoverage ? () => backend.onAttestCoverage!(meeting.id) : undefined
+                backend.onAttestCoverage
+                  ? (input) => backend.onAttestCoverage!({ meetingId: meeting.id, ...input })
+                  : undefined
               }
               onSyncProposals={
-                backend.onSyncProposals ? () => backend.onSyncProposals!(meeting.id) : undefined
+                backend.onSyncProposals
+                  ? (input) => backend.onSyncProposals!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
+              onSyncRequiredScope={
+                backend.onSyncRequiredScope
+                  ? (input) => backend.onSyncRequiredScope!({ meetingId: meeting.id, ...input })
+                  : undefined
               }
               onLinkProposal={
                 backend.onLinkProposal
