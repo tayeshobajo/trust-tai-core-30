@@ -1,0 +1,66 @@
+/**
+ * STAGED — CAPABILITY-GATED OFF. Read-state entrypoints for canonical
+ * preparation runs: the run list, artifact text/digest and cited evidence
+ * for one task, through the caller's RLS session (Trust Tai backend only).
+ * Read-only; mutations live in `steward-canonical-run.functions.ts`.
+ *
+ * Shares the `STEWARD_CANONICAL_RUNS_ENABLED` flag with the request/worker
+ * entrypoints: while the contract is unapplied, reads return the same
+ * honest `unavailable` state and never touch the proposed tables.
+ */
+
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
+import type { CanonicalRun } from "./steward-canonical-run.server";
+
+export type RunReadState =
+  | { kind: "unavailable"; reason: string }
+  | { kind: "ready"; runs: CanonicalRun[] }
+  | { kind: "rejected"; message: string };
+
+const DISABLED_REASON =
+  "Canonical preparation runs are not available yet: the reviewed backend contract is not applied. No runs exist to show.";
+
+function capabilityEnabled(): boolean {
+  return process.env["STEWARD_CANONICAL_RUNS_ENABLED"] === "true";
+}
+
+/** List canonical runs (newest first) for one canonical task. */
+export const getTaskCanonicalRunsFn = createServerFn({ method: "GET" })
+  .middleware([requireTrustTaiAuth])
+  .inputValidator((data) =>
+    z.object({ orgId: z.string().uuid(), taskId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }): Promise<RunReadState> => {
+    if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
+    const rls = context.supabase as any;
+    const { data: rows, error } = await rls
+      .from("steward_canonical_runs")
+      .select(
+        "id, organization_id, task_id, action, status, client_operation_id, artifact_text, artifact_digest, evidence_refs, failure_reason, attempts, created_at, completed_at",
+      )
+      .eq("organization_id", data.orgId)
+      .eq("task_id", data.taskId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) return { kind: "rejected", message: "the run history could not be read" };
+    const runs: CanonicalRun[] = (rows ?? []).map((row: Record<string, unknown>) => ({
+      id: row["id"] as string,
+      organizationId: row["organization_id"] as string,
+      taskId: row["task_id"] as string,
+      action: row["action"] as CanonicalRun["action"],
+      status: row["status"] as CanonicalRun["status"],
+      operationId: row["client_operation_id"] as string,
+      artifactText: (row["artifact_text"] as string | null) ?? null,
+      artifactDigest: (row["artifact_digest"] as string | null) ?? null,
+      evidenceRefs: (row["evidence_refs"] as string[] | null) ?? [],
+      failureReason: (row["failure_reason"] as string | null) ?? null,
+      attempts: row["attempts"] as number,
+      createdAt: row["created_at"] as string,
+      completedAt: (row["completed_at"] as string | null) ?? null,
+    }));
+    return { kind: "ready", runs };
+  });
