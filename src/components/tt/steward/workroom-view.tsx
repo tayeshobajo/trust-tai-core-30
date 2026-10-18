@@ -42,6 +42,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { Commitment } from "@/domain/steward";
+import type { BoardTask } from "@/domain/cmd-tasks";
+import { displayTitleOf } from "@/domain/steward-display-title";
+import { preparationAvailability } from "@/domain/steward-preparation-actions";
 import type { WorkroomMeeting, WorkroomRow } from "@/domain/steward-workroom";
 import { cn } from "@/lib/utils";
 import { workroomRowKey } from "@/domain/steward-meeting-links";
@@ -81,6 +84,22 @@ export interface WorkroomViewProps {
   accountSlot: ReactNode;
   /** Read-only selected-task history; no activity data in fictional fixtures. */
   historyFor?: (commitmentId: string) => ReactNode;
+  /**
+   * Controlled selection (validated URL state on the live route) so reload
+   * and back/forward restore the same meeting and task. When omitted, the
+   * view keeps its own selection — used by isolated fictional fixtures.
+   */
+  selection?: { meetingId: string | null; rowKey: string | null };
+  onSelect?: (meetingId: string | null, rowKey: string | null) => void;
+  /**
+   * Open the canonical task editor focused on one field. Present only for
+   * board rows the viewer may edit; absent means the cells stay read-only.
+   */
+  onEditTaskField?: ((row: WorkroomRow, field: "owner" | "due" | "status") => void) | undefined;
+  /** Creator/assignee/admin check; cells are actionable only when this passes. */
+  mayEditTask?: ((task: BoardTask) => boolean) | undefined;
+  /** Resolve a board task by id for dependency/parent labels in the detail panel. */
+  taskById?: ((id: string) => BoardTask | undefined) | undefined;
 }
 
 function useCompact(): boolean {
@@ -213,11 +232,13 @@ function TaskDetail({
   row,
   commitment,
   history,
+  taskById,
 }: {
   meeting: WorkroomMeeting;
   row: WorkroomRow;
   commitment: Commitment | undefined;
   history: ReactNode;
+  taskById?: ((id: string) => BoardTask | undefined) | undefined;
 }) {
   return (
     <div className="space-y-5 text-sm">
@@ -251,6 +272,10 @@ function TaskDetail({
                 : "Required scope is locked."}
             </p>
           ) : null}
+          <p className="text-xs text-muted-foreground">
+            Recorded board status is work progress, not verified completion. Verified completion
+            needs the guarded atomic review, which is not available yet.
+          </p>
           <div>
             <p className="font-medium">Next action</p>
             <p className="whitespace-pre-wrap break-words">
@@ -260,10 +285,35 @@ function TaskDetail({
           {row.boardTask.blocked_because ? (
             <p className="break-words">Blocked: {row.boardTask.blocked_because}</p>
           ) : null}
+          {row.boardTask.depends_on_task_id || row.boardTask.parent_task_id ? (
+            <div>
+              <p className="font-medium">Dependencies</p>
+              <ul className="mt-1 space-y-1 text-[13px] text-muted-foreground">
+                {row.boardTask.depends_on_task_id ? (
+                  <li>
+                    Depends on:{" "}
+                    {taskById?.(row.boardTask.depends_on_task_id)?.title ??
+                      "Linked task unavailable in this view"}
+                  </li>
+                ) : null}
+                {row.boardTask.parent_task_id ? (
+                  <li>
+                    Part of:{" "}
+                    {taskById?.(row.boardTask.parent_task_id)?.title ??
+                      "Parent unavailable in this view"}
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
           {row.boardTask.notes ? (
             <div>
               <p className="font-medium">Task notes</p>
               <p className="whitespace-pre-wrap break-words">{row.boardTask.notes}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Notes are what a person recorded. A link mentioned in notes has not been opened or
+                checked by Steward.
+              </p>
             </div>
           ) : null}
           {row.boardTask.acceptance_criteria.length ? (
@@ -288,19 +338,97 @@ function TaskDetail({
         <p className="flex items-center gap-1.5 font-medium text-foreground">
           <Sparkles aria-hidden className="size-3.5 text-royal" /> AI help
         </p>
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          Steward can read this meeting for meaning and prepare a review. It never completes,
-          assigns or sends anything on its own.
-        </p>
-        <TTButton asChild variant="secondary" className="mt-3">
-          <Link
-            to="/modules/steward/meetings/$conversationId"
-            params={{ conversationId: meeting.id }}
-          >
-            Prepare review
-          </Link>
-        </TTButton>
+        {row.boardTask ? (
+          <>
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              Bounded preparation for this task. A draft is review material only — it never
+              completes the task, grants verified credit, or delivers the work itself.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {preparationAvailability(row.boardTask).map(({ action, offered, because }) => (
+                <li key={action.id} className="rounded-md border border-border bg-card p-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[13px] font-medium text-foreground">{action.label}</p>
+                    <TTButton
+                      type="button"
+                      variant="secondary"
+                      className="h-8 px-2 text-xs"
+                      disabled
+                    >
+                      Unavailable
+                    </TTButton>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{action.summary}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {offered ? because : `Not offered here: ${because}`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              Steward can read this meeting for meaning and prepare a review. It never completes,
+              assigns or sends anything on its own.
+            </p>
+            <TTButton asChild variant="secondary" className="mt-3">
+              <Link
+                to="/modules/steward/meetings/$conversationId"
+                params={{ conversationId: meeting.id }}
+              >
+                Prepare review
+              </Link>
+            </TTButton>
+          </>
+        )}
       </div>
+
+      {row.boardTask ? (
+        <details className="border-t border-border pt-4">
+          <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
+            <List aria-hidden className="size-3.5" /> Inputs and audit
+          </summary>
+          <div className="mt-2 space-y-2 text-[13px]">
+            {row.boardTask.context_links.length ? (
+              <ul className="space-y-2">
+                {row.boardTask.context_links.map((link, index) => {
+                  const href = taskContextHref(link.url);
+                  return (
+                    <li key={index} className="break-words">
+                      {href ? (
+                        <a
+                          className="text-royal underline"
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {link.label || href}
+                        </a>
+                      ) : (
+                        <span>{link.label || "Link unavailable"}</span>
+                      )}
+                      <span className="block text-xs text-muted-foreground">
+                        Recorded link — Steward has not opened or checked its contents.
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground">No input links recorded.</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Revision {row.boardTask.revision} · updated{" "}
+              {row.boardTask.updated_at?.slice(0, 10) || "date unavailable"} · created by{" "}
+              {row.boardTask.created_by === row.boardTask.owner_user_id
+                ? "the owner"
+                : "a teammate"}
+              .
+            </p>
+          </div>
+        </details>
+      ) : null}
 
       <div className="border-t border-border pt-4">
         <p className="flex items-center gap-1.5 font-medium text-foreground">
@@ -345,28 +473,9 @@ function TaskDetail({
         {row.boardTask ? (
           <div className="mt-2 space-y-2">
             <p className="text-xs text-muted-foreground">
-              Linked task source context. Association does not replace email or other recorded
-              sources.
+              Linked task source context is listed under Inputs and audit above. Association does
+              not replace email or other recorded sources.
             </p>
-            {row.boardTask.context_links.map((link, index) => {
-              const href = taskContextHref(link.url);
-              return (
-                <p key={index} className="break-words">
-                  {href ? (
-                    <a
-                      className="text-royal underline"
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {link.label || href}
-                    </a>
-                  ) : (
-                    link.label || "Link unavailable"
-                  )}
-                </p>
-              );
-            })}
           </div>
         ) : commitment && commitment.evidence.length > 0 ? (
           <ul className="mt-2 space-y-2">
@@ -439,6 +548,11 @@ export function WorkroomView({
   historyFor,
   linkedRead,
   onAddRequiredTask,
+  selection,
+  onSelect,
+  onEditTaskField,
+  mayEditTask,
+  taskById,
 }: WorkroomViewProps) {
   const viewportCompact = useCompact();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -454,8 +568,12 @@ export function WorkroomView({
   }, [embedded]);
   const compact = embedded ? canvasCompact : viewportCompact;
   const TaskArea = embedded ? "section" : "main";
-  const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
-  const [selectedRow, setSelectedRow] = useState<string | null>(null);
+  const [localMeeting, setLocalMeeting] = useState<string | null>(null);
+  const [localRow, setLocalRow] = useState<string | null>(null);
+  /* Controlled (URL) selection when the route provides it; local state in
+     isolated fixtures. */
+  const selectedMeeting = selection ? selection.meetingId : localMeeting;
+  const selectedRow = selection ? selection.rowKey : localRow;
   const [meetingQuery, setMeetingQuery] = useState("");
   const [taskQuery, setTaskQuery] = useState("");
   const [ownerFilter, setOwnerFilter] = useState("everyone");
@@ -497,10 +615,11 @@ export function WorkroomView({
   const rowHistory = row && !row.boardTask ? historyFor?.(row.id) : undefined;
 
   function selectMeeting(id: string) {
-    setSelectedMeeting(id);
+    if (onSelect) onSelect(id, null);
+    setLocalMeeting(id);
     /* Filters belong to a meeting; a stale owner or search must never hide
        the next meeting's tasks. */
-    setSelectedRow(null);
+    setLocalRow(null);
     setOwnerFilter("everyone");
     setTaskQuery("");
     setRowFilter("all");
@@ -508,7 +627,8 @@ export function WorkroomView({
   }
 
   function pickRow(id: string) {
-    setSelectedRow(id);
+    if (onSelect) onSelect(meeting?.id ?? null, id);
+    setLocalRow(id);
     if (compact) setDrawerOpen(true);
   }
 
@@ -551,13 +671,27 @@ export function WorkroomView({
             className={cn(
               "grid h-auto min-h-[72px] w-full grid-cols-[20px_minmax(0,1fr)] items-start gap-3 rounded-none border-l-2 px-4 py-3 text-left",
               meeting?.id === m.id
-                ? "border-l-royal bg-secondary text-foreground"
+                ? "border-l-royal bg-royal/10 text-foreground"
                 : "border-l-transparent",
             )}
           >
             <CalendarDays className={cn("mt-1", meeting?.id === m.id && "text-royal")} />
             <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold leading-5">{m.title}</span>
+              <span className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "truncate text-sm leading-5",
+                    meeting?.id === m.id ? "font-bold" : "font-semibold",
+                  )}
+                >
+                  {m.title}
+                </span>
+                {meeting?.id === m.id ? (
+                  <span className="shrink-0 rounded border border-royal/40 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em] text-royal">
+                    Current
+                  </span>
+                ) : null}
+              </span>
               <span className="mt-1 flex items-center justify-between gap-1 text-xs text-muted-foreground">
                 <span>
                   {m.occurredAt.slice(0, 10)} ·{" "}
@@ -752,54 +886,102 @@ export function WorkroomView({
         <span>Status</span>
       </div>
       <div aria-label="Meeting tasks">
-        {visibleRows.map((r) => (
-          <button
-            key={workroomRowKey(r)}
-            type="button"
-            aria-pressed={row ? workroomRowKey(row) === workroomRowKey(r) : false}
-            onClick={(event) => {
-              taskTriggerRef.current = event.currentTarget;
-              pickRow(workroomRowKey(r));
-            }}
-            className={cn(
-              "grid min-h-11 w-full grid-cols-[20px_minmax(0,1fr)] items-center gap-2 border-b border-border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal sm:grid-cols-[20px_minmax(0,1fr)_116px_104px_92px]",
-              r.verified
-                ? "bg-success/10"
-                : row && workroomRowKey(row) === workroomRowKey(r)
-                  ? "bg-secondary"
-                  : "hover:bg-secondary/40",
-            )}
-          >
-            <span className="inline-flex">
-              {r.verified ? (
-                <Check aria-hidden className="size-4 text-success" />
-              ) : (
-                <Circle aria-hidden className="size-4 text-muted-foreground" />
-              )}
-            </span>
-            <span className="min-w-0">
-              <span
-                title={r.what}
+        {visibleRows.map((r) => {
+          const key = workroomRowKey(r);
+          const active = row ? workroomRowKey(row) === key : false;
+          const editable =
+            !!r.boardTask && !!onEditTaskField && (!mayEditTask || mayEditTask(r.boardTask));
+          const title = displayTitleOf(r.what);
+          const cell = (
+            field: "owner" | "due" | "status",
+            label: string,
+            content: ReactNode,
+            className?: string,
+          ) =>
+            editable ? (
+              <button
+                type="button"
+                aria-label={`${label} for ${title.display}: edit`}
+                title={`Edit ${label.toLowerCase()}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEditTaskField!(r, field);
+                }}
                 className={cn(
-                  "line-clamp-2 break-words leading-5",
-                  r.verified ? "text-muted-foreground" : "text-foreground",
+                  "truncate rounded text-left text-[13px] underline decoration-dotted decoration-muted-foreground/40 underline-offset-4 hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal",
+                  className,
                 )}
               >
-                {r.what}
+                {content}
+              </button>
+            ) : (
+              <span className={cn("truncate text-[13px]", className)}>{content}</span>
+            );
+          return (
+            <div
+              key={key}
+              className={cn(
+                "grid min-h-11 w-full grid-cols-[20px_minmax(0,1fr)] items-center gap-2 border-b border-border px-3 py-2 text-sm transition-colors sm:grid-cols-[20px_minmax(0,1fr)_116px_104px_92px]",
+                r.verified ? "bg-success/10" : active ? "bg-secondary" : "hover:bg-secondary/40",
+              )}
+            >
+              <button
+                type="button"
+                aria-pressed={active}
+                aria-label={`Open details for ${title.display}`}
+                onClick={(event) => {
+                  taskTriggerRef.current = event.currentTarget;
+                  pickRow(key);
+                }}
+                className="col-span-2 grid grid-cols-[20px_minmax(0,1fr)] items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal"
+              >
+                <span className="inline-flex">
+                  {r.verified ? (
+                    <Check aria-hidden className="size-4 text-success" />
+                  ) : (
+                    <Circle aria-hidden className="size-4 text-muted-foreground" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span
+                    title={title.shortened ? title.full : undefined}
+                    className={cn(
+                      "line-clamp-2 break-words leading-5",
+                      r.verified ? "text-muted-foreground" : "text-foreground",
+                    )}
+                  >
+                    {title.display}
+                  </span>
+                  <span className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground sm:hidden">
+                    <span className="truncate">{r.owner.label}</span>
+                    <span aria-hidden>·</span>
+                    <span className="shrink-0">{r.due.label}</span>
+                  </span>
+                </span>
+              </button>
+              <span className="hidden sm:block">{cell("owner", "Owner", r.owner.label)}</span>
+              <span className="hidden sm:block">{cell("due", "Due", r.due.label)}</span>
+              <span className="col-start-2 sm:col-start-auto">
+                {editable ? (
+                  <button
+                    type="button"
+                    aria-label={`Status for ${title.display}: edit`}
+                    title="Edit status"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onEditTaskField!(r, "status");
+                    }}
+                    className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal"
+                  >
+                    <StatusPill row={r} />
+                  </button>
+                ) : (
+                  <StatusPill row={r} />
+                )}
               </span>
-              <span className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground sm:hidden">
-                <span className="truncate">{r.owner.label}</span>
-                <span aria-hidden>·</span>
-                <span className="shrink-0">{r.due.label}</span>
-              </span>
-            </span>
-            <span className="hidden truncate text-[13px] sm:block">{r.owner.label}</span>
-            <span className="hidden truncate text-[13px] sm:block">{r.due.label}</span>
-            <span className="col-start-2 sm:col-start-auto">
-              <StatusPill row={r} />
-            </span>
-          </button>
-        ))}
+            </div>
+          );
+        })}
         {visibleRows.length === 0 ? (
           <div role="status" className="py-10 text-center">
             <p className="font-medium">
@@ -880,11 +1062,17 @@ export function WorkroomView({
               <p className="text-sm font-semibold">
                 {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)
                   ? "Required-work scope unavailable"
-                  : meeting.score === 100
-                    ? "All agreed work verified"
-                    : "To reach 100/100"}
+                  : meeting.agreed === 0 && meeting.rows.length > 0
+                    ? `${meeting.rows.length} recorded task${meeting.rows.length === 1 ? "" : "s"}; scope review pending`
+                    : meeting.score === 100
+                      ? "All agreed work verified"
+                      : "To reach 100/100"}
               </p>
-              <p className="mt-1 text-muted-foreground">{meeting.remark}</p>
+              <p className="mt-1 text-muted-foreground">
+                {meeting.agreed === 0 && meeting.rows.length > 0
+                  ? "Recorded work is listed, but nothing is confirmed as agreed meeting work yet, and verification is unavailable until the guarded atomic review exists. Reaching 100 is not possible today."
+                  : meeting.remark}
+              </p>
               {meeting.score !== 100 ? (
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   100 requires every confirmed promise and manually required task verified,
@@ -1037,6 +1225,7 @@ export function WorkroomView({
               row={row}
               commitment={rowCommitment}
               history={rowHistory}
+              taskById={taskById}
             />
           </aside>
         ) : null}
@@ -1083,6 +1272,7 @@ export function WorkroomView({
                   row={row}
                   commitment={rowCommitment}
                   history={rowHistory}
+                  taskById={taskById}
                 />
               ) : null}
             </SheetContent>

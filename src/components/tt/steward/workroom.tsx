@@ -21,10 +21,13 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 
 import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
 import { TaskHistory } from "./task-history";
+import { TaskEditor } from "./business-task-board";
 import { AppShell } from "@/components/tt/app-shell";
 import { businessWorkQuery, cmdTasks } from "@/data/supabase/cmd-tasks";
 import { mayAddRequiredWork } from "@/domain/steward-required-work";
 import { appendLinkedBusinessWork } from "@/domain/steward-meeting-links";
+import { mayEditBoardTask, type BoardEdit, type BoardTask } from "@/domain/cmd-tasks";
+import { useTaskChoices } from "@/data/steward/task-choices";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 const FOCUS_THROTTLE_MS = 60 * 1000;
@@ -135,15 +138,37 @@ function useRecentSync(identity: WorkspaceIdentity) {
 
 /* ---------------------------------------------------------- wiring */
 
-export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
+export interface WorkroomSelection {
+  meetingId: string | null;
+  rowKey: string | null;
+}
+
+export function StewardWorkroom({
+  identity,
+  selection,
+  onSelect,
+}: {
+  identity: WorkspaceIdentity;
+  /** Validated URL selection from the route; reload/back restore it. */
+  selection?: WorkroomSelection | undefined;
+  onSelect?: ((meetingId: string | null, rowKey: string | null) => void) | undefined;
+}) {
   return (
     <AppShell identity={identity} canvas="workroom">
-      <StewardWorkroomContent identity={identity} />
+      <StewardWorkroomContent identity={identity} selection={selection} onSelect={onSelect} />
     </AppShell>
   );
 }
 
-function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
+function StewardWorkroomContent({
+  identity,
+  selection,
+  onSelect,
+}: {
+  identity: WorkspaceIdentity;
+  selection?: WorkroomSelection | undefined;
+  onSelect?: ((meetingId: string | null, rowKey: string | null) => void) | undefined;
+}) {
   const queryClient = useQueryClient();
   const org = identity.organizationId;
   const business = useQuery(businessWorkQuery(org, identity.userId));
@@ -161,6 +186,32 @@ function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   const sync = useRecentSync(identity);
+
+  /* Canonical task editing from the workroom cells: the same TaskEditor and
+     revision-checked service as the business board, never a parallel path. */
+  const [editing, setEditing] = useState<{
+    task: BoardTask;
+    field: "owner" | "due" | "status";
+  } | null>(null);
+  const choices = useTaskChoices(org, { userId: identity.userId, name: identity.name });
+  const meetingRead = useQuery({
+    queryKey: ["steward", "meeting-options", org, identity.userId],
+    queryFn: () => cmdTasks.meetingOptions(org),
+    enabled: !!editing,
+  });
+  const taskById = useMemo(() => {
+    const map = new Map((business.data?.tasks ?? []).map((task) => [task.id, task]));
+    return (id: string) => map.get(id);
+  }, [business.data]);
+  const actor = { userId: identity.userId, role: identity.role };
+  async function saveEdit(input: BoardEdit) {
+    if (!editing) return;
+    await cmdTasks.update(editing.task, input);
+    await queryClient.invalidateQueries({
+      queryKey: businessWorkQuery(org, identity.userId).queryKey,
+    });
+    setEditing(null);
+  }
 
   const receiptMap = useMemo(
     () => receiptMapFrom(receipts.data, receipts.isError),
@@ -233,60 +284,89 @@ function StewardWorkroomContent({ identity }: { identity: WorkspaceIdentity }) {
   }
 
   return (
-    <WorkroomView
-      embedded
-      meetings={linkedMeetings}
-      onAddRequiredTask={
-        mayAddRequiredWork(identity)
-          ? async (draft) => {
-              await cmdTasks.createRequired(identity, draft);
-              await queryClient.invalidateQueries({
-                queryKey: businessWorkQuery(org, identity.userId).queryKey,
-              });
-            }
-          : undefined
-      }
-      linkedRead={{
-        state: business.isPending ? "loading" : business.isError ? "error" : "ready",
-        truncated: business.data?.truncated ?? false,
-        onRetry: () => void business.refetch(),
-      }}
-      commitmentFor={commitmentById}
-      receiptsFailed={receipts.isError}
-      sync={sync}
-      historyFor={(commitmentId) => (
-        <TaskHistory
-          key={`${org}:${identity.userId}:${commitmentId}`}
-          organizationId={org}
-          userId={identity.userId}
-          commitmentId={commitmentId}
+    <>
+      <WorkroomView
+        embedded
+        meetings={linkedMeetings}
+        {...(selection ? { selection } : {})}
+        {...(onSelect ? { onSelect } : {})}
+        taskById={taskById}
+        mayEditTask={(task) => mayEditBoardTask(task, actor)}
+        onEditTaskField={(row, field) => {
+          const task = row.boardTask;
+          if (!task || !mayEditBoardTask(task, actor)) return;
+          setEditing({ task, field });
+        }}
+        onAddRequiredTask={
+          mayAddRequiredWork(identity)
+            ? async (draft) => {
+                await cmdTasks.createRequired(identity, draft);
+                await queryClient.invalidateQueries({
+                  queryKey: businessWorkQuery(org, identity.userId).queryKey,
+                });
+              }
+            : undefined
+        }
+        linkedRead={{
+          state: business.isPending ? "loading" : business.isError ? "error" : "ready",
+          truncated: business.data?.truncated ?? false,
+          onRetry: () => void business.refetch(),
+        }}
+        commitmentFor={commitmentById}
+        receiptsFailed={receipts.isError}
+        sync={sync}
+        historyFor={(commitmentId) => (
+          <TaskHistory
+            key={`${org}:${identity.userId}:${commitmentId}`}
+            organizationId={org}
+            userId={identity.userId}
+            commitmentId={commitmentId}
+          />
+        )}
+        headerMenu={
+          <WorkroomMoreMenu>
+            {(
+              [
+                ["/", "Suite home"],
+                ["/modules/steward/team", "Team"],
+                ["/modules/steward/tasks", "All outstanding work"],
+                ["/modules/steward/board", "Business task board"],
+                ["/modules/steward/agents", "Agents"],
+                ["/modules/steward/scouts", "Scouts"],
+                ["/modules/steward/ai", "Trust Tai AI"],
+                ["/modules/steward/timeline", "Timeline"],
+                ["/modules/steward/memory", "Memory"],
+              ] as const
+            ).map(([to, label]) => (
+              <Link
+                key={to}
+                to={to}
+                className="block rounded px-3 py-2 text-sm text-foreground hover:bg-secondary"
+              >
+                {label}
+              </Link>
+            ))}
+          </WorkroomMoreMenu>
+        }
+        accountSlot={null}
+      />
+      {editing ? (
+        <TaskEditor
+          key={`${editing.task.id}:${editing.task.revision}`}
+          task={editing.task}
+          scope="business"
+          identity={identity}
+          tasks={business.data?.tasks ?? []}
+          people={choices.data?.people ?? []}
+          meetingOptions={meetingRead.data?.meetings ?? []}
+          meetingsLoading={meetingRead.isPending}
+          meetingsError={meetingRead.isError}
+          meetingsTruncated={meetingRead.data?.truncated ?? false}
+          focusField={editing.field}
+          onClose={() => setEditing(null)}
+          onSave={saveEdit}
         />
-      )}
-      headerMenu={
-        <WorkroomMoreMenu>
-          {(
-            [
-              ["/", "Suite home"],
-              ["/modules/steward/team", "Team"],
-              ["/modules/steward/tasks", "All outstanding work"],
-              ["/modules/steward/agents", "Agents"],
-              ["/modules/steward/scouts", "Scouts"],
-              ["/modules/steward/ai", "Trust Tai AI"],
-              ["/modules/steward/timeline", "Timeline"],
-              ["/modules/steward/memory", "Memory"],
-            ] as const
-          ).map(([to, label]) => (
-            <Link
-              key={to}
-              to={to}
-              className="block rounded px-3 py-2 text-sm text-foreground hover:bg-secondary"
-            >
-              {label}
-            </Link>
-          ))}
-        </WorkroomMoreMenu>
-      }
-      accountSlot={null}
-    />
+      ) : null}
+    </>
   );
 }

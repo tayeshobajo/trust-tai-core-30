@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { cmdTasks } from "@/data/supabase/cmd-tasks";
@@ -378,6 +378,7 @@ export function TaskEditor({
   meetingsLoading = false,
   meetingsError = false,
   meetingsTruncated = false,
+  focusField,
 }: {
   task: BoardTask | null;
   scope: TaskVisibility;
@@ -390,6 +391,8 @@ export function TaskEditor({
   meetingsLoading?: boolean;
   meetingsError?: boolean;
   meetingsTruncated?: boolean;
+  /** Open with a specific field focused (e.g. from the workroom Owner/Due/Status cells). */
+  focusField?: "owner" | "due" | "status";
 }) {
   const [openingElement] = useState(() => document.activeElement as HTMLElement | null);
   const [input, setInput] = useState<BoardEdit>(() =>
@@ -413,6 +416,16 @@ export function TaskEditor({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [checked, setChecked] = useState(false);
+  const statusRef = useRef<HTMLSelectElement>(null);
+  const ownerRef = useRef<HTMLSelectElement>(null);
+  const dueRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!focusField) return;
+    const target = focusField === "status" ? statusRef : focusField === "owner" ? ownerRef : dueRef;
+    target.current?.focus();
+    target.current?.scrollIntoView({ block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const editable = !task
     ? BOARD_WRITE_ROLES.includes(identity.role)
     : mayEditBoardTask(task, { userId: identity.userId, role: identity.role });
@@ -481,7 +494,7 @@ export function TaskEditor({
             <label className="grid gap-1 text-sm">
               Task title
               <TTInput
-                autoFocus
+                autoFocus={!focusField}
                 required
                 maxLength={500}
                 value={input.title}
@@ -491,6 +504,7 @@ export function TaskEditor({
             <label className="grid gap-1 text-sm">
               Status
               <select
+                ref={statusRef}
                 className={control}
                 value={input.status}
                 onChange={(e) => {
@@ -572,6 +586,7 @@ export function TaskEditor({
             <label className="grid gap-1 text-sm">
               Owner
               <select
+                ref={ownerRef}
                 className={control}
                 disabled={scope === "personal" || (!admin && !!task)}
                 value={input.owner_user_id ?? ""}
@@ -595,6 +610,7 @@ export function TaskEditor({
             <label className="grid gap-1 text-sm">
               Due date (optional)
               <input
+                ref={dueRef}
                 className={control}
                 type="date"
                 value={input.due_at?.slice(0, 10) ?? ""}
