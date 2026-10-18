@@ -341,16 +341,17 @@ begin
   end;
   perform public.test_assert(conflicted, 'changed payload on same amendment operation conflicts');
 end $$;
--- 9e. Reinstatement journey: a removed item stays out of the denominator
---     and blocks proposal linking until an EXPLICIT audited reinstate;
---     reinstate is idempotent per operation, conflicts on changed payload,
---     rejects reinstating an active item, and fails closed for anon.
+-- 9e. Reinstatement journey (self-contained): add a fresh item for a
+--     canonical steward task, remove it (denominator drops), verify
+--     linking fails closed while removed, then explicitly reinstate
+--     (denominator restored) — never silently revived.
 do $$
 declare
-  target uuid;
   conv uuid := 'dddddddd-dddd-dddd-dddd-dddddddddddd';
   org uuid := '11111111-1111-1111-1111-111111111111';
-  before_count integer;
+  journey_task uuid;
+  item public.steward_scope_items;
+  base_count integer;
   removed_count integer;
   after_count integer;
   reinstated public.steward_scope_items;
@@ -358,27 +359,35 @@ declare
   active_item uuid;
   failed boolean;
 begin
-  select id into target from public.steward_scope_items
-   where organization_id = org and conversation_id = conv
-     and removed_at is not null
-     -- The item removed by 9d above (same-meeting journey), not an item
-     -- removed by an earlier adversarial test in another conversation.
-     and removal_reason = 'scope correction: recorded in error'
+  -- A canonical business task not already in this meeting's scope.
+  select t.id into journey_task from public.steward_tasks t
+   where t.organization_id = org and t.task_visibility = 'business'
+     and not exists (select 1 from public.steward_scope_items si
+                     where si.organization_id = org and si.conversation_id = conv
+                       and si.task_id = t.id)
    limit 1;
-  perform public.test_assert(target is not null, 'a removed scope item exists for the reinstate journey');
+  perform public.test_assert(journey_task is not null, 'a fresh canonical task exists for the reinstate journey');
 
-  select denominator into before_count from public.steward_scope_counts(org, conv);
+  select denominator into base_count from public.steward_scope_counts(org, conv);
+  item := public.steward_scope_add_item(org, conv, journey_task, 'manual_required',
+    'f0000000-0000-0000-0000-0000000000e0');
+  select denominator into removed_count from public.steward_scope_counts(org, conv);
+  perform public.test_assert(removed_count = base_count + 1, 'added item enters the denominator');
 
-  -- Linking a proposal to a task whose scope item is removed fails closed
-  -- (004 P0031) UNTIL the human reinstates — never silently revived.
+  perform public.steward_scope_amend_remove(org, conv, item.id,
+    'scope correction: recorded in error', 'f0000000-0000-0000-0000-0000000000e1');
+  select denominator into removed_count from public.steward_scope_counts(org, conv);
+  perform public.test_assert(removed_count = base_count, 'removed item leaves the denominator');
+
+  -- Linking a proposal onto the removed item fails closed (004 P0031)
+  -- UNTIL the human reinstates — never silently revived.
   failed := false;
   begin
     perform public.steward_link_proposal(
       org, conv,
       (select pl.id from public.steward_proposal_ledger pl
         where pl.organization_id = org and pl.conversation_id = conv and pl.status = 'proposed' limit 1),
-      (select task_id from public.steward_scope_items where id = target),
-      'f0000000-0000-0000-0000-0000000000e1');
+      journey_task, 'f0000000-0000-0000-0000-0000000000e2');
   exception when sqlstate 'P0031' then failed := true;
     when others then failed := true; -- no pending proposal / other guard: still no silent link
   end;
@@ -390,31 +399,28 @@ begin
   failed := false;
   begin
     perform public.steward_scope_amend_reinstate(
-      org, conv, active_item, 'reinstate reason: not actually removed', 'f0000000-0000-0000-0000-0000000000e2');
+      org, conv, active_item, 'reinstate reason: not actually removed', 'f0000000-0000-0000-0000-0000000000e3');
   exception when sqlstate 'P0030' then failed := true;
   end;
   perform public.test_assert(failed, 'reinstating an active item is rejected');
 
   -- The explicit audited reinstate restores the denominator.
-  reinstated := public.steward_scope_amend_reinstate(
-    org, conv, target, 'reinstate: scope correction was itself mistaken', 'f0000000-0000-0000-0000-0000000000e3');
+  reinstated := public.steward_scope_amend_reinstate(org, conv, item.id,
+    'reinstate: scope correction was itself mistaken', 'f0000000-0000-0000-0000-0000000000e4');
   perform public.test_assert(reinstated.removed_at is null, 'reinstate clears removed_at');
   select denominator into after_count from public.steward_scope_counts(org, conv);
-  raise notice 'DEBUG before=% after=% removed_at=% item_conv=%', before_count, after_count,
-    (select removed_at from public.steward_scope_items where id = target),
-    (select conversation_id from public.steward_scope_items where id = target);
-  perform public.test_assert(after_count = before_count + 1,
+  perform public.test_assert(after_count = base_count + 1,
     'reinstated item returns to the denominator');
 
   -- Replay: same operation + same payload replays; changed payload conflicts.
-  replayed := public.steward_scope_amend_reinstate(
-    org, conv, target, 'reinstate: scope correction was itself mistaken', 'f0000000-0000-0000-0000-0000000000e3');
+  replayed := public.steward_scope_amend_reinstate(org, conv, item.id,
+    'reinstate: scope correction was itself mistaken', 'f0000000-0000-0000-0000-0000000000e4');
   perform public.test_assert(replayed.id = reinstated.id and replayed.removed_at is null,
     'same reinstate operation replays');
   failed := false;
   begin
-    perform public.steward_scope_amend_reinstate(
-      org, conv, target, 'a DIFFERENT reason for the same operation', 'f0000000-0000-0000-0000-0000000000e3');
+    perform public.steward_scope_amend_reinstate(org, conv, item.id,
+      'a DIFFERENT reason for the same operation', 'f0000000-0000-0000-0000-0000000000e4');
   exception when sqlstate 'P0002' then failed := true;
   end;
   perform public.test_assert(failed, 'changed payload on same reinstate operation conflicts');
@@ -424,12 +430,10 @@ begin
   if exists (select 1 from public.steward_proposal_ledger pl
              where pl.organization_id = org and pl.conversation_id = conv
                and pl.status = 'proposed') then
-    perform public.steward_link_proposal(
-      org, conv,
+    perform public.steward_link_proposal(org, conv,
       (select pl.id from public.steward_proposal_ledger pl
         where pl.organization_id = org and pl.conversation_id = conv and pl.status = 'proposed' limit 1),
-      (select task_id from public.steward_scope_items where id = target),
-      'f0000000-0000-0000-0000-0000000000e4');
+      journey_task, 'f0000000-0000-0000-0000-0000000000e5');
     perform public.test_assert(true, 'link after explicit reinstate succeeds');
   end if;
 end $$;
@@ -443,7 +447,7 @@ begin
     perform public.steward_scope_amend_reinstate(
       '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
       (select id from public.steward_scope_items limit 1),
-      'anon reinstate attempt', 'f0000000-0000-0000-0000-0000000000e5');
+      'anon reinstate attempt', 'f0000000-0000-0000-0000-0000000000e6');
   exception when insufficient_privilege then failed := true;
     when sqlstate 'P0401' then failed := true;
   end;
