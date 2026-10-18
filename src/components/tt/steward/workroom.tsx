@@ -187,6 +187,32 @@ function StewardWorkroomContent({
 
   const sync = useRecentSync(identity);
 
+  /* Canonical task editing from the workroom cells: the same TaskEditor and
+     revision-checked service as the business board, never a parallel path. */
+  const [editing, setEditing] = useState<{
+    task: BoardTask;
+    field: "owner" | "due" | "status";
+  } | null>(null);
+  const choices = useTaskChoices(org, { userId: identity.userId, name: identity.name });
+  const meetingRead = useQuery({
+    queryKey: ["steward", "meeting-options", org, identity.userId],
+    queryFn: () => cmdTasks.meetingOptions(org),
+    enabled: !!editing,
+  });
+  const taskById = useMemo(() => {
+    const map = new Map((business.data?.tasks ?? []).map((task) => [task.id, task]));
+    return (id: string) => map.get(id);
+  }, [business.data]);
+  const actor = { userId: identity.userId, role: identity.role };
+  async function saveEdit(input: BoardEdit) {
+    if (!editing) return;
+    await cmdTasks.update(editing.task, input);
+    await queryClient.invalidateQueries({
+      queryKey: businessWorkQuery(org, identity.userId).queryKey,
+    });
+    setEditing(null);
+  }
+
   const receiptMap = useMemo(
     () => receiptMapFrom(receipts.data, receipts.isError),
     [receipts.data, receipts.isError],
