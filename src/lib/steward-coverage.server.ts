@@ -61,20 +61,25 @@ export async function resolveCoverage(
   return { kind: "confirmed", attestation: latest };
 }
 
-/** Record a new attestation. Supersedes any prior current attestation in
- *  the same transaction (handled by the SQL function). */
+/** Record a new attestation bound to the exact reviewed source. The SQL
+ *  supersedes any prior current attestation in the same transaction and
+ *  rejects the call when the stored source drifted from the reviewed one. */
 export async function attestCoverage(
   repo: CoverageRepository,
   input: {
     orgId: string;
     conversationId: string;
-    transcriptHash: string;
-    scopeVersion: number;
+    operationId: string;
+    expectedTranscriptHash: string;
+    expectedScopeVersion: number;
     actorId: string;
   },
 ): Promise<CoverageAttestation> {
-  if (input.transcriptHash.trim().length < 16) {
+  if (input.expectedTranscriptHash.trim().length < 16) {
     throw new Error("a real transcript digest (at least 16 characters) is required");
+  }
+  if (!Number.isInteger(input.expectedScopeVersion) || input.expectedScopeVersion < 1) {
+    throw new Error("a real scope version is required");
   }
   return repo.attest(input);
 }
