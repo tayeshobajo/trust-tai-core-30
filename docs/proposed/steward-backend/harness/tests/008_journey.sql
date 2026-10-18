@@ -22,6 +22,7 @@ end $$;
 -- 2. Worker claims and completes with an artifact; the run never touches
 --    task status.
 select public.test_act_as_worker();
+set role service_role;
 do $$
 declare rid uuid; r public.steward_canonical_runs; t public.steward_tasks;
 begin

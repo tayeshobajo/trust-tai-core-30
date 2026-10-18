@@ -119,6 +119,7 @@ select public.test_denied($q$
 -- 7. Fencing via the worker path: claim, lease expiry, reclaim, stale token
 --    cannot complete; fail requires an unexpired lease.
 select public.test_act_as_worker();
+set role service_role;
 do $$
 declare
   rid uuid; r public.steward_canonical_runs; stale uuid; fresh uuid;
@@ -167,6 +168,7 @@ update public.organization_memberships set status = 'inactive'
    and organization_id = '11111111-1111-1111-1111-111111111111';
 set role service_role;
 select public.test_act_as_worker();
+set role service_role;
 select public.test_denied($q$
   select public.steward_claim_canonical_run(
     (select id from public.steward_canonical_runs
@@ -206,6 +208,7 @@ begin
     '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
 end $$;
 select public.test_act_as_worker();
+set role service_role;
 do $$
 declare rid uuid; r public.steward_canonical_runs;
 begin
