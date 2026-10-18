@@ -122,9 +122,42 @@ Latest run: **ALL HARNESS CHECKS PASSED** (exit 0).
   denominator, deletes are disabled, amendments require a >=10-char reason
   and are audited; `steward_scope_counts` is a single consistent snapshot
   (exists-based verified count, no join fan-out).
-- Rollback: `00x.down.sql` preserves all history (drops functions/policies,
-  disables RLS, keeps tables). `teardown.destructive.sql` is a single
-  atomic block that refuses while any history row exists.
+- Rollback: `00x.down.sql` preserves all history AND its protection —
+  operational functions are dropped, but RLS stays enabled, select policies
+  stay in place, and immutability triggers keep firing, so retained
+  cross-org history is never exposed by a rollback (harness test 007
+  verifies post-rollback reads for cross-org/inactive/viewer roles).
+  `teardown.destructive.sql` is a single atomic block that refuses while
+  any history row exists.
+
+## Integration revision (second source review follow-up)
+
+- Schema now mirrors the REAL repository contracts: coverage hashes the
+  actual `public.conversations.transcript` jsonb server-side, and proposals
+  live in an additive `steward_proposal_ledger` keyed by conversation +
+  source key (matching commitment `source_key` extraction) — no invented
+  base tables.
+- `steward_current_coverage` and `steward_scope_counts` are SECURITY
+  DEFINER (they enforce membership themselves); `steward_transcript_hash`
+  stays definer-only and is never granted to authenticated.
+- RLS policy helper `private.steward_is_active_member` keeps EXECUTE for
+  authenticated (read-only membership check; policies evaluate it as the
+  querying role). All other helpers stay revoked.
+- Claim/complete/fail are granted to `service_role` ONLY — a signed-in
+  client cannot forge an artifact. The staged worker path
+  (`runCanonicalRunWorkerFn`) uses the admin client for exactly this
+  reason, stays capability-gated off, and its default provider throws
+  (no real model calls until separately reviewed).
+- Concrete Supabase adapters exist for runs, verification, coverage,
+  proposal links and scope (`src/lib/steward-*.supabase.ts`).
+  `src/lib/steward-supabase-adapters.test.ts` parses the SQL files and
+  asserts every adapter call uses the exact function name and parameter
+  names the SQL declares.
+- Harness additions: `000_acl_pregrant.sql` / `000b_acl_postgrant.sql`
+  assert pg_proc ACLs before/after the local-only grant script;
+  `008_journey.sql` runs the full fixture journey (request → worker claim →
+  artifact → human verify → reopen → legacy-status-flip earns nothing →
+  coverage attest → scope counts) through the real SQL surface.
 - Harness (`harness/run.sh`): mktemp-owned PGDATA, `listen_addresses=''`,
   private socket, unprivileged user, no externally supplied path deletion.
   Tests run as `authenticated` with JWT claims for owner/member/viewer/
