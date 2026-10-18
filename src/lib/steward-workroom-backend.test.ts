@@ -19,7 +19,7 @@ const snapshotReady = (snapshot: {
   complete: boolean;
 }): MeetingScoreRead => ({
   kind: "ready",
-  snapshot: { ...snapshot, attestedAt: null, scopeVersion: 1 },
+  snapshot: { ...snapshot, attestedAt: null, scopeVersion: 1, transcriptHash: null },
 });
 
 describe("serverMeetingScore", () => {
