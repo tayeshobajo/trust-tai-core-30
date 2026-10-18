@@ -187,7 +187,7 @@ begin
   -- its own explicit audited amendment — never a side effect of a link.
   perform set_config('steward.scope_mutation', 'on', true);
   declare
-    prior_item public.steward_scope_items;
+    prior_item record; -- record: scope tables are created by 005, after this patch
   begin
     select * into prior_item from public.steward_scope_items
       where organization_id = p_org and conversation_id = p_conversation and task_id = p_task
