@@ -827,14 +827,23 @@ export function WorkroomView({
   const meeting = meetings.find((m) => m.id === selectedMeeting) ?? meetings[0] ?? null;
 
   const owners = meeting ? Array.from(new Set(meeting.rows.map((r) => r.owner.label))).sort() : [];
+  /* When the canonical verification contract is enabled, raw board
+     progress is never treated as verified: a row is verified only when its
+     canonical read says so, and unknown (never false-verified) when that
+     read is absent. Commitment rows keep their receipt-derived state. */
+  const canonicalVerification = backend?.capabilities.verification.kind === "enabled";
+  const rowVerified = (r: WorkroomRow): boolean | null => {
+    if (!canonicalVerification) return r.verified;
+    if (r.kind === "commitment") return r.verified;
+    const read = r.boardTask ? backend?.verificationFor?.(r.boardTask.id) : undefined;
+    if (read?.kind === "ready" && read.task) return read.task.status === "complete";
+    return null;
+  };
   const visibleRows = meeting
     ? meeting.rows.filter((r) => {
-        if (
-          rowFilter === "open" &&
-          (r.verified || (r.kind !== "required-task" && r.boardTask?.status === "complete"))
-        )
-          return false;
-        if (rowFilter === "verified" && !r.verified) return false;
+        const verified = rowVerified(r);
+        if (rowFilter === "open" && verified === true) return false;
+        if (rowFilter === "verified" && verified !== true) return false;
         if (ownerFilter !== "everyone" && r.owner.label !== ownerFilter) return false;
         if (taskQuery.trim() && !r.what.toLowerCase().includes(taskQuery.trim().toLowerCase()))
           return false;
