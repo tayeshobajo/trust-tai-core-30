@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Prototype boundaries
+- Embed the real Steward workroom in AppShell's opt-in workroom canvas, with container-relative columns and a standalone view variant; global suite navigation must remain available without changing mockup presentation.
 - Read Steward history only for the selected commitment UUID through the org/member activity reader with appIds ['steward']; activity records never qualify as completion receipts, because legacy writes are non-transactional.
 - Automatic Steward sync compares ordered transcript text, speaker identity and source offsets before classifying unchanged reads; changed nonempty transcripts remain stored without overwrite because segment count cannot prove content preservation.
 - Keep the Steward design preview in an isolated mockup route with fictional fixtures and in-memory state only; this allows review without reading private tasks or activating production work.

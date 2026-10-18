@@ -1,5 +1,9 @@
 # Roadmap
 
+## Steward suite navigation regression (2026-10-18)
+- [ ] Restore the existing suite shell around the live workroom without duplicate global controls; preserve standalone mockup and data behavior.
+- [ ] Verify focused tests, lint, automatic build and fictional 1440/768/375 navigation/drawer screenshots; no authenticated session available.
+
 ## Steward approved atomic completion (2026-10-18)
 - [ ] Inspect exact hosted columns, constraints, policies and reviewed transaction proposal before implementation — blocked: external schema tool and read-only CLI unavailable; reviewed SQL absent. Read-only metadata request prepared in docs/steward-atomic-schema-inspection.sql.
 - [ ] Prepare and test the additive invoker RPC in isolated PostgreSQL, including rollback, replay, concurrency and permission isolation — blocked by exact-schema/proposal prerequisite; local PostgreSQL executables available, no RPC applied.
