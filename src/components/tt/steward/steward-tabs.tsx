@@ -22,6 +22,7 @@ function tabClass(active: boolean) {
 }
 
 const MORE: { section: StewardSection; label: string; to: string }[] = [
+  { section: "meetings", label: "Meetings", to: "/modules/steward/meetings" },
   { section: "tasks", label: "Tasks", to: "/modules/steward/tasks" },
   { section: "agents", label: "Agents", to: "/modules/steward/agents" },
   { section: "scouts", label: "Scouts", to: "/modules/steward/scouts" },

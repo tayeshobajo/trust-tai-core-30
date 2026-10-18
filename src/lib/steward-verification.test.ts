@@ -34,6 +34,7 @@ function makeRepo(overrides: Partial<VerificationRepository> = {}): Verification
           note: input.note,
           actorId: input.actorId,
           createdAt: "now",
+          taskRevisionAfter: input.expectedRevision + 1,
         },
         replayed: false,
       };
