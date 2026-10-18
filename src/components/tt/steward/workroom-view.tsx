@@ -831,7 +831,7 @@ export function WorkroomView({
         className={cn(
           "mt-4 flex items-start gap-3 rounded-lg border border-l-2 p-3 text-xs leading-5",
           meeting.score === 100 &&
-          (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
+            (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
             ? "border-success/20 border-l-success bg-success/5"
             : "border-warning/15 border-l-warning bg-warning/5",
         )}
