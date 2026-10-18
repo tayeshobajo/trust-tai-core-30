@@ -150,8 +150,8 @@ export function StewardWorkroom({
 }: {
   identity: WorkspaceIdentity;
   /** Validated URL selection from the route; reload/back restore it. */
-  selection?: WorkroomSelection;
-  onSelect?: (meetingId: string | null, rowKey: string | null) => void;
+  selection?: WorkroomSelection | undefined;
+  onSelect?: ((meetingId: string | null, rowKey: string | null) => void) | undefined;
 }) {
   return (
     <AppShell identity={identity} canvas="workroom">
@@ -166,8 +166,8 @@ function StewardWorkroomContent({
   onSelect,
 }: {
   identity: WorkspaceIdentity;
-  selection?: WorkroomSelection;
-  onSelect?: (meetingId: string | null, rowKey: string | null) => void;
+  selection?: WorkroomSelection | undefined;
+  onSelect?: ((meetingId: string | null, rowKey: string | null) => void) | undefined;
 }) {
   const queryClient = useQueryClient();
   const org = identity.organizationId;

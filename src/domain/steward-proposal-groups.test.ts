@@ -18,7 +18,7 @@ function proposal(statement: string, quote = statement): Proposal {
     ownerResolved: false,
     dueText: null,
     evidence: [],
-  } as Proposal;
+  } as unknown as Proposal;
 }
 
 describe("proposal overlap grouping", () => {
