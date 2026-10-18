@@ -857,11 +857,24 @@ export function WorkroomView({
      canonical read says so, and unknown (never false-verified) when that
      read is absent. Commitment rows keep their receipt-derived state. */
   const canonicalVerification = backend?.capabilities.verification.kind === "enabled";
+  const projection = meeting ? backend?.verificationProjectionFor?.(meeting.id) : undefined;
   const rowVerified = (r: WorkroomRow): boolean | null => {
     if (!canonicalVerification) return r.verified;
     if (r.kind === "commitment") return r.verified;
-    const read = r.boardTask ? backend?.verificationFor?.(r.boardTask.id) : undefined;
-    if (read?.kind === "ready" && read.task) return read.task.status === "complete";
+    if (!r.boardTask) return null;
+    /* Full-meeting counts come from the bounded canonical projection —
+       receipt-backed verified per task (complete AND latest verify receipt
+       at the current revision), never raw board status. A failed or
+       partial projection read means unknown, never false-verified. */
+    if (projection?.kind === "ready" && !projection.truncated) {
+      const value = projection.verified[r.boardTask.id];
+      return typeof value === "boolean" ? value : null;
+    }
+    if (projection?.kind === "rejected" || projection?.kind === "loading") return null;
+    /* Fallback for a single selected task: its own canonical read, again
+       receipt-backed only. */
+    const read = backend?.verificationFor?.(r.boardTask.id);
+    if (read?.kind === "ready") return read.verified;
     return null;
   };
   const visibleRows = meeting
