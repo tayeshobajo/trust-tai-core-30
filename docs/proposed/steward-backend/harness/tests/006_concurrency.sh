@@ -20,7 +20,7 @@ select public.steward_request_canonical_run(
 SQL
 
 claim() {
-  psql "$DB" -v ON_ERROR_STOP=1 -tA <<'SQL' 2>/dev/null
+  psql "$DB" -q -v ON_ERROR_STOP=1 -tA <<'SQL' 2>/dev/null | grep -E '^[0-9a-f-]{36}$|^LOST$'
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 select coalesce((select (claim_token)::text from public.steward_claim_canonical_run(
