@@ -1,3 +1,9 @@
+-- Harness-only: tests read the derived hash to build bound attestation
+-- calls. Production callers get it from steward_meeting_score_snapshot;
+-- this grant exists ONLY in the disposable harness, never in
+-- grants.review.sql.
+grant execute on function private.steward_transcript_hash(uuid, uuid) to authenticated;
+
 -- Coverage attestation: server-derived hash from the REAL conversations
 -- transcript jsonb, invalidation, authority, source binding and operation
 -- replay. The caller binds the attestation to the exact transcript hash +
