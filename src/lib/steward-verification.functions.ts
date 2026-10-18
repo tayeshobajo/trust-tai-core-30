@@ -136,13 +136,26 @@ export const getTaskVerificationStateFn = createServerFn({ method: "GET" })
     if (!task) return { kind: "rejected", message: "task not found" };
     const { data: receipts, error: receiptError } = await rls
       .from("steward_task_receipts")
-      .select("id, organization_id, task_id, operation_id, kind, note, actor_id, created_at")
+      .select(
+        "id, organization_id, task_id, operation_id, kind, note, actor_id, created_at, task_revision_after",
+      )
       .eq("organization_id", data.orgId)
       .eq("task_id", data.taskId)
       .order("created_at", { ascending: true });
     if (receiptError) {
       return { kind: "rejected", message: "the receipt history could not be read" };
     }
+    const mapped: TaskReceipt[] = (receipts ?? []).map((row: Record<string, unknown>) => ({
+      id: row["id"],
+      organizationId: row["organization_id"],
+      taskId: row["task_id"],
+      operationId: row["operation_id"],
+      kind: row["kind"] === "reopen" ? ("reopen" as const) : ("verify" as const),
+      note: row["note"],
+      actorId: row["actor_id"],
+      createdAt: row["created_at"],
+      taskRevisionAfter: typeof row["task_revision_after"] === "number" ? row["task_revision_after"] : -1,
+    }));
     return {
       kind: "ready",
       read: {
@@ -154,16 +167,106 @@ export const getTaskVerificationStateFn = createServerFn({ method: "GET" })
           completedAt: task.completed_at,
           completedBy: task.completed_by,
         },
-        receipts: (receipts ?? []).map((row: Record<string, unknown>) => ({
-          id: row["id"],
-          organizationId: row["organization_id"],
-          taskId: row["task_id"],
-          operationId: row["operation_id"],
-          kind: row["kind"] === "reopen" ? ("reopen" as const) : ("verify" as const),
-          note: row["note"],
-          actorId: row["actor_id"],
-          createdAt: row["created_at"],
-        })),
+        receipts: mapped,
+        verified: receiptBackedVerified(
+          { status: task.status, revision: task.revision },
+          mapped,
+        ),
       },
     };
+  });
+
+/**
+ * The single verified-state criterion, matching the scope SQL exactly:
+ * the task is complete AND its LATEST receipt is a verify whose recorded
+ * task_revision_after equals the CURRENT revision. A reopen, an edit, or
+ * a legacy status flip after reopen changes the revision and drops the
+ * credit; raw "complete" with no valid receipt is never verified.
+ */
+export function receiptBackedVerified(
+  task: { status: string; revision: number },
+  receipts: { kind: "verify" | "reopen"; taskRevisionAfter: number }[],
+): boolean {
+  if (task.status !== "complete") return false;
+  const latest = receipts.at(-1);
+  return (
+    !!latest && latest.kind === "verify" && latest.taskRevisionAfter === task.revision
+  );
+}
+
+export type MeetingVerificationProjectionState =
+  | { kind: "unavailable"; reason: string }
+  | {
+      kind: "ready";
+      /** taskId → receipt-backed verified, for every requested task. */
+      verified: Record<string, boolean>;
+      truncated: boolean;
+    }
+  | { kind: "rejected"; message: string };
+
+const PROJECTION_LIMIT = 100;
+
+/**
+ * Bounded canonical verification projection for the visible tasks of one
+ * meeting, so full-meeting counts/filters never depend on only the
+ * SELECTED task's read. Same receipt-backed criterion as the scope SQL.
+ * More than 100 task ids is rejected as truncated rather than silently
+ * partial.
+ */
+export const getMeetingVerificationProjectionFn = createServerFn({ method: "GET" })
+  .middleware([requireTrustTaiAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        orgId: z.string().uuid(),
+        taskIds: z.array(z.string().uuid()).max(500),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }): Promise<MeetingVerificationProjectionState> => {
+    if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
+    const uniqueIds = Array.from(new Set(data.taskIds));
+    if (uniqueIds.length === 0) return { kind: "ready", verified: {}, truncated: false };
+    if (uniqueIds.length > PROJECTION_LIMIT) {
+      return {
+        kind: "rejected",
+        message: `too many tasks for one consistent read (${uniqueIds.length} > ${PROJECTION_LIMIT}); verified counts are unknown, not zero`,
+      };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
+    const rls = context.supabase as any;
+    const { data: tasks, error: taskError } = await rls
+      .from("steward_tasks")
+      .select("id, status, revision")
+      .eq("organization_id", data.orgId)
+      .in("id", uniqueIds);
+    if (taskError) {
+      return { kind: "rejected", message: "the task states could not be read" };
+    }
+    const { data: receipts, error: receiptError } = await rls
+      .from("steward_task_receipts")
+      .select("task_id, kind, created_at, task_revision_after")
+      .eq("organization_id", data.orgId)
+      .in("task_id", uniqueIds)
+      .order("created_at", { ascending: true });
+    if (receiptError) {
+      return { kind: "rejected", message: "the receipt history could not be read" };
+    }
+    const receiptsByTask = new Map<string, { kind: "verify" | "reopen"; taskRevisionAfter: number }[]>();
+    for (const row of receipts ?? []) {
+      const list = receiptsByTask.get(row.task_id) ?? [];
+      list.push({
+        kind: row.kind === "reopen" ? "reopen" : "verify",
+        taskRevisionAfter: typeof row.task_revision_after === "number" ? row.task_revision_after : -1,
+      });
+      receiptsByTask.set(row.task_id, list);
+    }
+    const verified: Record<string, boolean> = {};
+    for (const task of tasks ?? []) {
+      verified[task.id] = receiptBackedVerified(
+        { status: task.status, revision: task.revision },
+        receiptsByTask.get(task.id) ?? [],
+      );
+    }
+    return { kind: "ready", verified, truncated: false };
   });
