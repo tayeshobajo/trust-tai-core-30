@@ -77,7 +77,11 @@ export type VerificationResult =
     }
   | { kind: "revision_conflict"; message: string }
   | { kind: "evidence_required"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  /* Transport/5xx/malformed-response ambiguity AFTER the request was sent:
+     the mutation may have committed. The caller keeps the pending
+     operation and retries with the SAME id — never reports rejection. */
+  | { kind: "uncertain"; message: string };
 
 /** Verify a canonical task atomically. Duplicate operations replay the
  *  existing receipt instead of double-recording. */
