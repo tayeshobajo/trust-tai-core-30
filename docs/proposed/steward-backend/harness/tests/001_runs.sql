@@ -102,5 +102,5 @@ begin
   r := steward_claim_canonical_run(rid, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 0); -- immediately expired lease
   assert r.status = 'running';
   r := steward_claim_canonical_run(rid, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-  assert r is not null and r.attempts = 2, 'expired lease must be reclaimable';
+  assert r.id is not null and r.attempts = 2, 'expired lease must be reclaimable';
 end $$;
