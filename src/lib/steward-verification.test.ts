@@ -27,6 +27,7 @@ function makeRepo(overrides: Partial<VerificationRepository> = {}): Verification
         },
         receipt: {
           id: "rcpt-1",
+          kind: "verify",
           organizationId: input.orgId,
           taskId: input.taskId,
           operationId: input.operationId,

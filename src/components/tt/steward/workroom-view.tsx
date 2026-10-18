@@ -41,6 +41,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import type { MeetingScoreRead } from "./workroom-backend-panels";
 import type { Commitment } from "@/domain/steward";
 import type { BoardTask } from "@/domain/cmd-tasks";
 import { displayTitleOf } from "@/domain/steward-display-title";
