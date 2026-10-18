@@ -493,9 +493,9 @@ function TaskDetail({
               Verified completion needs the guarded atomic review, which is not available yet.
             </p>
           )}
-          <div>
-            <p className="font-medium">Next action</p>
-            <p className="whitespace-pre-wrap break-words">
+          <div className="rounded-lg border-l-4 border-royal bg-royal-wash px-4 py-3.5">
+            <h3 className="font-semibold text-foreground">Next action</h3>
+            <p className="mt-1.5 whitespace-pre-wrap break-words">
               {row.boardTask.next_action || "No next action recorded."}
             </p>
           </div>
