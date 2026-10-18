@@ -18,7 +18,7 @@ import {
 
 afterEach(cleanup);
 
-const enabled: CapabilityState = { kind: "ready" };
+const enabled: CapabilityState = { kind: "enabled" };
 const fictionalTask = {
   id: "00000000-0000-4000-8000-000000000099",
   title: "Fictional required task",
@@ -54,9 +54,9 @@ describe("verification panel operation safety", () => {
     reject?.(new Error("network dropped"));
     await screen.findByText(/Outcome unknown/);
     // The user's words are preserved for correction/retry.
-    expect(
-      (screen.getByLabelText(/Completion evidence note/) as HTMLTextAreaElement).value,
-    ).toBe("Fictional proof recorded for review");
+    expect((screen.getByLabelText(/Completion evidence note/) as HTMLTextAreaElement).value).toBe(
+      "Fictional proof recorded for review",
+    );
     fireEvent.click(screen.getByRole("button", { name: /Retry same operation/ }));
     await waitFor(() => expect(onVerify).toHaveBeenCalledTimes(2));
     const first = onVerify.mock.calls[0]?.[0] as { note: string; operationId: string };
@@ -65,9 +65,9 @@ describe("verification panel operation safety", () => {
     expect(second.note).toBe("Fictional proof recorded for review");
     // A resolved success clears the note for the next deliberate operation.
     await waitFor(() =>
-      expect(
-        (screen.getByLabelText(/Completion evidence note/) as HTMLTextAreaElement).value,
-      ).toBe(""),
+      expect((screen.getByLabelText(/Completion evidence note/) as HTMLTextAreaElement).value).toBe(
+        "",
+      ),
     );
   });
 
@@ -119,7 +119,8 @@ describe("preparation panel honesty", () => {
             id: "review_output",
             label: "Review an attached output",
             summary: "review",
-            disabledReason: "stored output content is not supported yet; a URL is not proof of reading",
+            disabledReason:
+              "stored output content is not supported yet; a URL is not proof of reading",
           },
         ]}
         onRequestRun={undefined}
@@ -143,7 +144,7 @@ describe("preparation panel honesty", () => {
             {
               id: "run-1",
               action: "prepare_brief",
-              status: "completed",
+              status: "complete",
               artifactText: "Fictional draft",
               artifactDigest: "abcdef0123456789",
               evidenceRefs: ["transcript:abc"],
