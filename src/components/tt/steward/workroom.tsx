@@ -28,6 +28,7 @@ import {
 } from "@/lib/steward-canonical-run.functions";
 import { getTaskCanonicalRunsFn } from "@/lib/steward-run-state.functions";
 import {
+  getMeetingVerificationProjectionFn,
   getTaskVerificationStateFn,
   getVerificationCapabilityFn,
   reopenCanonicalTaskFn,
@@ -40,8 +41,10 @@ import {
 } from "@/lib/steward-coverage.functions";
 import {
   addScopeItemFn,
+  amendScopeItemFn,
   getMeetingScopeFn,
   getScopeCapabilityFn,
+  reinstateScopeItemFn,
   syncRequiredScopeFn,
 } from "@/lib/steward-scope.functions";
 import { getMeetingScoreSnapshotFn } from "@/lib/steward-score.functions";
@@ -203,6 +206,9 @@ export function StewardWorkroom({
 function useStewardBackend(
   identity: WorkspaceIdentity,
   selection?: WorkroomSelection | undefined,
+  /** Board task ids visible in the selected meeting — the bounded
+      canonical verification projection covers exactly these. */
+  meetingTaskIds: string[] = [],
 ): WorkroomBackend {
   const queryClient = useQueryClient();
   const org = identity.organizationId;
@@ -282,6 +288,17 @@ function useStewardBackend(
     enabled: !!meetingId && caps?.scope.kind === "enabled",
     queryFn: () => getMeetingScoreSnapshotFn({ data: { orgId: org, conversationId: meetingId! } }),
   });
+  /* Bounded canonical verification projection for the visible board tasks
+     of the selected meeting: full-meeting counts/filters never depend on
+     only the selected task's read. */
+  const projectionIds = meetingTaskIds.slice().sort();
+  const projection = useQuery({
+    queryKey: ["steward", "verification-projection", org, meetingId, projectionIds],
+    enabled:
+      !!meetingId && caps?.verification.kind === "enabled" && projectionIds.length > 0,
+    queryFn: () =>
+      getMeetingVerificationProjectionFn({ data: { orgId: org, taskIds: projectionIds } }),
+  });
 
   const unavailable: CapabilityState = {
     kind: "unavailable",
@@ -355,6 +372,10 @@ function useStewardBackend(
         if (verification.data.kind !== "ready") return verification.data;
         return {
           kind: "ready",
+          /* Receipt-backed verified, computed server-side with the same
+             criterion as the scope SQL — raw board status alone is never
+             verified. */
+          verified: verification.data.read.verified === true,
           task: verification.data.read.task
             ? {
                 status: verification.data.read.task.status === "complete" ? "complete" : "open",
@@ -407,7 +428,18 @@ function useStewardBackend(
         state.scope = rejected("Recorded scope could not be read; retry to reload it.");
       } else if (scope.data) {
         state.scope =
-          scope.data.kind === "ready" ? { kind: "ready", counts: scope.data.counts } : scope.data;
+          scope.data.kind === "ready"
+            ? {
+                kind: "ready",
+                counts: scope.data.counts,
+                items: scope.data.items.map((item) => ({
+                  id: item.id,
+                  taskId: item.taskId,
+                  classification: item.classification,
+                  removedAt: item.removedAt,
+                })),
+              }
+            : scope.data;
       } else if (scope.isPending) state.scope = { kind: "loading" };
       if (resolvedCaps.coverage.kind === "unavailable") {
         state.coverage = { kind: "unavailable", reason: resolvedCaps.coverage.reason };
@@ -452,6 +484,47 @@ function useStewardBackend(
             : proposals.data;
       } else if (proposals.isPending) state.proposals = { kind: "loading" };
       return state;
+    },
+    verificationProjectionFor: (id) => {
+      if (id !== meetingId) return undefined;
+      if (resolvedCaps.verification.kind === "unavailable") {
+        return { kind: "unavailable", reason: resolvedCaps.verification.reason };
+      }
+      if (projectionIds.length === 0) return { kind: "ready", verified: {}, truncated: false };
+      if (projection.isError) {
+        return {
+          kind: "rejected",
+          message: "The canonical verification projection could not be read; retry to reload it.",
+        };
+      }
+      if (projection.data) return projection.data;
+      return projection.isPending ? { kind: "loading" } : undefined;
+    },
+    onRemoveScopeItem: async (input) => {
+      const result = await amendScopeItemFn({
+        data: {
+          orgId: org,
+          conversationId: input.meetingId,
+          itemId: input.itemId,
+          reason: input.reason,
+          operationId: input.operationId,
+        },
+      });
+      await invalidate();
+      return outcomeOf(result);
+    },
+    onReinstateScopeItem: async (input) => {
+      const result = await reinstateScopeItemFn({
+        data: {
+          orgId: org,
+          conversationId: input.meetingId,
+          itemId: input.itemId,
+          reason: input.reason,
+          operationId: input.operationId,
+        },
+      });
+      await invalidate();
+      return outcomeOf(result);
     },
     onRequestRun: async (input) => {
       const result = await requestCanonicalRunFn({
@@ -699,7 +772,13 @@ function StewardWorkroomContent({
     return { meetingId: selection.meetingId, rowKey: workroomRowKey(firstRow) };
   }, [selection, linkedMeetings]);
 
-  const backend = useStewardBackend(identity, effectiveSelection);
+  const selectedMeetingTaskIds = useMemo(() => {
+    const meeting = linkedMeetings.find((m) => m.id === effectiveSelection?.meetingId);
+    return (meeting?.rows ?? [])
+      .map((r) => r.boardTask?.id)
+      .filter((id): id is string => typeof id === "string");
+  }, [linkedMeetings, effectiveSelection?.meetingId]);
+  const backend = useStewardBackend(identity, effectiveSelection, selectedMeetingTaskIds);
 
   if (conversations.isPending || commitments.isPending || receipts.isPending) {
     return <p className="p-6 text-sm text-muted-foreground">Reading stored meetings…</p>;
