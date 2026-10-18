@@ -580,7 +580,6 @@ function StewardWorkroomContent({
 }) {
   const queryClient = useQueryClient();
   const org = identity.organizationId;
-  const backend = useStewardBackend(identity, selection);
   const business = useQuery(businessWorkQuery(org, identity.userId));
   const conversations = useQuery({
     queryKey: ["steward", "workroom", "conversations", org],
@@ -681,6 +680,21 @@ function StewardWorkroomContent({
       ),
     [meetings, business.data, business.isError, business.isPending, org],
   );
+
+  /* The view defaults to the first row of the selected meeting when the
+     URL carries a meeting only. The backend queries must use the SAME
+     effective selection, or the initially shown task loads no state until
+     the user clicks it again. */
+  const effectiveSelection = useMemo<WorkroomSelection | undefined>(() => {
+    if (!selection?.meetingId) return selection;
+    if (selection.rowKey) return selection;
+    const meeting = linkedMeetings.find((m) => m.id === selection.meetingId);
+    const firstRow = meeting?.rows[0];
+    if (!firstRow) return selection;
+    return { meetingId: selection.meetingId, rowKey: workroomRowKey(firstRow) };
+  }, [selection, linkedMeetings]);
+
+  const backend = useStewardBackend(identity, effectiveSelection);
 
   if (conversations.isPending || commitments.isPending || receipts.isPending) {
     return <p className="p-6 text-sm text-muted-foreground">Reading stored meetings…</p>;
