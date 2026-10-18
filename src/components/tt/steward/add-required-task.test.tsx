@@ -8,17 +8,36 @@ const meetingId = "00000000-0000-4000-8000-000000000011";
 describe("manual required-work add dialog with fictional saves", () => {
   it("validates acknowledgement and title before save, deduplicates submit and retries the same operation", async () => {
     let reject: ((reason: Error) => void) | undefined;
-    const save = vi.fn().mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; })).mockResolvedValue(undefined);
+    const save = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, fail) => {
+            reject = fail;
+          }),
+      )
+      .mockResolvedValue(undefined);
     const close = vi.fn();
-    render(<AddRequiredTask meetingId={meetingId} meetingTitle="Fictional" onSave={save} onClose={close} />);
+    render(
+      <AddRequiredTask
+        meetingId={meetingId}
+        meetingTitle="Fictional"
+        onSave={save}
+        onClose={close}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
     expect(save).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
     expect(save).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Task title"), { target: { value: "Missed required action" } });
+    fireEvent.change(screen.getByLabelText("Task title"), {
+      target: { value: "Missed required action" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
-    fireEvent.submit(screen.getByRole("button", { name: "Saving…" }).closest("form") as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole("button", { name: "Saving…" }).closest("form") as HTMLFormElement,
+    );
     expect(save).toHaveBeenCalledTimes(1);
     reject?.(new Error("Fictional save failed"));
     await screen.findByRole("button", { name: "Retry add task" });

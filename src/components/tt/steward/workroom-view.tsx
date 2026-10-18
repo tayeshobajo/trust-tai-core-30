@@ -567,12 +567,19 @@ export function WorkroomView({
                 <span
                   className={cn(
                     "shrink-0 rounded px-1.5 py-0.5 font-semibold",
-                    m.score === 100 && !receiptsFailed && (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
+                    m.score === 100 &&
+                      !receiptsFailed &&
+                      (!linkedRead || (linkedRead.state === "ready" && !linkedRead.truncated))
                       ? "bg-success/15 text-success"
                       : "bg-warning/15 text-warning",
                   )}
                 >
-                  {receiptsFailed || (linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)) ? "—" : m.score === null ? "Partial" : `${m.score}/100`}
+                  {receiptsFailed ||
+                  (linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated))
+                    ? "—"
+                    : m.score === null
+                      ? "Partial"
+                      : `${m.score}/100`}
                 </span>
               </span>
             </span>

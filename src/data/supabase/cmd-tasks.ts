@@ -62,7 +62,14 @@ export function boardService(client: SupabaseClient = supabase) {
         acceptance_criteria: [],
         context_links: withMeetingAssociation([], draft.meetingId),
       });
-      if (result.title !== draft.title || result.next_action !== draft.nextAction || result.created_by !== actor.userId) throw new Error("This operation already belongs to different task details. Refresh before trying again.");
+      if (
+        result.title !== draft.title ||
+        result.next_action !== draft.nextAction ||
+        result.created_by !== actor.userId
+      )
+        throw new Error(
+          "This operation already belongs to different task details. Refresh before trying again.",
+        );
       return result;
     },
     async meetingOptions(
