@@ -15,7 +15,7 @@
  * - steward_claim_canonical_run(p_run, p_lease_seconds) — service_role only.
  * - steward_complete_canonical_run(p_run, p_claim_token, p_artifact, p_evidence_refs)
  *   — service_role only.
- * - steward_fail_canonical_run(p_run, p_claim_token, p_reason) — service_role only.
+ * - steward_fail_canonical_run(p_run, p_claim_token, p_reason, p_known_pre_call) — service_role only.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -114,6 +114,7 @@ export function createSupabaseCanonicalRunRepository(
         p_run: input.runId,
         p_claim_token: input.claimToken,
         p_reason: input.reason,
+        p_known_pre_call: input.knownPreCall === true,
       });
       if (error) rethrow(error);
       return mapRun(data as RunRow);

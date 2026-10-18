@@ -109,7 +109,13 @@ export interface CanonicalRunRepository {
     artifactText: string;
     evidenceRefs: string[];
   }): Promise<CanonicalRun>;
-  failRun(input: { runId: string; claimToken: string; reason: string }): Promise<CanonicalRun>;
+  failRun(input: {
+    runId: string;
+    claimToken: string;
+    reason: string;
+    /** True ONLY when the failure is known to have occurred before the provider call started. */
+    knownPreCall?: boolean;
+  }): Promise<CanonicalRun>;
   /**
    * Terminal UNCERTAIN transition: the provider outcome is unknown (the
    * call may still have completed server-side), so the run is failed
@@ -413,10 +419,13 @@ export async function executeCanonicalRun(
       input.actorId,
     );
     if (!taskTitle) {
+      // Known pre-call failure (the provider was never invoked), so a
+      // bounded requeue is safe.
       const run = await repo.failRun({
         runId: claimed.id,
         claimToken,
         reason: "task became inaccessible",
+        knownPreCall: true,
       });
       return { kind: "failed", run };
     }
