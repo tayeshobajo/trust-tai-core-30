@@ -725,7 +725,9 @@ export function WorkroomView({
                   {m.occurredAt.slice(0, 10)} ·{" "}
                   {receiptsFailed
                     ? "verification unavailable"
-                    : `${m.done} of ${m.requiredWork?.denominator ?? m.agreed} verified`}
+                    : (m.requiredWork?.denominator ?? m.agreed) === 0
+                      ? "scope review pending"
+                      : `${m.done} of ${m.requiredWork?.denominator ?? m.agreed} verified`}
                 </span>
                 <span
                   className={cn(
