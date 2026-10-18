@@ -392,7 +392,7 @@ function TaskDetail({
   commitment: Commitment | undefined;
   history: ReactNode;
   taskById?: ((id: string) => BoardTask | undefined) | undefined;
-  backend?: WorkroomBackend;
+  backend?: WorkroomBackend | undefined;
 }) {
   return (
     <div className="space-y-5 text-sm">

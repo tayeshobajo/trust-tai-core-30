@@ -282,13 +282,9 @@ function useStewardBackend(
   };
 
   function outcomeOf(result: { kind: string; reason?: string; message?: string }): ActionOutcome {
-    return {
-      kind: result.kind,
-      message:
-        ("reason" in result && result.reason) ||
-        ("message" in result && result.message) ||
-        undefined,
-    };
+    const message =
+      ("reason" in result && result.reason) || ("message" in result && result.message) || null;
+    return message ? { kind: result.kind, message } : { kind: result.kind };
   }
 
   async function invalidate() {
