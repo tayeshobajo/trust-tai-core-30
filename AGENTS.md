@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Prototype boundaries
+- Automatic Steward sync compares ordered transcript text, speaker identity and source offsets before classifying unchanged reads; changed nonempty transcripts remain stored without overwrite because segment count cannot prove content preservation.
 - Keep the Steward design preview in an isolated mockup route with fictional fixtures and in-memory state only; this allows review without reading private tasks or activating production work.
 - Steward mockup receipts are append-only fictional in-memory events, separate from production task history and session-import staging; repeated completion/reopen review must never mutate canonical task evidence.
 - Compose the Steward mockup shell inside its own route and reuse one task-details component for the desktop panel and compact drawers; this preserves production shell behavior and identical review safeguards across sizes.

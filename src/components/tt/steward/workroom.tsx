@@ -31,6 +31,9 @@ function useRecentSync(identity: WorkspaceIdentity) {
     lastSuccessAt: string | null;
     added: number;
     refreshed: number;
+    unchanged: number;
+    preserved: number;
+    warnings: string[];
     pendingTranscript: number;
     hasMore: boolean;
     failure: string | null;
@@ -39,6 +42,9 @@ function useRecentSync(identity: WorkspaceIdentity) {
     lastSuccessAt: null,
     added: 0,
     refreshed: 0,
+    unchanged: 0,
+    preserved: 0,
+    warnings: [],
     pendingTranscript: 0,
     hasMore: false,
     failure: null,
@@ -77,14 +83,15 @@ function useRecentSync(identity: WorkspaceIdentity) {
         lastSuccessAt: outcome.checkedAt ?? s.lastSuccessAt,
         added: outcome.added,
         refreshed: outcome.refreshed,
+        unchanged: outcome.unchanged,
+        preserved: outcome.preserved,
+        warnings: outcome.warnings,
         pendingTranscript: outcome.pendingTranscript,
         hasMore: outcome.hasMore,
         failure:
           outcome.errors.length > 0
-            ? outcome.errors.join(" ")
-            : outcome.warnings.length > 0
-              ? outcome.warnings.join(" ")
-              : null,
+            ? `${outcome.errors.length} call check${outcome.errors.length === 1 ? "" : "s"} failed. ${outcome.errors[0] ?? ""}`
+            : null,
         running: false,
       }));
       if (outcome.added > 0 || outcome.refreshed > 0) {

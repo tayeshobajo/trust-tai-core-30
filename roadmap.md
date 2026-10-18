@@ -1,5 +1,9 @@
 # Roadmap
 
+## Steward refresh correctness (2026-10-18)
+- [ ] Treat meaningful equivalent transcripts as successful unchanged checks; preserve changed reads with aggregated cautions and test failures/no duplicate writes.
+- [ ] Inspect completion/reopen persistence and append-only history only; document findings without controls, schema changes or live writes.
+
 ## Steward live workroom (2026-10-17)
 - [x] /modules/steward is now the approved three-column workroom on real data; Team moved to /modules/steward/team; eight tabs consolidated into Meetings / Team / More; /meetings/workroom redirects.
 - [x] Verified completion requires status kept AND a current completion receipt; kept-without-receipt shows "Needs verification"; proposals never in the denominator.

@@ -52,6 +52,9 @@ export interface WorkroomSyncState {
   lastSuccessAt: string | null;
   added: number;
   refreshed: number;
+  unchanged: number;
+  preserved: number;
+  warnings: string[];
   pendingTranscript: number;
   hasMore: boolean;
   onRetry: () => void;
@@ -377,6 +380,8 @@ export function WorkroomView({
       : sync.lastSuccessAt
         ? `Checked ${sync.lastSuccessAt.slice(11, 16)} · ${sync.added} new stored${
             sync.refreshed > 0 ? ` · ${sync.refreshed} transcript updated` : ""
+          } · ${sync.unchanged} unchanged${
+            sync.preserved > 0 ? ` · ${sync.preserved} changed transcript preserved` : ""
           }${
             sync.pendingTranscript > 0
               ? ` · ${sync.pendingTranscript} waiting for a transcript`
@@ -728,6 +733,19 @@ export function WorkroomView({
           </TTButton>
         ) : null}
       </p>
+
+      {sync.warnings.length > 0 ? (
+        <details className="border-b border-border px-4 py-1.5 text-xs text-warning">
+          <summary className="cursor-pointer">
+            {sync.warnings.length} sync caution{sync.warnings.length === 1 ? "" : "s"} — stored transcripts preserved
+          </summary>
+          <ul className="mt-2 space-y-1">
+            {sync.warnings.map((warning, index) => (
+              <li key={index}>{warning}</li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       {receiptsFailed ? (
         <p
