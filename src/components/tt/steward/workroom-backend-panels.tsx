@@ -493,6 +493,8 @@ export interface VerificationPanelProps {
         operationId: string;
       }) => Promise<ActionOutcome>)
     | undefined;
+  /** Real reload action for a failed verification-state read. */
+  onRetryReads?: (() => void) | undefined;
 }
 
 /**
@@ -521,6 +523,7 @@ export function VerificationPanel({
   task,
   onVerify,
   onReopen,
+  onRetryReads,
 }: VerificationPanelProps) {
   const [note, setNote] = useState("");
   const attempt = useOperationAttempt<VerificationGesture>();
@@ -593,9 +596,7 @@ export function VerificationPanel({
         </ul>
       ) : null}
       {state?.kind === "rejected" ? (
-        <p className="flex items-center gap-1.5 text-xs text-warning">
-          <AlertCircle aria-hidden className="size-3.5" /> {state.message}
-        </p>
+        <RejectedNote message={state.message} onRetry={onRetryReads} />
       ) : null}
       <label className="block">
         <span className="text-xs font-medium text-foreground">
