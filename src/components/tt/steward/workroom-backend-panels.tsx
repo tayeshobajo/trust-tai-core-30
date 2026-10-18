@@ -703,6 +703,8 @@ export interface ScopeReviewPanelProps {
         operationId: string;
       }) => Promise<ActionOutcome>)
     | undefined;
+  /** Real reload action for failed scope/coverage/proposal reads. */
+  onRetryReads?: (() => void) | undefined;
 }
 
 /**
@@ -736,6 +738,7 @@ export function ScopeReviewPanel({
   onSyncRequiredScope,
   onLinkProposal,
   onDismissProposal,
+  onRetryReads,
 }: ScopeReviewPanelProps) {
   const simple = useOperationAttempt<SimpleGesture>();
   const linkAttempt = useOperationAttempt<{ proposalId: string; taskId: string }>();
@@ -884,14 +887,21 @@ export function ScopeReviewPanel({
           Coverage: {coverage.current ? "confirmed for the current transcript" : "not confirmed"}
           {coverage.attestedAt ? ` · attested ${coverage.attestedAt.slice(0, 10)}` : ""}
         </p>
+      ) : coverage?.kind === "rejected" ? (
+        <RejectedNote message={coverage.message} onRetry={onRetryReads} />
       ) : null}
       {scope?.kind === "ready" ? (
         <p className="text-xs text-muted-foreground">
           Recorded scope: {scope.counts.denominator} required · {scope.counts.verified} verified ·{" "}
           {scope.counts.pendingProposals} proposals pending review
         </p>
+      ) : scope?.kind === "rejected" ? (
+        <RejectedNote message={scope.message} onRetry={onRetryReads} />
       ) : scopeCapability.kind === "unavailable" ? (
         <p className="text-xs text-muted-foreground">{scopeCapability.reason}</p>
+      ) : null}
+      {proposals?.kind === "rejected" ? (
+        <RejectedNote message={proposals.message} onRetry={onRetryReads} />
       ) : null}
       {proposals?.kind === "ready" && pending.length > 0 ? (
         <ul className="space-y-2">
