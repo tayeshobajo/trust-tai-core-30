@@ -1172,11 +1172,21 @@ export function WorkroomView({
                  never a stale or zero number. */
               [
                 "open",
-                receiptsFailed || (linkedRead && linkedRead.state !== "ready")
+                receiptsFailed ||
+                (linkedRead && linkedRead.state !== "ready") ||
+                (canonicalVerification && meeting.rows.some((r) => rowVerified(r) === null))
                   ? "Open —"
-                  : `Open ${meeting.rows.filter((r) => !r.verified && (r.kind === "required-task" || r.boardTask?.status !== "complete")).length}`,
+                  : `Open ${meeting.rows.filter((r) => rowVerified(r) !== true).length}`,
               ],
-              ["verified", receiptsFailed ? "Verified —" : `Verified ${meeting.done}`],
+              [
+                "verified",
+                receiptsFailed ||
+                (canonicalVerification && meeting.rows.some((r) => rowVerified(r) === null))
+                  ? "Verified —"
+                  : canonicalVerification
+                    ? `Verified ${meeting.rows.filter((r) => rowVerified(r) === true).length}`
+                    : `Verified ${meeting.done}`,
+              ],
             ] as [RowFilter, string][]
           ).map(([value, label]) => (
             <TTButton
