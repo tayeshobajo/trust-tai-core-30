@@ -50,7 +50,7 @@ begin
   added := public.steward_register_proposals(
     '11111111-1111-1111-1111-111111111111',
     'dddddddd-dddd-dddd-dddd-dddddddddddd',
-    'c0000000-0000-0000-0000-00000000000a',
+    'c9000000-0000-0000-0000-000000000001',
     '[{"source_key":"ext-9001","kind":"action","statement":"Snapshot gating proposal"}]'::jsonb,
     '{"segments":[{"speaker":"Tai","text":"Synthetic Soji roadmap discussion.","offset":0}]}'::jsonb);
   perform public.test_assert(added = 1, 'gating proposal registered');
@@ -69,7 +69,7 @@ begin
     (select id from public.steward_proposal_ledger
       where organization_id = '11111111-1111-1111-1111-111111111111'
         and source_key = 'ext-9001'),
-    'Snapshot test cleanup dismissal.', 'c0000000-0000-0000-0000-00000000000b');
+    'Snapshot test cleanup dismissal.', 'c9000000-0000-0000-0000-000000000002');
 end $$;
 
 -- 3. Access rules: inactive member, viewer-only is fine for reads but
