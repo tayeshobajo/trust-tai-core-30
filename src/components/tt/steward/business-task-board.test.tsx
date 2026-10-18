@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   archive: vi.fn(),
   importPlannedWork: vi.fn(),
+  meetingOptions: vi.fn().mockResolvedValue({ meetings: [], truncated: false }),
 }));
 vi.mock("@/data/supabase/cmd-tasks", () => ({ cmdTasks: mocks }));
 vi.mock("@/data/steward/task-choices", () => ({
@@ -87,6 +88,7 @@ function editor(
       identity={viewer}
       tasks={[row]}
       people={[]}
+      meetingOptions={[{ id: owner, title: "Fictional stored meeting" }]}
       onSave={onSave}
       onClose={vi.fn()}
     />,
@@ -94,6 +96,21 @@ function editor(
   return onSave;
 }
 describe("board UI with mocked transport", () => {
+  it("saves a reversible meeting link with retained evidence and reports revision conflict", async () => {
+    const save = editor({ ...task, context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }] }, vi.fn().mockRejectedValue(new Error("Revision conflict")));
+    fireEvent.change(screen.getByLabelText("Associated meeting"), { target: { value: owner } });
+    fireEvent.click(screen.getByText("Save task"));
+    expect(await screen.findByText("Revision conflict")).toBeTruthy();
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ status: "open", context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }, { label: "Steward meeting association", url: `https://cmd.trusttai.com/modules/steward/meetings/${owner}` }] }));
+    fireEvent.change(screen.getByLabelText("Associated meeting"), { target: { value: "" } });
+    fireEvent.click(screen.getByText("Save task"));
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ context_links: [{ label: "Email", url: "https://example.com/email", kind: "email" }] })));
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it("does not offer shared meeting association for private tasks", () => {
+    editor({ ...task, task_visibility: "personal" });
+    expect(screen.queryByLabelText("Associated meeting")).toBeNull();
+  });
   it("adds the approved work only through the authenticated import action and reports failure", async () => {
     mocks.list.mockResolvedValue({ tasks: [], truncated: false });
     mocks.personalCounts.mockResolvedValue([]);
