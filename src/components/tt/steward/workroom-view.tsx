@@ -933,7 +933,7 @@ export function WorkroomView({
                   taskTriggerRef.current = event.currentTarget;
                   pickRow(key);
                 }}
-                className="col-span-2 grid grid-cols-[20px_minmax(0,1fr)] items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal sm:col-span-1"
+                className="col-span-2 grid grid-cols-[20px_minmax(0,1fr)] items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal"
               >
                 <span className="inline-flex">
                   {r.verified ? (
