@@ -86,14 +86,16 @@ export const BoardEditSchema = z
     acceptance_criteria: z.array(z.string().max(2000)).max(50),
     context_links: z
       .array(
-        z.object({
-          label: z.string().max(200),
-          kind: z.string().optional(),
-          url: z
-            .string()
-            .url()
-            .refine((v) => /^https?:\/\//i.test(v), "Use a web link."),
-        }).passthrough(),
+        z
+          .object({
+            label: z.string().max(200),
+            kind: z.string().optional(),
+            url: z
+              .string()
+              .url()
+              .refine((v) => /^https?:\/\//i.test(v), "Use a web link."),
+          })
+          .passthrough(),
       )
       .max(50),
   })

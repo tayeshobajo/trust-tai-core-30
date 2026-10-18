@@ -128,9 +128,17 @@ describe("explicit no-schema meeting association", () => {
     ).toEqual({ total: 1, open: 1 });
   });
   it("retains additional existing source metadata through read and edit validation", () => {
-    const source = { label: "Email", url: "https://example.com/email", kind: "email", sourceId: "original-email-17" };
+    const source = {
+      label: "Email",
+      url: "https://example.com/email",
+      kind: "email",
+      sourceId: "original-email-17",
+    };
     const parsed = BoardTaskSchema.parse({ ...task, organization_id: id, context_links: [source] });
-    const edit = BoardEditSchema.parse({ ...editOf(parsed), context_links: withMeetingAssociation(parsed.context_links, id) });
+    const edit = BoardEditSchema.parse({
+      ...editOf(parsed),
+      context_links: withMeetingAssociation(parsed.context_links, id),
+    });
     expect(edit.context_links[0]).toEqual(source);
     expect(withMeetingAssociation(edit.context_links, null)).toEqual([source]);
   });
