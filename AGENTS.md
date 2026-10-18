@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Prototype boundaries
+- Read Steward history only for the selected commitment UUID through the org/member activity reader with appIds ['steward']; activity records never qualify as completion receipts, because legacy writes are non-transactional.
 - Automatic Steward sync compares ordered transcript text, speaker identity and source offsets before classifying unchanged reads; changed nonempty transcripts remain stored without overwrite because segment count cannot prove content preservation.
 - Keep the Steward design preview in an isolated mockup route with fictional fixtures and in-memory state only; this allows review without reading private tasks or activating production work.
 - Steward mockup receipts are append-only fictional in-memory events, separate from production task history and session-import staging; repeated completion/reopen review must never mutate canonical task evidence.

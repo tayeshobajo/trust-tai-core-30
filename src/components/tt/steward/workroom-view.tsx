@@ -69,6 +69,8 @@ export interface WorkroomViewProps {
   /** Compact header navigation (suite rooms, account). */
   headerMenu: ReactNode;
   accountSlot: ReactNode;
+  /** Read-only selected-task history; no activity data in fictional fixtures. */
+  historyFor?: (commitmentId: string) => ReactNode;
 }
 
 function useCompact(): boolean {
@@ -196,10 +198,12 @@ function TaskDetail({
   meeting,
   row,
   commitment,
+  history,
 }: {
   meeting: WorkroomMeeting;
   row: WorkroomRow;
   commitment: Commitment | undefined;
+  history: ReactNode;
 }) {
   return (
     <div className="space-y-5 text-sm">
@@ -281,16 +285,14 @@ function TaskDetail({
         </p>
       </details>
 
-      <details className="border-t border-border pt-4">
-        <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
-          <History aria-hidden className="size-3.5" /> History
-        </summary>
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          {row.receipt
-            ? "The completion receipt above is the recorded event. Earlier history is unavailable in this view."
-            : "History unavailable in this view."}
-        </p>
-      </details>
+      {history ?? (
+        <details className="border-t border-border pt-4">
+          <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
+            <History aria-hidden className="size-3.5" /> History
+          </summary>
+          <p className="mt-2 text-[13px] text-muted-foreground">History unavailable in this view.</p>
+        </details>
+      )}
 
       <div className="flex flex-col gap-2 border-t border-border pt-4">
         <Link
@@ -298,8 +300,11 @@ function TaskDetail({
           params={{ conversationId: meeting.id }}
           className="text-primary underline underline-offset-4"
         >
-          Review, confirm and record completion in the meeting page
+          Review and confirm proposals in the meeting page
         </Link>
+        <p className="text-xs text-muted-foreground">
+          Verify and reopen controls are not available in this view yet.
+        </p>
         {meeting.sourceUrl ? (
           <a
             href={meeting.sourceUrl}
@@ -324,6 +329,7 @@ export function WorkroomView({
   sync,
   headerMenu,
   accountSlot,
+  historyFor,
 }: WorkroomViewProps) {
   const compact = useCompact();
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
@@ -456,7 +462,7 @@ export function WorkroomView({
       <div className="mx-4 border-t border-border py-4 text-xs text-muted-foreground">
         <p className="flex items-center gap-2">
           <LockKeyhole aria-hidden className="size-4" />
-          Completion is recorded only on the meeting review page.
+          Meeting review confirms proposals. Verify/reopen controls are not available here yet.
         </p>
       </div>
     </div>
@@ -737,8 +743,7 @@ export function WorkroomView({
       {sync.warnings.length > 0 ? (
         <details className="border-b border-border px-4 py-1.5 text-xs text-warning">
           <summary className="cursor-pointer">
-            {sync.warnings.length} sync caution{sync.warnings.length === 1 ? "" : "s"} — stored
-            transcripts preserved
+            {sync.warnings.length} sync caution{sync.warnings.length === 1 ? "" : "s"} — review details
           </summary>
           <ul className="mt-2 space-y-1">
             {sync.warnings.map((warning, index) => (
@@ -782,7 +787,7 @@ export function WorkroomView({
             aria-label="Selected task details"
             className="hidden min-w-0 overflow-y-auto border-l border-border p-6 xl:block"
           >
-            <TaskDetail meeting={meeting} row={row} commitment={rowCommitment} />
+            <TaskDetail meeting={meeting} row={row} commitment={rowCommitment} history={historyFor?.(row.id)} />
           </aside>
         ) : null}
       </div>
@@ -809,7 +814,7 @@ export function WorkroomView({
                 </SheetDescription>
               </SheetHeader>
               {row && meeting ? (
-                <TaskDetail meeting={meeting} row={row} commitment={rowCommitment} />
+                <TaskDetail meeting={meeting} row={row} commitment={rowCommitment} history={historyFor?.(row.id)} />
               ) : null}
             </SheetContent>
           </Sheet>
