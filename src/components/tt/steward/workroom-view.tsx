@@ -367,6 +367,11 @@ function TaskDetail({
               Bounded preparation for this task. A draft is review material only — it never
               completes the task, grants verified credit, or delivers the work itself.
             </p>
+            <p className="mt-2 rounded-md border border-border bg-card p-2 text-xs text-muted-foreground">
+              Shared blocker: the durable run bridge for canonical tasks has not been built or
+              reviewed yet, so every action below stays unavailable. The legacy runner must never
+              auto-complete shared board work.
+            </p>
             <ul className="mt-3 space-y-2">
               {preparationAvailability(row.boardTask).map(({ action, offered, because }) => (
                 <li key={action.id} className="rounded-md border border-border bg-card p-2.5">
@@ -382,9 +387,11 @@ function TaskDetail({
                     </TTButton>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{action.summary}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {offered ? because : `Not offered here: ${because}`}
-                  </p>
+                  {offered ? null : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Not offered here: {because}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>
