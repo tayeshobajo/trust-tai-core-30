@@ -53,7 +53,7 @@ describe("verification panel operation safety", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Verify at revision 3/ }));
     reject?.(new Error("network dropped"));
-    await screen.findByText(/Outcome unknown/);
+    await screen.findAllByText(/Outcome unknown/);
     // The user's words are preserved for correction/retry.
     expect((screen.getByLabelText(/Completion evidence note/) as HTMLTextAreaElement).value).toBe(
       "Fictional proof recorded for review",
@@ -135,7 +135,7 @@ describe("verification panel operation safety", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Verify at revision 3/ }));
     reject?.(new Error("network dropped"));
-    await screen.findByText(/Outcome unknown/);
+    await screen.findAllByText(/Outcome unknown/);
 
     /* Background refetch: the verify actually committed — status is now
        complete and the revision moved on. */
@@ -399,7 +399,7 @@ describe("proposal link/dismiss operation safety", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Link" }));
     reject?.(new Error("network dropped"));
-    await screen.findByText(/Outcome unknown/);
+    await screen.findAllByText(/Outcome unknown/);
     // Change the dropdown AFTER the failure — the retry must not follow it.
     fireEvent.change(
       screen.getByLabelText(/Link Fictional proposal statement to an existing task/),
@@ -435,7 +435,7 @@ describe("proposal link/dismiss operation safety", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     reject?.(new Error("network dropped"));
-    await screen.findByText(/Outcome unknown/);
+    await screen.findAllByText(/Outcome unknown/);
     fireEvent.change(screen.getByLabelText(/Dismiss reason for Fictional proposal statement/), {
       target: { value: "a completely different edited reason" },
     });
@@ -461,7 +461,7 @@ describe("proposal link/dismiss operation safety", () => {
       { target: { value: "00000000-0000-4000-8000-000000000099" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "Link" }));
-    await screen.findByText(/Outcome unknown/);
+    await screen.findAllByText(/Outcome unknown/);
     fireEvent.click(screen.getByRole("button", { name: /Retry same operation \(link\)/ }));
     await waitFor(() => expect(onLinkProposal).toHaveBeenCalledTimes(2));
     const first = onLinkProposal.mock.calls[0]?.[0] as { operationId: string };
@@ -537,7 +537,7 @@ describe("scope amendment controls", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Remove from scope/ }));
     reject?.(new Error("network dropped"));
-    await screen.findByText(/Outcome unknown/);
+    await screen.findAllByText(/Outcome unknown/);
     fireEvent.change(screen.getByLabelText(/Remove reason for task/i), {
       target: { value: "an edited reason that must not be sent" },
     });
