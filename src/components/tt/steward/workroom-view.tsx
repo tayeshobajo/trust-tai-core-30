@@ -42,6 +42,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { Commitment } from "@/domain/steward";
+import type { BoardTask } from "@/domain/cmd-tasks";
+import { displayTitleOf } from "@/domain/steward-display-title";
+import { preparationAvailability } from "@/domain/steward-preparation-actions";
 import type { WorkroomMeeting, WorkroomRow } from "@/domain/steward-workroom";
 import { cn } from "@/lib/utils";
 import { workroomRowKey } from "@/domain/steward-meeting-links";
@@ -81,6 +84,20 @@ export interface WorkroomViewProps {
   accountSlot: ReactNode;
   /** Read-only selected-task history; no activity data in fictional fixtures. */
   historyFor?: (commitmentId: string) => ReactNode;
+  /**
+   * Controlled selection (validated URL state on the live route) so reload
+   * and back/forward restore the same meeting and task. When omitted, the
+   * view keeps its own selection — used by isolated fictional fixtures.
+   */
+  selection?: { meetingId: string | null; rowKey: string | null };
+  onSelect?: (meetingId: string | null, rowKey: string | null) => void;
+  /**
+   * Open the canonical task editor focused on one field. Present only for
+   * board rows the viewer may edit; absent means the cells stay read-only.
+   */
+  onEditTaskField?: ((row: WorkroomRow, field: "owner" | "due" | "status") => void) | undefined;
+  /** Resolve a board task by id for dependency/parent labels in the detail panel. */
+  taskById?: ((id: string) => BoardTask | undefined) | undefined;
 }
 
 function useCompact(): boolean {
