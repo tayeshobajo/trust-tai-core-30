@@ -31,7 +31,7 @@ begin
       '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
       'prepare_handoff', 'a0000000-0000-0000-0000-000000000001',
       '[{"kind":"task_notes","id":"10000000-0000-0000-0000-000000000001"}]'::jsonb);
-  exception when raise_exception then conflicted := true; end;
+  exception when sqlstate 'P0002' then conflicted := true; end;
   perform public.test_assert(conflicted, 'same operation with changed payload conflicts');
 end $$;
 
@@ -107,9 +107,7 @@ begin
   begin
     perform public.steward_complete_canonical_run(rid, stale, 'stale worker artifact');
     raise exception 'FAILED: stale token completed';
-  exception when raise_exception then
-    if sqlerrm like 'FAILED%' then raise; end if;
-  end;
+  exception when sqlstate 'P0409' then null; end;
   perform public.test_assert(true, 'stale fencing token cannot complete');
   r := public.steward_complete_canonical_run(rid, fresh, 'current worker artifact');
   perform public.test_assert(r.status = 'complete'
