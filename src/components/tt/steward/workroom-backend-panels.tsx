@@ -569,7 +569,8 @@ export function VerificationPanel({
        first captured — regardless of refreshed state or edits to the note
        field since. */
     if (!attempt.pending) return;
-    await dispatch(attempt.pending.payload, attempt.pending);
+    const result = await dispatch(attempt.pending.payload, attempt.pending);
+    if (result.kind === "verified" || result.kind === "reopened") setNote("");
   }
 
   return (
