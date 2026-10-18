@@ -1072,11 +1072,17 @@ export function WorkroomView({
               <p className="text-sm font-semibold">
                 {linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)
                   ? "Required-work scope unavailable"
-                  : meeting.score === 100
-                    ? "All agreed work verified"
-                    : "To reach 100/100"}
+                  : meeting.agreed === 0 && meeting.rows.length > 0
+                    ? `${meeting.rows.length} recorded task${meeting.rows.length === 1 ? "" : "s"}; scope review pending`
+                    : meeting.score === 100
+                      ? "All agreed work verified"
+                      : "To reach 100/100"}
               </p>
-              <p className="mt-1 text-muted-foreground">{meeting.remark}</p>
+              <p className="mt-1 text-muted-foreground">
+                {meeting.agreed === 0 && meeting.rows.length > 0
+                  ? "Recorded work is listed, but nothing is confirmed as agreed meeting work yet, and verification is unavailable until the guarded atomic review exists. Reaching 100 is not possible today."
+                  : meeting.remark}
+              </p>
               {meeting.score !== 100 ? (
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   100 requires every confirmed promise and manually required task verified,
@@ -1229,6 +1235,7 @@ export function WorkroomView({
               row={row}
               commitment={rowCommitment}
               history={rowHistory}
+              taskById={taskById}
             />
           </aside>
         ) : null}
@@ -1275,6 +1282,7 @@ export function WorkroomView({
                   row={row}
                   commitment={rowCommitment}
                   history={rowHistory}
+                  taskById={taskById}
                 />
               ) : null}
             </SheetContent>
