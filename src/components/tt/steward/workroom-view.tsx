@@ -438,8 +438,9 @@ function TaskDetail({
 }) {
   return (
     <div className="space-y-5 text-sm">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">{row.what}</h2>
+      <div className="rounded-xl border border-cloud-line bg-cloud px-4 py-3.5">
+        <p className="tt-eyebrow">Summary</p>
+        <h2 className="mt-1.5 text-base font-semibold text-foreground">{row.what}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           {row.kind === "required-task"
             ? "Manually added required work · durable task identity, not a transcript commitment"
@@ -492,9 +493,9 @@ function TaskDetail({
               Verified completion needs the guarded atomic review, which is not available yet.
             </p>
           )}
-          <div>
-            <p className="font-medium">Next action</p>
-            <p className="whitespace-pre-wrap break-words">
+          <div className="rounded-lg border-l-4 border-royal bg-royal-wash px-4 py-3.5">
+            <h3 className="font-semibold text-foreground">Next action</h3>
+            <p className="mt-1.5 whitespace-pre-wrap break-words">
               {row.boardTask.next_action || "No next action recorded."}
             </p>
           </div>
@@ -532,9 +533,17 @@ function TaskDetail({
             </div>
           ) : null}
           {row.boardTask.notes ? (
-            <details>
-              <summary className="cursor-pointer font-medium text-foreground">Task notes</summary>
-              <p className="mt-1 whitespace-pre-wrap break-words">{row.boardTask.notes}</p>
+            <details
+              className="rounded-lg border px-4 py-1.5"
+              style={{
+                backgroundColor: "color-mix(in oklab, var(--tt-app-roadmap) 7%, transparent)",
+                borderColor: "color-mix(in oklab, var(--tt-app-roadmap) 25%, transparent)",
+              }}
+            >
+              <summary className="-mx-2 cursor-pointer rounded-md px-2 py-2 font-medium text-foreground focus-visible:outline-2 focus-visible:outline-royal">
+                Task notes
+              </summary>
+              <p className="mt-1 whitespace-pre-wrap break-words pb-2">{row.boardTask.notes}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Notes are what a person recorded. A link mentioned in notes has not been opened or
                 checked by Steward.
@@ -542,14 +551,20 @@ function TaskDetail({
             </details>
           ) : null}
           {row.boardTask.acceptance_criteria.length ? (
-            <div>
-              <p className="font-medium">Planned acceptance criteria</p>
-              <ul className="list-disc pl-4">
+            <div
+              className="rounded-lg border px-4 py-3"
+              style={{
+                backgroundColor: "color-mix(in oklab, var(--warning) 7%, transparent)",
+                borderColor: "color-mix(in oklab, var(--warning) 30%, transparent)",
+              }}
+            >
+              <h3 className="font-semibold text-foreground">Planned acceptance criteria</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-4">
                 {row.boardTask.acceptance_criteria.map((value, index) => (
                   <li key={index}>{value}</li>
                 ))}
               </ul>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Planned outcomes, not completion proof.
               </p>
             </div>
