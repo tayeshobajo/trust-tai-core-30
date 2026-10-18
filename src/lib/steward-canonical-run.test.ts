@@ -138,7 +138,7 @@ describe("requestCanonicalRun", () => {
     const result = await requestCanonicalRun(repo, baseRequest);
     expect(result.kind).toBe("queued");
     if (result.kind === "queued") {
-      const entry = result.run.inputSnapshot[0];
+      const entry = result.run.inputSnapshot[0]!;
       expect(entry.content).toBe("stored transcript content");
       expect(entry.contentDigest).toMatch(/^[0-9a-f]{64}$/);
       expect(entry.revision).toBe(1);
