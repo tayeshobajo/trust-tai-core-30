@@ -198,7 +198,14 @@ function ScoreCard({
               : scopeUnavailable
                 ? "Required-work scope unavailable"
                 : value === null
-                  ? "Nothing confirmed yet"
+                  ? (() => {
+                      const recorded =
+                        (meeting.requiredWork?.denominator ?? meeting.agreed) +
+                        (meeting.linkedWork?.total ?? 0);
+                      return recorded > 0
+                        ? `${recorded} recorded tasks · scope review pending`
+                        : "Nothing confirmed yet";
+                    })()
                   : `${meeting.done} of ${meeting.requiredWork?.denominator ?? meeting.agreed} ${meeting.requiredWork ? "required" : "agreed"} tasks verified`}
           </p>
         </div>
@@ -214,7 +221,7 @@ function ScoreCard({
           <rect width={value ?? 0} height="8" rx="4" fill="currentColor" />
         </svg>
         <span className="text-[10px] text-muted-foreground">
-          {value === null ? "Unknown" : `${value}%`}
+          {value === null ? "not verified yet" : `${value}%`}
         </span>
       </div>
       <p className="mt-1 text-[10px] text-muted-foreground">
