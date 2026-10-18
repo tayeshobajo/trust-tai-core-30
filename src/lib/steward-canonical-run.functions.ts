@@ -22,7 +22,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireTrustTaiAuth } from "./steward-trust-tai-auth.server";
+import { trustTaiWriter, trustTaiWriterConfigured } from "./trust-tai-writer.server";
 import { createSupabaseCanonicalRunRepository } from "./steward-canonical-run.supabase";
 import {
   authorizeWorkerEndpoint,
@@ -69,7 +70,7 @@ const requestInputSchema = z.object({
 });
 
 export const requestCanonicalRunFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireTrustTaiAuth])
   .inputValidator((data) => requestInputSchema.parse(data))
   .handler(async ({ data, context }): Promise<CanonicalRunRequestState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
@@ -118,7 +119,7 @@ export const requestCanonicalRunFn = createServerFn({ method: "POST" })
  * re-validates the run's original requester on every transition.
  */
 export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireTrustTaiAuth])
   .inputValidator((data) => z.object({ runId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }): Promise<CanonicalRunWorkerState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
@@ -149,8 +150,17 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
       getRequest()
         .headers.get("authorization")
         ?.replace(/^Bearer\s+/i, "") ?? "";
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const repo = createSupabaseCanonicalRunRepository(supabaseAdmin);
+    // The pinned Trust Tai writer (service key against the Trust Tai
+    // project ONLY) — never the generic admin client, never another
+    // database. Absence of the service key fails honestly as unavailable.
+    if (!trustTaiWriterConfigured()) {
+      return {
+        kind: "unavailable",
+        reason:
+          "The worker's server access to the workspace database is not set up, so no run was claimed or executed.",
+      };
+    }
+    const repo = createSupabaseCanonicalRunRepository(trustTaiWriter());
     const result = await executeCanonicalRun(
       repo,
       createCanonicalRunProvider({ token, organizationId: run.organizationId }),
@@ -160,7 +170,7 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
   });
 
 export const getCanonicalRunCapability = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireTrustTaiAuth])
   .handler(async (): Promise<CanonicalRunCapabilityState> => {
     if (!capabilityEnabled()) return DISABLED;
     // Enabled flag without a configured provider is still unavailable —

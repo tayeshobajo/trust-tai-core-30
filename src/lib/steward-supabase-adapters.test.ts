@@ -187,13 +187,7 @@ describe("Supabase adapters match the proposed SQL contract", () => {
       superseded_at: null,
     });
     const repo = createSupabaseCoverageRepository(client as never);
-    await repo.attest({
-      orgId: "o1",
-      conversationId: "c1",
-      transcriptHash: "caller-hash-must-not-be-sent",
-      scopeVersion: 99,
-      actorId: "u1",
-    });
+    await repo.attest({ orgId: "o1", conversationId: "c1" });
     expect(calls[0]!.fn).toBe("steward_attest_coverage");
     expect(Object.keys(calls[0]!.args).sort()).toEqual(
       sqlParams("003_coverage_attestation.up.sql", "steward_attest_coverage").sort(),

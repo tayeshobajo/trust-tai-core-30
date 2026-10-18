@@ -22,19 +22,11 @@ export interface CoverageAttestation {
 
 /** Minimal repository contract over the proposed SQL functions. */
 export interface CoverageRepository {
-  attest(input: {
-    orgId: string;
-    conversationId: string;
-    transcriptHash: string;
-    scopeVersion: number;
-    actorId: string;
-  }): Promise<CoverageAttestation>;
-  currentCoverage(input: {
-    orgId: string;
-    conversationId: string;
-    transcriptHash: string;
-    scopeVersion: number;
-  }): Promise<boolean>;
+  /* The transcript hash and scope version are derived INSIDE the SQL from
+     the stored conversation — the caller supplies neither, so coverage can
+     never be attested against a caller-invented hash. */
+  attest(input: { orgId: string; conversationId: string }): Promise<CoverageAttestation>;
+  currentCoverage(input: { orgId: string; conversationId: string }): Promise<boolean>;
 }
 
 export type CoverageState =

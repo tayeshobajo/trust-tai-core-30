@@ -44,7 +44,114 @@ import {
 import type { Commitment } from "@/domain/steward";
 import type { BoardTask } from "@/domain/cmd-tasks";
 import { displayTitleOf } from "@/domain/steward-display-title";
-import { preparationAvailability } from "@/domain/steward-preparation-actions";
+import { PREPARATION_ACTIONS, preparationAvailability } from "@/domain/steward-preparation-actions";
+import {
+  AiPreparationPanel,
+  ScopeReviewPanel,
+  VerificationPanel,
+  type ActionOutcome,
+  type CapabilityState,
+  type CoverageRead,
+  type ProposalReviewRead,
+  type RunsRead,
+  type ScopeRead,
+  type VerificationRead,
+} from "./workroom-backend-panels";
+
+/**
+ * Optional staged-backend wiring for the workroom. When absent (fictional
+ * fixtures, or before the data layer is connected) the view renders the
+ * honest staged/not-activated states exactly as before. Every capability
+ * arrives from the server; while flags are OFF each carries the server's
+ * unavailable reason and no mutation control is reachable.
+ */
+export interface WorkroomBackend {
+  capabilities: {
+    preparation: CapabilityState;
+    verification: CapabilityState;
+    coverage: CapabilityState;
+    scope: CapabilityState;
+    proposals: CapabilityState;
+  };
+  runsFor?: (taskId: string) => RunsRead | undefined;
+  verificationFor?: (taskId: string) => VerificationRead | undefined;
+  meetingState?: (
+    meetingId: string,
+  ) => { scope?: ScopeRead; coverage?: CoverageRead; proposals?: ProposalReviewRead } | undefined;
+  onRequestRun?: (input: {
+    taskId: string;
+    actionId: string;
+    inputRefs: { kind: "transcript" | "task_notes"; id: string }[];
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+  onExecuteRun?: (runId: string) => Promise<ActionOutcome>;
+  onVerify?: (input: {
+    taskId: string;
+    note: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+  onReopen?: (input: {
+    taskId: string;
+    note: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+  onAttestCoverage?: (meetingId: string) => Promise<ActionOutcome>;
+  onSyncProposals?: (meetingId: string) => Promise<ActionOutcome>;
+  onLinkProposal?: (input: {
+    meetingId: string;
+    proposalId: string;
+    taskId: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+  onDismissProposal?: (input: {
+    meetingId: string;
+    proposalId: string;
+    reason: string;
+    operationId: string;
+  }) => Promise<ActionOutcome>;
+}
+
+/**
+ * Server-derived score for one meeting: 100 only when the agreed scope is
+ * nonzero, every required item is verified, coverage is confirmed current,
+ * and no proposals are pending. Any failed/partial read yields unknown.
+ * Returns null when the staged contracts are not active and the view
+ * should keep its existing local derivation.
+ */
+export function serverMeetingScore(state: {
+  scope?: ScopeRead;
+  coverage?: CoverageRead;
+  proposals?: ProposalReviewRead;
+}): { value: number | null; label: string } | null {
+  const { scope, coverage, proposals } = state;
+  if (!scope || scope.kind === "unavailable") return null;
+  if (scope.kind === "loading" || coverage?.kind === "loading" || proposals?.kind === "loading") {
+    return { value: null, label: "Reading recorded scope…" };
+  }
+  if (scope.kind === "rejected")
+    return { value: null, label: `Scope unavailable — ${scope.message}` };
+  if (coverage?.kind === "rejected") {
+    return { value: null, label: `Coverage unavailable — ${coverage.message}` };
+  }
+  if (proposals?.kind === "rejected") {
+    return { value: null, label: `Proposal state unavailable — ${proposals.message}` };
+  }
+  const { denominator, verified, pendingProposals } = scope.counts;
+  const coverageCurrent = coverage?.kind === "ready" ? coverage.current : false;
+  if (denominator === 0) return { value: 0, label: "No agreed scope recorded yet" };
+  const full = verified === denominator && coverageCurrent && pendingProposals === 0;
+  /* A displayed 100 would read as "done" even with unconfirmed coverage or
+     pending proposals — cap below 100 until every condition holds. */
+  const value = full ? 100 : Math.min(Math.round((verified / denominator) * 100), 99);
+  if (!full) {
+    const blockers: string[] = [];
+    if (verified < denominator) blockers.push(`${denominator - verified} not verified`);
+    if (!coverageCurrent) blockers.push("coverage not confirmed");
+    if (pendingProposals > 0) blockers.push(`${pendingProposals} proposals pending`);
+    return { value, label: `${verified} of ${denominator} verified — ${blockers.join("; ")}` };
+  }
+  return { value: 100, label: "All agreed work verified and coverage confirmed" };
+}
 import type { WorkroomMeeting, WorkroomRow } from "@/domain/steward-workroom";
 import { cn } from "@/lib/utils";
 import { workroomRowKey } from "@/domain/steward-meeting-links";
@@ -100,6 +207,8 @@ export interface WorkroomViewProps {
   mayEditTask?: ((task: BoardTask) => boolean) | undefined;
   /** Resolve a board task by id for dependency/parent labels in the detail panel. */
   taskById?: ((id: string) => BoardTask | undefined) | undefined;
+  /** Staged canonical-backend wiring; absent in fictional fixtures. */
+  backend?: WorkroomBackend;
 }
 
 function useCompact(): boolean {
@@ -144,14 +253,22 @@ function ScoreCard({
   meeting,
   receiptsFailed,
   scopeUnavailable = false,
+  serverScore,
 }: {
   meeting: WorkroomMeeting;
   receiptsFailed: boolean;
   scopeUnavailable?: boolean;
+  /** Server-derived score from durable scope/coverage/proposals, when the
+      staged contracts are active. Overrides the local derivation. */
+  serverScore?: { value: number | null; label: string } | null;
 }) {
   /* When receipts could not be read, a numeric score would be computed from
      an empty map — a definitive-looking lie. Show it as unavailable. */
-  const value = receiptsFailed || scopeUnavailable ? null : meeting.score;
+  const value = serverScore
+    ? serverScore.value
+    : receiptsFailed || scopeUnavailable
+      ? null
+      : meeting.score;
   const full = value === 100;
   return (
     <div
@@ -193,20 +310,22 @@ function ScoreCard({
             {value === null ? "—/100" : `${value}/100`}
           </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
-            {receiptsFailed
-              ? "Verification unavailable — receipts could not be read"
-              : scopeUnavailable
-                ? "Required-work scope unavailable"
-                : value === null
-                  ? (() => {
-                      const recorded =
-                        (meeting.requiredWork?.denominator ?? meeting.agreed) +
-                        (meeting.linkedWork?.total ?? 0);
-                      return recorded > 0
-                        ? `${recorded} recorded tasks · scope review pending`
-                        : "Nothing confirmed yet";
-                    })()
-                  : `${meeting.done} of ${meeting.requiredWork?.denominator ?? meeting.agreed} ${meeting.requiredWork ? "required" : "agreed"} tasks verified`}
+            {serverScore
+              ? serverScore.label
+              : receiptsFailed
+                ? "Verification unavailable — receipts could not be read"
+                : scopeUnavailable
+                  ? "Required-work scope unavailable"
+                  : value === null
+                    ? (() => {
+                        const recorded =
+                          (meeting.requiredWork?.denominator ?? meeting.agreed) +
+                          (meeting.linkedWork?.total ?? 0);
+                        return recorded > 0
+                          ? `${recorded} recorded tasks · scope review pending`
+                          : "Nothing confirmed yet";
+                      })()
+                    : `${meeting.done} of ${meeting.requiredWork?.denominator ?? meeting.agreed} ${meeting.requiredWork ? "required" : "agreed"} tasks verified`}
           </p>
         </div>
       </div>
@@ -234,18 +353,56 @@ function ScoreCard({
 
 /* ---------------------------------------------------------- detail panel */
 
+/**
+ * Assistant execution status, separate from the accountable human. Wired:
+ * the latest persisted run state. Unwired: the honest staged state.
+ */
+function AssistantExecutionLine({
+  backend,
+  taskId,
+}: {
+  backend?: WorkroomBackend | undefined;
+  taskId: string;
+}) {
+  const runs = backend?.runsFor?.(taskId);
+  if (backend?.capabilities.preparation.kind === "enabled" && runs?.kind === "ready") {
+    const latest = runs.runs[0];
+    if (latest) {
+      const label =
+        latest.status === "complete"
+          ? "Draft prepared — awaiting the accountable person's review"
+          : latest.status === "failed"
+            ? latest.failureReason?.startsWith("uncertain:")
+              ? "Outcome uncertain — a deliberate new request is required"
+              : `Failed — ${latest.failureReason ?? "no reason recorded"}`
+            : latest.status === "running"
+              ? "Running"
+              : "Queued";
+      return <p className="text-muted-foreground">Assistant execution: {label}</p>;
+    }
+    return <p className="text-muted-foreground">Assistant execution: Not started</p>;
+  }
+  return (
+    <p className="text-muted-foreground">
+      Assistant execution: Not started — preparation unavailable (run bridge staged, not activated)
+    </p>
+  );
+}
+
 function TaskDetail({
   meeting,
   row,
   commitment,
   history,
   taskById,
+  backend,
 }: {
   meeting: WorkroomMeeting;
   row: WorkroomRow;
   commitment: Commitment | undefined;
   history: ReactNode;
   taskById?: ((id: string) => BoardTask | undefined) | undefined;
+  backend?: WorkroomBackend | undefined;
 }) {
   return (
     <div className="space-y-5 text-sm">
@@ -263,10 +420,7 @@ function TaskDetail({
           {row.owner.verified ? "" : " · not linked to a teammate"}
         </p>
         {row.boardTask ? (
-          <p className="text-muted-foreground">
-            Assistant execution: Not started — preparation unavailable (run bridge staged, not
-            activated)
-          </p>
+          <AssistantExecutionLine backend={backend} taskId={row.boardTask.id} />
         ) : null}
         <p className="text-muted-foreground">
           Due: {row.due.label}
@@ -286,9 +440,29 @@ function TaskDetail({
             </p>
           ) : null}
           <p className="text-xs text-muted-foreground">
-            Recorded board status is work progress, not verified completion. Verified completion
-            needs the guarded atomic review, which is not available yet.
+            Recorded board status is work progress, not verified completion.
           </p>
+          {backend ? (
+            <VerificationPanel
+              capability={backend.capabilities.verification}
+              state={backend.verificationFor?.(row.boardTask.id)}
+              task={row.boardTask}
+              onVerify={
+                backend.onVerify
+                  ? (input) => backend.onVerify!({ taskId: row.boardTask!.id, ...input })
+                  : undefined
+              }
+              onReopen={
+                backend.onReopen
+                  ? (input) => backend.onReopen!({ taskId: row.boardTask!.id, ...input })
+                  : undefined
+              }
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Verified completion needs the guarded atomic review, which is not available yet.
+            </p>
+          )}
           <div>
             <p className="font-medium">Next action</p>
             <p className="whitespace-pre-wrap break-words">
@@ -360,15 +534,33 @@ function TaskDetail({
         <p className="flex items-center gap-1.5 font-medium text-foreground">
           <Sparkles aria-hidden className="size-3.5 text-royal" /> AI help
         </p>
-        {row.boardTask ? (
+        {row.boardTask && backend ? (
+          <AiPreparationPanel
+            capability={backend.capabilities.preparation}
+            runs={backend.runsFor?.(row.boardTask.id)}
+            task={row.boardTask}
+            meetingId={meeting.id}
+            actions={PREPARATION_ACTIONS.map((a) => ({
+              id: a.id,
+              label: a.label,
+              summary: a.summary,
+            }))}
+            onRequestRun={
+              backend.onRequestRun
+                ? (input) => backend.onRequestRun!({ taskId: row.boardTask!.id, ...input })
+                : undefined
+            }
+            onExecuteRun={backend.onExecuteRun}
+          />
+        ) : row.boardTask ? (
           <>
             <p className="mt-2 text-[13px] text-muted-foreground">
               Bounded preparation for this task. A draft is review material only — it never
               completes the task, grants verified credit, or delivers the work itself.
             </p>
             <p className="mt-2 rounded-md border border-border bg-card p-2 text-xs text-muted-foreground">
-              Shared blocker: the durable run bridge for canonical tasks has not been built or
-              reviewed yet, so every action below stays unavailable. The legacy runner must never
+              Shared blocker: the durable run bridge for canonical tasks is staged but not
+              activated, so every action below stays unavailable. The legacy runner must never
               auto-complete shared board work.
             </p>
             <ul className="mt-3 space-y-2">
@@ -582,6 +774,7 @@ export function WorkroomView({
   onEditTaskField,
   mayEditTask,
   taskById,
+  backend,
 }: WorkroomViewProps) {
   const viewportCompact = useCompact();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -800,8 +993,48 @@ export function WorkroomView({
           meeting={meeting}
           receiptsFailed={receiptsFailed}
           scopeUnavailable={!!linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)}
+          serverScore={
+            backend ? serverMeetingScore(backend.meetingState?.(meeting.id) ?? {}) : null
+          }
         />
       </div>
+
+      {backend ? (
+        <details className="mt-3 rounded-md border border-border bg-card p-3">
+          <summary className="cursor-pointer text-xs font-medium text-foreground">
+            Scope review — coverage, recorded required work, extracted proposals
+          </summary>
+          <div className="mt-2">
+            <ScopeReviewPanel
+              scope={backend.meetingState?.(meeting.id)?.scope}
+              coverage={backend.meetingState?.(meeting.id)?.coverage}
+              proposals={backend.meetingState?.(meeting.id)?.proposals}
+              scopeCapability={backend.capabilities.scope}
+              coverageCapability={backend.capabilities.coverage}
+              proposalCapability={backend.capabilities.proposals}
+              linkTargets={meeting.rows
+                .filter((r) => r.boardTask)
+                .map((r) => ({ id: r.boardTask!.id, title: r.boardTask!.title }))}
+              onAttestCoverage={
+                backend.onAttestCoverage ? () => backend.onAttestCoverage!(meeting.id) : undefined
+              }
+              onSyncProposals={
+                backend.onSyncProposals ? () => backend.onSyncProposals!(meeting.id) : undefined
+              }
+              onLinkProposal={
+                backend.onLinkProposal
+                  ? (input) => backend.onLinkProposal!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
+              onDismissProposal={
+                backend.onDismissProposal
+                  ? (input) => backend.onDismissProposal!({ meetingId: meeting.id, ...input })
+                  : undefined
+              }
+            />
+          </div>
+        </details>
+      ) : null}
 
       {meeting.openProposals > 0 ? (
         <Link
@@ -1257,6 +1490,7 @@ export function WorkroomView({
               commitment={rowCommitment}
               history={rowHistory}
               taskById={taskById}
+              backend={backend}
             />
           </aside>
         ) : null}
@@ -1304,6 +1538,7 @@ export function WorkroomView({
                   commitment={rowCommitment}
                   history={rowHistory}
                   taskById={taskById}
+                  backend={backend}
                 />
               ) : null}
             </SheetContent>
