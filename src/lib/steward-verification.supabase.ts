@@ -188,7 +188,11 @@ export async function readMeetingVerificationProjection(
 export function foldVerificationProjection(
   requestedIds: string[],
   rows: MeetingVerificationProjectionRow[],
-): { verified: Record<string, boolean>; byTask: Record<string, MeetingVerificationProjectionRow>; unknown: string[] } {
+): {
+  verified: Record<string, boolean>;
+  byTask: Record<string, MeetingVerificationProjectionRow>;
+  unknown: string[];
+} {
   const requested = new Set(requestedIds);
   const verified: Record<string, boolean> = {};
   const byTask: Record<string, MeetingVerificationProjectionRow> = {};
@@ -236,7 +240,8 @@ export async function readTaskVerificationHistory(
       mapReceipt({
         ...row,
         kind: row.kind === "reopen" ? "reopen" : "verify",
-        task_revision_after: typeof row.task_revision_after === "number" ? row.task_revision_after : -1,
+        task_revision_after:
+          typeof row.task_revision_after === "number" ? row.task_revision_after : -1,
       }),
     );
   return { receipts, truncated, error: null };

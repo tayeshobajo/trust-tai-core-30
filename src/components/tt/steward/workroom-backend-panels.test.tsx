@@ -548,7 +548,12 @@ describe("receipt-backed verified state", () => {
     render(
       <VerificationPanel
         capability={enabled}
-        state={{ kind: "ready", verified: false, task: { status: "open", revision: 9 }, receipts: [] }}
+        state={{
+          kind: "ready",
+          verified: false,
+          task: { status: "open", revision: 9 },
+          receipts: [],
+        }}
         task={{ ...fictionalTask, revision: 3 } as never}
         onVerify={onVerify}
         onReopen={vi.fn()}

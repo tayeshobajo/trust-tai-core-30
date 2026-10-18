@@ -150,7 +150,10 @@ describe("readTaskVerificationHistory", () => {
 
   it("exactly 100 rows is not truncated", async () => {
     const rows = Array.from({ length: 100 }, (_, k) => receiptRow(100 - k));
-    const { client } = fakeClient({ rpc: { data: [], error: null }, history: { data: rows, error: null } });
+    const { client } = fakeClient({
+      rpc: { data: [], error: null },
+      history: { data: rows, error: null },
+    });
     const history = await readTaskVerificationHistory(client, "o1", T1);
     expect(history.truncated).toBe(false);
     expect(history.receipts).toHaveLength(100);
