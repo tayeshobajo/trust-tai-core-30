@@ -259,20 +259,105 @@ export async function requestCanonicalRun(
  * null when authorized, else a denial reason that never discloses whether
  * the run exists.
  */
+// Mirrors the SQL authority rules in 001_canonical_runs.up.sql exactly:
+// private.steward_user_can_write (active membership + write role) AND
+// business-visibility task AND private.steward_user_has_task_authority
+// (creator, current owner, or org admin; NULL-safe). Personal tasks are
+// out of pilot scope and fail closed for everyone, including the owner.
+const WORKER_WRITE_ROLES = new Set([
+  "owner",
+  "admin",
+  "leadership",
+  "project_lead",
+  "client_support",
+  "team_member",
+  "member",
+]);
+const WORKER_ADMIN_ROLES = new Set(["owner", "admin"]);
+
 export function authorizeRunWorkerCaller(input: {
   run: { organizationId: string; taskId: string } | null;
-  isActiveMember: boolean;
-  task: { visibility: string; ownerUserId: string | null } | null;
+  membership: { status: string; role: string } | null;
+  task: { taskVisibility: string; ownerUserId: string | null; createdBy: string | null } | null;
   callerId: string;
 }): string | null {
   const denied = "this run is not available to you";
   if (!input.run) return denied;
-  if (!input.isActiveMember) return denied;
-  if (!input.task) return denied;
-  if (input.task.visibility === "personal" && input.task.ownerUserId !== input.callerId) {
+  const membership = input.membership;
+  if (!membership || membership.status !== "active" || !WORKER_WRITE_ROLES.has(membership.role)) {
+    return denied;
+  }
+  const task = input.task;
+  if (!task || task.taskVisibility !== "business") return denied;
+  const isAdmin = WORKER_ADMIN_ROLES.has(membership.role);
+  if (task.createdBy !== input.callerId && task.ownerUserId !== input.callerId && !isAdmin) {
     return denied;
   }
   return null;
+}
+
+/**
+ * Full worker-endpoint authorization: performs the three RLS-scoped reads
+ * with the ACTUAL column names (steward_tasks.task_visibility, not
+ * "visibility") and composes authorizeRunWorkerCaller. A foreign or
+ * nonexistent runId is indistinguishable — RLS returns nothing and the
+ * caller learns only "not available to you". No privileged client is
+ * touched before this returns null.
+ */
+export async function authorizeWorkerEndpoint(
+  rls: {
+    from: (table: string) => {
+      select: (cols: string) => {
+        eq: (col: string, val: string) => {
+          eq: (col: string, val: string) => {
+            eq: (col: string, val: string) => {
+              maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
+            };
+            maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
+          };
+          maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
+        };
+      };
+    };
+  },
+  input: { runId: string; callerId: string },
+): Promise<{ run: { organizationId: string; taskId: string } } | { denial: string }> {
+  const { data: run } = await rls
+    .from("steward_canonical_runs")
+    .select("id, organization_id, task_id")
+    .eq("id", input.runId)
+    .maybeSingle();
+  if (!run) return { denial: "this run is not available to you" };
+  const organizationId = run["organization_id"] as string;
+  const taskId = run["task_id"] as string;
+  const { data: membership } = await rls
+    .from("organization_memberships")
+    .select("status, role")
+    .eq("organization_id", organizationId)
+    .eq("user_id", input.callerId)
+    .maybeSingle();
+  const { data: task } = await rls
+    .from("steward_tasks")
+    .select("task_visibility, owner_user_id, created_by")
+    .eq("organization_id", organizationId)
+    .eq("id", taskId)
+    .maybeSingle();
+  const denial = authorizeRunWorkerCaller({
+    run: { organizationId, taskId },
+    membership: membership
+      ? { status: membership["status"] as string, role: membership["role"] as string }
+      : null,
+    task: task
+      ? {
+          taskVisibility: task["task_visibility"] as string,
+          ownerUserId: (task["owner_user_id"] as string | null) ?? null,
+          createdBy: (task["created_by"] as string | null) ?? null,
+        }
+      : null,
+    callerId: input.callerId,
+  });
+  if (denial) return { denial };
+  return { run: { organizationId, taskId } };
 }
 
 export type ExecuteCanonicalRunResult =
