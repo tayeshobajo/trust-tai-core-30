@@ -485,8 +485,10 @@ begin
 end $$;
 -- Normalize state: earlier suites may have left this item removed.
 reset role;
+select set_config('steward.scope_mutation', 'on', false);
 update public.steward_scope_items set removed_at = null, removal_reason = null
  where id = current_setting('tmp.owner_item')::uuid;
+select set_config('steward.scope_mutation', 'off', false);
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
