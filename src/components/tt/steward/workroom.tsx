@@ -291,6 +291,7 @@ function StewardWorkroomContent({
       {...(selection ? { selection } : {})}
       {...(onSelect ? { onSelect } : {})}
       taskById={taskById}
+      mayEditTask={(task) => mayEditBoardTask(task, actor)}
       onEditTaskField={(row, field) => {
         const task = row.boardTask;
         if (!task || !mayEditBoardTask(task, actor)) return;
@@ -349,5 +350,23 @@ function StewardWorkroomContent({
       }
       accountSlot={null}
     />
+    {editing ? (
+      <TaskEditor
+        key={`${editing.task.id}:${editing.task.revision}`}
+        task={editing.task}
+        scope="business"
+        identity={identity}
+        tasks={business.data?.tasks ?? []}
+        people={choices.data?.people ?? []}
+        meetingOptions={meetingRead.data?.meetings ?? []}
+        meetingsLoading={meetingRead.isPending}
+        meetingsError={meetingRead.isError}
+        meetingsTruncated={meetingRead.data?.truncated ?? false}
+        focusField={editing.field}
+        onClose={() => setEditing(null)}
+        onSave={saveEdit}
+      />
+    ) : null}
+    </>
   );
 }

@@ -96,6 +96,8 @@ export interface WorkroomViewProps {
    * board rows the viewer may edit; absent means the cells stay read-only.
    */
   onEditTaskField?: ((row: WorkroomRow, field: "owner" | "due" | "status") => void) | undefined;
+  /** Creator/assignee/admin check; cells are actionable only when this passes. */
+  mayEditTask?: ((task: BoardTask) => boolean) | undefined;
   /** Resolve a board task by id for dependency/parent labels in the detail panel. */
   taskById?: ((id: string) => BoardTask | undefined) | undefined;
 }
