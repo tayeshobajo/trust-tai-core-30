@@ -336,19 +336,88 @@ function TaskDetail({
         <p className="flex items-center gap-1.5 font-medium text-foreground">
           <Sparkles aria-hidden className="size-3.5 text-royal" /> AI help
         </p>
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          Steward can read this meeting for meaning and prepare a review. It never completes,
-          assigns or sends anything on its own.
-        </p>
-        <TTButton asChild variant="secondary" className="mt-3">
-          <Link
-            to="/modules/steward/meetings/$conversationId"
-            params={{ conversationId: meeting.id }}
-          >
-            Prepare review
-          </Link>
-        </TTButton>
+        {row.boardTask ? (
+          <>
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              Bounded preparation for this task. A draft is review material only — it never
+              completes the task, grants verified credit, or delivers the work itself.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {preparationAvailability(row.boardTask).map(({ action, offered, because }) => (
+                <li key={action.id} className="rounded-md border border-border bg-card p-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[13px] font-medium text-foreground">{action.label}</p>
+                    <TTButton type="button" variant="secondary" className="h-8 px-2 text-xs" disabled>
+                      Unavailable
+                    </TTButton>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{action.summary}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {offered ? because : `Not offered here: ${because}`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              Steward can read this meeting for meaning and prepare a review. It never completes,
+              assigns or sends anything on its own.
+            </p>
+            <TTButton asChild variant="secondary" className="mt-3">
+              <Link
+                to="/modules/steward/meetings/$conversationId"
+                params={{ conversationId: meeting.id }}
+              >
+                Prepare review
+              </Link>
+            </TTButton>
+          </>
+        )}
       </div>
+
+      {row.boardTask ? (
+        <details className="border-t border-border pt-4">
+          <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-foreground">
+            <List aria-hidden className="size-3.5" /> Inputs and audit
+          </summary>
+          <div className="mt-2 space-y-2 text-[13px]">
+            {row.boardTask.context_links.length ? (
+              <ul className="space-y-2">
+                {row.boardTask.context_links.map((link, index) => {
+                  const href = taskContextHref(link.url);
+                  return (
+                    <li key={index} className="break-words">
+                      {href ? (
+                        <a
+                          className="text-royal underline"
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {link.label || href}
+                        </a>
+                      ) : (
+                        <span>{link.label || "Link unavailable"}</span>
+                      )}
+                      <span className="block text-xs text-muted-foreground">
+                        Recorded link — Steward has not opened or checked its contents.
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground">No input links recorded.</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Revision {row.boardTask.revision} · updated {row.boardTask.updated_at.slice(0, 10)} ·
+              created by {row.boardTask.created_by === row.boardTask.owner_user_id ? "the owner" : "a teammate"}.
+            </p>
+          </div>
+        </details>
+      ) : null}
 
       <div className="border-t border-border pt-4">
         <p className="flex items-center gap-1.5 font-medium text-foreground">
