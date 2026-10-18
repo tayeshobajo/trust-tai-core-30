@@ -19,7 +19,33 @@ import { extractProposals } from "@/data/steward/extract";
 import { buildWorkroom, receiptMapFrom } from "@/domain/steward-workroom";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
+import { WorkroomMoreMenu, WorkroomView, type WorkroomBackend } from "./workroom-view";
+import type { ActionOutcome, CapabilityState } from "./workroom-backend-panels";
+import {
+  getCanonicalRunCapability,
+  requestCanonicalRunFn,
+  runCanonicalRunWorkerFn,
+} from "@/lib/steward-canonical-run.functions";
+import { getTaskCanonicalRunsFn } from "@/lib/steward-run-state.functions";
+import {
+  getTaskVerificationStateFn,
+  getVerificationCapabilityFn,
+  reopenCanonicalTaskFn,
+  verifyCanonicalTaskFn,
+} from "@/lib/steward-verification.functions";
+import {
+  attestMeetingCoverageFn,
+  getCoverageCapabilityFn,
+  getMeetingCoverageFn,
+} from "@/lib/steward-coverage.functions";
+import { getMeetingScopeFn, getScopeCapabilityFn } from "@/lib/steward-scope.functions";
+import {
+  dismissProposalFn,
+  getProposalLinkCapabilityFn,
+  getProposalReviewStateFn,
+  linkProposalFn,
+} from "@/lib/steward-proposal-link.functions";
+import { syncProposalLedgerFn } from "@/lib/steward-proposal-ledger.functions";
 import { TaskHistory } from "./task-history";
 import { TaskEditor } from "./business-task-board";
 import { AppShell } from "@/components/tt/app-shell";
@@ -160,6 +186,268 @@ export function StewardWorkroom({
   );
 }
 
+/**
+ * Staged canonical-backend wiring for the live workroom. Every capability
+ * is read from the server; while the flags are OFF each is an honest
+ * unavailable state and no query touches the proposed tables (the
+ * entrypoints short-circuit). Mutations only run from explicit user
+ * gestures, carry stable operation UUIDs, and replay instead of
+ * re-executing. Nothing here runs on mount, selection, or timers.
+ */
+function useStewardBackend(
+  identity: WorkspaceIdentity,
+  selection?: WorkroomSelection | undefined,
+): WorkroomBackend {
+  const queryClient = useQueryClient();
+  const org = identity.organizationId;
+  const meetingId = selection?.meetingId ?? null;
+  const rowKey = selection?.rowKey ?? null;
+  const selectedTaskId =
+    rowKey && (rowKey.startsWith("business-task:") || rowKey.startsWith("required-task:"))
+      ? rowKey.slice(rowKey.indexOf(":") + 1)
+      : null;
+
+  const capabilities = useQuery({
+    queryKey: ["steward", "capabilities", org],
+    staleTime: 60_000,
+    queryFn: async (): Promise<WorkroomBackend["capabilities"]> => {
+      const [preparation, verification, coverage, scope, proposals] = await Promise.all([
+        getCanonicalRunCapability(),
+        getVerificationCapabilityFn(),
+        getCoverageCapabilityFn(),
+        getScopeCapabilityFn(),
+        getProposalLinkCapabilityFn(),
+      ]);
+      const normalize = (
+        value: { kind: string; reason?: string; message?: string },
+      ): CapabilityState =>
+        value.kind === "enabled" || value.kind === "actions"
+          ? { kind: "enabled" }
+          : {
+              kind: "unavailable",
+              reason:
+                ("reason" in value && value.reason) ||
+                ("message" in value && value.message) ||
+                "This capability is not available.",
+            };
+      return {
+        preparation: normalize(preparation),
+        verification: normalize(verification),
+        coverage: normalize(coverage),
+        scope: normalize(scope),
+        proposals: normalize(proposals),
+      };
+    },
+  });
+  const caps = capabilities.data;
+
+  const runs = useQuery({
+    queryKey: ["steward", "runs", org, selectedTaskId],
+    enabled: !!selectedTaskId && caps?.preparation.kind === "enabled",
+    queryFn: () => getTaskCanonicalRunsFn({ data: { orgId: org, taskId: selectedTaskId! } }),
+  });
+  const verification = useQuery({
+    queryKey: ["steward", "verification", org, selectedTaskId],
+    enabled: !!selectedTaskId && caps?.verification.kind === "enabled",
+    queryFn: () =>
+      getTaskVerificationStateFn({ data: { orgId: org, taskId: selectedTaskId! } }),
+  });
+  const scope = useQuery({
+    queryKey: ["steward", "scope", org, meetingId],
+    enabled: !!meetingId && caps?.scope.kind === "enabled",
+    queryFn: () => getMeetingScopeFn({ data: { orgId: org, conversationId: meetingId! } }),
+  });
+  const coverage = useQuery({
+    queryKey: ["steward", "coverage", org, meetingId],
+    enabled: !!meetingId && caps?.coverage.kind === "enabled",
+    queryFn: () => getMeetingCoverageFn({ data: { orgId: org, conversationId: meetingId! } }),
+  });
+  const proposals = useQuery({
+    queryKey: ["steward", "proposal-review", org, meetingId],
+    enabled: !!meetingId && caps?.proposals.kind === "enabled",
+    queryFn: () =>
+      getProposalReviewStateFn({ data: { orgId: org, conversationId: meetingId! } }),
+  });
+
+  const unavailable: CapabilityState = {
+    kind: "unavailable",
+    reason: "Capability state could not be read; nothing is offered.",
+  };
+  const resolvedCaps: WorkroomBackend["capabilities"] = caps ?? {
+    preparation: unavailable,
+    verification: unavailable,
+    coverage: unavailable,
+    scope: unavailable,
+    proposals: unavailable,
+  };
+
+  function outcomeOf(result: { kind: string; reason?: string; message?: string }): ActionOutcome {
+    return {
+      kind: result.kind,
+      message:
+        ("reason" in result && result.reason) ||
+        ("message" in result && result.message) ||
+        undefined,
+    };
+  }
+
+  async function invalidate() {
+    await queryClient.invalidateQueries({ queryKey: ["steward"] });
+  }
+
+  return {
+    capabilities: resolvedCaps,
+    runsFor: (taskId) =>
+      taskId === selectedTaskId && runs.data
+        ? runs.data.kind === "ready"
+          ? {
+              kind: "ready",
+              runs: runs.data.runs.map((run) => ({
+                id: run.id,
+                action: run.action,
+                status: run.status,
+                artifactText: run.artifactText,
+                artifactDigest: run.artifactDigest,
+                evidenceRefs: run.evidenceRefs,
+                failureReason: run.failureReason,
+                clientOperationId: run.clientOperationId,
+              })),
+            }
+          : runs.data
+        : runs.isPending && caps?.preparation.kind === "enabled"
+          ? { kind: "loading" }
+          : undefined,
+    verificationFor: (taskId) =>
+      taskId === selectedTaskId && verification.data
+        ? verification.data
+        : verification.isPending && caps?.verification.kind === "enabled"
+          ? { kind: "loading" }
+          : undefined,
+    meetingState: (id) =>
+      id === meetingId
+        ? {
+            scope: scope.data ?? (scope.isPending ? { kind: "loading" } : undefined),
+            coverage: coverage.data
+              ? coverage.data.kind === "ready"
+                ? {
+                    kind: "ready",
+                    current: coverage.data.current,
+                    attestedAt: coverage.data.latest?.createdAt ?? null,
+                  }
+                : coverage.data
+              : coverage.isPending
+                ? { kind: "loading" }
+                : undefined,
+            proposals: proposals.data
+              ? proposals.data.kind === "ready"
+                ? {
+                    kind: "ready",
+                    proposals: proposals.data.proposals.map((proposal) => ({
+                      id: proposal.id,
+                      sourceKey: proposal.sourceKey,
+                      kind: proposal.kind,
+                      statement: proposal.statement,
+                      status: proposal.status,
+                      evidence: proposal.evidence.map((ref) => ({ label: ref.label })),
+                    })),
+                  }
+                : proposals.data
+              : proposals.isPending
+                ? { kind: "loading" }
+                : undefined,
+          }
+        : undefined,
+    onRequestRun: async (input) => {
+      const result = await requestCanonicalRunFn({
+        data: {
+          orgId: org,
+          taskId: input.taskId,
+          action: input.actionId as never,
+          operationId: input.operationId,
+          inputRefs: input.inputRefs,
+        },
+      });
+      await invalidate();
+      return outcomeOf(result);
+    },
+    onExecuteRun: async (runId) => {
+      const result = await runCanonicalRunWorkerFn({ data: { runId } });
+      await invalidate();
+      return outcomeOf(result);
+    },
+    onVerify: async (input) => {
+      const task = verification.data?.kind === "ready" ? verification.data.read.task : null;
+      if (!task) return { kind: "rejected", message: "Task state could not be read; not verified." };
+      const result = await verifyCanonicalTaskFn({
+        data: {
+          orgId: org,
+          taskId: input.taskId,
+          expectedRevision: task.revision,
+          operationId: input.operationId,
+          note: input.note,
+        },
+      });
+      await invalidate();
+      return outcomeOf(result);
+    },
+    onReopen: async (input) => {
+      const task = verification.data?.kind === "ready" ? verification.data.read.task : null;
+      if (!task) return { kind: "rejected", message: "Task state could not be read; not reopened." };
+      const result = await reopenCanonicalTaskFn({
+        data: {
+          orgId: org,
+          taskId: input.taskId,
+          expectedRevision: task.revision,
+          operationId: input.operationId,
+          note: input.note,
+        },
+      });
+      await invalidate();
+      return outcomeOf(result);
+    },
+    onAttestCoverage: async (id) => {
+      const result = await attestMeetingCoverageFn({
+        data: { orgId: org, conversationId: id },
+      });
+      await invalidate();
+      return outcomeOf(result);
+    },
+    onSyncProposals: async (id) => {
+      const result = await syncProposalLedgerFn({
+        data: { orgId: org, conversationId: id, operationId: crypto.randomUUID() },
+      });
+      await invalidate();
+      return outcomeOf(result);
+    },
+    onLinkProposal: async (input) => {
+      const result = await linkProposalFn({
+        data: {
+          orgId: org,
+          conversationId: input.meetingId,
+          proposalId: input.proposalId,
+          taskId: input.taskId,
+          operationId: input.operationId,
+        },
+      });
+      await invalidate();
+      return outcomeOf(result);
+    },
+    onDismissProposal: async (input) => {
+      const result = await dismissProposalFn({
+        data: {
+          orgId: org,
+          conversationId: input.meetingId,
+          proposalId: input.proposalId,
+          reason: input.reason,
+          operationId: input.operationId,
+        },
+      });
+      await invalidate();
+      return outcomeOf(result);
+    },
+  };
+}
+
 function StewardWorkroomContent({
   identity,
   selection,
@@ -171,6 +459,7 @@ function StewardWorkroomContent({
 }) {
   const queryClient = useQueryClient();
   const org = identity.organizationId;
+  const backend = useStewardBackend(identity, selection);
   const business = useQuery(businessWorkQuery(org, identity.userId));
   const conversations = useQuery({
     queryKey: ["steward", "workroom", "conversations", org],
@@ -288,6 +577,7 @@ function StewardWorkroomContent({
       <WorkroomView
         embedded
         meetings={linkedMeetings}
+        backend={backend}
         {...(selection ? { selection } : {})}
         {...(onSelect ? { onSelect } : {})}
         taskById={taskById}
