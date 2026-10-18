@@ -28,6 +28,15 @@ import { initialsOf } from "@/domain/steward-accountability";
 import { cn } from "@/lib/utils";
 import { signOut, type WorkspaceIdentity } from "@/lib/workspace";
 import { AmbientDot } from "@/components/tt/ambient";
+import { TTButton } from "@/components/tt/primitives";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const ICONS: Record<string, LucideIcon> = {
   Building2,
@@ -123,11 +132,14 @@ export function AppShell({
   children,
   identity,
   sidebar,
+  canvas = "default",
 }: {
   children: ReactNode;
   identity?: WorkspaceIdentity;
   /** Room-specific panels rendered below the suite navigation. */
   sidebar?: ReactNode;
+  /** Opt-in continuous canvas for dense workrooms; ordinary pages are unchanged. */
+  canvas?: "default" | "workroom";
 }) {
   const [open, setOpen] = useState(false);
   const allowedApps = identity?.apps.map((app) => app.appId) ?? [];
@@ -152,15 +164,41 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur lg:px-8">
-        <button
-          type="button"
-          aria-label={open ? "Close navigation" : "Open navigation"}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="-ml-1 flex size-11 items-center justify-center rounded-lg text-foreground lg:hidden"
-        >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
+        {canvas === "workroom" ? (
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <TTButton
+                variant="quiet"
+                aria-label="Open app navigation"
+                className="-ml-1 size-11 rounded-lg p-0 lg:hidden"
+              >
+                <Menu aria-hidden className="size-5" />
+              </TTButton>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-[300px] max-w-full overflow-y-auto bg-sidebar px-3"
+            >
+              <SheetHeader className="mb-4 px-4 text-left">
+                <SheetTitle>App navigation</SheetTitle>
+                <SheetDescription>Trust Tai suite</SheetDescription>
+              </SheetHeader>
+              <NavList allowed={allowedApps} onNavigate={() => setOpen(false)} />
+              {sidebar ? <div className="mt-5 space-y-3">{sidebar}</div> : null}
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <TTButton
+            variant="quiet"
+            type="button"
+            aria-label={open ? "Close navigation" : "Open navigation"}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className="-ml-1 size-11 rounded-lg p-0 lg:hidden"
+          >
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
+          </TTButton>
+        )}
 
         <Link to="/welcome" className="flex items-center gap-3" aria-label="Trust Tai OS · welcome">
           <BrandLogo height={26} className="sm:h-[30px] sm:w-auto" />
@@ -237,16 +275,25 @@ export function AppShell({
           </div>
         </aside>
 
-        {open ? (
+        {open && canvas === "default" ? (
           <div className="fixed inset-x-0 top-16 z-20 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-border bg-card p-4 lg:hidden">
             <NavList allowed={allowedApps} onNavigate={() => setOpen(false)} />
             {sidebar ? <div className="mt-5 space-y-3">{sidebar}</div> : null}
           </div>
         ) : null}
 
-        <main className="mx-auto min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-4 2xl:px-10">
+        <main
+          className={cn(
+            "min-w-0 flex-1",
+            canvas === "workroom"
+              ? "@container/workroom"
+              : "mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-4 2xl:px-10",
+          )}
+        >
           {/* One calm reading canvas for every room, never edge to edge. */}
-          <div className="mx-auto w-full max-w-canvas">{children}</div>
+          <div className={cn("w-full", canvas === "default" && "mx-auto max-w-canvas")}>
+            {children}
+          </div>
         </main>
       </div>
     </div>

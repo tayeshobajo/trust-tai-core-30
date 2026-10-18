@@ -28,7 +28,7 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { BrandLogo } from "@/components/tt/brand-logo";
 import { TTButton } from "@/components/tt/primitives";
@@ -61,6 +61,8 @@ export interface WorkroomSyncState {
 }
 
 export interface WorkroomViewProps {
+  /** Keep suite branding/account in the enclosing AppShell. */
+  embedded?: boolean;
   meetings: WorkroomMeeting[];
   commitmentFor: (id: string) => Commitment | undefined;
   /** Receipts could not be read — verified counts would be a guess. */
@@ -326,6 +328,7 @@ function TaskDetail({
 
 export function WorkroomView({
   meetings,
+  embedded = false,
   commitmentFor,
   receiptsFailed,
   sync,
@@ -333,7 +336,19 @@ export function WorkroomView({
   accountSlot,
   historyFor,
 }: WorkroomViewProps) {
-  const compact = useCompact();
+  const viewportCompact = useCompact();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [canvasCompact, setCanvasCompact] = useState(true);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!embedded || !root) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setCanvasCompact(entry.contentRect.width < 1100);
+    });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [embedded]);
+  const compact = embedded ? canvasCompact : viewportCompact;
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
   const [meetingQuery, setMeetingQuery] = useState("");
@@ -342,6 +357,8 @@ export function WorkroomView({
   const [rowFilter, setRowFilter] = useState<RowFilter>("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const meetingTriggerRef = useRef<HTMLButtonElement>(null);
+  const taskTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const filteredMeetings = meetings.filter((m) =>
     m.title.toLowerCase().includes(meetingQuery.trim().toLowerCase()),
@@ -584,7 +601,10 @@ export function WorkroomView({
             key={r.id}
             type="button"
             aria-pressed={row?.id === r.id}
-            onClick={() => pickRow(r.id)}
+            onClick={(event) => {
+              taskTriggerRef.current = event.currentTarget;
+              pickRow(r.id);
+            }}
             className={cn(
               "grid min-h-11 w-full grid-cols-[20px_minmax(0,1fr)] items-center gap-2 border-b border-border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal sm:grid-cols-[20px_minmax(0,1fr)_116px_104px_92px]",
               r.verified
@@ -708,21 +728,35 @@ export function WorkroomView({
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-card text-foreground [&_h1]:tracking-normal [&_h2]:tracking-normal [&_h3]:tracking-normal">
+    <div
+      ref={rootRef}
+      className={cn(
+        "flex min-w-0 flex-col bg-card text-foreground [&_h1]:tracking-normal [&_h2]:tracking-normal [&_h3]:tracking-normal",
+        embedded ? "min-h-[calc(100dvh-4rem)]" : "min-h-screen",
+      )}
+    >
       <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center border-b border-border bg-cloud px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-4">
-          <Link to="/" aria-label="Trust Tai OS home" className="flex items-center gap-4">
-            <BrandLogo height={22} />
-          </Link>
-          <span className="hidden text-xs font-semibold text-muted-foreground sm:block">OS</span>
-          <span className="hidden h-14 border-r border-border sm:block" />
-          <span className="hidden text-sm text-muted-foreground sm:block">Suite</span>
-          <ChevronRight aria-hidden className="hidden size-4 text-muted-foreground sm:block" />
-          <h1 className="hidden text-sm font-semibold sm:block">Steward</h1>
+          {embedded ? (
+            <h1 className="text-sm font-semibold">Steward</h1>
+          ) : (
+            <>
+              <Link to="/" aria-label="Trust Tai OS home" className="flex items-center gap-4">
+                <BrandLogo height={22} />
+              </Link>
+              <span className="hidden text-xs font-semibold text-muted-foreground sm:block">
+                OS
+              </span>
+              <span className="hidden h-14 border-r border-border sm:block" />
+              <span className="hidden text-sm text-muted-foreground sm:block">Suite</span>
+              <ChevronRight aria-hidden className="hidden size-4 text-muted-foreground sm:block" />
+              <h1 className="hidden text-sm font-semibold sm:block">Steward</h1>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {headerMenu}
-          {accountSlot}
+          {embedded ? null : accountSlot}
         </div>
       </header>
 
@@ -768,15 +802,31 @@ export function WorkroomView({
 
       <div
         className={cn(
-          "grid min-h-0 flex-1 min-w-0 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[18%_56%_26%]",
-          !row && "xl:grid-cols-[18%_82%]",
+          "grid min-h-0 flex-1 min-w-0",
+          embedded
+            ? "@min-[900px]/workroom:grid-cols-[220px_minmax(0,1fr)] @min-[1100px]/workroom:grid-cols-[18%_56%_26%]"
+            : "lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[18%_56%_26%]",
+          !row &&
+            (embedded ? "@min-[1100px]/workroom:grid-cols-[18%_82%]" : "xl:grid-cols-[18%_82%]"),
         )}
       >
-        <aside className="hidden border-r border-border bg-cloud lg:block">{navigation}</aside>
+        <aside
+          className={cn(
+            "hidden min-w-0 border-r border-border bg-cloud",
+            embedded ? "@min-[900px]/workroom:block" : "lg:block",
+          )}
+        >
+          {navigation}
+        </aside>
         <main className="min-w-0 px-4 pb-5 pt-4 sm:px-6 sm:pt-5">
           <TTButton
             variant="quiet"
-            className="mb-2 h-11 rounded-md px-0 text-royal lg:hidden"
+            ref={meetingTriggerRef}
+            aria-label="Open meeting navigation"
+            className={cn(
+              "mb-2 h-11 rounded-md px-0 text-royal",
+              embedded ? "@min-[900px]/workroom:hidden" : "lg:hidden",
+            )}
             onClick={() => setNavOpen(true)}
           >
             <List aria-hidden />
@@ -788,7 +838,10 @@ export function WorkroomView({
         {row && meeting ? (
           <aside
             aria-label="Selected task details"
-            className="hidden min-w-0 overflow-y-auto border-l border-border p-6 xl:block"
+            className={cn(
+              "hidden min-w-0 overflow-y-auto border-l border-border p-6",
+              embedded ? "@min-[1100px]/workroom:block" : "xl:block",
+            )}
           >
             <TaskDetail
               meeting={meeting}
@@ -805,7 +858,14 @@ export function WorkroomView({
       {compact ? (
         <>
           <Sheet open={navOpen} onOpenChange={setNavOpen}>
-            <SheetContent side="left" className="w-[300px] bg-cloud p-0">
+            <SheetContent
+              side="left"
+              className="w-[300px] max-w-full bg-cloud p-0"
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                meetingTriggerRef.current?.focus();
+              }}
+            >
               <SheetHeader className="sr-only">
                 <SheetTitle>Meetings</SheetTitle>
                 <SheetDescription>Choose a stored meeting to see its agreed work.</SheetDescription>
@@ -814,7 +874,14 @@ export function WorkroomView({
             </SheetContent>
           </Sheet>
           <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+            <SheetContent
+              side="bottom"
+              className="max-h-[85vh] overflow-y-auto"
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                taskTriggerRef.current?.focus();
+              }}
+            >
               <SheetHeader className="sr-only">
                 <SheetTitle>Task detail</SheetTitle>
                 <SheetDescription>
