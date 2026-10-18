@@ -17,6 +17,24 @@ create extension if not exists pgcrypto; -- sha256 digests
 create extension if not exists "uuid-ossp"; -- deterministic sync operation UUIDs
 
 -- Membership helpers mirror the existing cmd-task-manager contracts.
+-- Arbitrary-user variants first (the auth.uid() wrappers below and the
+-- WORKER path, which has no auth.uid(), both build on these). The worker
+-- revalidates the run's requester on every claim, complete and fail, so a
+-- deactivated or demoted requester's run dies.
+create or replace function private.steward_user_can_write(org uuid, uid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select uid is not null and exists(select 1 from public.organization_memberships m
+    where m.organization_id = org and m.user_id = uid and m.status = 'active'
+      and m.role in ('owner','admin','leadership','project_lead','client_support','team_member','member'))
+$$;
+
+create or replace function private.steward_user_is_admin(org uuid, uid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select uid is not null and exists(select 1 from public.organization_memberships m
+    where m.organization_id = org and m.user_id = uid and m.status = 'active'
+      and m.role in ('owner','admin'))
+$$;
+
 create or replace function private.steward_is_active_member(org uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists(select 1 from public.organization_memberships m
@@ -31,23 +49,6 @@ $$;
 create or replace function private.steward_is_admin(org uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select private.steward_user_is_admin(org, auth.uid())
-$$;
-
--- Arbitrary-user variants for the WORKER path (service_role), which has no
--- auth.uid(): the worker revalidates the run's requester on every claim,
--- complete and fail, so a deactivated or demoted requester's run dies.
-create or replace function private.steward_user_can_write(org uuid, uid uuid) returns boolean
-language sql stable security definer set search_path = '' as $$
-  select uid is not null and exists(select 1 from public.organization_memberships m
-    where m.organization_id = org and m.user_id = uid and m.status = 'active'
-      and m.role in ('owner','admin','leadership','project_lead','client_support','team_member','member'))
-$$;
-
-create or replace function private.steward_user_is_admin(org uuid, uid uuid) returns boolean
-language sql stable security definer set search_path = '' as $$
-  select uid is not null and exists(select 1 from public.organization_memberships m
-    where m.organization_id = org and m.user_id = uid and m.status = 'active'
-      and m.role in ('owner','admin'))
 $$;
 
 -- Task authority for an arbitrary user: creator, current owner, or org
