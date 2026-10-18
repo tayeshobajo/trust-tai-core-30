@@ -274,7 +274,7 @@ create or replace function public.steward_scope_counts(
   p_org uuid,
   p_conversation uuid
 ) returns table(denominator integer, verified integer, pending_proposals integer)
-language plpgsql stable security invoker set search_path = public, pg_temp as $$
+language plpgsql stable security definer set search_path = public, pg_temp as $$
 begin
   if auth.uid() is null or not private.steward_is_active_member(p_org) then
     raise exception 'not_authorized' using errcode = 'P0401';
