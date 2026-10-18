@@ -17,7 +17,7 @@ declare
   actor uuid := auth.uid();
   counts record;
   hash text;
-  scope_version integer;
+  v_scope_version integer
   attestation record;
   coverage_current boolean;
 begin
@@ -34,9 +34,9 @@ begin
   -- can never disagree with each other.
   select * into counts from public.steward_scope_counts(p_org, p_conversation);
   hash := private.steward_transcript_hash(p_org, p_conversation);
-  select version into scope_version from public.steward_scope_versions
+  select version into v_scope_version from public.steward_scope_versions
     where organization_id = p_org and conversation_id = p_conversation;
-  scope_version := coalesce(scope_version, 1);
+  v_scope_version := coalesce(v_scope_version, 1);
 
   select ca.attested_at into attestation
     from public.steward_coverage_attestations ca
@@ -44,7 +44,7 @@ begin
      and ca.conversation_id = p_conversation
      and ca.superseded_at is null
      and ca.transcript_hash = hash
-     and ca.scope_version = scope_version
+     and ca.scope_version = v_scope_version
    order by ca.attested_at desc
    limit 1;
   coverage_current := attestation.attested_at is not null;
@@ -55,7 +55,7 @@ begin
     'pendingProposals', counts.pending_proposals,
     'coverageCurrent', coverage_current,
     'attestedAt', attestation.attested_at,
-    'scopeVersion', scope_version,
+    'scopeVersion', v_scope_version,
     'complete', counts.denominator > 0
       and counts.verified = counts.denominator
       and counts.pending_proposals = 0
