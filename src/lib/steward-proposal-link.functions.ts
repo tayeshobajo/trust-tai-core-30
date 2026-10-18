@@ -29,6 +29,42 @@ import {
 } from "./steward-proposal-link.server";
 import type { LedgerProposal } from "./steward-proposal-ledger.server";
 
+/** Serialized proposal DTO: evidence is typed so the server-function
+    boundary can validate it (the stored column is jsonb). */
+export interface SerializedProposal {
+  id: string;
+  organizationId: string;
+  conversationId: string;
+  sourceKey: string;
+  kind: string;
+  statement: string;
+  status: "proposed" | "linked" | "dismissed";
+  evidence: { label: string; url?: string; kind?: string }[];
+}
+
+function serializeProposal(proposal: LedgerProposal): SerializedProposal {
+  const evidence = Array.isArray(proposal.evidence) ? proposal.evidence : [];
+  return {
+    id: proposal.id,
+    organizationId: proposal.organizationId,
+    conversationId: proposal.conversationId,
+    sourceKey: proposal.sourceKey,
+    kind: proposal.kind,
+    statement: proposal.statement,
+    status: proposal.status,
+    evidence: evidence
+      .filter(
+        (ref): ref is { label: string; url?: string; kind?: string } =>
+          !!ref && typeof ref === "object" && typeof (ref as { label?: unknown }).label === "string",
+      )
+      .map((ref) => ({
+        label: ref.label,
+        ...(typeof ref.url === "string" ? { url: ref.url } : {}),
+        ...(typeof ref.kind === "string" ? { kind: ref.kind } : {}),
+      })),
+  };
+}
+
 export type ProposalLinkCapabilityState =
   | { kind: "unavailable"; reason: string }
   | { kind: "enabled" };
@@ -37,7 +73,7 @@ export type ProposalReviewReadState =
   | { kind: "unavailable"; reason: string }
   | {
       kind: "ready";
-      proposals: LedgerProposal[];
+      proposals: SerializedProposal[];
       links: ProposalLink[];
     }
   | { kind: "rejected"; message: string };
@@ -45,7 +81,7 @@ export type ProposalReviewReadState =
 export type ProposalDecisionState =
   | { kind: "unavailable"; reason: string }
   | { kind: "linked"; link: ProposalLink; replayed: boolean }
-  | { kind: "dismissed"; proposal: LedgerProposal }
+  | { kind: "dismissed"; proposal: SerializedProposal }
   | { kind: "conflict"; message: string }
   | { kind: "rejected"; message: string };
 
@@ -85,7 +121,7 @@ export const getProposalReviewStateFn = createServerFn({ method: "GET" })
         ledger.ledgerForConversation(data.orgId, data.conversationId),
         links.linksForConversation(data.orgId, data.conversationId),
       ]);
-      return { kind: "ready", proposals, links: existingLinks };
+      return { kind: "ready", proposals: proposals.map(serializeProposal), links: existingLinks };
     } catch (error) {
       return {
         kind: "rejected",
@@ -143,7 +179,7 @@ export const dismissProposalFn = createServerFn({ method: "POST" })
         operationId: data.operationId,
         actorId: context.userId,
       });
-      return { kind: "dismissed", proposal };
+      return { kind: "dismissed", proposal: serializeProposal(proposal) };
     } catch (error) {
       const code = (error as { code?: string }).code;
       const message = error instanceof Error ? error.message : "the proposal could not be dismissed";

@@ -75,7 +75,7 @@ export interface ProposalSnapshot {
   sourceKey: string;
   kind: string;
   statement: string;
-  status: "pending" | "linked" | "dismissed";
+  status: "proposed" | "linked" | "dismissed";
   evidence: { label: string }[];
 }
 
@@ -481,7 +481,7 @@ export function ScopeReviewPanel({
   }
 
   const pending =
-    proposals?.kind === "ready" ? proposals.proposals.filter((p) => p.status === "pending") : [];
+    proposals?.kind === "ready" ? proposals.proposals.filter((p) => p.status === "proposed") : [];
 
   return (
     <div className="space-y-3 text-[13px]">
