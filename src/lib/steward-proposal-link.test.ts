@@ -14,7 +14,10 @@ function makeRepo(overrides: Partial<ProposalLinkRepository> = {}): ProposalLink
   return {
     async linkProposal(input) {
       const { orgId, ...rest } = input;
-      return { link: { id: "link-1", organizationId: orgId, ...rest, createdAt: "now" }, replayed: false };
+      return {
+        link: { id: "link-1", organizationId: orgId, ...rest, createdAt: "now" },
+        replayed: false,
+      };
     },
     async linksForConversation() {
       return [];
