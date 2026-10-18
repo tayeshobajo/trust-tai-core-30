@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Steward read-only task history (2026-10-18)
-- [ ] Query selected commitment history through existing member RLS; show recorded events and explicit loading/error/limited coverage, distinct from receipts.
-- [ ] Correct completion-route and sync-caution copy; verify focused tests and lint without live writes or completion controls.
+- [x] Query selected commitment history through existing member RLS; show recorded events and explicit loading/error/limited coverage, distinct from receipts.
+- [x] Correct completion-route and sync-caution copy; focused tests and lint verified without live writes or completion controls.
 
 ## Steward refresh correctness (2026-10-18)
 - [x] Treat meaningful equivalent transcripts as successful unchanged checks; preserve changed reads with aggregated cautions; 38 focused tests and changed-file lint passed; fictional browser status checks passed.

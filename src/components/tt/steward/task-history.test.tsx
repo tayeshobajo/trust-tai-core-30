@@ -34,7 +34,7 @@ function setup(commitmentId = task) {
     </QueryClientProvider>
   );
   const rendered = render(view(commitmentId));
-  return { ...rendered, select: (id: string) => rendered.rerender(view(id)) };
+  return { ...rendered, client, select: (id: string) => rendered.rerender(view(id)) };
 }
 
 function expand() {
@@ -79,11 +79,22 @@ describe("selected commitment history", () => {
     expect(screen.getByRole("status").textContent).toContain("Reading recorded history");
   });
 
-  it("shows a read error instead of empty history, including a failed cached refresh", async () => {
+  it("shows a read error instead of empty history", async () => {
     mocks.list.mockRejectedValue(new Error("read unavailable"));
     setup();
     expand();
     expect((await screen.findByRole("alert")).textContent).toContain("History could not be read");
+    expect(screen.queryByText(/No recorded history found/)).toBeNull();
+  });
+
+  it("suppresses cached events after a failed refresh rather than showing stale history", async () => {
+    mocks.list.mockResolvedValueOnce([event]).mockRejectedValueOnce(new Error("read failed"));
+    const { client } = setup();
+    expand();
+    await screen.findByText(event.summary);
+    await client.invalidateQueries({ queryKey: ["steward", "task-history", org] });
+    await screen.findByRole("alert");
+    expect(screen.queryByText(event.summary)).toBeNull();
     expect(screen.queryByText(/No recorded history found/)).toBeNull();
   });
 

@@ -50,14 +50,16 @@ Approved reference: `approved-steward-current.png` (1586×992). Fidelity strateg
 - No durable Steward reopen action was found. Reopen in `src/routes/modules.steward.meetings.actions.tsx` is separate session staging; mockup reopen receipts in `src/domain/steward-preview.ts` are fictional in-memory events, not production evidence.
 - Repository policy in `supabase/migrations/20260922090000_steward_task_state_and_role_app_access.sql` is membership-scoped and broader than app task-level completion authority. Hosted policy/schema state was not queried. Persistence, append-only complete/reopen evidence, atomicity/error handling and authority must be reconciled before adding workroom completion controls; no migration or access change was made.
 
-## Correction verification
-
 ## Read-only History follow-up — 2026-10-18 (preview only)
+
 
 - `src/components/tt/steward/task-history.tsx` queries `supabaseActivity.list` on disclosure expansion with organizationId, subjectType `task`, subjectId = selected commitment UUID, appIds `['steward']`, limit 50. The existing service applies all filters at the database through member RLS; no entire-org stream is fetched. Cache keys include org, user and commitment; selection changes reset the disclosure and isolate late reads.
 - Recorded summary, actor identity, timestamp and `payload.note` are rendered as returned by the activity service. Every event is labeled legacy activity, not a completion receipt. Loading, failed reads (including cached-data errors), missing identity and genuinely empty reads are separate; the 50-event recent limit is always disclosed. No recorded history is not evidence of no prior work.
 - Parent-reported hosted activities SELECT/INSERT-only org-member policy is not re-verified here; no policies, live records, activity writes, schema or completion controls changed. Atomic completion/reopen proposal remains deferred for parent review.
 - Sync caution heading is neutral (`review details`), so missing-identity warnings do not imply that a stored transcript existed.
+- Focused history/receipt/refresh/service/domain tests and changed-file lint run with explicit exit codes; standalone typecheck/build prohibited by environment instructions. Populated live-data interaction remains untested to avoid open-page automatic sync writes.
+
+## Earlier refresh correction verification
 
 - `bunx vitest run src/data/steward/recent-sync.test.ts src/data/supabase/steward-service.test.ts src/components/tt/steward/workroom-receipts.test.ts src/domain/steward-workroom.test.ts`: exit 0, 38 tests passed (18 refresh tests).
 - `bunx eslint src/data/steward/recent-sync.ts src/data/steward/recent-sync.test.ts src/components/tt/steward/workroom.tsx src/components/tt/steward/workroom-view.tsx`: exit 0.
