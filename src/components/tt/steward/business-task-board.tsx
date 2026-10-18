@@ -419,13 +419,23 @@ export function TaskEditor({
   const statusRef = useRef<HTMLSelectElement>(null);
   const ownerRef = useRef<HTMLSelectElement>(null);
   const dueRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (!focusField) return;
-    const target = focusField === "status" ? statusRef : focusField === "owner" ? ownerRef : dueRef;
-    target.current?.focus();
-    target.current?.scrollIntoView({ block: "center" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const titleRef = useRef<HTMLInputElement>(null);
+  // The sheet's focus trap would otherwise grab initial focus (landing on
+  // Close) before any mount effect runs. Radix fires onOpenAutoFocus first;
+  // preventing default there lets us focus the requested field ourselves.
+  function focusOnOpen(event: Event) {
+    const target = focusField
+      ? focusField === "status"
+        ? statusRef.current
+        : focusField === "owner"
+          ? ownerRef.current
+          : dueRef.current
+      : titleRef.current;
+    if (!target) return;
+    event.preventDefault();
+    target.focus();
+    target.scrollIntoView({ block: "center" });
+  }
   const editable = !task
     ? BOARD_WRITE_ROLES.includes(identity.role)
     : mayEditBoardTask(task, { userId: identity.userId, role: identity.role });
