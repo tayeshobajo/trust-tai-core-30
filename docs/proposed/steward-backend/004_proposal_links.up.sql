@@ -22,6 +22,9 @@ create table if not exists public.steward_proposal_ledger (
   -- 'proposed' until a human links or dismisses it; pending proposals gate
   -- any 100 (see steward_scope_counts in 005).
   status text not null default 'proposed' check (status in ('proposed','linked','dismissed')),
+  -- Exact evidence refs (segment/action-item pointers) the extractor
+  -- produced against the stored source, retained for human review.
+  evidence jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   unique (organization_id, conversation_id, source_key)
 );
@@ -183,7 +186,7 @@ create or replace function public.steward_register_proposals(
   p_org uuid,
   p_conversation uuid,
   p_operation uuid,
-  p_proposals jsonb, -- [{source_key, kind, statement}]
+  p_proposals jsonb, -- [{source_key, kind, statement, evidence}]
   p_transcript jsonb -- the exact transcript the extraction ran over
 ) returns integer
 language plpgsql security definer set search_path = public, pg_temp as $$
@@ -235,9 +238,10 @@ begin
       raise exception 'proposals_invalid' using errcode = 'P0422';
     end if;
     insert into public.steward_proposal_ledger
-      (organization_id, conversation_id, source_key, kind, statement)
+      (organization_id, conversation_id, source_key, kind, statement, evidence)
     values (p_org, p_conversation, proposal->>'source_key',
-            coalesce(proposal->>'kind', 'action'), proposal->>'statement')
+            coalesce(proposal->>'kind', 'action'), proposal->>'statement',
+            coalesce(proposal->'evidence', '[]'::jsonb))
     on conflict (organization_id, conversation_id, source_key) do nothing;
     if found then added := added + 1; end if;
   end loop;
