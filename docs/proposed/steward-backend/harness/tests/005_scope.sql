@@ -90,6 +90,102 @@ end $$;
 -- 3b. Revision-bound credit: a later task edit (revision bump) drops the
 --     verification credit even though status stays complete, and a legacy
 --     status flip after reopen cannot regain it.
+-- 9e. Reinstatement journey: a removed item stays out of the denominator
+--     and blocks proposal linking until an EXPLICIT audited reinstate;
+--     reinstate is idempotent per operation, conflicts on changed payload,
+--     rejects reinstating an active item, and fails closed for anon.
+do $$
+declare
+  target uuid;
+  conv uuid := 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+  org uuid := '11111111-1111-1111-1111-111111111111';
+  before_count integer;
+  removed_count integer;
+  after_count integer;
+  reinstated public.steward_scope_items;
+  replayed public.steward_scope_items;
+  active_item uuid;
+  failed boolean;
+begin
+  select id into target from public.steward_scope_items
+   where organization_id = org and conversation_id = conv
+     and removed_at is not null limit 1;
+  perform public.test_assert(target is not null, 'a removed scope item exists for the reinstate journey');
+
+  select denominator into before_count from public.steward_scope_counts(org, conv);
+
+  -- Linking a proposal to a task whose scope item is removed fails closed
+  -- (004 P0031) UNTIL the human reinstates — never silently revived.
+  failed := false;
+  begin
+    perform public.steward_link_proposal(
+      org, conv,
+      (select pl.id from public.steward_proposal_ledger pl
+        where pl.organization_id = org and pl.conversation_id = conv and pl.status = 'proposed' limit 1),
+      (select task_id from public.steward_scope_items where id = target),
+      'f0000000-0000-0000-0000-0000000000e1');
+  exception when sqlstate 'P0031' then failed := true;
+    when others then failed := true; -- no pending proposal / other guard: still no silent link
+  end;
+  perform public.test_assert(failed, 'linking onto a removed scope item fails closed before reinstate');
+
+  -- Reinstating an ACTIVE item is rejected.
+  select id into active_item from public.steward_scope_items
+   where organization_id = org and conversation_id = conv and removed_at is null limit 1;
+  failed := false;
+  begin
+    perform public.steward_scope_amend_reinstate(
+      org, conv, active_item, 'reinstate reason: not actually removed', 'f0000000-0000-0000-0000-0000000000e2');
+  exception when sqlstate 'P0030' then failed := true;
+  end;
+  perform public.test_assert(failed, 'reinstating an active item is rejected');
+
+  -- The explicit audited reinstate restores the denominator.
+  reinstated := public.steward_scope_amend_reinstate(
+    org, conv, target, 'reinstate: scope correction was itself mistaken', 'f0000000-0000-0000-0000-0000000000e3');
+  perform public.test_assert(reinstated.removed_at is null, 'reinstate clears removed_at');
+  select denominator into after_count from public.steward_scope_counts(org, conv);
+  perform public.test_assert(after_count = before_count + 1,
+    'reinstated item returns to the denominator');
+
+  -- Replay: same operation + same payload replays; changed payload conflicts.
+  replayed := public.steward_scope_amend_reinstate(
+    org, conv, target, 'reinstate: scope correction was itself mistaken', 'f0000000-0000-0000-0000-0000000000e3');
+  perform public.test_assert(replayed.id = reinstated.id and replayed.removed_at is null,
+    'same reinstate operation replays');
+  failed := false;
+  begin
+    perform public.steward_scope_amend_reinstate(
+      org, conv, target, 'a DIFFERENT reason for the same operation', 'f0000000-0000-0000-0000-0000000000e3');
+  exception when sqlstate 'P0002' then failed := true;
+  end;
+  perform public.test_assert(failed, 'changed payload on same reinstate operation conflicts');
+
+  -- After reinstate, linking includes the obligation atomically.
+  perform public.steward_link_proposal(
+    org, conv,
+    (select pl.id from public.steward_proposal_ledger pl
+      where pl.organization_id = org and pl.conversation_id = conv and pl.status = 'proposed' limit 1),
+    (select task_id from public.steward_scope_items where id = target),
+    'f0000000-0000-0000-0000-0000000000e4');
+  perform public.test_assert(true, 'link after explicit reinstate succeeds');
+end $$;
+
+-- 9f. Reinstate authorization: anon cannot reinstate.
+set local role anon;
+do $$
+declare failed boolean := false;
+begin
+  begin
+    perform public.steward_scope_amend_reinstate(
+      '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+      (select id from public.steward_scope_items limit 1),
+      'anon reinstate attempt', 'f0000000-0000-0000-0000-0000000000e5');
+  exception when insufficient_privilege then failed := true;
+    when sqlstate 'P0401' then failed := true;
+  end;
+  perform public.test_assert(failed, 'anon cannot reinstate scope items');
+end $$;
 reset role;
 update public.steward_tasks set title = title || ' (edited)', revision = revision + 1
  where id = '10000000-0000-0000-0000-000000000001';
