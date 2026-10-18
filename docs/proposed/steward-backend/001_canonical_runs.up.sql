@@ -362,7 +362,11 @@ revoke all on function public.steward_request_canonical_run(uuid, uuid, text, uu
 revoke all on function public.steward_claim_canonical_run(uuid, integer) from public, anon, authenticated;
 revoke all on function public.steward_complete_canonical_run(uuid, uuid, text, jsonb) from public, anon, authenticated;
 revoke all on function public.steward_fail_canonical_run(uuid, uuid, text) from public, anon, authenticated;
-revoke all on function private.steward_is_active_member(uuid) from public, anon, authenticated;
+-- RLS policies evaluate private.steward_is_active_member as the querying
+-- role, so authenticated must keep EXECUTE on it (it is a read-only
+-- security-definer membership check — safe to call, useless to abuse).
+revoke all on function private.steward_is_active_member(uuid) from public, anon;
+grant execute on function private.steward_is_active_member(uuid) to authenticated;
 revoke all on function private.steward_can_write(uuid) from public, anon, authenticated;
 revoke all on function private.steward_is_admin(uuid) from public, anon, authenticated;
 revoke all on function private.steward_user_can_write(uuid, uuid) from public, anon, authenticated;
