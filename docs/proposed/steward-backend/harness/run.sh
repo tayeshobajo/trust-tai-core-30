@@ -8,11 +8,13 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 PGDATA="${PGDATA:-/tmp/steward-pgdata}"
 PORT="${PGPORT:-55444}"
 LOG=/tmp/steward-pg.log
+# The /usr/bin wrapper points initdb at a mismatched libdir; resolve the real store bin.
+PGBIN="${PGBIN:-$(dirname "$(readlink -f "$(command -v initdb)")")}"
 
 rm -rf "$PGDATA"
-runuser -u lovable -- initdb -D "$PGDATA" -U postgres --auth=trust >/dev/null
-runuser -u lovable -- pg_ctl -D "$PGDATA" -l "$LOG" -o "-p $PORT -k /tmp" -w start >/dev/null
-trap 'runuser -u lovable -- pg_ctl -D "$PGDATA" -m fast stop >/dev/null 2>&1 || true' EXIT
+runuser -u lovable -- "$PGBIN/initdb" -D "$PGDATA" -U postgres --auth=trust >/dev/null
+runuser -u lovable -- "$PGBIN/pg_ctl" -D "$PGDATA" -l "$LOG" -o "-p $PORT -k /tmp" -w start >/dev/null
+trap 'runuser -u lovable -- "$PGBIN/pg_ctl" -D "$PGDATA" -m fast stop >/dev/null 2>&1 || true' EXIT
 
 DB="host=/tmp port=$PORT user=postgres dbname=postgres"
 
