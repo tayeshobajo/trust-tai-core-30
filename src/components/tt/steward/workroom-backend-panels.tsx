@@ -1138,15 +1138,90 @@ export function ScopeReviewPanel({
           </p>
         </div>
       ) : null}
-      {/* Truthful gap: the audited scope amendment contract (005) exists
-          in the proposed SQL, but removal/reinstatement is not wired into
-          this interface — scope can only grow here, never silently
-          shrink. */}
-      <p className="text-xs text-muted-foreground">
-        Removing or reinstating recorded scope is not supported in this interface yet; the audited
-        amendment contract exists in the proposed backend but is not wired here. Recorded required
-        work can only be added, never quietly dropped.
-      </p>
+      {scope?.kind === "ready" && scope.items.length > 0 ? (
+        <details className="rounded-md border border-border bg-card p-2.5">
+          <summary className="cursor-pointer text-xs font-medium text-foreground">
+            Recorded scope items ({scope.items.length})
+          </summary>
+          <ul className="mt-2 space-y-2">
+            {scope.items.map((item) => {
+              const removed = item.removedAt !== null;
+              const reason = scopeReasons[item.id] ?? "";
+              const handler = removed ? onReinstateScopeItem : onRemoveScopeItem;
+              return (
+                <li key={item.id} className="rounded-md border border-border bg-card p-2">
+                  <p className="text-xs text-foreground">
+                    Task …{item.taskId.slice(-8)} ·{" "}
+                    {item.classification === "manual_required" ? "added manually" : "from transcript"}
+                    {removed ? (
+                      <span className="text-warning">
+                        {" "}
+                        · removed from the denominator {item.removedAt?.slice(0, 10)} (kept in
+                        history)
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground"> · counts in the denominator</span>
+                    )}
+                  </p>
+                  {scopeCapability.kind === "enabled" && handler ? (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <input
+                        aria-label={`${removed ? "Reinstate" : "Remove"} reason for task ${item.taskId.slice(-8)}`}
+                        className="h-8 min-w-0 flex-1 rounded-md border border-border bg-card px-2 text-xs"
+                        placeholder={`${removed ? "Reinstate" : "Remove"} reason (at least 10 characters)`}
+                        value={reason}
+                        onChange={(e) =>
+                          setScopeReasons((m) => ({ ...m, [item.id]: e.target.value }))
+                        }
+                      />
+                      <TTButton
+                        type="button"
+                        variant="secondary"
+                        className="h-8 px-2 text-xs"
+                        disabled={
+                          busy || !!scopeAttempt.pending || reason.trim().length < 10
+                        }
+                        onClick={() => void amendScope(removed ? "reinstate" : "remove", item.id)}
+                      >
+                        {removed ? "Reinstate into scope" : "Remove from scope"}
+                      </TTButton>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {scopeCapability.kind === "unavailable"
+                        ? scopeCapability.reason
+                        : "Scope amendments are not available."}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {scopeAttempt.pending ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <TTButton
+                type="button"
+                variant="secondary"
+                className="h-8 px-2 text-xs"
+                disabled={scopeAttempt.busy}
+                onClick={() => void retryScopeAmend()}
+              >
+                <RotateCw aria-hidden className="size-3.5" /> Retry same operation (
+                {scopeAttempt.pending.payload.action})
+              </TTButton>
+              <p className="text-xs text-warning">
+                Outcome unknown — retry replays the exact original amendment; a new amendment stays
+                blocked until it resolves.
+              </p>
+            </div>
+          ) : null}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Amendments are explicit, reasoned and audited. A removed item keeps its history and
+            blocks proposal linking until a human deliberately reinstates it — scope never shrinks
+            or grows silently.
+          </p>
+        </details>
+      ) : null}
     </div>
   );
 }
