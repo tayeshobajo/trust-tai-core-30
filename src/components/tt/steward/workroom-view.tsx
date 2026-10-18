@@ -573,6 +573,7 @@ function TaskDetail({
                 : undefined
             }
             onExecuteRun={backend.onExecuteRun}
+            onRetryReads={backend.onRetryReads}
           />
         ) : row.boardTask ? (
           <>
@@ -1046,6 +1047,9 @@ export function WorkroomView({
           </summary>
           <div className="mt-2">
             <ScopeReviewPanel
+              /* Keyed by meeting: a pending operation can never retarget
+                 onto another meeting after selection changes. */
+              key={meeting.id}
               scope={backend.meetingState?.(meeting.id)?.scope}
               coverage={backend.meetingState?.(meeting.id)?.coverage}
               proposals={backend.meetingState?.(meeting.id)?.proposals}
@@ -1055,6 +1059,20 @@ export function WorkroomView({
               linkTargets={meeting.rows
                 .filter((r) => r.boardTask)
                 .map((r) => ({ id: r.boardTask!.id, title: r.boardTask!.title }))}
+              /* The exact source under review, from the consistent
+                 snapshot: attestation binds to this hash + version, and
+                 the server rejects drift instead of attesting an unseen
+                 source. Null until the snapshot has been read. */
+              expectedSource={(() => {
+                const read = backend.scoreFor?.(meeting.id);
+                return read?.kind === "ready" && read.snapshot.transcriptHash
+                  ? {
+                      transcriptHash: read.snapshot.transcriptHash,
+                      scopeVersion: read.snapshot.scopeVersion,
+                    }
+                  : null;
+              })()}
+              onRetryReads={backend.onRetryReads}
               onAttestCoverage={
                 backend.onAttestCoverage
                   ? (input) => backend.onAttestCoverage!({ meetingId: meeting.id, ...input })
