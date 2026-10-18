@@ -48,6 +48,31 @@ create trigger steward_proposal_ledger_invalidate after insert or update or dele
   on public.steward_proposal_ledger
   for each row execute function public.steward_proposal_ledger_invalidate();
 
+-- Append-only decision audit: every registration and dismissal persists
+-- its reason, actor, client operation UUID and payload digest. Retries
+-- replay; changed payloads conflict; history cannot be rewritten.
+create table if not exists public.steward_proposal_decisions (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null,
+  conversation_id uuid not null,
+  proposal_ledger_id uuid references public.steward_proposal_ledger(id) on delete restrict,
+  kind text not null check (kind in ('register','dismiss')),
+  reason text,
+  operation_id uuid not null,
+  request_digest text not null,
+  actor_id uuid not null,
+  created_at timestamptz not null default now(),
+  unique (organization_id, operation_id)
+);
+
+alter table public.steward_proposal_decisions enable row level security;
+create policy steward_proposal_decisions_select on public.steward_proposal_decisions
+  for select to authenticated using (private.steward_is_active_member(organization_id));
+drop trigger if exists steward_proposal_decisions_immutable on public.steward_proposal_decisions;
+create trigger steward_proposal_decisions_immutable before update or delete
+  on public.steward_proposal_decisions
+  for each row execute function public.steward_block_history_mutation();
+
 create table if not exists public.steward_proposal_links (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null,
@@ -182,6 +207,29 @@ begin
   if p_proposals is null or jsonb_typeof(p_proposals) <> 'array' then
     raise exception 'proposals_invalid' using errcode = 'P0422';
   end if;
+
+  -- Operation replay bound to the append-only decision audit: same
+  -- operation + same payload replays (0 new rows), changed payload
+  -- conflicts.
+  declare
+    digest text := encode(sha256(convert_to(jsonb_build_object(
+      'org', p_org, 'conversation', p_conversation,
+      'proposals', p_proposals, 'actor', actor)::text, 'utf8')), 'hex');
+    prior public.steward_proposal_decisions;
+  begin
+    select * into prior from public.steward_proposal_decisions
+      where organization_id = p_org and operation_id = p_operation;
+    if found then
+      if prior.request_digest is distinct from digest then
+        raise exception 'operation_conflict' using errcode = 'P0002';
+      end if;
+      return 0; -- replay: registration already recorded
+    end if;
+    insert into public.steward_proposal_decisions
+      (organization_id, conversation_id, kind, operation_id, request_digest, actor_id)
+    values (p_org, p_conversation, 'register', p_operation, digest, actor);
+  end;
+
   for proposal in select * from jsonb_array_elements(p_proposals) loop
     if proposal->>'source_key' is null or proposal->>'statement' is null then
       raise exception 'proposals_invalid' using errcode = 'P0422';
@@ -218,6 +266,28 @@ begin
   if p_reason is null or char_length(btrim(p_reason)) < 10 then
     raise exception 'reason_required' using errcode = 'P0010';
   end if;
+  -- Operation replay bound to the append-only decision audit BEFORE any
+  -- state read: same operation + same payload replays the recorded
+  -- dismissal; changed payload conflicts.
+  declare
+    digest text := encode(sha256(convert_to(jsonb_build_object(
+      'org', p_org, 'proposal', p_proposal, 'reason', p_reason,
+      'actor', actor)::text, 'utf8')), 'hex');
+    prior public.steward_proposal_decisions;
+  begin
+    select * into prior from public.steward_proposal_decisions
+      where organization_id = p_org and operation_id = p_operation;
+    if found then
+      if prior.request_digest is distinct from digest then
+        raise exception 'operation_conflict' using errcode = 'P0002';
+      end if;
+      select * into proposal from public.steward_proposal_ledger
+        where id = prior.proposal_ledger_id;
+      return proposal;
+    end if;
+  end;
+
+  -- Row lock: concurrent dismiss/link decisions serialize here.
   select * into proposal from public.steward_proposal_ledger
     where id = p_proposal and organization_id = p_org and conversation_id = p_conversation
     for update;
@@ -228,10 +298,15 @@ begin
     raise exception 'proposal_already_linked' using errcode = 'P0030';
   end if;
   if proposal.status = 'dismissed' then
-    return proposal; -- idempotent replay
+    return proposal; -- idempotent: already dismissed by another operation
   end if;
   update public.steward_proposal_ledger set status = 'dismissed' where id = p_proposal
   returning * into proposal;
+  insert into public.steward_proposal_decisions
+    (organization_id, conversation_id, proposal_ledger_id, kind, reason,
+     operation_id, request_digest, actor_id)
+  values (p_org, p_conversation, p_proposal, 'dismiss', p_reason,
+          p_operation, digest, actor);
   return proposal;
 end;
 $$;
