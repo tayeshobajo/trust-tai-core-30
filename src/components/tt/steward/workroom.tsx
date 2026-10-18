@@ -311,6 +311,15 @@ function useStewardBackend(
 
   return {
     capabilities: resolvedCaps,
+    /* Real reload for failed reads: refetch every backend query. */
+    onRetryReads: () => {
+      void runs.refetch();
+      void verification.refetch();
+      void scope.refetch();
+      void coverage.refetch();
+      void proposals.refetch();
+      void score.refetch();
+    },
     runsFor: (taskId) => {
       if (taskId !== selectedTaskId) return undefined;
       /* A failed refetch surfaces the error even with stale data cached. */
