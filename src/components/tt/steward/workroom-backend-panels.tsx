@@ -740,6 +740,9 @@ export interface ScopeReviewPanelProps {
   onReinstateScopeItem:
     | ((input: { itemId: string; reason: string; operationId: string }) => Promise<ActionOutcome>)
     | undefined;
+  /** Canonical task authority (creator/owner/admin). SQL is
+      authoritative; this only hides controls the actor cannot use. */
+  mayAmendScopeItem?: ((taskId: string) => boolean) | undefined;
   /** Real reload action for failed scope/coverage/proposal reads. */
   onRetryReads?: (() => void) | undefined;
 }
@@ -781,6 +784,7 @@ export function ScopeReviewPanel({
   onDismissProposal,
   onRemoveScopeItem,
   onReinstateScopeItem,
+  mayAmendScopeItem,
   onRetryReads,
 }: ScopeReviewPanelProps) {
   const simple = useOperationAttempt<SimpleGesture>();
