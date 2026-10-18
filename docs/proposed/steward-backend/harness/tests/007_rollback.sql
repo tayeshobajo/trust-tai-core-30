@@ -22,7 +22,7 @@ begin
   end;
 end $$;
 \set ON_ERROR_STOP off
-\ir ../teardown.destructive.sql
+\ir ../../teardown.destructive.sql
 \set ON_ERROR_STOP on
 do $$
 begin
