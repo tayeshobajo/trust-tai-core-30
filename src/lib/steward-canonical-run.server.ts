@@ -1,8 +1,8 @@
 /**
  * STAGED — NOT WIRED TO ANY ROUTE. Canonical Steward preparation runner.
  *
- * This module is the application-side half of the UNAPPLIED proposal in
- * `docs/proposed/steward-backend/001_canonical_runs.up.sql`. It must not be
+ * Application-side half of the UNAPPLIED proposal in
+ * `docs/proposed/steward-backend/001_canonical_runs.up.sql`. Must not be
  * imported by any route or client-reachable module until the SQL patch has
  * been reviewed, applied, and granted — the UI keeps its exact disabled
  * state until then.
@@ -17,6 +17,10 @@
  *   allowlist and caller-selected input refs enter a run.
  * - No arbitrary URL fetching: input refs are identifiers resolved by the
  *   repository against existing stored rows, never fetched from the network.
+ * - The snapshot persists the RESOLVED content and its digest at request
+ *   time; execution reads the snapshot, never the mutable source row.
+ * - Claim/complete/fail are fenced by a unique claim token issued by the
+ *   database: a stale worker cannot complete a reclaimed run.
  */
 
 import { createHash } from "node:crypto";
@@ -33,12 +37,19 @@ export type CanonicalRunAction = (typeof CANONICAL_RUN_ACTIONS)[number];
 export type CanonicalRunStatus = "queued" | "running" | "complete" | "failed";
 
 export interface CanonicalRunInputRef {
-  /** Kind of stored input, e.g. "transcript" | "task_notes" | "artifact". */
+  /** Kind of stored input, e.g. "transcript" | "task_notes". */
   kind: string;
   /** Identifier of an existing stored row — never a URL to fetch. */
   id: string;
-  /** Revision of the input at selection time; snapshotted immutably. */
+}
+
+/** Immutable snapshot entry: resolved content + digest, pinned at request. */
+export interface CanonicalRunInputSnapshotEntry {
+  kind: string;
+  id: string;
   revision: number;
+  content: string;
+  contentDigest: string;
 }
 
 export interface CanonicalRun {
@@ -48,7 +59,7 @@ export interface CanonicalRun {
   action: CanonicalRunAction;
   clientOperationId: string;
   requestDigest: string;
-  inputSnapshot: { action: CanonicalRunAction; inputRefs: CanonicalRunInputRef[] };
+  inputSnapshot: CanonicalRunInputSnapshotEntry[];
   status: CanonicalRunStatus;
   artifactText: string | null;
   artifactDigest: string | null;
@@ -58,6 +69,9 @@ export interface CanonicalRun {
   attempts: number;
   maxAttempts: number;
   failureReason: string | null;
+  /** Fencing token for the current claim; null unless running. */
+  claimToken: string | null;
+  claimVersion: number;
 }
 
 export class OperationConflictError extends Error {
@@ -76,24 +90,25 @@ export interface CanonicalRunRepository {
     action: CanonicalRunAction;
     operationId: string;
     digest: string;
-    snapshot: CanonicalRun["inputSnapshot"];
+    snapshot: CanonicalRunInputSnapshotEntry[];
     actorId: string;
   }): Promise<CanonicalRun>;
   claimRun(runId: string, actorId: string, leaseSeconds?: number): Promise<CanonicalRun | null>;
   completeRun(input: {
     runId: string;
-    actorId: string;
+    claimToken: string;
     artifactText: string;
-    artifactDigest: string;
     evidenceRefs: string[];
   }): Promise<CanonicalRun>;
-  failRun(runId: string, actorId: string, reason: string): Promise<CanonicalRun>;
+  failRun(input: { runId: string; claimToken: string; reason: string }): Promise<CanonicalRun>;
   /** Resolve a selected input ref to stored content; null if inaccessible. */
   readInput(
     ref: CanonicalRunInputRef,
     orgId: string,
     actorId: string,
   ): Promise<{ content: string; revision: number } | null>;
+  /** Server-resolved task title; the caller never supplies it. */
+  readTaskTitle(taskId: string, orgId: string, actorId: string): Promise<string | null>;
 }
 
 /**
@@ -108,27 +123,46 @@ export interface CanonicalRunProvider {
   }): Promise<{ text: string }>;
 }
 
+function sha256(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+/**
+ * Request digest binds org, task, requester, action and the full input
+ * identity (kind, id, revision, content digest) — a reused operation UUID
+ * with any changed element conflicts instead of silently replaying.
+ */
 export function digestRequest(input: {
+  orgId: string;
+  taskId: string;
+  requesterId: string;
   action: CanonicalRunAction;
-  inputRefs: CanonicalRunInputRef[];
+  inputs: CanonicalRunInputSnapshotEntry[];
 }): string {
   const stable = JSON.stringify({
+    orgId: input.orgId,
+    taskId: input.taskId,
+    requesterId: input.requesterId,
     action: input.action,
-    inputRefs: [...input.inputRefs]
-      .map((r) => ({ kind: r.kind, id: r.id, revision: r.revision }))
+    inputs: [...input.inputs]
+      .map((r) => ({
+        kind: r.kind,
+        id: r.id,
+        revision: r.revision,
+        contentDigest: r.contentDigest,
+      }))
       .sort((a, b) => (a.kind + a.id).localeCompare(b.kind + b.id)),
   });
-  return createHash("sha256").update(stable).digest("hex");
+  return sha256(stable);
 }
 
 export function digestArtifact(text: string): string {
-  return createHash("sha256").update(text).digest("hex");
+  return sha256(text);
 }
 
 export interface RequestCanonicalRunInput {
   orgId: string;
   taskId: string;
-  taskTitle: string;
   action: CanonicalRunAction;
   /** Client-generated unique operation UUID. Retries reuse it; a deliberate
    *  rerun uses a NEW UUID. */
@@ -144,10 +178,10 @@ export type RequestCanonicalRunResult =
   | { kind: "rejected"; message: string };
 
 /**
- * Stage 1: register the run. Same operation + same payload replays the
- * existing run; same operation + changed payload conflicts; a new operation
- * is a deliberate rerun. Inaccessible inputs are rejected before any row is
- * created.
+ * Stage 1: register the run. Every selected input is resolved server-side
+ * and its content + digest persisted in the immutable snapshot; inaccessible
+ * or empty inputs are rejected before any row is created. Same operation +
+ * same payload replays; changed payload conflicts; new operation = rerun.
  */
 export async function requestCanonicalRun(
   repo: CanonicalRunRepository,
@@ -156,20 +190,33 @@ export async function requestCanonicalRun(
   if (!CANONICAL_RUN_ACTIONS.includes(input.action)) {
     return { kind: "rejected", message: `action not allowed: ${input.action}` };
   }
+  if (input.inputRefs.length === 0) {
+    return { kind: "rejected", message: "at least one input is required" };
+  }
+  const snapshot: CanonicalRunInputSnapshotEntry[] = [];
   for (const ref of input.inputRefs) {
     const resolved = await repo.readInput(ref, input.orgId, input.actorId);
     if (!resolved) {
       return { kind: "rejected", message: `input not accessible: ${ref.kind}:${ref.id}` };
     }
-    if (resolved.revision !== ref.revision) {
-      return {
-        kind: "rejected",
-        message: `input ${ref.kind}:${ref.id} changed since selection (revision ${ref.revision} → ${resolved.revision}); reselect to rerun`,
-      };
+    if (resolved.content.trim().length === 0) {
+      return { kind: "rejected", message: `input is empty: ${ref.kind}:${ref.id}` };
     }
+    snapshot.push({
+      kind: ref.kind,
+      id: ref.id,
+      revision: resolved.revision,
+      content: resolved.content,
+      contentDigest: sha256(resolved.content),
+    });
   }
-  const digest = digestRequest({ action: input.action, inputRefs: input.inputRefs });
-  const snapshot = { action: input.action, inputRefs: input.inputRefs };
+  const digest = digestRequest({
+    orgId: input.orgId,
+    taskId: input.taskId,
+    requesterId: input.actorId,
+    action: input.action,
+    inputs: snapshot,
+  });
   try {
     const run = await repo.requestRun({
       orgId: input.orgId,
@@ -198,50 +245,51 @@ export type ExecuteCanonicalRunResult =
   | { kind: "failed"; run: CanonicalRun };
 
 /**
- * Stage 2: claim and execute. Losing a claim is a normal outcome (another
- * worker holds it). Provider failure marks the run failed-or-requeued per
- * the SQL attempt budget; the lease guarantees no run strands in `running`.
- * The task row is never touched.
+ * Stage 2: claim and execute. The provider receives ONLY the immutable
+ * snapshot content recorded at request time — the mutable source rows are
+ * never re-read, so a later edit cannot silently change what a run saw.
+ * Completion and failure are fenced by the claim token: a stale worker's
+ * write is rejected by the database. The task row is never touched.
  */
 export async function executeCanonicalRun(
   repo: CanonicalRunRepository,
   provider: CanonicalRunProvider,
-  input: { runId: string; actorId: string; taskTitle: string },
+  input: { runId: string; actorId: string },
 ): Promise<ExecuteCanonicalRunResult> {
   const claimed = await repo.claimRun(input.runId, input.actorId);
-  if (!claimed) return { kind: "not_claimed" };
+  if (!claimed || !claimed.claimToken) return { kind: "not_claimed" };
+  const claimToken = claimed.claimToken;
 
-  const inputs: { kind: string; content: string; revision: number }[] = [];
-  for (const ref of claimed.inputSnapshot.inputRefs) {
-    const resolved = await repo.readInput(ref, claimed.organizationId, input.actorId);
-    if (!resolved) {
-      const run = await repo.failRun(
-        claimed.id,
-        input.actorId,
-        `input became inaccessible: ${ref.kind}:${ref.id}`,
-      );
-      return { kind: "failed", run };
-    }
-    inputs.push({ kind: ref.kind, content: resolved.content, revision: resolved.revision });
+  const taskTitle = await repo.readTaskTitle(claimed.taskId, claimed.organizationId, input.actorId);
+  if (!taskTitle) {
+    const run = await repo.failRun({
+      runId: claimed.id,
+      claimToken,
+      reason: "task became inaccessible",
+    });
+    return { kind: "failed", run };
   }
 
   try {
     const output = await provider.generate({
       action: claimed.action,
-      taskTitle: input.taskTitle,
-      inputs,
+      taskTitle,
+      inputs: claimed.inputSnapshot.map((s) => ({
+        kind: s.kind,
+        content: s.content,
+        revision: s.revision,
+      })),
     });
     const run = await repo.completeRun({
       runId: claimed.id,
-      actorId: input.actorId,
+      claimToken,
       artifactText: output.text,
-      artifactDigest: digestArtifact(output.text),
-      evidenceRefs: claimed.inputSnapshot.inputRefs.map((r) => `${r.kind}:${r.id}@${r.revision}`),
+      evidenceRefs: claimed.inputSnapshot.map((s) => `${s.kind}:${s.id}@${s.revision}`),
     });
     return { kind: "complete", run };
   } catch (error) {
     const reason = error instanceof Error ? error.message : "provider failure";
-    const run = await repo.failRun(claimed.id, input.actorId, reason.slice(0, 500));
+    const run = await repo.failRun({ runId: claimed.id, claimToken, reason: reason.slice(0, 500) });
     return { kind: "failed", run };
   }
 }

@@ -5,6 +5,7 @@ import {
   executeCanonicalRun,
   requestCanonicalRun,
   type CanonicalRun,
+  type CanonicalRunInputSnapshotEntry,
   type CanonicalRunRepository,
   type CanonicalRunProvider,
 } from "./steward-canonical-run.server";
@@ -13,15 +14,26 @@ const ORG = "org-a";
 const ACTOR = "user-owner";
 const TASK = "task-1";
 
-function makeRun(partial: Partial<CanonicalRun>): CanonicalRun {
+function snapshotEntry(partial: Partial<CanonicalRunInputSnapshotEntry> = {}) {
   return {
-    id: partial.id ?? "run-1",
+    kind: "transcript",
+    id: "conv-1",
+    revision: 1,
+    content: "stored transcript content",
+    contentDigest: "digest-1",
+    ...partial,
+  };
+}
+
+function makeRun(partial: Partial<CanonicalRun> = {}): CanonicalRun {
+  return {
+    id: "run-1",
     organizationId: ORG,
     taskId: TASK,
     action: "prepare_brief",
     clientOperationId: "op-1",
     requestDigest: "d",
-    inputSnapshot: { action: "prepare_brief", inputRefs: [] },
+    inputSnapshot: [snapshotEntry()],
     status: "queued",
     artifactText: null,
     artifactDigest: null,
@@ -30,6 +42,8 @@ function makeRun(partial: Partial<CanonicalRun>): CanonicalRun {
     attempts: 0,
     maxAttempts: 3,
     failureReason: null,
+    claimToken: null,
+    claimVersion: 0,
     ...partial,
   };
 }
@@ -50,23 +64,27 @@ function makeRepo(
     },
     async claimRun() {
       calls.push("claimRun");
-      return makeRun({ status: "running", attempts: 1 });
+      return makeRun({ status: "running", attempts: 1, claimToken: "fence-1", claimVersion: 1 });
     },
     async completeRun(input) {
-      calls.push("completeRun");
+      calls.push(`completeRun:${input.claimToken}`);
       return makeRun({
         status: "complete",
         artifactText: input.artifactText,
-        artifactDigest: input.artifactDigest,
+        artifactDigest: digestArtifact(input.artifactText),
         evidenceRefs: input.evidenceRefs,
+        claimToken: null,
       });
     },
-    async failRun(_runId, _actor, reason) {
-      calls.push("failRun");
-      return makeRun({ status: "failed", failureReason: reason });
+    async failRun(input) {
+      calls.push(`failRun:${input.claimToken}`);
+      return makeRun({ status: "failed", failureReason: input.reason, claimToken: null });
     },
     async readInput() {
-      return { content: "stored content", revision: 1 };
+      return { content: "stored transcript content", revision: 1 };
+    },
+    async readTaskTitle() {
+      return "Server-resolved task title";
     },
     ...overrides,
   };
@@ -78,18 +96,29 @@ const fakeProvider: CanonicalRunProvider = {
   },
 };
 
+const baseRequest = {
+  orgId: ORG,
+  taskId: TASK,
+  action: "prepare_brief" as const,
+  operationId: "op-1",
+  inputRefs: [{ kind: "transcript", id: "conv-1" }],
+  actorId: ACTOR,
+};
+
 describe("requestCanonicalRun", () => {
   it("rejects actions outside the allowlist", async () => {
     const repo = makeRepo();
     const result = await requestCanonicalRun(repo, {
-      orgId: ORG,
-      taskId: TASK,
-      taskTitle: "T",
+      ...baseRequest,
       action: "build_website" as never,
-      operationId: "op-1",
-      inputRefs: [],
-      actorId: ACTOR,
     });
+    expect(result.kind).toBe("rejected");
+    expect(repo.calls).not.toContain("requestRun");
+  });
+
+  it("rejects empty input selections", async () => {
+    const repo = makeRepo();
+    const result = await requestCanonicalRun(repo, { ...baseRequest, inputRefs: [] });
     expect(result.kind).toBe("rejected");
     expect(repo.calls).not.toContain("requestRun");
   });
@@ -100,36 +129,106 @@ describe("requestCanonicalRun", () => {
         return null;
       },
     });
-    const result = await requestCanonicalRun(repo, {
-      orgId: ORG,
-      taskId: TASK,
-      taskTitle: "T",
-      action: "prepare_brief",
-      operationId: "op-1",
-      inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }],
-      actorId: ACTOR,
-    });
+    const result = await requestCanonicalRun(repo, baseRequest);
     expect(result.kind).toBe("rejected");
     expect(repo.calls).not.toContain("requestRun");
   });
 
-  it("rejects inputs whose revision changed since selection", async () => {
+  it("rejects empty input content", async () => {
     const repo = makeRepo({
       async readInput() {
-        return { content: "x", revision: 4 };
+        return { content: "  ", revision: 1 };
       },
     });
-    const result = await requestCanonicalRun(repo, {
+    const result = await requestCanonicalRun(repo, baseRequest);
+    expect(result.kind).toBe("rejected");
+  });
+
+  it("persists resolved content and digest in the immutable snapshot", async () => {
+    const repo = makeRepo();
+    const result = await requestCanonicalRun(repo, baseRequest);
+    expect(result.kind).toBe("queued");
+    if (result.kind === "queued") {
+      const entry = result.run.inputSnapshot[0]!;
+      expect(entry.content).toBe("stored transcript content");
+      expect(entry.contentDigest).toMatch(/^[0-9a-f]{64}$/);
+      expect(entry.revision).toBe(1);
+    }
+  });
+
+  it("binds the digest to org, task, requester, action and input identity", () => {
+    const inputs = [snapshotEntry()];
+    const a = digestRequest({
       orgId: ORG,
       taskId: TASK,
-      taskTitle: "T",
+      requesterId: ACTOR,
       action: "prepare_brief",
-      operationId: "op-1",
-      inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }],
-      actorId: ACTOR,
+      inputs,
     });
-    expect(result.kind).toBe("rejected");
-    if (result.kind === "rejected") expect(result.message).toContain("changed since selection");
+    expect(
+      digestRequest({
+        orgId: "org-b",
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "prepare_brief",
+        inputs,
+      }),
+    ).not.toBe(a);
+    expect(
+      digestRequest({
+        orgId: ORG,
+        taskId: "task-2",
+        requesterId: ACTOR,
+        action: "prepare_brief",
+        inputs,
+      }),
+    ).not.toBe(a);
+    expect(
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: "user-other",
+        action: "prepare_brief",
+        inputs,
+      }),
+    ).not.toBe(a);
+    expect(
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "draft_roadmap",
+        inputs,
+      }),
+    ).not.toBe(a);
+    expect(
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "prepare_brief",
+        inputs: [snapshotEntry({ contentDigest: "digest-2" })],
+      }),
+    ).not.toBe(a);
+    // Ref order does not change the digest.
+    const two = [snapshotEntry(), snapshotEntry({ kind: "task_notes", id: "t1" })];
+    expect(
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "prepare_brief",
+        inputs: two,
+      }),
+    ).toBe(
+      digestRequest({
+        orgId: ORG,
+        taskId: TASK,
+        requesterId: ACTOR,
+        action: "prepare_brief",
+        inputs: [...two].reverse(),
+      }),
+    );
   });
 
   it("maps a payload-mismatch on the same operation to a conflict", async () => {
@@ -140,39 +239,8 @@ describe("requestCanonicalRun", () => {
         throw err;
       },
     });
-    const result = await requestCanonicalRun(repo, {
-      orgId: ORG,
-      taskId: TASK,
-      taskTitle: "T",
-      action: "prepare_brief",
-      operationId: "op-1",
-      inputRefs: [],
-      actorId: ACTOR,
-    });
+    const result = await requestCanonicalRun(repo, baseRequest);
     expect(result.kind).toBe("conflict");
-  });
-
-  it("produces a stable digest independent of input ref order", () => {
-    const a = digestRequest({
-      action: "prepare_brief",
-      inputRefs: [
-        { kind: "transcript", id: "c1", revision: 1 },
-        { kind: "task_notes", id: "t1", revision: 2 },
-      ],
-    });
-    const b = digestRequest({
-      action: "prepare_brief",
-      inputRefs: [
-        { kind: "task_notes", id: "t1", revision: 2 },
-        { kind: "transcript", id: "c1", revision: 1 },
-      ],
-    });
-    expect(a).toBe(b);
-    const c = digestRequest({
-      action: "prepare_brief",
-      inputRefs: [{ kind: "transcript", id: "c1", revision: 2 }],
-    });
-    expect(c).not.toBe(a);
   });
 });
 
@@ -186,76 +254,96 @@ describe("executeCanonicalRun", () => {
     const result = await executeCanonicalRun(repo, fakeProvider, {
       runId: "run-1",
       actorId: ACTOR,
-      taskTitle: "T",
     });
     expect(result.kind).toBe("not_claimed");
-    expect(repo.calls).not.toContain("completeRun");
+    expect(repo.calls.some((c) => c.startsWith("completeRun"))).toBe(false);
   });
 
-  it("completes with artifact text, digest and input provenance refs", async () => {
+  it("returns not_claimed when the claim carries no fencing token", async () => {
     const repo = makeRepo({
       async claimRun() {
-        return makeRun({
-          status: "running",
-          attempts: 1,
-          inputSnapshot: {
-            action: "prepare_brief",
-            inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }],
-          },
-        });
+        return makeRun({ status: "running", claimToken: null });
       },
     });
     const result = await executeCanonicalRun(repo, fakeProvider, {
       runId: "run-1",
       actorId: ACTOR,
-      taskTitle: "T",
+    });
+    expect(result.kind).toBe("not_claimed");
+  });
+
+  it("feeds the provider only the immutable snapshot, never a fresh source read", async () => {
+    let seen: { kind: string; content: string; revision: number }[] = [];
+    const spy: CanonicalRunProvider = {
+      async generate(input) {
+        seen = input.inputs;
+        return { text: "artifact" };
+      },
+    };
+    const repo = makeRepo({
+      async claimRun() {
+        return makeRun({
+          status: "running",
+          claimToken: "fence-9",
+          claimVersion: 2,
+          inputSnapshot: [snapshotEntry({ content: "SNAPSHOT content", revision: 3 })],
+        });
+      },
+      async readInput() {
+        return { content: "EDITED after request", revision: 4 };
+      },
+    });
+    const result = await executeCanonicalRun(repo, spy, { runId: "run-1", actorId: ACTOR });
+    expect(result.kind).toBe("complete");
+    expect(seen).toEqual([{ kind: "transcript", content: "SNAPSHOT content", revision: 3 }]);
+  });
+
+  it("threads the fencing token into completion with digest and provenance", async () => {
+    const repo = makeRepo({
+      async claimRun() {
+        return makeRun({ status: "running", claimToken: "fence-9", claimVersion: 2, attempts: 1 });
+      },
+    });
+    const result = await executeCanonicalRun(repo, fakeProvider, {
+      runId: "run-1",
+      actorId: ACTOR,
     });
     expect(result.kind).toBe("complete");
+    expect(repo.calls).toContain("completeRun:fence-9");
     if (result.kind === "complete") {
       expect(result.run.artifactDigest).toBe(digestArtifact("draft brief artifact"));
-      expect(result.run.evidenceRefs).toEqual(["transcript:conv-1@3"]);
+      expect(result.run.evidenceRefs).toEqual(["transcript:conv-1@1"]);
     }
   });
 
-  it("marks the run failed on provider failure and never touches the task", async () => {
-    const repo = makeRepo();
+  it("marks the run failed on provider failure with the same fencing token", async () => {
+    const repo = makeRepo({
+      async claimRun() {
+        return makeRun({ status: "running", claimToken: "fence-9", claimVersion: 2, attempts: 1 });
+      },
+    });
     const failing: CanonicalRunProvider = {
       async generate() {
         throw new Error("provider timeout");
       },
     };
-    const result = await executeCanonicalRun(repo, failing, {
-      runId: "run-1",
-      actorId: ACTOR,
-      taskTitle: "T",
-    });
+    const result = await executeCanonicalRun(repo, failing, { runId: "run-1", actorId: ACTOR });
     expect(result.kind).toBe("failed");
-    expect(repo.calls).toContain("failRun");
-    expect(repo.calls).not.toContain("completeRun");
+    expect(repo.calls).toContain("failRun:fence-9");
+    expect(repo.calls.some((c) => c.startsWith("completeRun"))).toBe(false);
   });
 
-  it("fails the run when an input becomes inaccessible after claiming", async () => {
+  it("fails the run when the task title cannot be resolved server-side", async () => {
     const repo = makeRepo({
-      async claimRun() {
-        return makeRun({
-          status: "running",
-          attempts: 1,
-          inputSnapshot: {
-            action: "prepare_brief",
-            inputRefs: [{ kind: "transcript", id: "conv-1", revision: 3 }],
-          },
-        });
-      },
-      async readInput() {
+      async readTaskTitle() {
         return null;
       },
     });
     const result = await executeCanonicalRun(repo, fakeProvider, {
       runId: "run-1",
       actorId: ACTOR,
-      taskTitle: "T",
     });
     expect(result.kind).toBe("failed");
-    expect(repo.calls).not.toContain("completeRun");
+    expect(repo.calls.some((c) => c.startsWith("completeRun"))).toBe(false);
   });
 });
