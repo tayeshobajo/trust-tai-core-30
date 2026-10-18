@@ -94,9 +94,7 @@ describe("serverMeetingScore", () => {
   });
 
   it("any failed or partial read is unknown, never a numeric guess", () => {
-    expect(
-      serverMeetingScore({ kind: "rejected", message: "read failed" })?.value,
-    ).toBeNull();
+    expect(serverMeetingScore({ kind: "rejected", message: "read failed" })?.value).toBeNull();
     expect(serverMeetingScore({ kind: "loading" })?.value).toBeNull();
   });
 

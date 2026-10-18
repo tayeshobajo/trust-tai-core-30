@@ -1019,9 +1019,7 @@ export function WorkroomView({
           meeting={meeting}
           receiptsFailed={receiptsFailed}
           scopeUnavailable={!!linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)}
-          serverScore={
-            backend?.scoreFor ? serverMeetingScore(backend.scoreFor(meeting.id)) : null
-          }
+          serverScore={backend?.scoreFor ? serverMeetingScore(backend.scoreFor(meeting.id)) : null}
         />
       </div>
 
@@ -1331,10 +1329,7 @@ export function WorkroomView({
             )}
           >
             <AlertCircle
-              className={cn(
-                "mt-0.5 size-5 shrink-0",
-                full ? "text-success" : "text-warning",
-              )}
+              className={cn("mt-0.5 size-5 shrink-0", full ? "text-success" : "text-warning")}
             />
             <div>
               {meeting.requiredWork ? (

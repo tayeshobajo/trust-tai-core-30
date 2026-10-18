@@ -179,8 +179,7 @@ function useOperationAttempt<T>() {
         /* Transport ambiguity: the request may have committed. Keep the
            operation id + payload and report uncertainty honestly. */
         setPending(attempt);
-        const message =
-          error instanceof Error ? error.message : "the request did not complete";
+        const message = error instanceof Error ? error.message : "the request did not complete";
         const uncertain: ActionOutcome = {
           kind: "uncertain",
           message: `Outcome unknown — ${message}. Retry replays the same operation; it never re-executes.`,
@@ -646,7 +645,9 @@ export function ScopeReviewPanel({
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .at(-1);
   const targetTitle = (taskId: string | null) =>
-    taskId ? (linkTargets.find((t) => t.id === taskId)?.title ?? `task ${taskId.slice(0, 8)}…`) : null;
+    taskId
+      ? (linkTargets.find((t) => t.id === taskId)?.title ?? `task ${taskId.slice(0, 8)}…`)
+      : null;
 
   async function link(proposalId: string) {
     const taskId = linkChoices[proposalId] ?? "";
@@ -818,8 +819,8 @@ export function ScopeReviewPanel({
       <OutcomeNote outcome={simple.outcome ?? linkAttempt.outcome ?? dismissAttempt.outcome} />
       {simple.pending || linkAttempt.pending || dismissAttempt.pending ? (
         <p className="text-xs text-warning">
-          One operation’s outcome is unknown. Re-run the same action — it replays the same
-          operation instead of re-executing.
+          One operation’s outcome is unknown. Re-run the same action — it replays the same operation
+          instead of re-executing.
         </p>
       ) : null}
     </div>
