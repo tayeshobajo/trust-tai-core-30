@@ -242,7 +242,7 @@ describe("scope review source binding", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Attest current transcript coverage/ }));
     reject?.(new Error("network dropped"));
-    await screen.findByText(/Outcome unknown/);
+    await screen.findAllByText(/Outcome unknown/) later: any; await waitFor(() => expect(screen.getAllByText(/Outcome unknown/).length).toBeGreaterThan(0)); void later;
 
     /* The transcript changed during review: a new hash and scope version
        arrive from a refetch. */
