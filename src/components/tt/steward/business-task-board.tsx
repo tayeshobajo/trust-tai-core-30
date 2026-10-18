@@ -494,7 +494,7 @@ export function TaskEditor({
             <label className="grid gap-1 text-sm">
               Task title
               <TTInput
-                autoFocus
+                autoFocus={!focusField}
                 required
                 maxLength={500}
                 value={input.title}
@@ -504,6 +504,7 @@ export function TaskEditor({
             <label className="grid gap-1 text-sm">
               Status
               <select
+                ref={statusRef}
                 className={control}
                 value={input.status}
                 onChange={(e) => {
@@ -585,6 +586,7 @@ export function TaskEditor({
             <label className="grid gap-1 text-sm">
               Owner
               <select
+                ref={ownerRef}
                 className={control}
                 disabled={scope === "personal" || (!admin && !!task)}
                 value={input.owner_user_id ?? ""}
@@ -608,6 +610,7 @@ export function TaskEditor({
             <label className="grid gap-1 text-sm">
               Due date (optional)
               <input
+                ref={dueRef}
                 className={control}
                 type="date"
                 value={input.due_at?.slice(0, 10) ?? ""}
