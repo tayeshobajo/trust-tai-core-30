@@ -26,13 +26,6 @@ begin
       and (snap->>'pendingProposals')::int = 0
       and (snap->>'coverageCurrent')::boolean),
     'complete is the conjunction of the snapshot parts');
-  -- After the 004/005 tests the scope changed without re-attestation, so
-  -- coverage must read stale and complete must be false — never 100 from
-  -- a stale attestation.
-  perform public.test_assert(not (snap->>'coverageCurrent')::boolean,
-    'stale coverage reads not current');
-  perform public.test_assert(not (snap->>'complete')::boolean,
-    'no complete verdict with stale coverage');
 end $$;
 
 -- 2. A fresh attestation flips coverageCurrent in the SAME snapshot.
@@ -46,6 +39,37 @@ begin
   perform public.test_assert((snap->>'coverageCurrent')::boolean,
     'fresh attestation reads current in the same snapshot');
   perform public.test_assert((snap->>'attestedAt') is not null, 'attestedAt populated');
+end $$;
+
+-- 2b. A scope change after attestation makes coverage stale in the very
+--     next snapshot — a stale attestation can never keep a meeting
+--     complete, and the new pending proposal gates the verdict too.
+do $$
+declare snap jsonb; added integer;
+begin
+  added := public.steward_register_proposals(
+    '11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'c0000000-0000-0000-0000-00000000000a',
+    '[{"source_key":"ext-9001","kind":"action","statement":"Snapshot gating proposal"}]'::jsonb,
+    '{"segments":[{"speaker":"Tai","text":"Synthetic Soji roadmap discussion.","offset":0}]}'::jsonb);
+  perform public.test_assert(added = 1, 'gating proposal registered');
+  snap := public.steward_meeting_score_snapshot(
+    '11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
+  perform public.test_assert(not (snap->>'coverageCurrent')::boolean,
+    'stale coverage reads not current');
+  perform public.test_assert((snap->>'pendingProposals')::int >= 1,
+    'undecided proposal pending in snapshot');
+  perform public.test_assert(not (snap->>'complete')::boolean,
+    'no complete verdict with stale coverage or pending proposals');
+  -- Clean up the gating proposal so later suites are unaffected.
+  perform public.steward_dismiss_proposal(
+    '11111111-1111-1111-1111-111111111111',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    (select id from public.steward_proposal_ledger
+      where organization_id = '11111111-1111-1111-1111-111111111111'
+        and source_key = 'ext-9001'),
+    'Snapshot test cleanup dismissal.', 'c0000000-0000-0000-0000-00000000000b');
 end $$;
 
 -- 3. Access rules: inactive member, viewer-only is fine for reads but
