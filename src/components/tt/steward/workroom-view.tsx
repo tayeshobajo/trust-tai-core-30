@@ -941,9 +941,18 @@ export function WorkroomView({
                 {(() => {
                   /* The consistent server snapshot, when the staged
                      contract is active, overrides the local derivation for
-                     this row too — nav, card and footer never disagree. */
-                  const navScore = backend?.scoreFor
-                    ? serverMeetingScore(backend.scoreFor(m.id))
+                     this row too — nav, card and footer never disagree.
+                     When the contract is active but THIS meeting's
+                     snapshot has not been read (only the selected meeting
+                     is queried), the row is honestly unknown — never a
+                     stale local 100. */
+                  const canonicalActive =
+                    !!backend?.scoreFor && backend.capabilities.scope.kind === "enabled";
+                  const navScore = canonicalActive
+                    ? (serverMeetingScore(backend.scoreFor!(m.id)) ?? {
+                        value: null,
+                        label: "score not read for this meeting",
+                      })
                     : null;
                   const pillValue = navScore
                     ? navScore.value === null
