@@ -139,7 +139,7 @@ create or replace function public.steward_current_coverage(
   p_org uuid,
   p_conversation uuid
 ) returns boolean
-language plpgsql stable security invoker set search_path = public, pg_temp as $$
+language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
   hash text;
