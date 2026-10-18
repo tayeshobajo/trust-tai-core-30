@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { cmdTasks } from "@/data/supabase/cmd-tasks";
@@ -416,6 +416,16 @@ export function TaskEditor({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [checked, setChecked] = useState(false);
+  const statusRef = useRef<HTMLSelectElement>(null);
+  const ownerRef = useRef<HTMLSelectElement>(null);
+  const dueRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!focusField) return;
+    const target = focusField === "status" ? statusRef : focusField === "owner" ? ownerRef : dueRef;
+    target.current?.focus();
+    target.current?.scrollIntoView({ block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const editable = !task
     ? BOARD_WRITE_ROLES.includes(identity.role)
     : mayEditBoardTask(task, { userId: identity.userId, role: identity.role });
