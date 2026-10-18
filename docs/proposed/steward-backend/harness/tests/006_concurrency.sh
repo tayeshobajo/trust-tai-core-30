@@ -72,7 +72,7 @@ attempts=$(psql "$DB" -tA -c \
 
 # Concurrent duplicate requests: both succeed, one row, identical digest.
 request() {
-  psql "$DB" -q -v ON_ERROR_STOP=1 -o /dev/null <<'SQL' 2>/dev/null
+  psql "$DB" -q -v ON_ERROR_STOP=1 -o /dev/null <<'SQL'
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 select public.steward_request_canonical_run(
