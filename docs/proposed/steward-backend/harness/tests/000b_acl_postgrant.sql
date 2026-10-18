@@ -16,7 +16,7 @@ begin
     not has_function_privilege('authenticated', 'public.steward_complete_canonical_run(uuid,uuid,text,jsonb)', 'execute'),
     'post-grant: authenticated still cannot execute complete');
   perform public.test_assert(
-    not has_function_privilege('authenticated', 'public.steward_fail_canonical_run(uuid,uuid,text)', 'execute'),
+    not has_function_privilege('authenticated', 'public.steward_fail_canonical_run(uuid,uuid,text,boolean)', 'execute'),
     'post-grant: authenticated still cannot execute fail');
   perform public.test_assert(
     has_function_privilege('service_role', 'public.steward_claim_canonical_run(uuid,integer)', 'execute'),
