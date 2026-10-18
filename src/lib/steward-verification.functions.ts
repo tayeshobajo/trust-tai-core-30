@@ -172,22 +172,6 @@ export const getTaskVerificationStateFn = createServerFn({ method: "GET" })
     };
   });
 
-/**
- * The single verified-state criterion, matching the scope SQL exactly:
- * the task is complete AND its LATEST receipt is a verify whose recorded
- * task_revision_after equals the CURRENT revision. A reopen, an edit, or
- * a legacy status flip after reopen changes the revision and drops the
- * credit; raw "complete" with no valid receipt is never verified.
- */
-export function receiptBackedVerified(
-  task: { status: string; revision: number },
-  receipts: { kind: "verify" | "reopen"; taskRevisionAfter: number }[],
-): boolean {
-  if (task.status !== "complete") return false;
-  const latest = receipts.at(-1);
-  return !!latest && latest.kind === "verify" && latest.taskRevisionAfter === task.revision;
-}
-
 export type MeetingVerificationProjectionState =
   | { kind: "unavailable"; reason: string }
   | {
