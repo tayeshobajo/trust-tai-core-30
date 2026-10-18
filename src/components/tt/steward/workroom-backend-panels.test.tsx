@@ -25,7 +25,7 @@ const fictionalTask = {
   title: "Fictional required task",
   revision: 3,
   status: "open",
-} as never;
+};
 
 describe("verification panel operation safety", () => {
   it("keeps the same operation id and the user's note across an uncertain transport retry", async () => {
@@ -205,7 +205,7 @@ describe("verification panel operation safety", () => {
 describe("scope review source binding", () => {
   const scopeReady = {
     kind: "ready" as const,
-    counts: { required: 2, verified: 0 },
+    counts: { denominator: 2, verified: 0, pendingProposals: 0 },
   };
 
   it("replays the attestation bound to the ORIGINAL reviewed source after the source changes", async () => {
