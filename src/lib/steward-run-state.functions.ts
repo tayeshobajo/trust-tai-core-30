@@ -71,5 +71,5 @@ export const getTaskCanonicalRunsFn = createServerFn({ method: "GET" })
       claimToken: (row["claim_token"] as string | null) ?? null,
       claimVersion: row["claim_version"] as number,
     }));
-    return { kind: "ready", runs };
+    return { kind: "ready", runs, truncated };
   });
