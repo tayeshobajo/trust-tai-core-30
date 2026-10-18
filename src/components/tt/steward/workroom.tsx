@@ -3,8 +3,8 @@
  *
  * Reads stored conversations, person-confirmed commitments and completion
  * receipts, then hands everything to the presentational WorkroomView. This
- * room writes nothing itself: confirming and completing happen on the
- * existing meeting review page, behind its gates.
+ * task view writes nothing: the meeting review page confirms proposals only.
+ * Verify/reopen controls await review of atomic completion persistence.
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,7 @@ import { buildWorkroom, receiptMapFrom } from "@/domain/steward-workroom";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 import { WorkroomMoreMenu, WorkroomView } from "./workroom-view";
+import { TaskHistory } from "./task-history";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 const FOCUS_THROTTLE_MS = 60 * 1000;
@@ -212,6 +213,14 @@ export function StewardWorkroom({ identity }: { identity: WorkspaceIdentity }) {
       commitmentFor={commitmentById}
       receiptsFailed={receipts.isError}
       sync={sync}
+      historyFor={(commitmentId) => (
+        <TaskHistory
+          key={`${org}:${identity.userId}:${commitmentId}`}
+          organizationId={org}
+          userId={identity.userId}
+          commitmentId={commitmentId}
+        />
+      )}
       headerMenu={
         <WorkroomMoreMenu>
           {(

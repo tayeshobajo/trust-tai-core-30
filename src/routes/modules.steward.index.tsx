@@ -3,8 +3,8 @@
  *
  * The first page under Steward: stored meetings on the left, the confirmed
  * promises of one meeting in the middle, and the selected promise's source
- * and next step on the right. Real rows only; confirming and completing
- * happen on the meeting review page behind its gates. The compact Steward
+ * and next step on the right. Real rows only; meeting review confirms
+ * proposals, not completion. Verify/reopen controls remain unavailable. The compact Steward
  * shell replaces the suite shell here so the workspace keeps the screen;
  * suite navigation and account live in the compact header.
  */
