@@ -87,7 +87,8 @@ export function createSupabaseCanonicalRunRepository(
         p_input_refs: input.inputRefs.map((s) => ({ kind: s.kind, id: s.id })),
       });
       if (error) rethrow(error);
-      return mapRun(data as RunRow);
+      const result = data as { run: RunRow; replayed: boolean };
+      return { run: mapRun(result.run), replayed: result.replayed === true };
     },
     async claimRun(runId, _actorId, leaseSeconds) {
       const { data, error } = await supabase.rpc("steward_claim_canonical_run", {

@@ -140,13 +140,17 @@ $$;
 -- (after reauthorizing the current caller AND the current task state);
 -- same operation + changed payload conflicts; a new operation UUID is a
 -- deliberate rerun. Pilot scope: business-visibility tasks only.
+-- Return contract: jsonb {run: <steward_canonical_runs row>, replayed:
+-- boolean}. The explicit replayed flag is the ONLY reliable replay signal
+-- — a replayed run is indistinguishable from a fresh one by row content.
+drop function if exists public.steward_request_canonical_run(uuid, uuid, text, uuid, jsonb);
 create or replace function public.steward_request_canonical_run(
   p_org uuid,
   p_task uuid,
   p_action text,
   p_operation uuid,
   p_input_refs jsonb -- [{kind, id}] — content is resolved server-side
-) returns public.steward_canonical_runs
+) returns jsonb
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
@@ -204,14 +208,14 @@ begin
     if existing.request_digest is distinct from digest then
       raise exception 'operation_conflict' using errcode = 'P0002';
     end if;
-    return existing; -- replay after full reauthorization above
+    return jsonb_build_object('run', to_jsonb(existing), 'replayed', true); -- replay after full reauthorization above
   end if;
 
   insert into public.steward_canonical_runs
     (organization_id, task_id, action, client_operation_id, request_digest, input_snapshot, requested_by)
   values (p_org, p_task, p_action, p_operation, digest, snapshot, actor)
   returning * into inserted;
-  return inserted;
+  return jsonb_build_object('run', to_jsonb(inserted), 'replayed', false);
 exception
   when unique_violation then
     -- Concurrent duplicate request: reliably replay the winner's row.

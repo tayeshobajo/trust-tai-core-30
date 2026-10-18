@@ -39,6 +39,8 @@ grant execute on function public.steward_reopen_task(uuid, uuid, integer, uuid, 
 grant execute on function public.steward_attest_coverage(uuid, uuid) to authenticated;
 grant execute on function public.steward_current_coverage(uuid, uuid) to authenticated;
 grant execute on function public.steward_link_proposal(uuid, uuid, uuid, uuid, uuid) to authenticated;
+grant execute on function public.steward_register_proposals(uuid, uuid, uuid, jsonb, jsonb) to authenticated;
+grant execute on function public.steward_dismiss_proposal(uuid, uuid, uuid, text, uuid) to authenticated;
 grant execute on function public.steward_scope_add_item(uuid, uuid, uuid, text, uuid) to authenticated;
 grant execute on function public.steward_scope_sync_required(uuid, uuid, uuid) to authenticated;
 grant execute on function public.steward_scope_amend_remove(uuid, uuid, uuid, text, uuid) to authenticated;

@@ -20,15 +20,20 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createSupabaseCanonicalRunRepository } from "./steward-canonical-run.supabase";
 import {
+  authorizeRunWorkerCaller,
   CANONICAL_RUN_ACTIONS,
   executeCanonicalRun,
-  type CanonicalRunProvider,
   type ExecuteCanonicalRunResult,
 } from "./steward-canonical-run.server";
+import {
+  canonicalRunProviderStatus,
+  createCanonicalRunProvider,
+} from "./steward-canonical-run.provider.server";
 
 export type CanonicalRunCapabilityState =
   { kind: "unavailable"; reason: string } | { kind: "enabled" };
@@ -73,7 +78,7 @@ export const requestCanonicalRunFn = createServerFn({ method: "POST" })
       // The SQL function derives the actor from auth.uid(), validates
       // authority, resolves and snapshots the inputs, and computes the
       // request digest — this layer only transports the refs.
-      const run = await repo.requestRun({
+      const { run, replayed } = await repo.requestRun({
         orgId: data.orgId,
         taskId: data.taskId,
         action: data.action,
@@ -83,7 +88,7 @@ export const requestCanonicalRunFn = createServerFn({ method: "POST" })
         actorId: context.userId,
       });
       return {
-        kind: run.status === "queued" && run.attempts === 0 ? "queued" : "replayed",
+        kind: replayed ? "replayed" : "queued",
         runId: run.id,
       };
     } catch (error) {
@@ -111,19 +116,65 @@ export const runCanonicalRunWorkerFn = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ runId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }): Promise<CanonicalRunWorkerState> => {
     if (!capabilityEnabled()) return { kind: "unavailable", reason: DISABLED_REASON };
+    // Provider readiness is checked BEFORE any claim so a missing
+    // configuration reports unavailable instead of stranding a run.
+    const providerStatus = canonicalRunProviderStatus();
+    if (!providerStatus.configured) {
+      return { kind: "unavailable", reason: providerStatus.reason ?? DISABLED_REASON };
+    }
+    // Authorize the CALLER against the run's org and canonical task through
+    // their own RLS view BEFORE any privileged transition. The admin
+    // repository validates the run's ORIGINAL requester, not this caller —
+    // without this check any authenticated user could trigger and read
+    // another org's run/artifact by supplying an arbitrary runId. RLS
+    // returns nothing for an inaccessible run, so a foreign runId is
+    // indistinguishable from a nonexistent one.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proposed tables are not in generated types until the UNAPPLIED patches land
+    const rls = context.supabase as any;
+    const { data: run } = await rls
+      .from("steward_canonical_runs")
+      .select("id, organization_id, task_id")
+      .eq("id", data.runId)
+      .maybeSingle();
+    if (!run) {
+      return { kind: "unavailable", reason: "this run is not available to you" };
+    }
+    const { data: membership } = await rls
+      .from("organization_memberships")
+      .select("organization_id")
+      .eq("organization_id", run.organization_id)
+      .eq("user_id", context.userId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (!membership) {
+      return { kind: "unavailable", reason: "this run is not available to you" };
+    }
+    const { data: task } = await rls
+      .from("steward_tasks")
+      .select("visibility, owner_user_id, created_by")
+      .eq("organization_id", run.organization_id)
+      .eq("id", run.task_id)
+      .maybeSingle();
+    const denial = authorizeRunWorkerCaller({
+      run: { organizationId: run.organization_id, taskId: run.task_id },
+      isActiveMember: Boolean(membership),
+      task,
+      callerId: context.userId,
+    });
+    if (denial) {
+      return { kind: "unavailable", reason: denial };
+    }
+    const token =
+      getRequest()
+        .headers.get("authorization")
+        ?.replace(/^Bearer\s+/i, "") ?? "";
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const repo = createSupabaseCanonicalRunRepository(supabaseAdmin);
-    // Default provider: none configured — fail honestly. A real provider is
-    // wired only after separate review; tests inject a fake.
-    const provider: CanonicalRunProvider = {
-      async generate() {
-        throw new Error("no canonical-run provider configured");
-      },
-    };
-    const result = await executeCanonicalRun(repo, provider, {
-      runId: data.runId,
-      actorId: context.userId,
-    });
+    const result = await executeCanonicalRun(
+      repo,
+      createCanonicalRunProvider({ token, organizationId: run.organization_id }),
+      { runId: data.runId, actorId: context.userId },
+    );
     return { kind: "result", result };
   });
 

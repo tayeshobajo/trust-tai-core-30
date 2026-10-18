@@ -54,7 +54,7 @@ export interface VerificationRepository {
     operationId: string;
     note: string;
     actorId: string;
-  }): Promise<{ task: VerificationTaskState; receipt: TaskReceipt; replayed: boolean }>;
+  }): Promise<{ task: VerificationTaskState | null; receipt: TaskReceipt; replayed: boolean }>;
   reopenTask(input: {
     orgId: string;
     taskId: string;
@@ -62,11 +62,16 @@ export interface VerificationRepository {
     operationId: string;
     reason: string;
     actorId: string;
-  }): Promise<{ task: VerificationTaskState; replayed: boolean }>;
+  }): Promise<{ task: VerificationTaskState | null; replayed: boolean }>;
 }
 
 export type VerificationResult =
-  | { kind: "verified"; task: VerificationTaskState; receipt: TaskReceipt; replayed: boolean }
+  | {
+      kind: "verified";
+      task: VerificationTaskState | null;
+      receipt: TaskReceipt;
+      replayed: boolean;
+    }
   | { kind: "revision_conflict"; message: string }
   | { kind: "evidence_required"; message: string }
   | { kind: "rejected"; message: string };
@@ -96,7 +101,7 @@ export async function verifyCanonicalTask(
 }
 
 export type ReopenResult =
-  | { kind: "reopened"; task: VerificationTaskState; replayed: boolean }
+  | { kind: "reopened"; task: VerificationTaskState | null; replayed: boolean }
   | { kind: "revision_conflict"; message: string }
   | { kind: "evidence_required"; message: string }
   | { kind: "rejected"; message: string };

@@ -6,11 +6,13 @@ select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'); -- owner
 -- 1. Verify happy path: receipt + audit + status in one transaction, with
 --    the produced task revision recorded on the receipt.
 do $$
-declare r public.steward_task_receipts; t public.steward_tasks; n integer;
+declare res jsonb; r public.steward_task_receipts; t public.steward_tasks; n integer;
 begin
-  r := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+  res := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
     '10000000-0000-0000-0000-000000000001', 0, 'b1000000-0000-0000-0000-000000000001',
     'Reviewed the recorded outcome against the source.');
+  perform public.test_assert((res->>'replayed')::boolean = false, 'fresh verify is not flagged replayed');
+  r := jsonb_populate_record(null::public.steward_task_receipts, res->'receipt');
   perform public.test_assert(r.actor_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'receipt actor from auth.uid');
   perform public.test_assert(r.task_revision_after = 1, 'receipt records produced revision');
   select * into t from public.steward_tasks where id = '10000000-0000-0000-0000-000000000001';
@@ -22,11 +24,13 @@ end $$;
 
 -- 2. Duplicate operation replays; same UUID with changed payload conflicts.
 do $$
-declare r public.steward_task_receipts; conflicted boolean := false;
+declare res jsonb; r public.steward_task_receipts; conflicted boolean := false;
 begin
-  r := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+  res := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
     '10000000-0000-0000-0000-000000000001', 0, 'b1000000-0000-0000-0000-000000000001',
     'Reviewed the recorded outcome against the source.');
+  perform public.test_assert((res->>'replayed')::boolean = true, 'duplicate verify is explicitly flagged replayed');
+  r := jsonb_populate_record(null::public.steward_task_receipts, res->'receipt');
   perform public.test_assert(r.id is not null, 'duplicate verify replays receipt');
   begin
     perform public.steward_verify_task('11111111-1111-1111-1111-111111111111',
@@ -103,11 +107,13 @@ update public.steward_tasks
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 do $$
-declare r public.steward_task_receipts; t public.steward_tasks; n integer;
+declare res jsonb; r public.steward_task_receipts; t public.steward_tasks; n integer;
 begin
-  r := public.steward_reopen_task('11111111-1111-1111-1111-111111111111',
+  res := public.steward_reopen_task('11111111-1111-1111-1111-111111111111',
     '10000000-0000-0000-0000-000000000001', 1, 'b1000000-0000-0000-0000-000000000004',
     'Evidence turned out insufficient on review.');
+  perform public.test_assert((res->>'replayed')::boolean = false, 'fresh reopen is not flagged replayed');
+  r := jsonb_populate_record(null::public.steward_task_receipts, res->'receipt');
   perform public.test_assert(r.task_revision_after = 2, 'reopen receipt records produced revision');
   select * into t from public.steward_tasks where id = '10000000-0000-0000-0000-000000000001';
   perform public.test_assert(t.status = 'open' and t.revision = 2, 'reopen flips status with revision bump');

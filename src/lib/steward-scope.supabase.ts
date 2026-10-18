@@ -19,7 +19,7 @@ export interface ScopeItem {
   organizationId: string;
   conversationId: string;
   taskId: string;
-  classification: "transcript_commitment" | "manual_required" | "linked_existing";
+  classification: "transcript" | "manual_required";
   removedAt: string | null;
 }
 

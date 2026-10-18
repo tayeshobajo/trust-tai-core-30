@@ -6,12 +6,14 @@ select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'); -- org A owne
 -- 1. Request resolves and snapshots input content server-side from the
 --    REAL public.conversations transcript jsonb.
 do $$
-declare r public.steward_canonical_runs;
+declare j jsonb; r public.steward_canonical_runs;
 begin
-  r := public.steward_request_canonical_run(
+  j := public.steward_request_canonical_run(
     '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
     'prepare_handoff', 'a0000000-0000-0000-0000-000000000001',
     '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
+  perform public.test_assert(j->>'replayed' = 'false', 'fresh request is not a replay');
+  r := jsonb_populate_record(null::public.steward_canonical_runs, j->'run');
   perform public.test_assert(r.status = 'queued' and r.attempts = 0, 'new run starts queued');
   perform public.test_assert(r.requested_by = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'requester derived from auth.uid');
   perform public.test_assert(r.input_snapshot->0->>'content' like '%Synthetic Soji roadmap discussion%',
@@ -21,13 +23,13 @@ end $$;
 
 -- 2. Same operation + same payload replays; changed payload conflicts.
 do $$
-declare r public.steward_canonical_runs; conflicted boolean := false;
+declare j jsonb; conflicted boolean := false;
 begin
-  r := public.steward_request_canonical_run(
+  j := public.steward_request_canonical_run(
     '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
     'prepare_handoff', 'a0000000-0000-0000-0000-000000000001',
     '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
-  perform public.test_assert(r.status = 'queued', 'same operation replays');
+  perform public.test_assert(j->>'replayed' = 'true', 'same operation replays with explicit flag');
   begin
     perform public.steward_request_canonical_run(
       '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
@@ -154,12 +156,13 @@ end $$;
 set role authenticated;
 select public.test_act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- member
 do $$
-declare r public.steward_canonical_runs;
+declare j jsonb; r public.steward_canonical_runs;
 begin
-  r := public.steward_request_canonical_run(
+  j := public.steward_request_canonical_run(
     '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000002',
     'prepare_brief', 'b0000000-0000-0000-0000-000000000009',
     '[{"kind":"task_notes","id":"10000000-0000-0000-0000-000000000002"}]'::jsonb);
+  r := jsonb_populate_record(null::public.steward_canonical_runs, j->'run');
   perform public.test_assert(r.status = 'queued', 'member run queued before deactivation');
 end $$;
 reset role;
@@ -201,10 +204,10 @@ select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 do $$
 declare rid uuid;
 begin
-  select id into rid from public.steward_request_canonical_run(
-    '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
-    'prepare_brief', 'a0000000-0000-0000-0000-000000000005',
-    '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb);
+  select (public.steward_request_canonical_run(
+      '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
+      'prepare_brief', 'a0000000-0000-0000-0000-000000000005',
+      '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb) -> 'run' ->> 'id')::uuid into rid;
 end $$;
 select public.test_act_as_worker();
 set role service_role;

@@ -71,13 +71,18 @@ drop trigger if exists steward_audit_immutable on public.steward_task_audit;
 create trigger steward_audit_immutable before update or delete on public.steward_task_audit
   for each row execute function public.steward_block_history_mutation();
 
+-- Return contract: jsonb {receipt: <steward_task_receipts row>, replayed:
+-- boolean}. The explicit replayed flag is the ONLY reliable replay signal —
+-- comparing the returned note against the input cannot distinguish a fresh
+-- write from a replay of an identical payload.
+drop function if exists public.steward_verify_task(uuid, uuid, integer, uuid, text);
 create or replace function public.steward_verify_task(
   p_org uuid,
   p_task uuid,
   p_expected_revision integer,
   p_operation uuid,
   p_note text
-) returns public.steward_task_receipts
+) returns jsonb
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
@@ -116,7 +121,8 @@ begin
     if existing.request_digest is distinct from digest then
       raise exception 'operation_conflict' using errcode = 'P0002';
     end if;
-    return existing; -- idempotent replay after full reauthorization
+    -- Idempotent replay after full reauthorization, explicitly flagged.
+    return jsonb_build_object('receipt', to_jsonb(existing), 'replayed', true);
   end if;
 
   if task.revision <> p_expected_revision then
@@ -137,17 +143,18 @@ begin
          completed_at = now(), completed_by = actor,
          revision = revision + 1, updated_at = now()
    where id = p_task;
-  return receipt;
+  return jsonb_build_object('receipt', to_jsonb(receipt), 'replayed', false);
 end;
 $$;
 
+drop function if exists public.steward_reopen_task(uuid, uuid, integer, uuid, text);
 create or replace function public.steward_reopen_task(
   p_org uuid,
   p_task uuid,
   p_expected_revision integer,
   p_operation uuid,
   p_reason text
-) returns public.steward_task_receipts
+) returns jsonb
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   actor uuid := auth.uid();
@@ -185,7 +192,7 @@ begin
     if existing.request_digest is distinct from digest then
       raise exception 'operation_conflict' using errcode = 'P0002';
     end if;
-    return existing;
+    return jsonb_build_object('receipt', to_jsonb(existing), 'replayed', true);
   end if;
 
   if task.revision <> p_expected_revision then
@@ -205,7 +212,7 @@ begin
   update public.steward_tasks
      set status = 'open', revision = revision + 1, updated_at = now()
    where id = p_task;
-  return receipt;
+  return jsonb_build_object('receipt', to_jsonb(receipt), 'replayed', false);
 end;
 $$;
 

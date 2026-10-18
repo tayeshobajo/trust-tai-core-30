@@ -99,7 +99,9 @@ export interface CanonicalRunRepository {
      *  SQL function snapshots server-side. */
     snapshot?: CanonicalRunInputSnapshotEntry[];
     actorId: string;
-  }): Promise<CanonicalRun>;
+    /** The explicit replay signal is the ONLY reliable way to distinguish
+     *  a replayed run from a fresh one — row content cannot. */
+  }): Promise<{ run: CanonicalRun; replayed: boolean }>;
   claimRun(runId: string, actorId: string, leaseSeconds?: number): Promise<CanonicalRun | null>;
   completeRun(input: {
     runId: string;
@@ -225,7 +227,7 @@ export async function requestCanonicalRun(
     inputs: snapshot,
   });
   try {
-    const run = await repo.requestRun({
+    const { run, replayed } = await repo.requestRun({
       orgId: input.orgId,
       taskId: input.taskId,
       action: input.action,
@@ -235,7 +237,7 @@ export async function requestCanonicalRun(
       snapshot,
       actorId: input.actorId,
     });
-    return { kind: run.status === "queued" && run.attempts === 0 ? "queued" : "replayed", run };
+    return { kind: replayed ? "replayed" : "queued", run };
   } catch (error) {
     if (error instanceof OperationConflictError || (error as { code?: string }).code === "P0002") {
       return {
@@ -245,6 +247,32 @@ export async function requestCanonicalRun(
     }
     throw error;
   }
+}
+
+/**
+ * Fail-closed worker-caller authorization, decided from rows fetched
+ * through the caller's OWN RLS-scoped client (so a foreign run is
+ * indistinguishable from a nonexistent one). The admin repository
+ * validates the run's ORIGINAL requester, not the endpoint caller — this
+ * check is what stops an authenticated user from triggering and reading
+ * another org's run/artifact by supplying an arbitrary runId. Returns
+ * null when authorized, else a denial reason that never discloses whether
+ * the run exists.
+ */
+export function authorizeRunWorkerCaller(input: {
+  run: { organizationId: string; taskId: string } | null;
+  isActiveMember: boolean;
+  task: { visibility: string; ownerUserId: string | null } | null;
+  callerId: string;
+}): string | null {
+  const denied = "this run is not available to you";
+  if (!input.run) return denied;
+  if (!input.isActiveMember) return denied;
+  if (!input.task) return denied;
+  if (input.task.visibility === "personal" && input.task.ownerUserId !== input.callerId) {
+    return denied;
+  }
+  return null;
 }
 
 export type ExecuteCanonicalRunResult =

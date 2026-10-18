@@ -9,13 +9,14 @@ select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 -- 1. Request a preparation run on the member-owned task (owner has admin
 --    authority) with transcript + notes inputs.
 do $$
-declare r public.steward_canonical_runs;
+declare j jsonb; r public.steward_canonical_runs;
 begin
-  r := public.steward_request_canonical_run(
+  j := public.steward_request_canonical_run(
     '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000002',
     'prepare_brief', 'e0000000-0000-0000-0000-000000000001',
     '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"},
       {"kind":"task_notes","id":"10000000-0000-0000-0000-000000000002"}]'::jsonb);
+  r := jsonb_populate_record(null::public.steward_canonical_runs, j->'run');
   perform public.test_assert(r.status = 'queued' and jsonb_array_length(r.input_snapshot) = 2,
     'journey: run queued with two snapshotted inputs');
 end $$;
@@ -53,17 +54,19 @@ begin
 exception when sqlstate 'P0030' then null; -- already in scope from 005
 end $$;
 do $$
-declare r public.steward_task_receipts; c record; rev integer;
+declare res jsonb; c record; rev integer;
 begin
   select revision into rev from public.steward_tasks where id = '10000000-0000-0000-0000-000000000002';
-  r := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
+  res := public.steward_verify_task('11111111-1111-1111-1111-111111111111',
     '10000000-0000-0000-0000-000000000002', rev, 'e2000000-0000-0000-0000-000000000001',
     'Journey verification against the recorded artifact.');
+  perform public.test_assert((res->>'replayed')::boolean = false, 'journey: fresh verify not replayed');
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
   perform public.test_assert(c.verified = 1, 'journey: verify earns revision-bound credit');
-  r := public.steward_reopen_task('11111111-1111-1111-1111-111111111111',
+  res := public.steward_reopen_task('11111111-1111-1111-1111-111111111111',
     '10000000-0000-0000-0000-000000000002', rev + 1, 'e2000000-0000-0000-0000-000000000002',
     'Journey reopen: artifact needs human polish.');
+  perform public.test_assert((res->>'replayed')::boolean = false, 'journey: fresh reopen not replayed');
   select * into c from public.steward_scope_counts('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
   perform public.test_assert(c.verified = 0, 'journey: reopen drops the credit');
 end $$;

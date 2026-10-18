@@ -46,6 +46,20 @@ create table public.conversations (
   updated_at timestamptz not null default now()
 );
 
+-- Real commitments contract (docs/steward-v1-schema.sql): a confirmed
+-- proposal becomes a row keyed by (organization_id, source_key), linked
+-- to its conversation by conversation_id.
+create table public.commitments (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null,
+  conversation_id uuid,
+  source_app text not null default 'steward',
+  source_key text not null,
+  statement text not null,
+  status text not null default 'open',
+  unique (organization_id, source_key)
+);
+
 -- Canonical board tasks: real 20260921160000 columns plus the additive
 -- columns proposed in 001 (added there via alter table; pre-created here
 -- so the fixture matches the post-patch shape).
@@ -102,10 +116,25 @@ insert into public.steward_tasks
   -- Required-manual task correlated to the Soji conversation (sync seed).
   ('10000000-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111',
    'Manually added required task', 'Added from the meeting workroom.',
-   'dddddddd-dddd-dddd-dddd-dddddddddddd/30000000-0000-0000-0000-000000000001', 'business',
+   'cmd-meeting-required:v1:dddddddd-dddd-dddd-dddd-dddddddddddd:30000000-0000-0000-0000-000000000001', 'business',
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open', null),
   ('10000000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111',
    'Personal task', 'Private notes must not leak.', null, 'personal',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open', null),
+  -- Positive parser fixture: real-format key, NOT pre-added to scope —
+  -- only a correct sync parser can discover it.
+  ('10000000-0000-0000-0000-00000000000a', '11111111-1111-1111-1111-111111111111',
+   'Sync-discovered required task', 'Found only via the correlation parser.',
+   'cmd-meeting-required:v1:dddddddd-dddd-dddd-dddd-dddddddddddd:30000000-0000-0000-0000-000000000004', 'business',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open', null),
+  -- Negative parser fixtures: must NEVER sync into the Soji conversation.
+  ('10000000-0000-0000-0000-000000000007', '11111111-1111-1111-1111-111111111111',
+   'Legacy slash-key task', 'Old correlation format, not required scope.',
+   'dddddddd-dddd-dddd-dddd-dddddddddddd/30000000-0000-0000-0000-000000000002', 'business',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open', null),
+  ('10000000-0000-0000-0000-000000000008', '11111111-1111-1111-1111-111111111111',
+   'Other-meeting required task', 'Required for the Org B conversation id only.',
+   'cmd-meeting-required:v1:dddddddd-dddd-dddd-dddd-dddddddddd01:30000000-0000-0000-0000-000000000003', 'business',
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open', null),
   ('10000000-0000-0000-0000-000000000009', '22222222-2222-2222-2222-222222222222',
    'Cross-org task', 'Belongs to org B.', null, 'business',
@@ -120,8 +149,26 @@ insert into public.conversations
    'Org B call',
    '{"segments":[{"speaker":"Other","text":"Org B transcript.","offset":0}]}'::jsonb);
 
+-- Confirmed transcript commitments for the Soji conversation: canonical
+-- denominator obligations even before any ledger seed exists. The third
+-- row shares a source_key with the proposal linked to scope task 1 in
+-- the 004/005 tests, proving the no-double-count guard.
+insert into public.commitments
+  (organization_id, conversation_id, source_key, statement, status) values
+  ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+   'fathom:fixture:commit-a', 'Confirmed commitment A (synthetic).', 'open'),
+  ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+   'fathom:fixture:commit-b', 'Confirmed commitment B (synthetic).', 'done'),
+  ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+   'ext-3948', 'Confirmed commitment mirrored by a linked in-scope task.', 'open'),
+  ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+   'fathom:fixture:cancelled', 'Cancelled commitment — out of scope.', 'cancelled'),
+  ('22222222-2222-2222-2222-222222222222', 'dddddddd-dddd-dddd-dddd-dddddddddd01',
+   'fathom:fixture:org-b', 'Org B commitment.', 'open');
+
 grant select, insert, update, delete on public.organizations,
-  public.organization_memberships, public.steward_tasks, public.conversations
+  public.organization_memberships, public.steward_tasks, public.conversations,
+  public.commitments
   to authenticated, service_role;
 
 -- Test helpers.
