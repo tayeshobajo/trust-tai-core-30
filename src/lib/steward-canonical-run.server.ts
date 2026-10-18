@@ -226,7 +226,7 @@ export async function requestCanonicalRun(
       action: input.action,
       operationId: input.operationId,
       digest,
-      snapshot,
+      inputRefs: input.inputRefs,
       actorId: input.actorId,
     });
     return { kind: run.status === "queued" && run.attempts === 0 ? "queued" : "replayed", run };

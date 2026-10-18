@@ -58,7 +58,9 @@ function makeRepo(
       calls.push("requestRun");
       return makeRun({
         requestDigest: input.digest,
-        inputSnapshot: input.snapshot,
+        // In-memory repos snapshot the refs themselves, mirroring the SQL
+        // function's server-side resolution.
+        inputSnapshot: input.inputRefs.map((r) => snapshotEntry({ kind: r.kind, id: r.id })),
         clientOperationId: input.operationId,
       });
     },
