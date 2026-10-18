@@ -136,6 +136,10 @@ insert into public.steward_tasks
    'Other-meeting required task', 'Required for the Org B conversation id only.',
    'cmd-meeting-required:v1:dddddddd-dddd-dddd-dddd-dddddddddd01:30000000-0000-0000-0000-000000000003', 'business',
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open', null),
+  -- Probe task for the removed-scope link adversarial test (004_links).
+  ('10000000-0000-0000-0000-00000000000b', '11111111-1111-1111-1111-111111111111',
+   'Removed-scope probe task', 'Used only by the 004_links adversarial suite.', null, 'business',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'open', null),
   ('10000000-0000-0000-0000-000000000009', '22222222-2222-2222-2222-222222222222',
    'Cross-org task', 'Belongs to org B.', null, 'business',
    'cccccccc-cccc-cccc-cccc-cccccccccccc', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'open', null);

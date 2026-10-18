@@ -283,14 +283,14 @@ do $$
 declare added integer;
 begin
   perform public.steward_scope_add_item('11111111-1111-1111-1111-111111111111',
-    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-000000000006',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd', '10000000-0000-0000-0000-00000000000b',
     'manual_required', 'd4000000-0000-0000-0000-000000000001');
   perform public.steward_scope_amend_remove('11111111-1111-1111-1111-111111111111',
     'dddddddd-dddd-dddd-dddd-dddddddddddd',
     (select id from public.steward_scope_items
       where organization_id = '11111111-1111-1111-1111-111111111111'
         and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
-        and task_id = '10000000-0000-0000-0000-000000000006'),
+        and task_id = '10000000-0000-0000-0000-00000000000b'),
     'Reviewed: obligation withdrawn by the meeting owner.', 'd4000000-0000-0000-0000-000000000002');
   added := public.steward_register_proposals(
     '11111111-1111-1111-1111-111111111111',
@@ -307,7 +307,7 @@ select public.test_denied($q$
       where organization_id = '11111111-1111-1111-1111-111111111111'
         and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
         and source_key = 'ext-7701'),
-    '10000000-0000-0000-0000-000000000006', 'c4000000-0000-0000-0000-000000000012') $q$,
+    '10000000-0000-0000-0000-00000000000b', 'c4000000-0000-0000-0000-000000000012') $q$,
   'link into a removed scope item fails closed');
 do $$
 begin
@@ -319,7 +319,7 @@ begin
   perform public.test_assert((select removed_at is not null from public.steward_scope_items
     where organization_id = '11111111-1111-1111-1111-111111111111'
       and conversation_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
-      and task_id = '10000000-0000-0000-0000-000000000006'),
+      and task_id = '10000000-0000-0000-0000-00000000000b'),
     'removed scope item stays removed after the rejected link');
   -- Decide the probe proposal so no pending state leaks into later suites.
   perform public.steward_dismiss_proposal('11111111-1111-1111-1111-111111111111',
