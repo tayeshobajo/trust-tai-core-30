@@ -130,7 +130,7 @@ export function createSupabaseVerificationRepository(
         p_note: input.note,
       });
       if (error) rethrow(error);
-      const result = data as RpcResult;
+      const result = requireResult(data);
       const receipt = mapReceipt(result.receipt);
       const task = await readTask(input.orgId, input.taskId);
       return { task, receipt, replayed: result.replayed === true };
@@ -144,7 +144,7 @@ export function createSupabaseVerificationRepository(
         p_reason: input.reason,
       });
       if (error) rethrow(error);
-      const result = data as RpcResult;
+      const result = requireResult(data);
       const task = await readTask(input.orgId, input.taskId);
       return { task, replayed: result.replayed === true };
     },
