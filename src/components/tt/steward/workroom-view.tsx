@@ -999,7 +999,7 @@ export function WorkroomView({
           receiptsFailed={receiptsFailed}
           scopeUnavailable={!!linkedRead && (linkedRead.state !== "ready" || linkedRead.truncated)}
           serverScore={
-            backend ? serverMeetingScore(backend.meetingState?.(meeting.id) ?? {}) : null
+            backend?.scoreFor ? serverMeetingScore(backend.scoreFor(meeting.id)) : null
           }
         />
       </div>
