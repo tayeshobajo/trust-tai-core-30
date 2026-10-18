@@ -64,6 +64,10 @@ export type VerificationRead =
       kind: "ready";
       task: { status: "open" | "complete"; revision: number } | null;
       receipts: ReceiptSnapshot[];
+      /** Receipt-backed verified state (same criterion as the scope SQL):
+          complete AND latest receipt is a verify at the CURRENT revision.
+          Raw board "complete" alone is never verified. */
+      verified: boolean;
     }
   | { kind: "rejected"; message: string }
   | { kind: "loading" };
@@ -74,9 +78,16 @@ export interface ScopeSnapshot {
   pendingProposals: number;
 }
 
+export interface ScopeItemSnapshot {
+  id: string;
+  taskId: string;
+  classification: "transcript" | "manual_required";
+  removedAt: string | null;
+}
+
 export type ScopeRead =
   | { kind: "unavailable"; reason: string }
-  | { kind: "ready"; counts: ScopeSnapshot }
+  | { kind: "ready"; counts: ScopeSnapshot; items: ScopeItemSnapshot[] }
   | { kind: "rejected"; message: string }
   | { kind: "loading" };
 
@@ -544,7 +555,10 @@ export function VerificationPanel({
     return <p className="mt-2 text-xs text-muted-foreground">{capability.reason}</p>;
   }
 
-  const verified = state?.kind === "ready" && state.task?.status === "complete";
+  /* Receipt-backed only: raw board "complete" without a valid verify
+     receipt at the current revision is NEVER verified and never switches
+     the panel to Reopen. */
+  const verified = state?.kind === "ready" && state.verified;
   const currentRevision =
     state?.kind === "ready" && state.task ? state.task.revision : task.revision;
 
@@ -973,7 +987,7 @@ export function ScopeReviewPanel({
                   type="button"
                   variant="secondary"
                   className="h-8 px-2 text-xs"
-                  disabled={busy || !linkChoices[proposal.id] || !onLinkProposal}
+                  disabled={busy || !!linkAttempt.pending || !linkChoices[proposal.id] || !onLinkProposal}
                   onClick={() => void link(proposal.id)}
                 >
                   Link
@@ -995,6 +1009,7 @@ export function ScopeReviewPanel({
                   className="h-8 px-2 text-xs"
                   disabled={
                     busy ||
+                    !!dismissAttempt.pending ||
                     (dismissReasons[proposal.id] ?? "").trim().length < 10 ||
                     !onDismissProposal
                   }
