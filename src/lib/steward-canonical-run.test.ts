@@ -315,7 +315,7 @@ describe("executeCanonicalRun", () => {
   });
 
   it("persists exactly the cited evidence subset, never all inputs", async () => {
-    let completed: { evidenceRefs: string[] } | null = null;
+    const completedCalls: { evidenceRefs: string[] }[] = [];
     const repo = makeRepo({
       async claimRun() {
         return makeRun({
@@ -329,7 +329,7 @@ describe("executeCanonicalRun", () => {
         });
       },
       async completeRun(input) {
-        completed = input;
+        completedCalls.push(input);
         return makeRun({ status: "complete", evidenceRefs: input.evidenceRefs });
       },
     });
@@ -340,7 +340,7 @@ describe("executeCanonicalRun", () => {
     };
     const result = await executeCanonicalRun(repo, partial, { runId: "run-1", actorId: ACTOR });
     expect(result.kind).toBe("complete");
-    expect(completed?.evidenceRefs).toEqual(["transcript:conv-1@1"]);
+    expect(completedCalls[0]?.evidenceRefs).toEqual(["transcript:conv-1@1"]);
   });
 
   it("treats an uncertain provider outcome as terminal — no automatic retry", async () => {
