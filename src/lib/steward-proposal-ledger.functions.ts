@@ -38,8 +38,7 @@ import {
 import { createSupabaseProposalLedgerRepository } from "./steward-proposal-ledger.supabase";
 
 export type ProposalLedgerCapabilityState =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "enabled" };
+  { kind: "unavailable"; reason: string } | { kind: "enabled" };
 
 export type ProposalLedgerSyncState =
   | { kind: "unavailable"; reason: string }
@@ -75,9 +74,7 @@ export function parseStoredConversation(value: unknown): NormalizedConversation 
   if (!isRecord(sourceRef)) return null;
   if (!isString(sourceRef["provider"]) || !PROVIDERS.has(sourceRef["provider"])) return null;
   if (!isString(sourceRef["url"])) return null;
-  if (
-    sourceRef["externalId"] !== undefined && !isString(sourceRef["externalId"])
-  ) {
+  if (sourceRef["externalId"] !== undefined && !isString(sourceRef["externalId"])) {
     return null;
   }
   if (sourceRef["shareToken"] !== undefined && !isString(sourceRef["shareToken"])) return null;

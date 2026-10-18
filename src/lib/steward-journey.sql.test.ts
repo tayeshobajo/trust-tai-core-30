@@ -132,8 +132,7 @@ interface TransportResult {
 function createPsqlTransport(role: "authenticated" | "service", userId?: string) {
   const run = (statement: string): TransportResult => {
     try {
-      const raw =
-        role === "service" ? asWorker(statement) : asUser(userId!, statement);
+      const raw = role === "service" ? asWorker(statement) : asUser(userId!, statement);
       return { data: raw ? parseJson<unknown>(raw) : null, error: null };
     } catch (error) {
       const err = error as SqlError;

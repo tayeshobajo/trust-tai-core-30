@@ -81,7 +81,9 @@ export function createSupabaseProposalLedgerRepository(
     async ledgerForConversation(orgId, conversationId) {
       const { data, error } = await supabase
         .from("steward_proposal_ledger")
-        .select("id, organization_id, conversation_id, source_key, kind, statement, status, evidence")
+        .select(
+          "id, organization_id, conversation_id, source_key, kind, statement, status, evidence",
+        )
         .eq("organization_id", orgId)
         .eq("conversation_id", conversationId);
       if (error) rethrow(error);
