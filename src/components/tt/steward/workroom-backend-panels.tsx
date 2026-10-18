@@ -498,26 +498,50 @@ export function VerificationPanel({
   onReopen,
 }: VerificationPanelProps) {
   const [note, setNote] = useState("");
-  const attempt = useOperationAttempt<{ note: string }>();
+  const attempt = useOperationAttempt<VerificationGesture>();
 
   if (capability.kind === "unavailable") {
     return <p className="mt-2 text-xs text-muted-foreground">{capability.reason}</p>;
   }
 
   const verified = state?.kind === "ready" && state.task?.status === "complete";
-  const handler = verified ? onReopen : onVerify;
+  const currentRevision =
+    state?.kind === "ready" && state.task ? state.task.revision : task.revision;
 
-  async function act(reuse: typeof attempt.pending) {
+  function dispatch(gesture: VerificationGesture, reuse: typeof attempt.pending) {
+    /* The handler is chosen from the STORED gesture kind, never from the
+       current verified status — a retry after a successful-but-uncertain
+       verify must replay the verify, not become a reopen. */
+    const handler = gesture.kind === "reopen" ? onReopen : onVerify;
+    if (!handler) return Promise.resolve({ kind: "rejected" as const, message: "unavailable" });
+    return attempt.run(handler, gesture, reuse);
+  }
+
+  async function act() {
+    /* A new deliberate action is blocked while an operation's outcome is
+       unknown: reconcile (retry) the pending operation first, so two
+       different gestures can never share one identity or race. */
+    if (attempt.pending) return;
     const trimmed = note.trim();
-    if (!handler || trimmed.length < 10) return;
-    const result = await attempt.run(
-      handler,
-      { note: trimmed },
-      reuse && reuse.payload.note === trimmed ? reuse : null,
-    );
+    if (trimmed.length < 10) return;
+    const gesture: VerificationGesture = {
+      kind: verified ? "reopen" : "verify",
+      taskId: task.id,
+      expectedRevision: currentRevision,
+      note: trimmed,
+    };
+    const result = await dispatch(gesture, null);
     /* The note is cleared only on a resolved success; rejected, conflict
        and uncertain outcomes keep the user's words for correction/retry. */
     if (result.kind === "verified" || result.kind === "reopened") setNote("");
+  }
+
+  async function retry() {
+    /* Replays the EXACT original tuple — kind, task, revision and note as
+       first captured — regardless of refreshed state or edits to the note
+       field since. */
+    if (!attempt.pending) return;
+    await dispatch(attempt.pending.payload, attempt.pending);
   }
 
   return (
