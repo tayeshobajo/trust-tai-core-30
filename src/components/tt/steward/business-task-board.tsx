@@ -478,6 +478,7 @@ export function TaskEditor({
     >
       <SheetContent
         className="w-full overflow-y-auto sm:max-w-xl"
+        onOpenAutoFocus={focusOnOpen}
         onCloseAutoFocus={(event) => {
           if (openingElement?.isConnected) {
             event.preventDefault();
@@ -504,7 +505,7 @@ export function TaskEditor({
             <label className="grid gap-1 text-sm">
               Task title
               <TTInput
-                autoFocus={!focusField}
+                ref={titleRef}
                 required
                 maxLength={500}
                 value={input.title}
