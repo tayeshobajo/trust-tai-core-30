@@ -80,6 +80,7 @@ describe("verifyCanonicalTask", () => {
             note: input.note,
             actorId: input.actorId,
             createdAt: "now",
+          taskRevisionAfter: input.expectedRevision + 1,
           },
           replayed: false,
         };
@@ -139,6 +140,7 @@ describe("verifyCanonicalTask", () => {
             note: input.note,
             actorId: input.actorId,
             createdAt: "now",
+          taskRevisionAfter: input.expectedRevision + 1,
           },
           replayed: true,
         };
@@ -187,6 +189,7 @@ describe("durable result preservation", () => {
             note: input.note,
             actorId: input.actorId,
             createdAt: "now",
+          taskRevisionAfter: input.expectedRevision + 1,
           },
           replayed: true,
         };

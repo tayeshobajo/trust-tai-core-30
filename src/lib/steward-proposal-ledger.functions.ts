@@ -44,7 +44,8 @@ export type ProposalLedgerSyncState =
   | { kind: "unavailable"; reason: string }
   | { kind: "registered"; added: number }
   | { kind: "transcript_changed"; message: string }
-  | { kind: "rejected"; message: string };
+  | { kind: "rejected"; message: string }
+  | { kind: "uncertain"; message: string };
 
 function capabilityEnabled(): boolean {
   return process.env["STEWARD_PROPOSAL_LEDGER_ENABLED"] === "true";
