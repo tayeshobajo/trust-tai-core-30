@@ -236,9 +236,19 @@ declare rid uuid; r public.steward_canonical_runs;
 begin
   select id into rid from public.steward_canonical_runs
    where client_operation_id = 'a0000000-0000-0000-0000-000000000005';
+  -- Default fail (unknown transport/model-call failure) is TERMINAL: no
+  -- blind retry of a call that may already have happened.
+  r := public.steward_claim_canonical_run(rid);
+  r := public.steward_fail_canonical_run(rid, r.claim_token, 'unknown transport failure');
+  perform public.test_assert(r.status = 'failed', 'unknown failure fails terminally, no blind retry');
+  r := public.steward_claim_canonical_run(rid);
+  perform public.test_assert(r.id is null, 'terminally failed run cannot be claimed');
+  -- Explicit known-pre-call failures may requeue within the attempt budget.
+  select id into rid from public.steward_canonical_runs
+   where client_operation_id = 'a0000000-0000-0000-0000-0000000000f1';
   for i in 1..3 loop
     r := public.steward_claim_canonical_run(rid);
-    r := public.steward_fail_canonical_run(rid, r.claim_token, 'synthetic provider failure');
+    r := public.steward_fail_canonical_run(rid, r.claim_token, 'synthetic pre-call failure', true);
   end loop;
   perform public.test_assert(r.status = 'failed', 'attempts exhaust to failed');
   r := public.steward_claim_canonical_run(rid);
