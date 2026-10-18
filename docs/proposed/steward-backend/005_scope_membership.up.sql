@@ -1,14 +1,19 @@
 -- PROPOSED, UNAPPLIED. Durable required-work scope membership.
 -- The required-work denominator is a durable, explicit record — not a
--- derivation from links or archives. Archiving a task NEVER removes it from
--- the denominator. Removal happens only through an explicit audited
+-- derivation from links or archives. Archiving a task NEVER removes it
+-- from the denominator. Removal happens only through an explicit audited
 -- amendment, which bumps the scope version (invalidating coverage/100) in
 -- the same transaction. Hard deletion of scope items is disabled.
+-- Verification credit is revision-bound: the task's LATEST receipt must be
+-- a verify whose recorded task_revision_after still matches the task's
+-- current revision, and the task must still be complete. A legacy status
+-- flip after a reopen changes the revision and cannot regain credit.
+-- Pending (unlinked, undismissed) ledger proposals gate any 100.
 
 create table if not exists public.steward_scope_items (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null,
-  conversation_id uuid not null,
+  conversation_id uuid not null references public.conversations(id) on delete restrict,
   task_id uuid not null references public.steward_tasks(id) on delete restrict,
   classification text not null check (classification in ('transcript','manual_required')),
   operation_id uuid not null,
@@ -58,8 +63,7 @@ create trigger steward_scope_audit_immutable before update or delete on public.s
   for each row execute function public.steward_block_history_mutation();
 
 -- Direct updates to scope items are blocked; all mutation flows through
--- the functions (which run as the caller and bypass this trigger via a
--- session flag set inside the function transaction).
+-- the functions (which set a transaction-local flag).
 create or replace function public.steward_guard_scope_update() returns trigger
 language plpgsql set search_path = public, pg_temp as $$
 begin
@@ -75,7 +79,8 @@ create trigger steward_scope_items_guard_update before update on public.steward_
   for each row execute function public.steward_guard_scope_update();
 
 -- Add a task to a meeting's required scope. Idempotent per operation;
--- digest-bound; bumps scope version + supersedes coverage.
+-- digest-bound; bumps scope version + supersedes coverage. Pilot scope:
+-- business-visibility tasks only.
 create or replace function public.steward_scope_add_item(
   p_org uuid,
   p_conversation uuid,
@@ -97,6 +102,20 @@ begin
   if p_classification not in ('transcript','manual_required') then
     raise exception 'classification_invalid' using errcode = 'P0422';
   end if;
+
+  -- Reauthorize the scoped task FIRST, before any replay.
+  select * into task from public.steward_tasks
+    where id = p_task and organization_id = p_org for update;
+  if not found then
+    raise exception 'task_not_found' using errcode = 'P0404';
+  end if;
+  if task.task_visibility is distinct from 'business' then
+    raise exception 'personal_tasks_out_of_scope' using errcode = 'P0401';
+  end if;
+  if not private.steward_user_has_task_authority(task, actor) then
+    raise exception 'not_authorized' using errcode = 'P0401';
+  end if;
+
   digest := encode(sha256(convert_to(jsonb_build_object(
     'org', p_org, 'conversation', p_conversation, 'task', p_task,
     'classification', p_classification, 'actor', actor)::text, 'utf8')), 'hex');
@@ -108,17 +127,6 @@ begin
       raise exception 'operation_conflict' using errcode = 'P0002';
     end if;
     return existing;
-  end if;
-
-  select * into task from public.steward_tasks
-    where id = p_task and organization_id = p_org for update;
-  if not found then
-    raise exception 'task_not_found' using errcode = 'P0404';
-  end if;
-  if task.created_by is distinct from actor
-     and task.owner_user_id is distinct from actor
-     and not private.steward_is_admin(p_org) then
-    raise exception 'not_authorized' using errcode = 'P0401';
   end if;
 
   select * into existing from public.steward_scope_items
@@ -137,18 +145,57 @@ begin
     (organization_id, conversation_id, scope_item_id, kind, actor_id)
   values (p_org, p_conversation, item.id, 'add', actor);
 
-  insert into public.steward_scope_versions (organization_id, conversation_id, version, updated_at)
-  values (p_org, p_conversation, 2, now())
-  on conflict (organization_id, conversation_id)
-  do update set version = public.steward_scope_versions.version + 1, updated_at = now();
-
-  perform set_config('steward.coverage_mutation', 'on', true);
-  update public.steward_coverage_attestations
-     set superseded_at = now()
-   where organization_id = p_org and conversation_id = p_conversation
-     and superseded_at is null;
+  perform private.steward_invalidate_scope(p_org, p_conversation);
 
   return item;
+end;
+$$;
+
+-- Seed scope from EXISTING canonical state: required-manual board tasks
+-- carry an immutable correlation key ("<meeting-uuid>/<operation-uuid>",
+-- see the workroom add-required-task flow). This reconciliation is
+-- explicit, audited and idempotent — it never creates or edits tasks and
+-- never touches transcript commitments, which enter scope through the
+-- proposal ledger + human confirmation instead.
+create or replace function public.steward_scope_sync_required(
+  p_org uuid,
+  p_conversation uuid,
+  p_operation uuid
+) returns integer
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  actor uuid := auth.uid();
+  task record;
+  item public.steward_scope_items;
+  added integer := 0;
+begin
+  if actor is null or not private.steward_can_write(p_org) then
+    raise exception 'not_authorized' using errcode = 'P0401';
+  end if;
+  if not exists (select 1 from public.conversations
+                 where id = p_conversation and organization_id = p_org) then
+    raise exception 'conversation_not_found' using errcode = 'P0404';
+  end if;
+  for task in
+    select t.id from public.steward_tasks t
+     where t.organization_id = p_org
+       and t.task_visibility = 'business'
+       and t.correlation_id is not null
+       and split_part(t.correlation_id, '/', 1) = p_conversation::text
+  loop
+    begin
+      item := public.steward_scope_add_item(
+        p_org, p_conversation, task.id, 'manual_required',
+        -- Deterministic per-task operation derived from the sync operation,
+        -- so a retried sync replays instead of duplicating.
+        uuid_generate_v5('6ba7b810-9dad-11d1-80b4-00c04fd430c8'::uuid,
+                         p_operation::text || ':' || task.id::text));
+      added := added + 1;
+    exception
+      when sqlstate 'P0030' then null; -- already in scope: idempotent
+    end;
+  end loop;
+  return added;
 end;
 $$;
 
@@ -208,30 +255,26 @@ begin
     (organization_id, conversation_id, scope_item_id, kind, reason, actor_id)
   values (p_org, p_conversation, item.id, 'amend_remove', p_reason, actor);
 
-  insert into public.steward_scope_versions (organization_id, conversation_id, version, updated_at)
-  values (p_org, p_conversation, 2, now())
-  on conflict (organization_id, conversation_id)
-  do update set version = public.steward_scope_versions.version + 1, updated_at = now();
-
-  perform set_config('steward.coverage_mutation', 'on', true);
-  update public.steward_coverage_attestations
-     set superseded_at = now()
-   where organization_id = p_org and conversation_id = p_conversation
-     and superseded_at is null;
+  perform private.steward_invalidate_scope(p_org, p_conversation);
 
   return item;
 end;
 $$;
 
--- Honest counts: denominator = scope items not explicitly removed,
--- INCLUDING items whose task is archived. Verified = items whose task is
--- complete with a matching verify receipt. Partial reads are impossible:
--- both counts come from the same snapshot query.
+-- Honest counts from ONE snapshot query (partial reads impossible):
+--  denominator: scope items not explicitly removed, INCLUDING items whose
+--    task is archived.
+--  verified: items whose task is complete AND whose LATEST receipt is a
+--    verify whose recorded task_revision_after still equals the task's
+--    current revision. A reopen, an edit, or a legacy status flip after
+--    reopen changes the revision and drops the credit.
+--  pending_proposals: ledger proposals neither linked nor dismissed —
+--    any nonzero value gates 100.
 create or replace function public.steward_scope_counts(
   p_org uuid,
   p_conversation uuid
-) returns table(denominator integer, verified integer)
-language plpgsql stable security invoker set search_path = public, pg_temp as $$
+) returns table(denominator integer, verified integer, pending_proposals integer)
+language plpgsql stable security definer set search_path = public, pg_temp as $$
 begin
   if auth.uid() is null or not private.steward_is_active_member(p_org) then
     raise exception 'not_authorized' using errcode = 'P0401';
@@ -240,8 +283,18 @@ begin
     select count(*)::integer,
            count(*) filter (
              where t.status = 'complete'
-               and exists (select 1 from public.steward_task_receipts r
-                            where r.task_id = i.task_id and r.kind = 'verify'))::integer
+               and exists (
+                 select 1 from public.steward_task_receipts r
+                  where r.task_id = i.task_id and r.kind = 'verify'
+                    and r.task_revision_after = t.revision
+                    and not exists (
+                      select 1 from public.steward_task_receipts newer
+                       where newer.task_id = i.task_id
+                         and newer.created_at > r.created_at)))::integer,
+           (select count(*)::integer from public.steward_proposal_ledger pl
+             where pl.organization_id = p_org
+               and pl.conversation_id = p_conversation
+               and pl.status = 'proposed')
       from public.steward_scope_items i
       join public.steward_tasks t on t.id = i.task_id
      where i.organization_id = p_org
@@ -249,3 +302,10 @@ begin
        and i.removed_at is null;
 end;
 $$;
+
+revoke all on function public.steward_scope_add_item(uuid, uuid, uuid, text, uuid) from public, anon, authenticated;
+revoke all on function public.steward_scope_sync_required(uuid, uuid, uuid) from public, anon, authenticated;
+revoke all on function public.steward_scope_amend_remove(uuid, uuid, uuid, text, uuid) from public, anon, authenticated;
+revoke all on function public.steward_scope_counts(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.steward_block_scope_delete() from public, anon, authenticated;
+revoke all on function public.steward_guard_scope_update() from public, anon, authenticated;

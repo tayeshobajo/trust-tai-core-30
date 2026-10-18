@@ -52,12 +52,18 @@ for f in "$HERE"/../0*.up.sql; do
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$f"
 done
 
+echo "== 000_acl_pregrant.sql"
+psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/tests/000_acl_pregrant.sql"
+
 # Grants are applied locally ONLY so the restricted-role tests can exercise
 # the functions; grants.review.sql stays unapplied on any real project.
 echo "== grants.review.sql (local harness only)"
 psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/../grants.review.sql"
 
-for t in "$HERE"/tests/00[1-5]*.sql; do
+echo "== 000b_acl_postgrant.sql"
+psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/tests/000b_acl_postgrant.sql"
+
+for t in "$HERE"/tests/00[1-5]*.sql "$HERE"/tests/008_journey.sql; do
   echo "== $(basename "$t")"
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$t"
 done

@@ -1,5 +1,5 @@
 -- Data-preserving operational rollback for 004_proposal_links.
+-- Drops the link function ONLY. Links, the proposal ledger, RLS, select
+-- policies and the immutability/invalidation triggers are KEPT, so
+-- retained history stays org-scoped and immutable after rollback.
 drop function if exists public.steward_link_proposal(uuid, uuid, uuid, uuid, uuid);
-drop trigger if exists steward_proposal_links_immutable on public.steward_proposal_links;
-drop policy if exists steward_proposal_links_select on public.steward_proposal_links;
-alter table public.steward_proposal_links disable row level security;

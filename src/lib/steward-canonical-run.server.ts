@@ -90,7 +90,14 @@ export interface CanonicalRunRepository {
     action: CanonicalRunAction;
     operationId: string;
     digest: string;
-    snapshot: CanonicalRunInputSnapshotEntry[];
+    /** Caller-selected refs — the SQL function resolves and snapshots the
+     *  content server-side from these; the Supabase adapter sends ONLY
+     *  these. */
+    inputRefs: CanonicalRunInputRef[];
+    /** Pre-resolved snapshot for repositories that do their own resolution
+     *  (in-memory test repos); the Supabase adapter ignores it because the
+     *  SQL function snapshots server-side. */
+    snapshot?: CanonicalRunInputSnapshotEntry[];
     actorId: string;
   }): Promise<CanonicalRun>;
   claimRun(runId: string, actorId: string, leaseSeconds?: number): Promise<CanonicalRun | null>;
@@ -224,6 +231,7 @@ export async function requestCanonicalRun(
       action: input.action,
       operationId: input.operationId,
       digest,
+      inputRefs: input.inputRefs,
       snapshot,
       actorId: input.actorId,
     });

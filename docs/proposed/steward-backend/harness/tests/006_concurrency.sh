@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# Racing claims on the same run: exactly one winner, and the loser's stale
-# fencing token cannot complete. Also: concurrent duplicate requests replay
-# reliably instead of erroring.
+# Racing WORKER claims on the same run: exactly one winner, and the loser's
+# stale fencing token cannot complete. Also: concurrent duplicate requests
+# replay reliably instead of erroring.
 set -euo pipefail
 DB="$1"
 
 AS_OWNER=$(cat <<'SQL'
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+SQL
+)
+AS_WORKER=$(cat <<'SQL'
+set role service_role;
+select public.test_act_as_worker();
 SQL
 )
 
@@ -21,8 +26,8 @@ SQL
 
 claim() {
   psql "$DB" -q -v ON_ERROR_STOP=1 -tA <<'SQL' 2>/dev/null | grep -E '^[0-9a-f-]{36}$|^LOST$'
-set role authenticated;
-select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+set role service_role;
+select public.test_act_as_worker();
 select coalesce((select (c).claim_token::text from public.steward_claim_canonical_run(
     (select id from public.steward_canonical_runs
       where client_operation_id = 'd0000000-0000-0000-0000-000000000099')) c), 'LOST');
@@ -45,7 +50,7 @@ loser=$(printf '%s\n%s\n' "$a" "$b" | grep LOST | head -1)
 psql "$DB" -tA -c "select status, attempts, claim_token, lease_expires_at > now() from public.steward_canonical_runs where client_operation_id = 'd0000000-0000-0000-0000-000000000099'"
 # The winner's token completes; a fabricated/stale token cannot.
 psql "$DB" -q -v ON_ERROR_STOP=1 -o /dev/null <<SQL
-$AS_OWNER
+$AS_WORKER
 select public.steward_complete_canonical_run(
   (select id from public.steward_canonical_runs where client_operation_id = 'd0000000-0000-0000-0000-000000000099'),
   '$winner'::uuid, 'race winner artifact');

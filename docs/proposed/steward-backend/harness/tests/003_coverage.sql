@@ -1,4 +1,5 @@
--- Coverage attestation: server-read hash/version, invalidation, authority.
+-- Coverage attestation: server-derived hash from the REAL conversations
+-- transcript jsonb, invalidation, authority.
 set role authenticated;
 select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
@@ -10,31 +11,35 @@ begin
     'unattested conversation is not covered');
 end $$;
 
--- 2. Attest: hash/version come from stored state, not the caller.
+-- 2. Attest: hash is derived server-side from the stored transcript; the
+--    caller supplies neither hash nor version.
 do $$
 declare a public.steward_coverage_attestations;
 begin
   a := public.steward_attest_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
-  perform public.test_assert(a.transcript_hash = 'transcript-hash-v1-abcdef0123456789' and a.scope_version = 1,
-    'attestation records stored hash and scope version');
+  perform public.test_assert(char_length(a.transcript_hash) = 64 and a.scope_version = 1,
+    'attestation records derived hash and scope version');
   perform public.test_assert(a.attested_by = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'attester from auth.uid');
   perform public.test_assert(
     public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
     'matching state is covered');
 end $$;
 
--- 3. Transcript edit invalidates coverage.
+-- 3. Transcript edit invalidates coverage (derived hash changes).
 do $$
 begin
-  update public.steward_conversations
-     set transcript_hash = 'transcript-hash-v2-EDITED-0123456789', transcript_revision = 2
+  update public.conversations
+     set transcript = '{"segments":[{"speaker":"Tai","text":"EDITED transcript.","offset":0}]}'::jsonb
    where id = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
   perform public.test_assert(
     not public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
     'transcript edit invalidates coverage');
-  update public.steward_conversations
-     set transcript_hash = 'transcript-hash-v1-abcdef0123456789', transcript_revision = 1
+  update public.conversations
+     set transcript = '{"segments":[{"speaker":"Tai","text":"Synthetic Soji roadmap discussion.","offset":0}]}'::jsonb
    where id = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+  perform public.test_assert(
+    public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
+    'restoring the identical transcript restores coverage (hash equality, not heuristic)');
 end $$;
 
 -- 4. Scope version change invalidates coverage.
@@ -46,12 +51,13 @@ begin
   perform public.test_assert(
     not public.steward_current_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd'),
     'scope version change invalidates coverage');
-  -- Scope item stays (deletes are disabled by design); re-attest to restore
-  -- a valid baseline for later suites.
 end $$;
 
--- 5. Authority: viewer/inactive/cross-org cannot attest; unknown
---    conversation rejected.
+-- 5. Empty transcript cannot be attested; authority: viewer/inactive/
+--    cross-org cannot attest; unknown conversation rejected.
+select public.test_denied($q$
+  select public.steward_attest_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd99') $q$,
+  'nonexistent conversation rejected');
 select public.test_act_as('dddddd00-0000-0000-0000-000000000001');
 select public.test_denied($q$
   select public.steward_attest_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd') $q$,
@@ -64,12 +70,9 @@ select public.test_act_as('cccccccc-cccc-cccc-cccc-cccccccccccc');
 select public.test_denied($q$
   select public.steward_attest_coverage('22222222-2222-2222-2222-222222222222', 'dddddddd-dddd-dddd-dddd-dddddddddddd') $q$,
   'cross-org conversation rejected');
-select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-select public.test_denied($q$
-  select public.steward_attest_coverage('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddd99') $q$,
-  'nonexistent conversation rejected');
 
 -- 6. Attestations are immutable history; direct writes denied.
+select public.test_act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 select public.test_denied($q$
   insert into public.steward_coverage_attestations
     (organization_id, conversation_id, transcript_hash, scope_version, attested_by)
