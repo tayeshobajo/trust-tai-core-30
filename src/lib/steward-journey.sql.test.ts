@@ -210,8 +210,8 @@ function createJourneyRunRepository(actorId: string): CanonicalRunRepository {
   const asWorkerRepo = createSupabaseCanonicalRunRepository(workerClient());
   return {
     requestRun: (input) => asActor.requestRun(input),
-    readTaskTitle: (taskId, orgId) => asActor.readTaskTitle(taskId, orgId),
-    readInput: () => asActor.readInput(),
+    readTaskTitle: (taskId, orgId, actor) => asActor.readTaskTitle(taskId, orgId, actor),
+    readInput: (ref, orgId, actor) => asActor.readInput(ref, orgId, actor),
     claimRun: (runId, actor, lease) => asWorkerRepo.claimRun(runId, actor, lease),
     completeRun: (input) => asWorkerRepo.completeRun(input),
     failRun: (input) => asWorkerRepo.failRun(input),
@@ -334,7 +334,7 @@ describe("steward SQL journey (real disposable PostgreSQL, real adapters)", () =
 
     // 6. Verify the task atomically with substantive evidence. The
     //    revision is read live — earlier harness suites legitimately bump it.
-    const taskBefore = await runRepo.readTaskTitle(TASK, ORG);
+    const taskBefore = await runRepo.readTaskTitle(TASK, ORG, OWNER);
     expect(taskBefore).toBe("Prepare Soji handoff");
     const revisionAtVerify = Number(
       asUser(OWNER, `select revision from public.steward_tasks where id = ${lit(TASK)}`),

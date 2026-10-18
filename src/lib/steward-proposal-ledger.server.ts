@@ -78,7 +78,7 @@ export function toRegistrationPayload(proposals: ExtractedProposal[]): {
     sourceKey: p.id,
     kind: p.kind,
     statement: p.statement,
-    evidence: p.evidence,
+    ...(p.evidence !== undefined ? { evidence: p.evidence } : {}),
   }));
 }
 
