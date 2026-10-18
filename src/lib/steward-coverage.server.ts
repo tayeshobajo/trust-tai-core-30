@@ -22,10 +22,18 @@ export interface CoverageAttestation {
 
 /** Minimal repository contract over the proposed SQL functions. */
 export interface CoverageRepository {
-  /* The transcript hash and scope version are derived INSIDE the SQL from
-     the stored conversation — the caller supplies neither, so coverage can
-     never be attested against a caller-invented hash. */
-  attest(input: { orgId: string; conversationId: string }): Promise<CoverageAttestation>;
+  /* The attestation is bound to the exact source the human reviewed: the
+     SQL derives the CURRENT hash/version itself and rejects the call when
+     it differs from expectedTranscriptHash/expectedScopeVersion, so a
+     source change during review is never silently attested. The operation
+     UUID makes an uncertain-transport retry replay the same attestation. */
+  attest(input: {
+    orgId: string;
+    conversationId: string;
+    operationId: string;
+    expectedTranscriptHash: string;
+    expectedScopeVersion: number;
+  }): Promise<CoverageAttestation>;
   currentCoverage(input: { orgId: string; conversationId: string }): Promise<boolean>;
 }
 
