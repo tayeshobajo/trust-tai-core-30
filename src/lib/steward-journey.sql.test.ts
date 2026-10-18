@@ -63,7 +63,7 @@ function psql(statements: string): string {
   try {
     const out = execFileSync(
       "psql",
-      [DB!, "-q", "-tA", "-v", "ON_ERROR_STOP=1", "-c", statements],
+      [DB!, "-q", "-tA", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose", "-c", statements],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
     const lines = out.split("\n").filter((line) => line.trim().length > 0);
