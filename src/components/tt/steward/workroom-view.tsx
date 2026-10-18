@@ -350,7 +350,7 @@ function AssistantExecutionLine({
   backend,
   taskId,
 }: {
-  backend?: WorkroomBackend;
+  backend?: WorkroomBackend | undefined;
   taskId: string;
 }) {
   const runs = backend?.runsFor?.(taskId);

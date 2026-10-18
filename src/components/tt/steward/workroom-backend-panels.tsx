@@ -469,12 +469,13 @@ export function ScopeReviewPanel({
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [linkChoices, setLinkChoices] = useState<Record<string, string>>({});
 
-  async function act(handler: (() => Promise<ActionOutcome>) | undefined) {
+  async function act(handler: (() => Promise<ActionOutcome> | undefined) | undefined) {
     if (!handler) return;
     setBusy(true);
     setOutcome(null);
     try {
-      setOutcome(await handler());
+      const result = await handler();
+      if (result) setOutcome(result);
     } finally {
       setBusy(false);
     }
