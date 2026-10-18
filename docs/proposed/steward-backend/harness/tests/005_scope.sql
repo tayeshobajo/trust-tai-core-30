@@ -400,6 +400,9 @@ begin
     org, conv, target, 'reinstate: scope correction was itself mistaken', 'f0000000-0000-0000-0000-0000000000e3');
   perform public.test_assert(reinstated.removed_at is null, 'reinstate clears removed_at');
   select denominator into after_count from public.steward_scope_counts(org, conv);
+  raise notice 'DEBUG before=% after=% removed_at=% item_conv=%', before_count, after_count,
+    (select removed_at from public.steward_scope_items where id = target),
+    (select conversation_id from public.steward_scope_items where id = target);
   perform public.test_assert(after_count = before_count + 1,
     'reinstated item returns to the denominator');
 
