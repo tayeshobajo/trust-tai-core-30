@@ -204,6 +204,7 @@ describe("scope review source binding", () => {
   const scopeReady = {
     kind: "ready" as const,
     counts: { denominator: 2, verified: 0, pendingProposals: 0 },
+    items: [],
   };
 
   it("replays the attestation bound to the ORIGINAL reviewed source after the source changes", async () => {
@@ -531,13 +532,13 @@ describe("scope amendment controls", () => {
       .mockResolvedValue({ kind: "applied" });
     renderScopePanel({ onRemoveScopeItem });
     fireEvent.click(screen.getByText(/Recorded scope items/));
-    fireEvent.change(screen.getByLabelText(/Removal reason for task/i), {
+    fireEvent.change(screen.getByLabelText(/Remove reason for task/i), {
       target: { value: "recorded against the wrong meeting" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Remove from scope/ }));
     reject?.(new Error("network dropped"));
     await screen.findByText(/Outcome unknown/);
-    fireEvent.change(screen.getByLabelText(/Removal reason for task/i), {
+    fireEvent.change(screen.getByLabelText(/Remove reason for task/i), {
       target: { value: "an edited reason that must not be sent" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Retry same operation \(remove\)/ }));
@@ -567,7 +568,7 @@ describe("scope amendment controls", () => {
     fireEvent.change(screen.getByLabelText(/Reinstate reason for task/i), {
       target: { value: "reinstating after review with Tai" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Reinstate in scope/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Reinstate into scope/ }));
     await waitFor(() => expect(onReinstateScopeItem).toHaveBeenCalledTimes(1));
     const call = onReinstateScopeItem.mock.calls[0]?.[0] as {
       itemId: string;
