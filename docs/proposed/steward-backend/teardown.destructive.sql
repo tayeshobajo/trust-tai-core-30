@@ -30,3 +30,4 @@ drop table if exists public.steward_scope_versions;
 drop table if exists public.steward_task_audit;
 drop table if exists public.steward_task_receipts;
 drop table if exists public.steward_canonical_runs;
+commit;
