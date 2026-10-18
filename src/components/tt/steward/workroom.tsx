@@ -441,43 +441,61 @@ function useStewardBackend(
     onExecuteRun: async (runId) => {
       const result = await runCanonicalRunWorkerFn({ data: { runId } });
       await invalidate();
+      /* The worker envelope wraps the execute outcome; unwrap it
+         faithfully so a nested "uncertain"/"failed" is never flattened
+         into a generic "result". */
+      const inner = (result as { kind: string; result?: { kind: string; reason?: string; message?: string } });
+      if (inner.kind === "result" && inner.result) return outcomeOf(inner.result);
       return outcomeOf(result);
     },
     onVerify: async (input) => {
-      const task = verification.data?.kind === "ready" ? verification.data.read.task : null;
-      if (!task)
-        return { kind: "rejected", message: "Task state could not be read; not verified." };
+      /* The expected revision comes from the immutable gesture captured at
+         the first click — never re-read from refreshed state, so a retry
+         after an uncertain transport replays the exact original tuple. */
       const result = await verifyCanonicalTaskFn({
         data: {
           orgId: org,
           taskId: input.taskId,
-          expectedRevision: task.revision,
+          expectedRevision: input.expectedRevision,
           operationId: input.operationId,
           note: input.note,
         },
       });
       await invalidate();
+      /* Verified state changes what the business-work projection shows. */
+      await queryClient.invalidateQueries({
+        queryKey: businessWorkQuery(org, identity.userId).queryKey,
+      });
       return outcomeOf(result);
     },
     onReopen: async (input) => {
-      const task = verification.data?.kind === "ready" ? verification.data.read.task : null;
-      if (!task)
-        return { kind: "rejected", message: "Task state could not be read; not reopened." };
       const result = await reopenCanonicalTaskFn({
         data: {
           orgId: org,
           taskId: input.taskId,
-          expectedRevision: task.revision,
+          expectedRevision: input.expectedRevision,
           operationId: input.operationId,
           note: input.note,
         },
       });
       await invalidate();
+      await queryClient.invalidateQueries({
+        queryKey: businessWorkQuery(org, identity.userId).queryKey,
+      });
       return outcomeOf(result);
     },
     onAttestCoverage: async (input) => {
+      /* Bound to the exact transcript hash + scope version the human
+         reviewed; the server rejects drift instead of attesting an unseen
+         source. */
       const result = await attestMeetingCoverageFn({
-        data: { orgId: org, conversationId: input.meetingId, operationId: input.operationId },
+        data: {
+          orgId: org,
+          conversationId: input.meetingId,
+          operationId: input.operationId,
+          expectedTranscriptHash: input.expectedTranscriptHash,
+          expectedScopeVersion: input.expectedScopeVersion,
+        },
       });
       await invalidate();
       return outcomeOf(result);
