@@ -23,7 +23,7 @@ import {
 const SNAPSHOT_INPUT = {
   action: "prepare_brief" as const,
   taskTitle: "Prepare the Soji roadmap handoff",
-  inputs: [{ kind: "transcript", content: "stored transcript content", revision: 3 }],
+  inputs: [{ kind: "transcript", id: "conv-1", content: "stored transcript content", revision: 3 }],
 };
 
 beforeEach(() => {

@@ -196,6 +196,9 @@ export function createCanonicalRunProvider(access: {
       const citedRefs = cited.map((r) => {
         const index = Number(r.replace(/^input:/, "")) - 1;
         const entry = input.inputs[index];
+        if (!entry) {
+          throw new ProviderCallFailedError("provider cited evidence outside the supplied inputs");
+        }
         return `${entry.kind}:${entry.id}@${entry.revision}`;
       });
       return { text: artifact, evidenceRefs: citedRefs };
