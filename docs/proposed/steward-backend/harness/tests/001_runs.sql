@@ -166,7 +166,6 @@ reset role;
 update public.organization_memberships set status = 'inactive'
  where user_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
    and organization_id = '11111111-1111-1111-1111-111111111111';
-set role service_role;
 select public.test_act_as_worker();
 set role service_role;
 select public.test_denied($q$
