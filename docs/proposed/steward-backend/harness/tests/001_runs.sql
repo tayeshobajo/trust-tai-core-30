@@ -234,7 +234,7 @@ declare rid uuid;
 begin
   select (public.steward_request_canonical_run(
       '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001',
-      'prepare_brief', 'a0000000-0000-0000-0000-0000000000u1'::uuid,
+      'prepare_brief', 'a0000000-0000-0000-0000-0000000000f1'::uuid,
       '[{"kind":"transcript","id":"dddddddd-dddd-dddd-dddd-dddddddddddd"}]'::jsonb) -> 'run' ->> 'id')::uuid into rid;
 end $$;
 select public.test_act_as_worker();
@@ -243,7 +243,7 @@ do $$
 declare rid uuid; r public.steward_canonical_runs;
 begin
   select id into rid from public.steward_canonical_runs
-   where client_operation_id = 'a0000000-0000-0000-0000-0000000000u1';
+   where client_operation_id = 'a0000000-0000-0000-0000-0000000000f1';
   r := public.steward_claim_canonical_run(rid);
   r := public.steward_uncertain_canonical_run(rid, r.claim_token, 'provider call timed out');
   perform public.test_assert(r.status = 'failed', 'uncertain run is terminally failed');
