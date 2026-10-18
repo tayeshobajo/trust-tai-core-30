@@ -42,6 +42,7 @@ winner=$(printf '%s\n%s\n' "$a" "$b" | grep -v LOST | head -1)
 loser=$(printf '%s\n%s\n' "$a" "$b" | grep LOST | head -1)
 [ "$loser" = "LOST" ] || { echo "FAIL: expected one LOST claim"; exit 1; }
 
+psql "$DB" -tA -c "select status, attempts, claim_token, lease_expires_at > now() from public.steward_canonical_runs where client_operation_id = 'd0000000-0000-0000-0000-000000000099'"
 # The winner's token completes; a fabricated/stale token cannot.
 psql "$DB" -q -v ON_ERROR_STOP=1 -o /dev/null <<SQL
 $AS_OWNER
