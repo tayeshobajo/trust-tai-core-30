@@ -81,6 +81,11 @@ describe("full meeting reasoning", () => {
       timeline: { basis: "ambiguous", suggestedDate: null },
     });
     expect(call).toHaveBeenCalledTimes(2);
+    expect(call).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responseFormat: expect.objectContaining({ type: "json_schema", strict: true }),
+      }),
+    );
   });
   it("covers all chunk boundaries without truncation and reconciles once at the end", async () => {
     const c = {

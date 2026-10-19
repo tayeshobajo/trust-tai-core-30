@@ -35,6 +35,56 @@ const resultSchema = z.object({
   findings: z.array(finding).max(100),
   summary: z.string().max(10000),
 });
+// Constrain provider output at generation as well as validating it locally.
+const nullableText = { type: ["string", "null"] };
+const findingProperties = {
+  disposition: { type: "string", enum: finding.shape.disposition.options },
+  meaning: { type: "string", minLength: 8, maxLength: 500 },
+  owner: nullableText,
+  owner_basis: { type: "string", enum: finding.shape.owner_basis.options },
+  criteria_basis: { type: "string", enum: finding.shape.criteria_basis.options },
+  due_text: nullableText,
+  definition_of_done: nullableText,
+  dependency: nullableText,
+  ambiguity: { type: "string" },
+  evidence: {
+    type: "array",
+    minItems: 1,
+    items: {
+      type: "object",
+      additionalProperties: false,
+      required: ["index", "quote"],
+      properties: {
+        index: { type: "integer", minimum: 0 },
+        quote: { type: "string", minLength: 1 },
+      },
+    },
+  },
+  duplicate_of: nullableText,
+};
+const responseFormat = {
+  type: "json_schema",
+  name: "steward_full_meeting",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["findings", "summary"],
+    properties: {
+      findings: {
+        type: "array",
+        maxItems: 100,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: Object.keys(findingProperties),
+          properties: findingProperties,
+        },
+      },
+      summary: { type: "string", maxLength: 10000 },
+    },
+  },
+};
 type Finding = z.infer<typeof finding>;
 export function transcriptChunks(conversation: NormalizedConversation, maxChars = 24000) {
   const chunks: (typeof conversation.segments)[] = [];
@@ -132,6 +182,7 @@ export async function reasonFullMeeting(
       instructions: laws,
       input: JSON.stringify({ ...packet, json_shape: shape }),
       webSearch: false,
+      responseFormat,
       gateway: input.gateway,
       initialRunId: input.initialRunId,
     });
@@ -140,7 +191,10 @@ export async function reasonFullMeeting(
     const parsed = resultSchema.safeParse(extractJsonObject(response.raw));
     if (!parsed.success)
       throw new Error(
-        "Full-meeting reasoning returned an invalid result. No partial result was accepted.",
+        `Full-meeting reasoning returned an invalid result at ${parsed.error.issues
+          .slice(0, 3)
+          .map((issue) => issue.path.join(".") || "root")
+          .join(", ")}. No partial result was accepted.`,
       );
     validateEvidence(parsed.data.findings, conversation);
     return parsed.data;
