@@ -135,7 +135,7 @@ function conversation(): NormalizedConversation {
 }
 
 describe("interpretConversation", () => {
-  it("hands the model the shared retrieval bundle, not only the bespoke memory object", async () => {
+  it("uses the shared retrieval bundle during reconciliation, after source-only extraction", async () => {
     const callModel = vi.fn(async () => ({
       raw: JSON.stringify({
         findings: [],
@@ -159,7 +159,7 @@ describe("interpretConversation", () => {
     expect(callModel).toHaveBeenCalled();
     const call = (
       callModel.mock.calls as unknown as { instructions: string; input: string }[][]
-    )[0]?.[0] as {
+    )[1]?.[0] as {
       instructions: string;
       input: string;
     };
