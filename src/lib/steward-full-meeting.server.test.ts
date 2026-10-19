@@ -46,6 +46,7 @@ const finding = (overrides: Record<string, unknown> = {}) => ({
   meaning: "Check the invitation journey in a browser",
   owner: "Alex",
   owner_basis: "explicit",
+  acceptance_basis: "explicit_acceptance",
   criteria_basis: "proposed",
   due_text: "through this week unless priorities change",
   definition_of_done: "Record the invitation journey outcome and evidence.",
@@ -190,6 +191,24 @@ describe("full meeting reasoning", () => {
       "unsupported transcript citation",
     );
     expect(call).toHaveBeenCalledTimes(2);
+  });
+  it("keeps request-only and unclear acceptance unresolved despite a commitment label", async () => {
+    const result = await reasonFullMeeting(
+      input(),
+      model([
+        finding({ acceptance_basis: "request_only" }),
+        finding({
+          meaning: "Make the tour editable after clarifying acceptance",
+          acceptance_basis: "unclear",
+        }),
+      ]),
+      {},
+    );
+    expect(result.signals.map((s) => s.disposition)).toEqual([
+      "insufficient_evidence",
+      "insufficient_evidence",
+    ]);
+    expect(result.signals[0]?.ambiguity).toContain("not an agreed obligation");
   });
   it("keeps inferred owners unresolved and reported completion unverified", async () => {
     const run = await reasonFullMeeting(
