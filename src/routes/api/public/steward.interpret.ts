@@ -20,6 +20,7 @@ import type { Belief, Commitment, NormalizedConversation } from "@/domain/stewar
 import type { MemoryBelief } from "@/domain/steward-memory";
 import type { MemoryContext } from "@/domain/steward-semantic";
 
+import { meetingProcessingDenial } from "@/data/steward/processing-access";
 import { loadMeetingReading, saveMeetingReading } from "@/data/steward/reading-store";
 import { transcriptDigest, MEETING_PROCESS_VERSION } from "@/data/steward/meeting-process";
 import { proposeStateChanges } from "@/data/steward/continuity";
@@ -54,24 +55,6 @@ function clientFor(token: string): SupabaseClient {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}`, apikey: key } },
   });
-}
-
-async function requireMembership(
-  supabase: SupabaseClient,
-  token: string,
-  organizationId: string,
-): Promise<boolean> {
-  if (!organizationId) return false;
-  const { data: userData } = await supabase.auth.getUser(token);
-  if (!userData?.user) return false;
-  const { data, error } = await supabase
-    .from("organization_memberships")
-    .select("organization_id, status")
-    .eq("organization_id", organizationId)
-    .eq("user_id", userData.user.id)
-    .limit(1);
-  if (error) return false;
-  return (data ?? []).some((row) => (row["status"] ?? "active") === "active");
 }
 
 /**
@@ -333,12 +316,8 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
 
         const organizationId = String(body["organization_id"] ?? "");
         const supabase = clientFor(token);
-        if (!(await requireMembership(supabase, token, organizationId))) {
-          return Response.json(
-            { error: "You are not a member of this workspace." },
-            { status: 403 },
-          );
-        }
+        const accessDenial = await meetingProcessingDenial(supabase, organizationId);
+        if (accessDenial) return accessDenial;
 
         const conversationId =
           typeof body["conversation_id"] === "string" ? body["conversation_id"] : null;
@@ -450,6 +429,8 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
             suppressedCount: suppressed.length,
           };
           if (conversationId) {
+            const latestAccess = await meetingProcessingDenial(supabase, organizationId);
+            if (latestAccess) return latestAccess;
             const current = await supabase
               .from("conversations")
               .select("transcript")

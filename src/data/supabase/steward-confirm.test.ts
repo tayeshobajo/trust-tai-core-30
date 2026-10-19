@@ -83,3 +83,40 @@ it("rechecks canonical business work before creating a task from cached analysis
   await expect(stewardService.confirm(input)).rejects.toThrow("board-task");
   expect(fake.writes).not.toHaveBeenCalled();
 });
+it.each(["kept", "open"])(
+  "allows a separate client's obligation after explicit reconciliation with %s historical work",
+  async (status) => {
+    const statement = "Send report to Acme";
+    fake.results = [
+      { data: { role: "admin" }, error: null },
+      { data: { id: "new-meeting" }, error: null },
+      { data: null, error: null },
+      {
+        data: [
+          {
+            id: "old-report",
+            statement: "Send report",
+            status,
+            conversation_id: "old-meeting",
+            evidence: [],
+          },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: { id: "new-report", statement, status: "open", evidence: [] }, error: null },
+    ];
+    await stewardService.confirm({
+      ...input,
+      conversationId: "new-meeting",
+      proposal: { ...input.proposal, statement },
+      distinctObligationReason:
+        "The old report was for Beta in September; this meeting agreed a separate October Acme report.",
+    });
+    expect(fake.writes).toHaveBeenCalledOnce();
+    const [payload, options] = fake.writes.mock.calls[0]!;
+    expect(payload.evidence[0].label).toContain("old-report");
+    expect(payload.evidence[0].label).toContain("October Acme");
+    expect(options.ignoreDuplicates).toBe(true);
+  },
+);

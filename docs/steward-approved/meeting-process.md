@@ -37,3 +37,13 @@ Read-only checks on October 19 found the example Emmanuel meeting had 210 stored
 - Browser review: isolated fictional review at 1440px and 375px; controls progressively disclosed, confirmed feedback verified without backend writes. Screenshots: `screenshots/deliverables-1440.png`, `screenshots/deliverables-375.png`. Original approved overview/detail screenshots remain available at desktop/tablet/mobile sizes.
 
 Production publication and signed-in safe-context end-to-end acceptance remain pending parent review.
+
+## Independent review corrections
+
+The interpretation POST now resolves existing organization app enablement, member override, role-level access and role ceiling server-side before reading a transcript or calling the model. It rechecks before saving. Viewer and narrowed view-only access are denied; unreadable policy fails closed. This uses existing tables and the same app-access resolver; no policy migration or grant is required.
+
+Fuzzy title overlap now requires a recorded reconciliation explanation rather than permanently prohibiting separate work. The reviewer sees the similar record's title, ID and status, compares client/source/delivery period, and can explicitly explain the distinct obligation. The explanation is retained in evidence. Exact source-key retries still replay the original task unchanged, and the insert retains conflict-ignore semantics. Regressions cover completed and open historical work, separate clients/meetings and retry status preservation.
+
+Updated checks: 138 Steward tests, 37 interface tests, TypeScript and build pass. A build-time `steward-build.json` asset reports Git revision and tracked dirty state for exact hosted-preview verification; absence of Git metadata reports null rather than inventing a revision.
+
+Correction to initial preview handoff: “Build unsuccessful” is retained in a zero-opacity, collapsed DOM container. It was incorrectly treated as a visible error. The actual Lovable developer update is completed; separate hosted asset verification is required to establish served revision.

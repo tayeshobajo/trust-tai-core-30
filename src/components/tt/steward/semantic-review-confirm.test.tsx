@@ -35,7 +35,7 @@ it("does not display confirmation success when persistence rejects", async () =>
     />,
   );
   fireEvent.click(screen.getByText("Review & confirm deliverable"));
-  fireEvent.click(screen.getByRole("button", { name: "Confirm", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: /^Confirm$/ }));
   await screen.findByRole("alert");
   expect(screen.getByText("Save rejected")).toBeTruthy();
   expect(screen.queryByText("Already a commitment in this workspace")).toBeNull();

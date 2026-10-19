@@ -283,6 +283,7 @@ export const stewardService = {
     userId: ID;
     conversationId: ID;
     proposal: Proposal;
+    distinctObligationReason?: string;
     ownerName: string;
     ownerEmail?: string;
     dueAt?: string | null;
@@ -343,9 +344,10 @@ export const stewardService = {
     const boardDuplicate = (board.data ?? []).find((task) =>
       findDuplicate(input.proposal.statement, [{ what: task.title, status: "open" } as Commitment]),
     );
-    if (duplicate || boardDuplicate)
+    const distinctReason = input.distinctObligationReason?.trim();
+    if ((duplicate || boardDuplicate) && (!distinctReason || distinctReason.length < 20))
       throw new Error(
-        `Potential existing obligation (${duplicate?.id ?? boardDuplicate?.id}). Review and link that record instead of creating a parallel task.`,
+        `Similar existing work: “${duplicate?.what ?? boardDuplicate?.title}” (${duplicate?.id ?? boardDuplicate?.id}, ${duplicate?.status ?? boardDuplicate?.status}). Compare the source, client and obligation. Reuse it if this is the same work; otherwise record why this is a distinct obligation before confirming.`,
       );
     const payload: Row = {
       organization_id: input.organizationId,
@@ -361,7 +363,17 @@ export const stewardService = {
       status: "open",
       kind: input.proposal.kind,
       project_id: input.projectId ?? null,
-      evidence: input.proposal.evidence,
+      evidence: [
+        ...input.proposal.evidence,
+        ...((duplicate || boardDuplicate) && distinctReason
+          ? [
+              {
+                kind: "manual",
+                label: `Distinct obligation confirmed by reviewer ${input.userId}. Compared with ${duplicate?.id ?? boardDuplicate?.id} (${duplicate?.status ?? boardDuplicate?.status}): ${distinctReason}`,
+              },
+            ]
+          : []),
+      ],
       confirmed_by: input.userId,
       updated_at: new Date().toISOString(),
     };

@@ -115,6 +115,9 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
         userId: identity.userId,
         conversationId,
         proposal: input.proposal,
+        ...(input.distinctObligationReason
+          ? { distinctObligationReason: input.distinctObligationReason }
+          : {}),
         ownerName: input.ownerName,
         dueAt: input.dueAt,
       }),

@@ -24,6 +24,7 @@ export interface ConfirmInput {
   proposal: Proposal;
   ownerName: string;
   dueAt: string | null;
+  distinctObligationReason?: string;
 }
 
 const ORDER: ProposalKind[] = ["action", "follow_up", "decision", "blocker", "question"];

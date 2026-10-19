@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: [
+      "src/routes/api/public/steward.interpret.test.ts",
       "src/lib/steward-full-meeting.server.test.ts",
       "src/lib/steward-retrieval.test.ts",
       "src/domain/steward-display-title.test.ts",

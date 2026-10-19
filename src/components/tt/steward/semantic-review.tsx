@@ -185,6 +185,7 @@ function SignalRow({
   const [dueAt, setDueAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [distinctReason, setDistinctReason] = useState("");
   const [dismissed, setDismissed] = useState(false);
 
   /* Editing then confirming is a different act from confirming as read. */
@@ -327,6 +328,21 @@ function SignalRow({
               />
             </label>
           </div>
+          {saveError.startsWith("Similar existing work:") ? (
+            <label className="block">
+              <span className="tt-eyebrow">Why is this a distinct obligation?</span>
+              <TTInput
+                className="mt-2"
+                value={distinctReason}
+                onChange={(event) => setDistinctReason(event.target.value)}
+                placeholder="Identify the different client, source agreement or delivery period"
+              />
+              <span className="text-sm text-muted-foreground">
+                Compare the existing record before proceeding. This explanation is retained with the
+                confirmed evidence.
+              </span>
+            </label>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="block">
               <span className="tt-eyebrow">Due date (optional)</span>
@@ -369,6 +385,9 @@ function SignalRow({
                         dueText: dueText.trim() || null,
                       },
                       ownerName: ownerName.trim(),
+                      ...(distinctReason.trim()
+                        ? { distinctObligationReason: distinctReason.trim() }
+                        : {}),
                       dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
                     });
                   } catch (error) {
