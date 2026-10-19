@@ -24,7 +24,13 @@ vi.mock("@/lib/steward-interpret.server", () => ({
   interpretConversation: state.reason,
   InterpretationUnavailableError: class extends Error {},
 }));
-vi.mock("@/lib/intelligence-runtime.server", () => ({ runtimeModelCaller: async () => () => {} }));
+vi.mock("@/lib/intelligence-runtime.server", () => ({
+  runtimeModelCaller: async () => async () => ({
+    raw: '{"findings":[]}',
+    provider: "fixture",
+    model: "fixture",
+  }),
+}));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: { id: "user" } }, error: null }) },
@@ -110,6 +116,31 @@ it("fresh comparison reasons from the stored transcript without reading or writi
   expect(state.reason).toHaveBeenCalledOnce();
   expect((state.reason.mock.calls as unknown as unknown[][])[0]?.[0]).toMatchObject({
     conversation: state.transcript,
+  });
+  expect(state.reads).not.toContain("activities");
+});
+
+it("returns bounded diagnostic output only for an authorized unsaved comparison", async () => {
+  state.role = "owner";
+  state.reason.mockImplementationOnce(async (...args: unknown[]) => {
+    const call = args[1] as (arg: { input: string }) => Promise<unknown>;
+    await call({ input: JSON.stringify({ stage: "read_every_turn", part: 1 }) });
+    throw new Error("unsupported citation");
+  });
+  const response = await post({
+    request: new Request("https://example.invalid/api/public/steward/interpret", {
+      method: "POST",
+      headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        organization_id: "org",
+        conversation_id: "meeting",
+        preview_only: true,
+      }),
+    }),
+  });
+  expect(response.status).toBe(500);
+  expect(await response.json()).toMatchObject({
+    diagnostics: [{ stage: "read_every_turn", part: 1, raw: '{"findings":[]}', truncated: false }],
   });
   expect(state.reads).not.toContain("activities");
 });

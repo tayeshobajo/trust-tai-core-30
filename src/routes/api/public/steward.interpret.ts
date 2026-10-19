@@ -395,14 +395,32 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
         const initialRunId = getLovableAiGatewayRunId(request);
         const gateway = createLovableAiGatewayRunIdFetch(initialRunId);
 
+        const diagnostics: { stage: unknown; part: unknown; raw: string; truncated: boolean }[] =
+          [];
+        let diagnosticChars = 0;
         try {
           /* Interpretation reasons through the runtime boundary, fail-closed. */
-          const callModel = await runtimeModelCaller({
+          const providerCall = await runtimeModelCaller({
             token,
             organizationId,
             room: "steward",
             purpose: "meeting_interpretation",
           });
+          const callModel: typeof providerCall = async (call) => {
+            const response = await providerCall(call);
+            if (previewOnly && conversationId && diagnostics.length < 64) {
+              const packet = JSON.parse(call.input) as Record<string, unknown>;
+              const remaining = Math.max(0, 1_000_000 - diagnosticChars);
+              diagnostics.push({
+                stage: packet["stage"],
+                part: packet["part"],
+                raw: response.raw.slice(0, remaining),
+                truncated: response.raw.length > remaining,
+              });
+              diagnosticChars += Math.min(response.raw.length, remaining);
+            }
+            return response;
+          };
           const run = await interpretConversation(
             {
               conversation,
@@ -458,13 +476,22 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
             });
             return Response.json(saved);
           }
-          return Response.json(result);
+          return Response.json({
+            ...result,
+            ...(previewOnly && conversationId ? { diagnostics } : {}),
+          });
         } catch (error) {
           if (error instanceof InterpretationUnavailableError) {
-            return Response.json({ error: error.message }, { status: 503 });
+            return Response.json(
+              { error: error.message, ...(previewOnly && conversationId ? { diagnostics } : {}) },
+              { status: 503 },
+            );
           }
           return Response.json(
-            { error: error instanceof Error ? error.message : String(error) },
+            {
+              error: error instanceof Error ? error.message : String(error),
+              ...(previewOnly && conversationId ? { diagnostics } : {}),
+            },
             { status: 500 },
           );
         }
