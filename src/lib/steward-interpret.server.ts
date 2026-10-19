@@ -11,6 +11,7 @@
  * deterministic candidates are never promoted in its place.
  */
 
+import { reasonFullMeeting } from "./steward-full-meeting.server";
 import type { IntelligenceCase } from "@/domain/intelligence-canon";
 import type { WithheldSource } from "@/domain/signals";
 import type { Commitment, NormalizedConversation } from "@/domain/steward";
@@ -189,6 +190,16 @@ export async function interpretConversation(
       ...(input.withheld ? { withheld: input.withheld } : {}),
     }),
   );
+
+  if (!input.candidates) {
+    try {
+      return await reasonFullMeeting(input, callModel, retrieval);
+    } catch (error) {
+      throw new InterpretationUnavailableError(
+        `Steward could not interpret the full meeting: ${error instanceof Error ? error.message : "read failed"}`,
+      );
+    }
+  }
 
   for (let index = 0; index < candidates.length; index += BATCH_SIZE) {
     const batch = candidates.slice(index, index + BATCH_SIZE);

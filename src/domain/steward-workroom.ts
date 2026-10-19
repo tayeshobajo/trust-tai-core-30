@@ -78,9 +78,13 @@ export interface WorkroomConversationInput {
    * transcript covers the whole recording. Anything else is unknown.
    */
   coverageConfirmed?: boolean;
+  processingMessage?: string;
+  needsDeliverableReview?: boolean;
 }
 
 export interface WorkroomRow {
+  /** Follow-up context only; the obligation remains counted at its original meeting. */
+  forwardedFrom?: string;
   kind?: "commitment" | "business-task" | "required-task";
   boardTask?: BoardTask;
   id: string;

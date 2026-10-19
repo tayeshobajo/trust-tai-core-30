@@ -172,11 +172,11 @@ function SignalRow({
   confirmed: boolean;
   conflicts: MemoryConflict[];
   continuity: StateChangeProposal[];
-  onConfirm?: (input: ConfirmInput) => void;
-  onCorrect?: (corrections: CorrectionDraft[]) => void;
+  onConfirm?: (input: ConfirmInput) => void | Promise<void>;
+  onCorrect?: (corrections: CorrectionDraft[]) => void | Promise<void>;
   onDismiss?: (signal: InterpretedSignal) => void;
   onResolveConflict?: (conflict: MemoryConflict, keep: "memory" | "transcript") => void;
-  readOnlyBecause?: string;
+  readOnlyBecause?: string | undefined;
 }) {
   const [meaning, setMeaning] = useState(signal.normalizedMeaning);
   const [ownerName, setOwnerName] = useState(signal.ownerName ?? "");
@@ -184,6 +184,8 @@ function SignalRow({
   const [dueText, setDueText] = useState(signal.dueText ?? "");
   const [dueAt, setDueAt] = useState("");
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [distinctReason, setDistinctReason] = useState("");
   const [dismissed, setDismissed] = useState(false);
 
   /* Editing then confirming is a different act from confirming as read. */
@@ -240,6 +242,33 @@ function SignalRow({
         />
       ))}
 
+      {signal.definitionOfDone ? (
+        <p className="mt-3 text-sm">
+          <strong>
+            {signal.criteriaBasis === "agreed"
+              ? "Agreed completion criteria"
+              : "Proposed definition of done"}
+            :
+          </strong>{" "}
+          {signal.definitionOfDone}
+        </p>
+      ) : null}
+      {signal.dependencyOn ? (
+        <p className="mt-2 text-sm">Depends on: {signal.dependencyOn}</p>
+      ) : null}
+      {signal.timeline ? (
+        <p className="mt-2 text-sm">
+          Timeline: {signal.timeline.basis}
+          {signal.timeline.suggestedDate
+            ? ` · suggested ${signal.timeline.suggestedDate}`
+            : ""}. {signal.timeline.explanation}
+        </p>
+      ) : null}
+      {saveError ? (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          {saveError}
+        </p>
+      ) : null}
       <Evidence signal={signal} />
 
       {confirmed ? (
@@ -248,8 +277,11 @@ function SignalRow({
         </p>
       ) : readOnlyBecause ? (
         <p className="mt-4 text-[13px] text-muted-foreground">{readOnlyBecause}</p>
-      ) : onConfirm ? (
-        <div className="mt-4 space-y-3 border-t border-border pt-4">
+      ) : onConfirm && signal.disposition === "commitment" ? (
+        <details className="mt-4 space-y-3 border-t border-border pt-4">
+          <summary className="cursor-pointer text-sm font-medium">
+            Review &amp; confirm deliverable
+          </summary>
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
             Put it in your own words, Steward remembers what you change
           </p>
@@ -296,6 +328,21 @@ function SignalRow({
               />
             </label>
           </div>
+          {saveError.startsWith("Similar existing work:") ? (
+            <label className="block">
+              <span className="tt-eyebrow">Why is this a distinct obligation?</span>
+              <TTInput
+                className="mt-2"
+                value={distinctReason}
+                onChange={(event) => setDistinctReason(event.target.value)}
+                placeholder="Identify the different client, source agreement or delivery period"
+              />
+              <span className="text-sm text-muted-foreground">
+                Compare the existing record before proceeding. This explanation is retained with the
+                confirmed evidence.
+              </span>
+            </label>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="block">
               <span className="tt-eyebrow">Due date (optional)</span>
@@ -312,33 +359,46 @@ function SignalRow({
                 disabled={
                   ownerName.trim().length === 0 || meaning.trim().length === 0 || busy || dismissed
                 }
-                onClick={() => {
+                onClick={async () => {
                   setBusy(true);
-                  const corrections = correctionsFromEdit({
-                    signal,
-                    edit: {
-                      normalizedMeaning: meaning,
-                      ownerName,
-                      beneficiary,
-                      dueText,
-                    },
-                  });
-                  if (corrections.length > 0) onCorrect?.(corrections);
+                  setSaveError("");
+                  try {
+                    const corrections = correctionsFromEdit({
+                      signal,
+                      edit: {
+                        normalizedMeaning: meaning,
+                        ownerName,
+                        beneficiary,
+                        dueText,
+                      },
+                    });
+                    if (corrections.length > 0) await onCorrect?.(corrections);
 
-                  const proposal = signalToProposal(signal);
-                  onConfirm({
-                    proposal: {
-                      ...proposal,
-                      statement: meaning.trim(),
+                    const proposal = signalToProposal(signal);
+                    await onConfirm({
+                      proposal: {
+                        ...proposal,
+                        statement: meaning.trim(),
+                        ownerName: ownerName.trim(),
+                        ownerResolved: true,
+                        beneficiary: beneficiary.trim() || null,
+                        dueText: dueText.trim() || null,
+                      },
                       ownerName: ownerName.trim(),
-                      ownerResolved: true,
-                      beneficiary: beneficiary.trim() || null,
-                      dueText: dueText.trim() || null,
-                    },
-                    ownerName: ownerName.trim(),
-                    dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
-                  });
-                  setBusy(false);
+                      ...(distinctReason.trim()
+                        ? { distinctObligationReason: distinctReason.trim() }
+                        : {}),
+                      dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
+                    });
+                  } catch (error) {
+                    setSaveError(
+                      error instanceof Error
+                        ? error.message
+                        : "Confirmation failed; no success was recorded.",
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
                 }}
               >
                 {busy ? "Confirming…" : edited ? "Edit & confirm" : "Confirm"}
@@ -364,13 +424,17 @@ function SignalRow({
               Recorded as context. Steward will raise this shape of reading less often.
             </p>
           ) : null}
-        </div>
+        </details>
       ) : null}
     </li>
   );
 }
 
-const ORDER: SemanticDisposition[] = REVIEWABLE_DISPOSITIONS;
+const ORDER: SemanticDisposition[] = [
+  ...REVIEWABLE_DISPOSITIONS,
+  "insufficient_evidence",
+  "already_completed",
+];
 
 export function SemanticReview({
   run,
@@ -395,18 +459,38 @@ export function SemanticReview({
   memoryUsed?: MemoryUsage[];
   memoryConsidered?: number;
   suppressedCount?: number;
-  onConfirm?: (input: ConfirmInput) => void;
-  onCorrect?: (corrections: CorrectionDraft[]) => void;
+  onConfirm?: (input: ConfirmInput) => void | Promise<void>;
+  onCorrect?: (corrections: CorrectionDraft[]) => void | Promise<void>;
   onDismiss?: (signal: InterpretedSignal) => void;
   onResolveConflict?: (conflict: MemoryConflict, keep: "memory" | "transcript") => void;
-  readOnlyBecause?: string;
+  readOnlyBecause?: string | undefined;
 }) {
-  const reviewable = reviewableSignals(run.signals);
-  const withheld = withheldSignals(run.signals);
+  const reviewable = run.coverage
+    ? run.signals.filter((s) => ORDER.includes(s.disposition))
+    : reviewableSignals(run.signals);
+  const withheld = run.coverage
+    ? run.signals.filter((s) => !ORDER.includes(s.disposition))
+    : withheldSignals(run.signals);
   const counts = dispositionCounts(run.signals);
 
   return (
     <div className="space-y-8">
+      {run.coverage ? (
+        <div className="tt-surface p-5 text-sm">
+          <p>
+            <strong>Full stored transcript reviewed:</strong> {run.coverage.segmentsRead} of{" "}
+            {run.coverage.segmentsTotal} turns, then reconciled across {run.coverage.chunks} parts.
+          </p>
+          <p className="mt-2 text-muted-foreground">
+            Prepared by {run.provider} · {run.generatedAt}
+          </p>
+          <p className="mt-2">{run.coverage.summary}</p>
+          <p className="mt-2 text-muted-foreground">
+            Source completeness remains unverified. Check the recording for missing opening/closing
+            sections. Findings are proposals; reported completion is not verified completion.
+          </p>
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <MetaPill>{run.candidateCount} passages read</MetaPill>
         <MetaPill>{reviewable.length} worth your attention</MetaPill>

@@ -60,7 +60,7 @@ export const DISPOSITION_LABEL: Record<SemanticDisposition, string> = {
   unresolved_question: "Open question",
   context_only: "Context",
   duplicate: "Already tracked",
-  already_completed: "Already done",
+  already_completed: "Reported complete · unverified",
   insufficient_evidence: "Not clear enough",
 };
 
@@ -77,6 +77,9 @@ export const REVIEWABLE_DISPOSITIONS: SemanticDisposition[] = [
  * the transcript lives in `evidence` and `quote`, behind disclosure.
  */
 export interface InterpretedSignal {
+  definitionOfDone?: string | null;
+  criteriaBasis?: "agreed" | "proposed" | "missing";
+  timeline?: { basis: string; suggestedDate: string | null; explanation: string };
   /** Same id as the candidate it came from. */
   id: ID;
   candidateId: ID;
@@ -125,6 +128,16 @@ export interface MemoryContext {
 }
 
 export interface InterpretationRun {
+  coverage?: {
+    version: string;
+    digest: string;
+    segmentsRead: number;
+    segmentsTotal: number;
+    chunks: number;
+    sourceCompleteness: "unverified";
+    exactAnchorRepairs?: number;
+    summary: string;
+  };
   conversationTitle: string;
   occurredAt: string;
   candidateCount: number;

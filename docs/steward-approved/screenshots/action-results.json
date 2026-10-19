@@ -1,0 +1,9 @@
+{
+  "passed": [
+    "native status selection",
+    "roll-forward persistence after reload",
+    "roll-forward does not complete or inflate score",
+    "explicit completion recalculates percentage",
+    "interrupted navigation writes only the original task"
+  ]
+}

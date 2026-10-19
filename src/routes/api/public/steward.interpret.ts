@@ -1,8 +1,8 @@
 /**
  * Steward semantic interpretation endpoint.
  *
- * POST, read one conversation's candidate passages for meaning. Nothing is
- * written. Interpretation is not confirmation: only a person, in the room,
+ * POST, reason across all stored turns and persist the exact-transcript reading.
+ * No task is created automatically. Interpretation is not confirmation: only a person, in the room,
  * turns a signal into workspace truth.
  *
  * Security: this path bypasses site auth, so the handler authenticates every
@@ -20,7 +20,9 @@ import type { Belief, Commitment, NormalizedConversation } from "@/domain/stewar
 import type { MemoryBelief } from "@/domain/steward-memory";
 import type { MemoryContext } from "@/domain/steward-semantic";
 
-import { detectCandidates } from "@/data/steward/candidates";
+import { meetingProcessingDenial } from "@/data/steward/processing-access";
+import { loadMeetingReading, saveMeetingReading } from "@/data/steward/reading-store";
+import { transcriptDigest, MEETING_PROCESS_VERSION } from "@/data/steward/meeting-process";
 import { proposeStateChanges } from "@/data/steward/continuity";
 import {
   outcomeRecordsFromBeliefs,
@@ -53,24 +55,6 @@ function clientFor(token: string): SupabaseClient {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}`, apikey: key } },
   });
-}
-
-async function requireMembership(
-  supabase: SupabaseClient,
-  token: string,
-  organizationId: string,
-): Promise<boolean> {
-  if (!organizationId) return false;
-  const { data: userData } = await supabase.auth.getUser(token);
-  if (!userData?.user) return false;
-  const { data, error } = await supabase
-    .from("organization_memberships")
-    .select("organization_id, status")
-    .eq("organization_id", organizationId)
-    .eq("user_id", userData.user.id)
-    .limit(1);
-  if (error) return false;
-  return (data ?? []).some((row) => (row["status"] ?? "active") === "active");
 }
 
 /**
@@ -172,10 +156,23 @@ async function readMemory(
       .from("commitments")
       .select("id, statement, owner_name, owner_email, status, conversation_id, source_key")
       .eq("organization_id", organizationId)
-      .in("status", ["open", "waiting"])
-      .limit(200);
+      .limit(301);
     if (error) throw new Error(error.message);
 
+    if ((data?.length ?? 0) > 300)
+      throw new Error(
+        "Existing commitment read is capped; duplicate reconciliation is incomplete.",
+      );
+    const board = await supabase
+      .from("steward_tasks")
+      .select("id,title,status,owner_label")
+      .eq("organization_id", organizationId)
+      .eq("task_visibility", "business")
+      .limit(1001);
+    if (board.error || (board.data?.length ?? 0) > 1000)
+      throw new Error(
+        "Existing business task read is unavailable or capped; duplicate reconciliation is incomplete.",
+      );
     const rows = data ?? [];
     const commitments = rows.map((row) => ({
       id: String(row["id"] ?? ""),
@@ -268,12 +265,20 @@ async function readMemory(
         available: true,
         because: describeKnownPeople(known),
 
-        openCommitments: commitments.map((commitment) => ({
-          id: commitment.id,
-          statement: commitment.what,
-          ownerName: commitment.ownerName,
-          status: commitment.status,
-        })),
+        openCommitments: [
+          ...(board.data ?? []).map((task) => ({
+            id: task.id,
+            statement: task.title,
+            ownerName: task.owner_label ?? "",
+            status: task.status,
+          })),
+          ...commitments.map((commitment) => ({
+            id: commitment.id,
+            statement: commitment.what,
+            ownerName: commitment.ownerName,
+            status: commitment.status,
+          })),
+        ],
         people,
         projects,
       },
@@ -311,14 +316,28 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
 
         const organizationId = String(body["organization_id"] ?? "");
         const supabase = clientFor(token);
-        if (!(await requireMembership(supabase, token, organizationId))) {
+        const accessDenial = await meetingProcessingDenial(supabase, organizationId);
+        if (accessDenial) return accessDenial;
+
+        const previewOnly = body["preview_only"] === true;
+        const conversationId =
+          typeof body["conversation_id"] === "string" ? body["conversation_id"] : null;
+        const stored = conversationId
+          ? await supabase
+              .from("conversations")
+              .select("*")
+              .eq("id", conversationId)
+              .eq("organization_id", organizationId)
+              .maybeSingle()
+          : null;
+        if (conversationId && (stored?.error || !stored?.data))
           return Response.json(
-            { error: "You are not a member of this workspace." },
+            { error: "This meeting is unavailable in your workspace." },
             { status: 403 },
           );
-        }
-
-        const conversation = body["conversation"] as NormalizedConversation | undefined;
+        const conversation = stored?.data
+          ? (stored.data.transcript as NormalizedConversation)
+          : (body["conversation"] as NormalizedConversation | undefined);
         if (!conversation || !Array.isArray(conversation.segments)) {
           return Response.json(
             { error: "No conversation was sent to interpret." },
@@ -326,7 +345,33 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           );
         }
 
+        const digest = await transcriptDigest(conversation);
+        const runKey = `meeting-reasoning:${conversationId}:${MEETING_PROCESS_VERSION}:${digest}`;
+        if (conversationId && !previewOnly) {
+          try {
+            const prior = await loadMeetingReading(
+              supabase,
+              organizationId,
+              conversationId,
+              runKey,
+            );
+            if (prior) return Response.json(prior);
+          } catch (error) {
+            return Response.json(
+              { error: error instanceof Error ? error.message : "Saved reasoning unavailable" },
+              { status: 503 },
+            );
+          }
+        }
         const { memory, commitments } = await readMemory(supabase, organizationId);
+        if (conversationId && !memory.available)
+          return Response.json(
+            {
+              error:
+                memory.because + " Resolve existing-work access before processing this meeting.",
+            },
+            { status: 503 },
+          );
         const beliefs = await readBeliefs(supabase, organizationId);
         /* Human corrections for the shared retrieval bundle. Unreadable is withheld. */
         const ledger = await readCases(supabase, organizationId);
@@ -347,24 +392,40 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           inferred: relevant.inferred,
         };
 
-        const candidates = detectCandidates(conversation);
         const initialRunId = getLovableAiGatewayRunId(request);
         const gateway = createLovableAiGatewayRunIdFetch(initialRunId);
 
+        const diagnostics: { stage: unknown; part: unknown; raw: string; truncated: boolean }[] =
+          [];
+        let diagnosticChars = 0;
         try {
           /* Interpretation reasons through the runtime boundary, fail-closed. */
-          const callModel = await runtimeModelCaller({
+          const providerCall = await runtimeModelCaller({
             token,
             organizationId,
             room: "steward",
             purpose: "meeting_interpretation",
           });
+          const callModel: typeof providerCall = async (call) => {
+            const response = await providerCall(call);
+            if (previewOnly && conversationId && diagnostics.length < 64) {
+              const packet = JSON.parse(call.input) as Record<string, unknown>;
+              const remaining = Math.max(0, 1_000_000 - diagnosticChars);
+              diagnostics.push({
+                stage: packet["stage"],
+                part: packet["part"],
+                raw: response.raw.slice(0, remaining),
+                truncated: response.raw.length > remaining,
+              });
+              diagnosticChars += Math.min(response.raw.length, remaining);
+            }
+            return response;
+          };
           const run = await interpretConversation(
             {
               conversation,
               memory: memoryWithBeliefs,
               commitments,
-              candidates,
               gateway,
               initialRunId,
               organizationId,
@@ -377,7 +438,7 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           /* Continuity and conflict are proposals for a person, never writes. */
           const stateChanges = proposeStateChanges({ signals: run.signals, commitments });
           const conflicts = flagMemoryConflicts({ signals: run.signals, beliefs });
-          return Response.json({
+          const result = {
             run,
             stateChanges,
             conflicts,
@@ -385,13 +446,52 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
             memoryUsed: relevant.used,
             memoryConsidered: relevant.consideredCount,
             suppressedCount: suppressed.length,
+          };
+          if (conversationId && !previewOnly) {
+            const latestAccess = await meetingProcessingDenial(supabase, organizationId);
+            if (latestAccess) return latestAccess;
+            const current = await supabase
+              .from("conversations")
+              .select("transcript")
+              .eq("organization_id", organizationId)
+              .eq("id", conversationId)
+              .single();
+            if (
+              current.error ||
+              (await transcriptDigest(current.data.transcript as NormalizedConversation)) !== digest
+            )
+              throw new Error(
+                "The meeting transcript changed during reasoning. Review the current source before retrying.",
+              );
+            const user = await supabase.auth.getUser(token);
+            if (!user.data.user) throw new Error("Sign in again before saving this review.");
+            const saved = await saveMeetingReading(supabase, {
+              org: organizationId,
+              meeting: conversationId,
+              actor: user.data.user.id,
+              key: runKey,
+              digest,
+              version: MEETING_PROCESS_VERSION,
+              result,
+            });
+            return Response.json(saved);
+          }
+          return Response.json({
+            ...result,
+            ...(previewOnly && conversationId ? { diagnostics } : {}),
           });
         } catch (error) {
           if (error instanceof InterpretationUnavailableError) {
-            return Response.json({ error: error.message }, { status: 503 });
+            return Response.json(
+              { error: error.message, ...(previewOnly && conversationId ? { diagnostics } : {}) },
+              { status: 503 },
+            );
           }
           return Response.json(
-            { error: error instanceof Error ? error.message : String(error) },
+            {
+              error: error instanceof Error ? error.message : String(error),
+              ...(previewOnly && conversationId ? { diagnostics } : {}),
+            },
             { status: 500 },
           );
         }

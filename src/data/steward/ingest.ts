@@ -120,6 +120,8 @@ export interface InterpretationResult {
  * person turns a reading into a commitment.
  */
 export async function interpretConversation(input: {
+  conversationId?: string;
+  previewOnly?: boolean;
   organizationId: string;
   conversation: NormalizedConversation;
 }): Promise<InterpretationResult> {
@@ -132,6 +134,8 @@ export async function interpretConversation(input: {
     body: JSON.stringify({
       organization_id: input.organizationId,
       conversation: input.conversation,
+      conversation_id: input.conversationId,
+      preview_only: input.previewOnly === true,
     }),
   });
   const body = (await response.json()) as Record<string, unknown>;

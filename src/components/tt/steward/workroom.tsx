@@ -12,14 +12,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { readMeetingProcesses } from "@/data/supabase/steward-meeting-process";
+import { MeetingProcessingQueue } from "./meeting-processing-queue";
+import { ApprovedMeetings } from "./approved-meetings";
+import { refreshStewardBoardReads } from "@/data/steward/board-refresh";
+import { withRollForwards, mergeTaskRevisions } from "@/domain/steward-completion";
+import { taskUpdates } from "@/data/supabase/steward-updates";
+import { editOf } from "@/domain/cmd-tasks";
 import { syncRecentMeetings } from "@/data/steward/recent-sync";
 import { stewardService } from "@/data/supabase/steward-service";
 import { stewardTaskState } from "@/data/supabase/steward-task-state";
-import { extractProposals } from "@/data/steward/extract";
 import { buildWorkroom, receiptMapFrom } from "@/domain/steward-workroom";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-import { WorkroomMoreMenu, WorkroomView, type WorkroomBackend } from "./workroom-view";
+import { WorkroomMoreMenu, type WorkroomBackend } from "./workroom-view";
 import type { ActionOutcome, CapabilityState } from "./workroom-backend-panels";
 import {
   getCanonicalRunCapability,
@@ -60,7 +66,7 @@ import { TaskEditor } from "./business-task-board";
 import { AppShell } from "@/components/tt/app-shell";
 import { businessWorkQuery, cmdTasks } from "@/data/supabase/cmd-tasks";
 import { mayAddRequiredWork } from "@/domain/steward-required-work";
-import { appendLinkedBusinessWork, workroomRowKey } from "@/domain/steward-meeting-links";
+import { appendLinkedBusinessWork } from "@/domain/steward-meeting-links";
 import { mayEditBoardTask, type BoardEdit, type BoardTask } from "@/domain/cmd-tasks";
 import { useTaskChoices } from "@/data/steward/task-choices";
 
@@ -673,6 +679,56 @@ function StewardWorkroomContent({
     queryFn: () => stewardTaskState.list(org),
   });
 
+  const recentMeetingIds = (conversations.data ?? []).map((c) => c.id);
+  const visibleTaskIds = [
+    ...new Set([
+      ...(commitments.data ?? []).map((c) => c.id),
+      ...(business.data?.tasks ?? []).map((t) => t.id),
+    ]),
+  ].sort();
+  const forwardRead = useQuery({
+    queryKey: ["steward", "forwards", org, identity.userId, visibleTaskIds, recentMeetingIds],
+    enabled: !!conversations.data && !!commitments.data && !business.isPending,
+    queryFn: () => taskUpdates.forwards(org, visibleTaskIds, recentMeetingIds),
+  });
+  const forwardSources = useQuery({
+    queryKey: ["steward", "forward-sources", org, identity.userId, forwardRead.data?.events],
+    enabled: !!forwardRead.data,
+    queryFn: () => taskUpdates.forwardSources(org, forwardRead.data?.events ?? []),
+  });
+  const allConversations = useMemo(
+    () => [
+      ...new Map(
+        [...(conversations.data ?? []), ...(forwardSources.data?.conversations ?? [])].map((c) => [
+          c.id,
+          c,
+        ]),
+      ).values(),
+    ],
+    [conversations.data, forwardSources.data],
+  );
+  const allCommitments = useMemo(
+    () => [
+      ...new Map(
+        [...(commitments.data ?? []), ...(forwardSources.data?.commitments ?? [])].map((c) => [
+          c.id,
+          c,
+        ]),
+      ).values(),
+    ],
+    [commitments.data, forwardSources.data],
+  );
+  const allBoardTasks = useMemo(
+    () => mergeTaskRevisions(business.data?.tasks ?? [], forwardSources.data?.tasks ?? []),
+    [business.data, forwardSources.data],
+  );
+
+  const processes = useQuery({
+    queryKey: ["steward", "meeting-processes", org, identity.userId, conversations.data],
+    enabled: !!conversations.data,
+    queryFn: () => readMeetingProcesses(org, conversations.data ?? []),
+  });
+
   const sync = useRecentSync(identity);
 
   /* Canonical task editing from the workroom cells: the same TaskEditor and
@@ -688,16 +744,19 @@ function StewardWorkroomContent({
     enabled: !!editing,
   });
   const taskById = useMemo(() => {
-    const map = new Map((business.data?.tasks ?? []).map((task) => [task.id, task]));
+    const map = new Map(allBoardTasks.map((task) => [task.id, task]));
     return (id: string) => map.get(id);
-  }, [business.data]);
+  }, [allBoardTasks]);
   const actor = { userId: identity.userId, role: identity.role };
   async function saveEdit(input: BoardEdit) {
     if (!editing) return;
     await cmdTasks.update(editing.task, input);
-    await queryClient.invalidateQueries({
-      queryKey: businessWorkQuery(org, identity.userId).queryKey,
-    });
+    await refreshStewardBoardReads(
+      queryClient,
+      businessWorkQuery(org, identity.userId).queryKey,
+      org,
+      identity.userId,
+    );
     setEditing(null);
   }
 
@@ -712,16 +771,26 @@ function StewardWorkroomContent({
       const confirmed = new Set(
         (commitments.data ?? []).filter((k) => k.conversationId === c.id).map((k) => k.sourceKey),
       );
-      const proposals = extractProposals(c.conversation).filter((p) => !confirmed.has(p.id));
+      const proposals = (processes.data?.get(c.id)?.result?.run.signals ?? []).filter(
+        (p) =>
+          !confirmed.has(p.candidateId) &&
+          [
+            "commitment",
+            "decision",
+            "dependency",
+            "unresolved_question",
+            "insufficient_evidence",
+          ].includes(p.disposition),
+      );
       map.set(c.id, proposals.length);
     }
     return map;
-  }, [conversations.data, commitments.data]);
+  }, [conversations.data, commitments.data, processes.data]);
 
   const meetings = useMemo(() => {
     if (!conversations.data || !commitments.data) return [];
     return buildWorkroom(
-      conversations.data
+      allConversations
         .filter((c) => c.provider === "fathom")
         .map((c) => {
           const segments = Array.isArray(c.conversation?.segments) ? c.conversation.segments : [];
@@ -737,48 +806,63 @@ function StewardWorkroomContent({
             /* No stored Fathom record carries a trustworthy completeness
                contract today, so coverage stays unknown. */
             coverageConfirmed: false,
+            processingMessage: processes.isError
+              ? "Meeting processing status unavailable; deliverables may be missing"
+              : (processes.data?.get(c.id)?.message ?? "Checking full-meeting processing…"),
+            needsDeliverableReview: !processes.data?.get(c.id)?.result,
           };
         }),
-      commitments.data,
+      allCommitments,
       receiptMap,
       proposalCounts,
     );
-  }, [conversations.data, commitments.data, receiptMap, proposalCounts]);
+  }, [
+    conversations.data,
+    commitments.data,
+    allConversations,
+    allCommitments,
+    receiptMap,
+    proposalCounts,
+    processes.data,
+    processes.isError,
+  ]);
 
   const commitmentById = useMemo(() => {
-    const map = new Map((commitments.data ?? []).map((c) => [c.id, c]));
+    const map = new Map(allCommitments.map((c) => [c.id, c]));
     return (id: string) => map.get(id);
-  }, [commitments.data]);
+  }, [allCommitments]);
   const linkedMeetings = useMemo(
     () =>
       appendLinkedBusinessWork(
         meetings,
-        business.isError || business.isPending ? [] : (business.data?.tasks ?? []),
+        business.isError || business.isPending ? [] : allBoardTasks,
         org,
         typeof window === "undefined" ? undefined : window.location.origin,
       ),
-    [meetings, business.data, business.isError, business.isPending, org],
+    [meetings, allBoardTasks, business.isError, business.isPending, org],
   );
 
-  /* The view defaults to the first row of the selected meeting when the
-     URL carries a meeting only. The backend queries must use the SAME
-     effective selection, or the initially shown task loads no state until
-     the user clicks it again. */
-  const effectiveSelection = useMemo<WorkroomSelection | undefined>(() => {
-    if (!selection?.meetingId) return selection;
-    if (selection.rowKey) return selection;
-    const meeting = linkedMeetings.find((m) => m.id === selection.meetingId);
-    const firstRow = meeting?.rows[0];
-    if (!firstRow) return selection;
-    return { meetingId: selection.meetingId, rowKey: workroomRowKey(firstRow) };
-  }, [selection, linkedMeetings]);
+  const displayedMeetings = useMemo(
+    () =>
+      withRollForwards(linkedMeetings, forwardRead.data?.events ?? []).filter((m) =>
+        recentMeetingIds.includes(m.id),
+      ),
+    [linkedMeetings, forwardRead.data, recentMeetingIds],
+  );
+  const forwardIncomplete = (forwardRead.data?.events ?? []).some((event) => {
+    const source = linkedMeetings.find((m) => m.id === event.payload.original_meeting_id);
+    return !source?.rows.some((row) => row.id === event.entity_id);
+  });
+
+  // Task details open only after an explicit URL/task selection.
+  const effectiveSelection = selection;
 
   const selectedMeetingTaskIds = useMemo(() => {
-    const meeting = linkedMeetings.find((m) => m.id === effectiveSelection?.meetingId);
+    const meeting = displayedMeetings.find((m) => m.id === effectiveSelection?.meetingId);
     return (meeting?.rows ?? [])
       .map((r) => r.boardTask?.id)
       .filter((id): id is string => typeof id === "string");
-  }, [linkedMeetings, effectiveSelection?.meetingId]);
+  }, [displayedMeetings, effectiveSelection?.meetingId]);
   const backend = useStewardBackend(identity, effectiveSelection, selectedMeetingTaskIds);
 
   if (conversations.isPending || commitments.isPending || receipts.isPending) {
@@ -794,9 +878,77 @@ function StewardWorkroomContent({
 
   return (
     <>
-      <WorkroomView
+      {forwardRead.isError ||
+      forwardSources.isError ||
+      forwardRead.data?.truncated ||
+      forwardIncomplete ? (
+        <p role="status" className="p-4 text-sm">
+          Some carried-forward tasks or original records could not be loaded. This task list may be
+          incomplete; completion scores are unavailable.
+        </p>
+      ) : null}
+      <MeetingProcessingQueue
+        key={`${org}:${identity.userId}`}
+        identity={identity}
+        meetings={conversations.data ?? []}
+        readings={processes.isError ? undefined : processes.data}
+        onSaved={() =>
+          queryClient.invalidateQueries({ queryKey: ["steward", "meeting-processes", org] })
+        }
+      />
+      <ApprovedMeetings
+        identity={identity}
+        canChange={(row) => {
+          if (!identity.apps.some((app) => app.appId === "steward" && app.canWork)) return false;
+          if (row.boardTask) return mayEditBoardTask(row.boardTask, actor);
+          const commitment = commitmentById(row.id);
+          return (
+            !!commitment &&
+            !commitment.projectId &&
+            (["owner", "admin"].includes(identity.role) ||
+              commitment.ownerUserId === identity.userId)
+          );
+        }}
+        onStatus={async (row, status, note) => {
+          if (!identity.apps.some((app) => app.appId === "steward" && app.canWork))
+            throw new Error("Steward work access is required.");
+          if (!row.boardTask && !["open", "waiting", "kept"].includes(status))
+            throw new Error("Choose a supported commitment status.");
+          if (row.boardTask) {
+            if (!mayEditBoardTask(row.boardTask, actor))
+              throw new Error("You cannot change this task.");
+            await cmdTasks.update(row.boardTask, {
+              ...editOf(row.boardTask),
+              status: status as BoardEdit["status"],
+              completion_evidence: note,
+            });
+          } else {
+            const c = commitmentById(row.id);
+            if (
+              !c ||
+              c.projectId ||
+              (!["owner", "admin"].includes(identity.role) && c.ownerUserId !== identity.userId)
+            )
+              throw new Error("You cannot change this commitment.");
+            try {
+              await taskUpdates.setCommitmentStatus(
+                c,
+                status as "open" | "waiting" | "kept",
+                note,
+                identity.name,
+              );
+            } finally {
+              await queryClient.invalidateQueries({ queryKey: ["steward"] });
+            }
+          }
+          await queryClient.invalidateQueries({
+            queryKey: businessWorkQuery(org, identity.userId).queryKey,
+          });
+          await queryClient.invalidateQueries({ queryKey: ["steward"] });
+        }}
         embedded
-        meetings={linkedMeetings}
+        meetings={displayedMeetings}
+        sourceMeetings={linkedMeetings}
         backend={backend}
         {...(selection ? { selection } : {})}
         {...(onSelect ? { onSelect } : {})}
@@ -847,8 +999,17 @@ function StewardWorkroomContent({
             : undefined
         }
         linkedRead={{
-          state: business.isPending ? "loading" : business.isError ? "error" : "ready",
-          truncated: business.data?.truncated ?? false,
+          state:
+            business.isError || forwardRead.isError || forwardSources.isError
+              ? "error"
+              : business.isPending || forwardRead.isPending || forwardSources.isPending
+                ? "loading"
+                : "ready",
+          truncated:
+            (business.data?.truncated ?? false) ||
+            (commitments.data?.length ?? 0) >= 300 ||
+            !!forwardRead.data?.truncated ||
+            forwardIncomplete,
           onRetry: () => void business.refetch(),
         }}
         commitmentFor={commitmentById}
