@@ -47,6 +47,10 @@ export function stewardUpdates(client: SupabaseClient = supabase) {
       note: string,
       authorName: string,
     ): Promise<void> {
+      if (commitment.status === "kept")
+        throw new Error(
+          "This commitment is already complete. Post an update instead of repeating completion.",
+        );
       if (!["open", "waiting", "kept"].includes(status))
         throw new Error("Choose a supported status.");
       if (status === "kept" && note.trim().length < 10)
@@ -154,8 +158,8 @@ export function stewardUpdates(client: SupabaseClient = supabase) {
         .from(table)
         .select(
           input.kind === "commitment"
-            ? "id,conversation_id,owner_user_id,project_id"
-            : "id,task_visibility,owner_user_id,created_by",
+            ? "id,conversation_id,owner_user_id,project_id,status"
+            : "id,task_visibility,owner_user_id,created_by,status",
         )
         .eq("organization_id", input.organizationId)
         .eq("id", input.taskId);
@@ -177,6 +181,7 @@ export function stewardUpdates(client: SupabaseClient = supabase) {
         created_by?: string;
         conversation_id?: string;
         project_id?: string;
+        status?: string;
       };
       if (
         !["owner", "admin"].includes(membership.data.role) &&
@@ -190,11 +195,16 @@ export function stewardUpdates(client: SupabaseClient = supabase) {
       )
         throw new Error("Use the original meeting and the room that owns this work.");
       if (input.action === "roll_forward") {
+        if (stored.status === "kept" || stored.status === "complete")
+          throw new Error("This work is already complete. Post an update instead.");
+        if (input.laterDate && input.laterMeetingId)
+          throw new Error("Choose one later meeting or date.");
         if (!input.laterDate && !input.laterMeetingId)
           throw new Error("Choose a later meeting or date.");
         if (
           input.laterDate &&
           (Number.isNaN(Date.parse(input.laterDate)) ||
+            new Date(input.laterDate).toISOString().slice(0, 10) !== input.laterDate ||
             input.laterDate <= new Date().toISOString().slice(0, 10))
         )
           throw new Error("Choose a future date.");
