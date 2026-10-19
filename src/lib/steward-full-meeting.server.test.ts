@@ -140,7 +140,7 @@ describe("full meeting reasoning", () => {
       requests.push(packet);
       const findings =
         requests.length === 1
-          ? [finding({ evidence: [{ index: 0, quote: conversation.segments[1]!.text }] })]
+          ? [finding({ evidence: [{ index: 0, quote: conversation.segments[1]!.text + "," }] })]
           : [finding()];
       return {
         raw: JSON.stringify({ findings, summary: "Grounded invitation review" }),
@@ -156,13 +156,44 @@ describe("full meeting reasoning", () => {
     ]);
     expect(requests[1]?.["turns"]).toEqual(conversation.segments);
     expect(requests[1]?.["validation_issues"]).toEqual([
-      expect.objectContaining({ index: 0, exactTurnIds: [1] }),
+      expect.objectContaining({ index: 0, exactTurnIds: [] }),
     ]);
     expect(requests[1]).not.toHaveProperty("retrieval");
     expect(requests[0]).not.toHaveProperty("retrieval");
     expect(requests[0]).not.toHaveProperty("existing_work");
     expect(result.signals[0]?.quote).toBe(conversation.segments[1]!.text);
     expect(requests[2]?.["turns"]).toEqual(conversation.segments);
+  });
+  it("reanchors only unique verbatim matches and splits exact adjacent-turn quotes", async () => {
+    const call = model([
+      finding({
+        evidence: [
+          {
+            index: 99,
+            quote: conversation.segments[0]!.text + " " + conversation.segments[1]!.text,
+          },
+        ],
+      }),
+    ]);
+    const result = await reasonFullMeeting(input(), call, {});
+    expect(call).toHaveBeenCalledTimes(2);
+    expect(result.signals[0]?.quote).toBe(
+      conversation.segments[0]!.text + "\n" + conversation.segments[1]!.text,
+    );
+    expect(result.coverage?.exactAnchorRepairs).toBe(2);
+  });
+  it("does not guess among repeated exact text when the supplied anchor is invalid", async () => {
+    const c = {
+      ...conversation,
+      segments: [conversation.segments[1]!, { ...conversation.segments[1]!, index: 9 }],
+    };
+    const call = model([
+      finding({ evidence: [{ index: 99, quote: conversation.segments[1]!.text }] }),
+    ]);
+    await expect(reasonFullMeeting(input(c), call, {})).rejects.toThrow(
+      "unsupported transcript citation",
+    );
+    expect(call).toHaveBeenCalledTimes(2);
   });
   it("rejects punctuation changes, fabricated quotes and a still-invalid repair without looping", async () => {
     for (const quote of [

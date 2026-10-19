@@ -135,6 +135,7 @@ export interface InterpretationRun {
     segmentsTotal: number;
     chunks: number;
     sourceCompleteness: "unverified";
+    exactAnchorRepairs?: number;
     summary: string;
   };
   conversationTitle: string;
