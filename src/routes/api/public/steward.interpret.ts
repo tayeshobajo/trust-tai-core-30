@@ -319,6 +319,7 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
         const accessDenial = await meetingProcessingDenial(supabase, organizationId);
         if (accessDenial) return accessDenial;
 
+        const previewOnly = body["preview_only"] === true;
         const conversationId =
           typeof body["conversation_id"] === "string" ? body["conversation_id"] : null;
         const stored = conversationId
@@ -346,7 +347,7 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
 
         const digest = await transcriptDigest(conversation);
         const runKey = `meeting-reasoning:${conversationId}:${MEETING_PROCESS_VERSION}:${digest}`;
-        if (conversationId) {
+        if (conversationId && !previewOnly) {
           try {
             const prior = await loadMeetingReading(
               supabase,
@@ -428,7 +429,7 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
             memoryConsidered: relevant.consideredCount,
             suppressedCount: suppressed.length,
           };
-          if (conversationId) {
+          if (conversationId && !previewOnly) {
             const latestAccess = await meetingProcessingDenial(supabase, organizationId);
             if (latestAccess) return latestAccess;
             const current = await supabase

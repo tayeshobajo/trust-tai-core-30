@@ -108,6 +108,16 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  const comparison = useMutation({
+    mutationFn: () =>
+      interpretConversation({
+        organizationId: identity.organizationId,
+        conversationId,
+        conversation: conversation.data!.conversation,
+        previewOnly: true,
+      }),
+  });
+
   const confirm = useMutation({
     mutationFn: (input: ConfirmInput) =>
       stewardService.confirm({
@@ -226,6 +236,42 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
         <MetaPill>{confirmedKeys.size} confirmed</MetaPill>
       </div>
 
+      {reading ? (
+        <section className="tt-surface p-4 text-sm">
+          <TTButton
+            type="button"
+            variant="secondary"
+            disabled={
+              comparison.isPending ||
+              !identity.apps.some((app) => app.appId === "steward" && app.canWork)
+            }
+            onClick={() => comparison.mutate()}
+          >
+            {comparison.isPending
+              ? "Reading the full transcript…"
+              : "Compare a fresh model reading"}
+          </TTButton>
+          <p className="mt-2 text-muted-foreground">
+            A comparison keeps the saved review and tasks unchanged.
+          </p>
+          {comparison.isError ? (
+            <p role="alert" className="mt-2 text-destructive">
+              {comparison.error.message}
+            </p>
+          ) : null}
+          {comparison.data ? (
+            <details open className="mt-4">
+              <summary className="cursor-pointer font-medium">Unsaved model comparison</summary>
+              <SemanticReview
+                run={comparison.data.run}
+                names={names}
+                confirmedKeys={confirmedKeys}
+                readOnlyBecause="Comparison only. Reconcile against the saved review below before accepting changes."
+              />
+            </details>
+          ) : null}
+        </section>
+      ) : null}
       {reading ? (
         <SemanticReview
           run={reading.run}

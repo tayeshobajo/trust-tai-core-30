@@ -60,7 +60,7 @@ export const DISPOSITION_LABEL: Record<SemanticDisposition, string> = {
   unresolved_question: "Open question",
   context_only: "Context",
   duplicate: "Already tracked",
-  already_completed: "Already done",
+  already_completed: "Reported complete · unverified",
   insufficient_evidence: "Not clear enough",
 };
 

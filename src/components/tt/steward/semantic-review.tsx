@@ -481,6 +481,9 @@ export function SemanticReview({
             <strong>Full stored transcript reviewed:</strong> {run.coverage.segmentsRead} of{" "}
             {run.coverage.segmentsTotal} turns, then reconciled across {run.coverage.chunks} parts.
           </p>
+          <p className="mt-2 text-muted-foreground">
+            Prepared by {run.provider} · {run.generatedAt}
+          </p>
           <p className="mt-2">{run.coverage.summary}</p>
           <p className="mt-2 text-muted-foreground">
             Source completeness remains unverified. Check the recording for missing opening/closing
