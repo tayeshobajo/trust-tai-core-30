@@ -421,7 +421,7 @@ function AssistantExecutionLine({
   );
 }
 
-function TaskDetail({
+export function ExistingTaskTools({
   meeting,
   row,
   commitment,
@@ -1671,7 +1671,7 @@ export function WorkroomView({
               embedded ? "@min-[1100px]/workroom:block" : "xl:block",
             )}
           >
-            <TaskDetail
+            <ExistingTaskTools
               meeting={meeting}
               row={row}
               commitment={rowCommitment}
@@ -1719,7 +1719,7 @@ export function WorkroomView({
                 </SheetDescription>
               </SheetHeader>
               {row && meeting ? (
-                <TaskDetail
+                <ExistingTaskTools
                   meeting={meeting}
                   row={row}
                   commitment={rowCommitment}

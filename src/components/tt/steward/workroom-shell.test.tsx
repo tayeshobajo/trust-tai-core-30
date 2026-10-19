@@ -92,7 +92,7 @@ describe("Steward suite-shell regression", () => {
     expect(screen.getByText("Reading stored meetings…")).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Trust Tai suite" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Steward" }).getAttribute("aria-current")).toBe("page");
-    await screen.findByText("No meeting stored yet");
+    await screen.findByText(/No saved meetings yet/);
     expect(screen.getAllByRole("link", { name: "Settings" })).toHaveLength(1);
     expect(screen.queryByRole("link", { name: /Account settings/ })).toBeNull();
   });

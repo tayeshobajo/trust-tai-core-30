@@ -1,0 +1,53 @@
+[
+  {
+    "width": 1440,
+    "errors": [],
+    "passed": [
+      "filters",
+      "task open",
+      "cancel",
+      "double click",
+      "update refresh",
+      "details",
+      "evidence",
+      "close",
+      "back",
+      "forward",
+      "no horizontal overflow"
+    ]
+  },
+  {
+    "width": 768,
+    "errors": [],
+    "passed": [
+      "filters",
+      "task open",
+      "cancel",
+      "double click",
+      "update refresh",
+      "details",
+      "evidence",
+      "close",
+      "back",
+      "forward",
+      "no horizontal overflow"
+    ]
+  },
+  {
+    "width": 375,
+    "errors": [],
+    "passed": [
+      "filters",
+      "task open",
+      "cancel",
+      "double click",
+      "update refresh",
+      "details",
+      "evidence",
+      "close",
+      "back",
+      "forward",
+      "no horizontal overflow"
+    ]
+  }
+]

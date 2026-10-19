@@ -1,0 +1,11 @@
+
+ RUN  v4.1.10 /Users/tayeshobajo/Documents/Codex/2026-10-19/task-3/cmd-steward
+
+(node:37954) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  3 passed (3)
+      Tests  20 passed (20)
+   Start at  13:35:16
+   Duration  1.13s (transform 154ms, setup 0ms, import 423ms, tests 213ms, environment 1.60s)
+

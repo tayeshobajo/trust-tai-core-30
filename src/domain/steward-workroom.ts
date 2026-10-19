@@ -81,6 +81,8 @@ export interface WorkroomConversationInput {
 }
 
 export interface WorkroomRow {
+  /** Follow-up context only; the obligation remains counted at its original meeting. */
+  forwardedFrom?: string;
   kind?: "commitment" | "business-task" | "required-task";
   boardTask?: BoardTask;
   id: string;

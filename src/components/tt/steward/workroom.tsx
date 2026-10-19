@@ -12,6 +12,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ApprovedMeetings } from "./approved-meetings";
+import { withRollForwards } from "@/domain/steward-completion";
+import { taskUpdates } from "@/data/supabase/steward-updates";
+import { editOf } from "@/domain/cmd-tasks";
 import { syncRecentMeetings } from "@/data/steward/recent-sync";
 import { stewardService } from "@/data/supabase/steward-service";
 import { stewardTaskState } from "@/data/supabase/steward-task-state";
@@ -19,7 +23,7 @@ import { extractProposals } from "@/data/steward/extract";
 import { buildWorkroom, receiptMapFrom } from "@/domain/steward-workroom";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-import { WorkroomMoreMenu, WorkroomView, type WorkroomBackend } from "./workroom-view";
+import { WorkroomMoreMenu, type WorkroomBackend } from "./workroom-view";
 import type { ActionOutcome, CapabilityState } from "./workroom-backend-panels";
 import {
   getCanonicalRunCapability,
@@ -60,7 +64,7 @@ import { TaskEditor } from "./business-task-board";
 import { AppShell } from "@/components/tt/app-shell";
 import { businessWorkQuery, cmdTasks } from "@/data/supabase/cmd-tasks";
 import { mayAddRequiredWork } from "@/domain/steward-required-work";
-import { appendLinkedBusinessWork, workroomRowKey } from "@/domain/steward-meeting-links";
+import { appendLinkedBusinessWork } from "@/domain/steward-meeting-links";
 import { mayEditBoardTask, type BoardEdit, type BoardTask } from "@/domain/cmd-tasks";
 import { useTaskChoices } from "@/data/steward/task-choices";
 
@@ -760,18 +764,21 @@ function StewardWorkroomContent({
     [meetings, business.data, business.isError, business.isPending, org],
   );
 
-  /* The view defaults to the first row of the selected meeting when the
-     URL carries a meeting only. The backend queries must use the SAME
-     effective selection, or the initially shown task loads no state until
-     the user clicks it again. */
-  const effectiveSelection = useMemo<WorkroomSelection | undefined>(() => {
-    if (!selection?.meetingId) return selection;
-    if (selection.rowKey) return selection;
-    const meeting = linkedMeetings.find((m) => m.id === selection.meetingId);
-    const firstRow = meeting?.rows[0];
-    if (!firstRow) return selection;
-    return { meetingId: selection.meetingId, rowKey: workroomRowKey(firstRow) };
-  }, [selection, linkedMeetings]);
+  const visibleTaskIds = [
+    ...new Set(linkedMeetings.flatMap((m) => m.rows.map((r) => r.id))),
+  ].sort();
+  const forwardRead = useQuery({
+    queryKey: ["steward", "forwards", org, identity.userId, visibleTaskIds],
+    enabled: visibleTaskIds.length > 0,
+    queryFn: () => taskUpdates.forwards(org, visibleTaskIds),
+  });
+  const displayedMeetings = useMemo(
+    () => withRollForwards(linkedMeetings, forwardRead.data?.events ?? []),
+    [linkedMeetings, forwardRead.data],
+  );
+
+  // Task details open only after an explicit URL/task selection.
+  const effectiveSelection = selection;
 
   const selectedMeetingTaskIds = useMemo(() => {
     const meeting = linkedMeetings.find((m) => m.id === effectiveSelection?.meetingId);
@@ -794,9 +801,64 @@ function StewardWorkroomContent({
 
   return (
     <>
-      <WorkroomView
+      {forwardRead.isError || forwardRead.data?.truncated ? (
+        <p role="status" className="p-4 text-sm">
+          Some roll-forward history could not be loaded. Original obligations remain listed in their
+          source meetings.
+        </p>
+      ) : null}
+      <ApprovedMeetings
+        identity={identity}
+        canChange={(row) => {
+          if (!identity.apps.some((app) => app.appId === "steward" && app.canWork)) return false;
+          if (row.boardTask) return mayEditBoardTask(row.boardTask, actor);
+          const commitment = commitmentById(row.id);
+          return (
+            !!commitment &&
+            !commitment.projectId &&
+            (["owner", "admin"].includes(identity.role) ||
+              commitment.ownerUserId === identity.userId)
+          );
+        }}
+        onStatus={async (row, status, note) => {
+          if (!identity.apps.some((app) => app.appId === "steward" && app.canWork))
+            throw new Error("Steward work access is required.");
+          if (!row.boardTask && !["open", "waiting", "kept"].includes(status))
+            throw new Error("Choose a supported commitment status.");
+          if (row.boardTask) {
+            if (!mayEditBoardTask(row.boardTask, actor))
+              throw new Error("You cannot change this task.");
+            await cmdTasks.update(row.boardTask, {
+              ...editOf(row.boardTask),
+              status: status as BoardEdit["status"],
+              completion_evidence: note,
+            });
+          } else {
+            const c = commitmentById(row.id);
+            if (
+              !c ||
+              c.projectId ||
+              (!["owner", "admin"].includes(identity.role) && c.ownerUserId !== identity.userId)
+            )
+              throw new Error("You cannot change this commitment.");
+            try {
+              await taskUpdates.setCommitmentStatus(
+                c,
+                status as "open" | "waiting" | "kept",
+                note,
+                identity.name,
+              );
+            } finally {
+              await queryClient.invalidateQueries({ queryKey: ["steward"] });
+            }
+          }
+          await queryClient.invalidateQueries({
+            queryKey: businessWorkQuery(org, identity.userId).queryKey,
+          });
+          await queryClient.invalidateQueries({ queryKey: ["steward"] });
+        }}
         embedded
-        meetings={linkedMeetings}
+        meetings={displayedMeetings}
         backend={backend}
         {...(selection ? { selection } : {})}
         {...(onSelect ? { onSelect } : {})}
@@ -848,7 +910,7 @@ function StewardWorkroomContent({
         }
         linkedRead={{
           state: business.isPending ? "loading" : business.isError ? "error" : "ready",
-          truncated: business.data?.truncated ?? false,
+          truncated: (business.data?.truncated ?? false) || (commitments.data?.length ?? 0) >= 300,
           onRetry: () => void business.refetch(),
         }}
         commitmentFor={commitmentById}
