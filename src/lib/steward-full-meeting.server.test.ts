@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { NormalizedConversation } from "@/domain/steward";
 import type { InterpretInput } from "./steward-interpret.server";
 import { groundedTimeline, transcriptDigest } from "@/data/steward/meeting-process";
-import { reasonFullMeeting, transcriptChunks } from "./steward-full-meeting.server";
+import {
+  reasonFullMeeting,
+  transcriptChunks,
+  sourceResponseFormat,
+} from "./steward-full-meeting.server";
 const conversation: NormalizedConversation = {
   title: "Fixture delivery review",
   occurredAt: "2026-10-19T16:00:00Z",
@@ -66,6 +70,21 @@ const model = (findings = [finding()]) =>
     model: "fixture",
   }));
 describe("full meeting reasoning", () => {
+  it("constrains generated evidence to actual unchanged source ID/quote pairs", () => {
+    const format = sourceResponseFormat(conversation);
+    const choices = format.schema.properties.findings.items.properties.evidence.items.anyOf;
+    expect(choices).toHaveLength(3);
+    expect(choices[1]?.properties).toEqual({
+      index: { type: "integer", enum: [1] },
+      quote: { type: "string", enum: [conversation.segments[1]!.text] },
+    });
+    expect(() =>
+      sourceResponseFormat({
+        ...conversation,
+        segments: [conversation.segments[0]!, conversation.segments[0]!],
+      }),
+    ).toThrow("ambiguous");
+  });
   it("reads every turn including unflagged late context then reconciles; never invents a Friday deadline", async () => {
     const call = model();
     const run = await reasonFullMeeting(input(), call, {});
