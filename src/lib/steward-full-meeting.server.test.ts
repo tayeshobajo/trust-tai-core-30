@@ -161,7 +161,7 @@ describe("full meeting reasoning", () => {
     expect(requests[0]).not.toHaveProperty("retrieval");
     expect(requests[0]).not.toHaveProperty("existing_work");
     expect(result.signals[0]?.quote).toBe(conversation.segments[1]!.text);
-    expect(requests[2]?.["turns"]).toEqual([conversation.segments[1]]);
+    expect(requests[2]?.["turns"]).toEqual(conversation.segments);
   });
   it("rejects punctuation changes, fabricated quotes and a still-invalid repair without looping", async () => {
     for (const quote of [
