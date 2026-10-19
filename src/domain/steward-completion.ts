@@ -42,7 +42,7 @@ export function meetingMatches(meeting: WorkroomMeeting, search: string, filter:
     (filter === "open"
       ? completionOf(meeting).open > 0
       : filter === "review"
-        ? meeting.openProposals > 0
+        ? meeting.openProposals > 0 || !!meeting.needsDeliverableReview
         : true)
   );
 }

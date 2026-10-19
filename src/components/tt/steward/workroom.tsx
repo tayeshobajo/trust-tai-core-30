@@ -12,6 +12,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { readMeetingProcesses } from "@/data/supabase/steward-meeting-process";
+import { MeetingProcessingQueue } from "./meeting-processing-queue";
 import { ApprovedMeetings } from "./approved-meetings";
 import { refreshStewardBoardReads } from "@/data/steward/board-refresh";
 import { withRollForwards, mergeTaskRevisions } from "@/domain/steward-completion";
@@ -20,7 +22,6 @@ import { editOf } from "@/domain/cmd-tasks";
 import { syncRecentMeetings } from "@/data/steward/recent-sync";
 import { stewardService } from "@/data/supabase/steward-service";
 import { stewardTaskState } from "@/data/supabase/steward-task-state";
-import { extractProposals } from "@/data/steward/extract";
 import { buildWorkroom, receiptMapFrom } from "@/domain/steward-workroom";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -722,6 +723,12 @@ function StewardWorkroomContent({
     [business.data, forwardSources.data],
   );
 
+  const processes = useQuery({
+    queryKey: ["steward", "meeting-processes", org, identity.userId, conversations.data],
+    enabled: !!conversations.data,
+    queryFn: () => readMeetingProcesses(org, conversations.data ?? []),
+  });
+
   const sync = useRecentSync(identity);
 
   /* Canonical task editing from the workroom cells: the same TaskEditor and
@@ -764,11 +771,21 @@ function StewardWorkroomContent({
       const confirmed = new Set(
         (commitments.data ?? []).filter((k) => k.conversationId === c.id).map((k) => k.sourceKey),
       );
-      const proposals = extractProposals(c.conversation).filter((p) => !confirmed.has(p.id));
+      const proposals = (processes.data?.get(c.id)?.result?.run.signals ?? []).filter(
+        (p) =>
+          !confirmed.has(p.candidateId) &&
+          [
+            "commitment",
+            "decision",
+            "dependency",
+            "unresolved_question",
+            "insufficient_evidence",
+          ].includes(p.disposition),
+      );
       map.set(c.id, proposals.length);
     }
     return map;
-  }, [conversations.data, commitments.data]);
+  }, [conversations.data, commitments.data, processes.data]);
 
   const meetings = useMemo(() => {
     if (!conversations.data || !commitments.data) return [];
@@ -789,6 +806,10 @@ function StewardWorkroomContent({
             /* No stored Fathom record carries a trustworthy completeness
                contract today, so coverage stays unknown. */
             coverageConfirmed: false,
+            processingMessage: processes.isError
+              ? "Meeting processing status unavailable; deliverables may be missing"
+              : (processes.data?.get(c.id)?.message ?? "Checking full-meeting processing…"),
+            needsDeliverableReview: !processes.data?.get(c.id)?.result,
           };
         }),
       allCommitments,
@@ -802,6 +823,8 @@ function StewardWorkroomContent({
     allCommitments,
     receiptMap,
     proposalCounts,
+    processes.data,
+    processes.isError,
   ]);
 
   const commitmentById = useMemo(() => {
@@ -864,6 +887,15 @@ function StewardWorkroomContent({
           incomplete; completion scores are unavailable.
         </p>
       ) : null}
+      <MeetingProcessingQueue
+        key={`${org}:${identity.userId}`}
+        identity={identity}
+        meetings={conversations.data ?? []}
+        readings={processes.isError ? undefined : processes.data}
+        onSaved={() =>
+          queryClient.invalidateQueries({ queryKey: ["steward", "meeting-processes", org] })
+        }
+      />
       <ApprovedMeetings
         identity={identity}
         canChange={(row) => {

@@ -190,3 +190,35 @@ it("persists native completion with compare-and-swap and rejects a stale repeate
     ),
   ).rejects.toThrow("changed");
 });
+
+it("persists full-transcript readings, replays one canonical result, and denies cross-org reads/writes", async () => {
+  const { saveMeetingReading, loadMeetingReading } =
+    await import("../../../src/data/steward/reading-store");
+  const org = "11111111-1111-4111-8111-111111111111",
+    meeting = "44444444-4444-4444-8444-444444444444";
+  const result = {
+    run: { coverage: { digest: "fixture-digest", segmentsRead: 3, segmentsTotal: 3 }, signals: [] },
+  } as unknown as import("../../../src/data/steward/ingest").InterpretationResult;
+  const input = {
+    org,
+    meeting,
+    actor,
+    key: "meeting-reasoning:fixture-v1",
+    digest: "fixture-digest",
+    version: "full-transcript-v1",
+    result,
+  };
+  await saveMeetingReading(client(), input);
+  const replay = await saveMeetingReading(client(), {
+    ...input,
+    result: { ...result, suppressedCount: 99 },
+  });
+  expect(replay).toEqual(result);
+  expect(await loadMeetingReading(client(), org, meeting, input.key)).toEqual(result);
+  const outsider = client("99999999-9999-4999-8999-999999999999");
+  expect(await loadMeetingReading(outsider, org, meeting, input.key)).toBeNull();
+  await expect(
+    saveMeetingReading(outsider, { ...input, key: "unauthorized-reading" }),
+  ).rejects.toThrow("access changed");
+  expect(await loadMeetingReading(client(), org, meeting, "unauthorized-reading")).toBeNull();
+});

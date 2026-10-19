@@ -16,6 +16,7 @@ import { SemanticReview } from "@/components/tt/steward/semantic-review";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import { readMeetingProcesses } from "@/data/supabase/steward-meeting-process";
 import { extractProposals } from "@/data/steward/extract";
 import { interpretConversation } from "@/data/steward/ingest";
 import { correctionToDraft, outcomeToDraft, patternKeyForSignal } from "@/data/steward/learning";
@@ -69,17 +70,42 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => stewardService.commitments(identity.organizationId),
   });
 
+  const savedReading = useQuery({
+    queryKey: [
+      "steward",
+      "meeting-processes",
+      identity.organizationId,
+      identity.userId,
+      conversationId,
+      conversation.data,
+    ],
+    enabled: !!conversation.data,
+    queryFn: () => readMeetingProcesses(identity.organizationId, [conversation.data!]),
+  });
   /* Interpretation is deliberate: a person asks for it, it never runs on open. */
   const interpretation = useQuery({
-    queryKey: ["steward", "interpretation", conversationId],
+    queryKey: [
+      "steward",
+      "interpretation",
+      identity.organizationId,
+      identity.userId,
+      conversationId,
+      conversation.data?.conversation,
+    ],
     enabled: false,
     retry: false,
     staleTime: Infinity,
-    queryFn: () =>
-      interpretConversation({
+    queryFn: async () => {
+      const result = await interpretConversation({
         organizationId: identity.organizationId,
+        conversationId,
         conversation: conversation.data!.conversation,
-      }),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["steward", "meeting-processes", identity.organizationId],
+      });
+      return result;
+    },
   });
 
   const confirm = useMutation({
@@ -148,6 +174,7 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
     return <p className="text-sm text-muted-foreground">Opening the conversation…</p>;
   }
 
+  const reading = interpretation.data ?? savedReading.data?.get(conversationId)?.result;
   const record = conversation.data;
   const proposals = extractProposals(record.conversation);
   const confirmedKeys = new Set(
@@ -180,24 +207,45 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
 
       <StewardTabs active="meetings" />
 
+      {savedReading.isError ? (
+        <p role="alert">
+          Saved reasoning could not be read. Retry before treating this meeting as unprocessed.
+        </p>
+      ) : null}
+      {confirm.isError ? (
+        <p role="alert" className="text-destructive">
+          {confirm.error.message}
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <MetaPill>{record.provider}</MetaPill>
         <MetaPill>{proposals.length} passages heard</MetaPill>
         <MetaPill>{confirmedKeys.size} confirmed</MetaPill>
       </div>
 
-      {interpretation.data ? (
+      {reading ? (
         <SemanticReview
-          run={interpretation.data.run}
+          run={reading.run}
           names={names}
           confirmedKeys={confirmedKeys}
-          stateChanges={interpretation.data.stateChanges}
-          conflicts={interpretation.data.conflicts}
-          memoryUsed={interpretation.data.memoryUsed}
-          memoryConsidered={interpretation.data.memoryConsidered}
-          suppressedCount={interpretation.data.suppressedCount}
-          onConfirm={(input) => confirm.mutate(input)}
-          onCorrect={(corrections) => learn.mutate(corrections)}
+          stateChanges={reading.stateChanges}
+          conflicts={reading.conflicts}
+          memoryUsed={reading.memoryUsed}
+          memoryConsidered={reading.memoryConsidered}
+          suppressedCount={reading.suppressedCount}
+          onConfirm={async (input) => {
+            await confirm.mutateAsync(input);
+          }}
+          readOnlyBecause={
+            !identity.apps.some((app) => app.appId === "steward" && app.canWork)
+              ? "Your access permits review only."
+              : !reading.run.memory.available
+                ? "Existing work could not be fully reconciled. Resolve that read before creating a task."
+                : undefined
+          }
+          onCorrect={async (corrections) => {
+            await learn.mutateAsync(corrections);
+          }}
           onDismiss={(signal) =>
             record_outcome.mutate(
               outcomeToDraft({
@@ -239,7 +287,7 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
         <>
           <p className="tt-surface p-5 text-sm text-muted-foreground">
             {interpretation.isFetching
-              ? "Steward is reading this conversation for meaning. This takes a moment, because it reads each passage in context rather than scanning for phrases."
+              ? "Steward is reading every stored transcript turn, then reconciling deliverables, decisions, owners, timelines and dependencies. Nothing is confirmed automatically."
               : interpretation.isError
                 ? `Interpretation is unavailable, so Steward is showing only the raw passages its rules found. Nothing below has been read for meaning. ${
                     interpretation.error instanceof Error ? interpretation.error.message : ""
@@ -249,10 +297,15 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
           <div>
             <TTButton
               type="button"
-              disabled={interpretation.isFetching}
+              disabled={
+                interpretation.isFetching ||
+                savedReading.isPending ||
+                savedReading.isError ||
+                !identity.apps.some((app) => app.appId === "steward" && app.canWork)
+              }
               onClick={() => void interpretation.refetch()}
             >
-              {interpretation.isFetching ? "Reading…" : "Read this conversation for meaning"}
+              {interpretation.isFetching ? "Reading…" : "Extract meeting deliverables"}
             </TTButton>
           </div>
           <ProposalReview

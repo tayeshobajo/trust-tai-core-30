@@ -10,6 +10,8 @@
  * the room says so plainly instead of pretending to be empty.
  */
 
+import { BOARD_WRITE_ROLES } from "@/domain/cmd-tasks";
+import { findDuplicate } from "@/data/steward/interpretation";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { EvidenceRef } from "@/domain/confidence";
 import type { ID } from "@/domain/entities";
@@ -286,6 +288,65 @@ export const stewardService = {
     dueAt?: string | null;
     projectId?: string | null;
   }): Promise<Commitment> {
+    const auth = await supabase.auth.getUser();
+    if (!auth.data.user || auth.data.user.id !== input.userId)
+      throw new Error("Sign in again before confirming work.");
+    const membership = await supabase
+      .from("organization_memberships")
+      .select("role")
+      .eq("organization_id", input.organizationId)
+      .eq("user_id", input.userId)
+      .eq("status", "active")
+      .single();
+    if (membership.error || !BOARD_WRITE_ROLES.includes(membership.data?.role))
+      throw new Error("Work access is required to confirm deliverables.");
+    const source = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("organization_id", input.organizationId)
+      .eq("id", input.conversationId)
+      .single();
+    if (source.error || !source.data) throw new Error("This meeting is unavailable.");
+    const prior = await supabase
+      .from("commitments")
+      .select("*")
+      .eq("organization_id", input.organizationId)
+      .eq("source_key", input.proposal.id)
+      .maybeSingle();
+    if (prior.error) throw new Error("Existing confirmation could not be checked.");
+    if (prior.data) return toCommitment(prior.data);
+    // Reconcile again at confirmation time; a cached model reading can predate newly tracked work.
+    const existing = await supabase
+      .from("commitments")
+      .select("*")
+      .eq("organization_id", input.organizationId)
+      .limit(301);
+    const board = await supabase
+      .from("steward_tasks")
+      .select("id,title,status")
+      .eq("organization_id", input.organizationId)
+      .eq("task_visibility", "business")
+      .limit(1001);
+    if (
+      existing.error ||
+      board.error ||
+      (existing.data?.length ?? 0) > 300 ||
+      (board.data?.length ?? 0) > 1000
+    )
+      throw new Error(
+        "Existing work could not be fully checked. Resolve the incomplete read before creating another task.",
+      );
+    const duplicate = findDuplicate(
+      input.proposal.statement,
+      (existing.data ?? []).map(toCommitment),
+    );
+    const boardDuplicate = (board.data ?? []).find((task) =>
+      findDuplicate(input.proposal.statement, [{ what: task.title, status: "open" } as Commitment]),
+    );
+    if (duplicate || boardDuplicate)
+      throw new Error(
+        `Potential existing obligation (${duplicate?.id ?? boardDuplicate?.id}). Review and link that record instead of creating a parallel task.`,
+      );
     const payload: Row = {
       organization_id: input.organizationId,
       conversation_id: input.conversationId,
@@ -307,16 +368,35 @@ export const stewardService = {
 
     const { data, error } = await writeTolerant(
       payload,
-      ["organization_id", "conversation_id", "source_key", "statement", "owner_name", "status"],
+      [
+        "organization_id",
+        "conversation_id",
+        "source_key",
+        "statement",
+        "owner_name",
+        "status",
+        "evidence",
+        "confirmed_by",
+        "due_text",
+        "due_at",
+      ],
       async (body) =>
         await supabase
           .from("commitments")
-          .upsert(body, { onConflict: "organization_id,source_key" })
+          .upsert(body, { onConflict: "organization_id,source_key", ignoreDuplicates: true })
           .select("*")
-          .single(),
+          .maybeSingle(),
     );
     guard(error);
-    return toCommitment((data ?? {}) as Row);
+    if (data) return toCommitment(data as Row);
+    const recovered = await supabase
+      .from("commitments")
+      .select("*")
+      .eq("organization_id", input.organizationId)
+      .eq("source_key", input.proposal.id)
+      .single();
+    guard(recovered.error);
+    return toCommitment(recovered.data as Row);
   },
 
   async setStatus(id: ID, status: CommitmentStatus): Promise<Commitment | null> {

@@ -78,6 +78,8 @@ export interface WorkroomConversationInput {
    * transcript covers the whole recording. Anything else is unknown.
    */
   coverageConfirmed?: boolean;
+  processingMessage?: string;
+  needsDeliverableReview?: boolean;
 }
 
 export interface WorkroomRow {

@@ -254,6 +254,9 @@ export function ApprovedMeetings(props: ApprovedMeetingsProps) {
                           minute: "2-digit",
                         })}
                       </p>
+                      {m.processingMessage ? (
+                        <p className="mt-1 text-sm text-muted-foreground">{m.processingMessage}</p>
+                      ) : null}
                       {m.openProposals > 0 ? (
                         <p className="mt-1 text-sm text-muted-foreground">
                           {m.openProposals} awaiting review
@@ -311,6 +314,12 @@ export function ApprovedMeetings(props: ApprovedMeetingsProps) {
             </button>
             <h1 className="text-3xl font-semibold">Meeting tasks</h1>
             <p className="mt-2 text-lg text-muted-foreground">{meeting.title}</p>
+            {meeting.processingMessage ? (
+              <p role="status" className="mt-4 rounded-lg border border-border p-4 text-sm">
+                {meeting.processingMessage}. Source completeness must be checked; this is not a
+                claim that all meeting obligations have been captured.
+              </p>
+            ) : null}
             <div className="my-7">
               <Completion meeting={meeting} known={scoresReady} />
               <p className="mt-2 text-sm text-muted-foreground">
@@ -331,12 +340,15 @@ export function ApprovedMeetings(props: ApprovedMeetingsProps) {
                   to="/modules/steward/meetings/$conversationId"
                   params={{ conversationId: meeting.id }}
                 >
-                  Review actions
+                  Review deliverables
                 </Link>
               </TTButton>
             </div>
             <p className="mb-3 text-sm text-muted-foreground">
               Confirmed actions · {confirmedRows(meeting).length}
+              {meeting.rows.some((r) => r.kind === "business-task")
+                ? " · linked existing tasks shown below"
+                : ""}
             </p>
             {[...open, ...(showCompleted ? done : done.slice(0, 2))].map((r) => (
               <button

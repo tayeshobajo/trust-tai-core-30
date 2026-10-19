@@ -238,7 +238,23 @@ export function signalToProposal(signal: InterpretedSignal): import("@/domain/st
     quote: signal.quote,
     at: signal.at,
     segmentIndex: 0,
-    evidence: signal.evidence,
+    evidence: [
+      ...signal.evidence,
+      ...(signal.definitionOfDone
+        ? [
+            {
+              kind: "computed" as const,
+              label: `${signal.criteriaBasis === "agreed" ? "Meeting-stated" : "Proposed, reviewer accepted"} completion criteria: ${signal.definitionOfDone}`,
+            },
+          ]
+        : []),
+      ...(signal.dependencyOn
+        ? [{ kind: "computed" as const, label: `Dependency: ${signal.dependencyOn}` }]
+        : []),
+      ...(signal.ambiguity
+        ? [{ kind: "computed" as const, label: `Review ambiguity: ${signal.ambiguity}` }]
+        : []),
+    ],
     status: "proposed",
   };
 }

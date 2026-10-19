@@ -1,8 +1,8 @@
 /**
  * Steward semantic interpretation endpoint.
  *
- * POST, read one conversation's candidate passages for meaning. Nothing is
- * written. Interpretation is not confirmation: only a person, in the room,
+ * POST, reason across all stored turns and persist the exact-transcript reading.
+ * No task is created automatically. Interpretation is not confirmation: only a person, in the room,
  * turns a signal into workspace truth.
  *
  * Security: this path bypasses site auth, so the handler authenticates every
@@ -20,7 +20,8 @@ import type { Belief, Commitment, NormalizedConversation } from "@/domain/stewar
 import type { MemoryBelief } from "@/domain/steward-memory";
 import type { MemoryContext } from "@/domain/steward-semantic";
 
-import { detectCandidates } from "@/data/steward/candidates";
+import { loadMeetingReading, saveMeetingReading } from "@/data/steward/reading-store";
+import { transcriptDigest, MEETING_PROCESS_VERSION } from "@/data/steward/meeting-process";
 import { proposeStateChanges } from "@/data/steward/continuity";
 import {
   outcomeRecordsFromBeliefs,
@@ -172,10 +173,23 @@ async function readMemory(
       .from("commitments")
       .select("id, statement, owner_name, owner_email, status, conversation_id, source_key")
       .eq("organization_id", organizationId)
-      .in("status", ["open", "waiting"])
-      .limit(200);
+      .limit(301);
     if (error) throw new Error(error.message);
 
+    if ((data?.length ?? 0) > 300)
+      throw new Error(
+        "Existing commitment read is capped; duplicate reconciliation is incomplete.",
+      );
+    const board = await supabase
+      .from("steward_tasks")
+      .select("id,title,status,owner_label")
+      .eq("organization_id", organizationId)
+      .eq("task_visibility", "business")
+      .limit(1001);
+    if (board.error || (board.data?.length ?? 0) > 1000)
+      throw new Error(
+        "Existing business task read is unavailable or capped; duplicate reconciliation is incomplete.",
+      );
     const rows = data ?? [];
     const commitments = rows.map((row) => ({
       id: String(row["id"] ?? ""),
@@ -268,12 +282,20 @@ async function readMemory(
         available: true,
         because: describeKnownPeople(known),
 
-        openCommitments: commitments.map((commitment) => ({
-          id: commitment.id,
-          statement: commitment.what,
-          ownerName: commitment.ownerName,
-          status: commitment.status,
-        })),
+        openCommitments: [
+          ...(board.data ?? []).map((task) => ({
+            id: task.id,
+            statement: task.title,
+            ownerName: task.owner_label ?? "",
+            status: task.status,
+          })),
+          ...commitments.map((commitment) => ({
+            id: commitment.id,
+            statement: commitment.what,
+            ownerName: commitment.ownerName,
+            status: commitment.status,
+          })),
+        ],
         people,
         projects,
       },
@@ -318,7 +340,24 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           );
         }
 
-        const conversation = body["conversation"] as NormalizedConversation | undefined;
+        const conversationId =
+          typeof body["conversation_id"] === "string" ? body["conversation_id"] : null;
+        const stored = conversationId
+          ? await supabase
+              .from("conversations")
+              .select("*")
+              .eq("id", conversationId)
+              .eq("organization_id", organizationId)
+              .maybeSingle()
+          : null;
+        if (conversationId && (stored?.error || !stored?.data))
+          return Response.json(
+            { error: "This meeting is unavailable in your workspace." },
+            { status: 403 },
+          );
+        const conversation = stored?.data
+          ? (stored.data.transcript as NormalizedConversation)
+          : (body["conversation"] as NormalizedConversation | undefined);
         if (!conversation || !Array.isArray(conversation.segments)) {
           return Response.json(
             { error: "No conversation was sent to interpret." },
@@ -326,7 +365,33 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           );
         }
 
+        const digest = await transcriptDigest(conversation);
+        const runKey = `meeting-reasoning:${conversationId}:${MEETING_PROCESS_VERSION}:${digest}`;
+        if (conversationId) {
+          try {
+            const prior = await loadMeetingReading(
+              supabase,
+              organizationId,
+              conversationId,
+              runKey,
+            );
+            if (prior) return Response.json(prior);
+          } catch (error) {
+            return Response.json(
+              { error: error instanceof Error ? error.message : "Saved reasoning unavailable" },
+              { status: 503 },
+            );
+          }
+        }
         const { memory, commitments } = await readMemory(supabase, organizationId);
+        if (conversationId && !memory.available)
+          return Response.json(
+            {
+              error:
+                memory.because + " Resolve existing-work access before processing this meeting.",
+            },
+            { status: 503 },
+          );
         const beliefs = await readBeliefs(supabase, organizationId);
         /* Human corrections for the shared retrieval bundle. Unreadable is withheld. */
         const ledger = await readCases(supabase, organizationId);
@@ -347,7 +412,6 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           inferred: relevant.inferred,
         };
 
-        const candidates = detectCandidates(conversation);
         const initialRunId = getLovableAiGatewayRunId(request);
         const gateway = createLovableAiGatewayRunIdFetch(initialRunId);
 
@@ -364,7 +428,6 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
               conversation,
               memory: memoryWithBeliefs,
               commitments,
-              candidates,
               gateway,
               initialRunId,
               organizationId,
@@ -377,7 +440,7 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           /* Continuity and conflict are proposals for a person, never writes. */
           const stateChanges = proposeStateChanges({ signals: run.signals, commitments });
           const conflicts = flagMemoryConflicts({ signals: run.signals, beliefs });
-          return Response.json({
+          const result = {
             run,
             stateChanges,
             conflicts,
@@ -385,7 +448,35 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
             memoryUsed: relevant.used,
             memoryConsidered: relevant.consideredCount,
             suppressedCount: suppressed.length,
-          });
+          };
+          if (conversationId) {
+            const current = await supabase
+              .from("conversations")
+              .select("transcript")
+              .eq("organization_id", organizationId)
+              .eq("id", conversationId)
+              .single();
+            if (
+              current.error ||
+              (await transcriptDigest(current.data.transcript as NormalizedConversation)) !== digest
+            )
+              throw new Error(
+                "The meeting transcript changed during reasoning. Review the current source before retrying.",
+              );
+            const user = await supabase.auth.getUser(token);
+            if (!user.data.user) throw new Error("Sign in again before saving this review.");
+            const saved = await saveMeetingReading(supabase, {
+              org: organizationId,
+              meeting: conversationId,
+              actor: user.data.user.id,
+              key: runKey,
+              digest,
+              version: MEETING_PROCESS_VERSION,
+              result,
+            });
+            return Response.json(saved);
+          }
+          return Response.json(result);
         } catch (error) {
           if (error instanceof InterpretationUnavailableError) {
             return Response.json({ error: error.message }, { status: 503 });

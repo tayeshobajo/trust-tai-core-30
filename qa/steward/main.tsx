@@ -1,4 +1,5 @@
 import type { StewardUpdate, StewardUpdateInput } from "@/data/supabase/steward-updates";
+import { ReviewFixture } from "./review";
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -172,7 +173,16 @@ function Fixture() {
     </>
   );
 }
-const route = createRootRoute({ component: Fixture });
+const route = createRootRoute({
+  component: () =>
+    location.search.includes("review=1") ? (
+      <AppShell identity={identity}>
+        <ReviewFixture />
+      </AppShell>
+    ) : (
+      <Fixture />
+    ),
+});
 const router = createRouter({ routeTree: route });
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={new QueryClient()}>
