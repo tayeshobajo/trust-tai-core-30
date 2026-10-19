@@ -128,3 +128,72 @@ describe("strict task update persistence boundary", () => {
     expect(f.writes).toHaveLength(0);
   });
 });
+
+it("discovers a carry into the recent window and reads its older source through scoped queries", async () => {
+  const calls: { table: string; filters: Record<string, unknown> }[] = [];
+  const oldSource = "old-source-outside-recent-60";
+  const event = {
+    id: "event",
+    entity_id: task,
+    occurred_at: "2026-10-19",
+    payload: { action: "roll_forward", original_meeting_id: oldSource, later_meeting_id: meeting },
+  };
+  const client = {
+    from(table: string) {
+      const filters: Record<string, unknown> = {};
+      calls.push({ table, filters });
+      const query = {
+        select: () => query,
+        eq: (key: string, value: unknown) => {
+          filters[key] = value;
+          return query;
+        },
+        in: (key: string, value: unknown) => {
+          filters[key] = value;
+          return query;
+        },
+        order: () => query,
+        limit: async () => ({
+          error: null,
+          data:
+            table === "activities"
+              ? [event]
+              : table === "conversations"
+                ? [
+                    {
+                      id: oldSource,
+                      organization_id: org,
+                      source_provider: "fathom",
+                      title: "Original source",
+                      occurred_at: "2025-01-01",
+                    },
+                  ]
+                : table === "commitments"
+                  ? [
+                      {
+                        id: task,
+                        conversation_id: oldSource,
+                        organization_id: org,
+                        statement: "Original obligation",
+                        status: "open",
+                      },
+                    ]
+                  : [],
+        }),
+      };
+      return query;
+    },
+  } as unknown as SupabaseClient;
+  const service = stewardUpdates(client);
+  const found = await service.forwards(org, [], [meeting]);
+  const sources = await service.forwardSources(org, found.events);
+  expect(found.events).toHaveLength(1);
+  expect(sources.conversations[0]?.id).toBe(oldSource);
+  expect(sources.commitments[0]?.conversationId).toBe(oldSource);
+  expect(calls[0]?.filters["payload->>later_meeting_id"]).toEqual([meeting]);
+  expect(calls[1]?.filters["entity_id"]).toEqual([task]);
+  expect(calls.every((call) => call.filters["organization_id"] === org)).toBe(true);
+  expect(calls.find((call) => call.table === "steward_tasks")?.filters["task_visibility"]).toBe(
+    "business",
+  );
+});

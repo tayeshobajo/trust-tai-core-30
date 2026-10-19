@@ -71,7 +71,7 @@ export interface StoredConversation {
   conversation: NormalizedConversation;
 }
 
-function toConversation(row: Row): StoredConversation {
+export function toConversation(row: Row): StoredConversation {
   const stored = (row["transcript"] ?? {}) as Record<string, unknown>;
   return {
     id: str(row["id"]),
@@ -91,7 +91,7 @@ function toConversation(row: Row): StoredConversation {
 
 /* ------------------------------------------------------------ commitments */
 
-function toCommitment(row: Row): Commitment {
+export function toCommitment(row: Row): Commitment {
   return {
     id: str(row["id"]),
     organizationId: str(row["organization_id"]),

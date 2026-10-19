@@ -22,12 +22,18 @@ export function completionOf(meeting: WorkroomMeeting, now = new Date()) {
     (row) =>
       !isWorkComplete(row) && row.due.exact && row.due.label < now.toISOString().slice(0, 10),
   ).length;
+  const allComplete = rows.length > 0 && completed === rows.length;
   return {
+    allComplete,
     total: rows.length,
     completed,
     open: rows.length - completed,
     overdue,
-    percentage: rows.length ? Math.round((completed / rows.length) * 100) : null,
+    percentage: rows.length
+      ? allComplete
+        ? 100
+        : Math.min(99, Math.round((completed / rows.length) * 100))
+      : null,
   };
 }
 export function meetingMatches(meeting: WorkroomMeeting, search: string, filter: string) {

@@ -22,7 +22,7 @@ The existing AppShell, sidebar, menus, WorkspaceGate, authentication and authori
 
 - `npm run build`: passed (existing TanStack/Vite production build).
 - `tsc --noEmit`: passed.
-- Focused new suite: 20 tests passed (completion math, review/zero states, duplicate counts, roll-forward projection, filters, close/cancel, duplicate submissions, unavailable links, permission refusals, write failures and retry identity).
+- Focused new suite: 25 tests passed (completion math, review/zero states, duplicate counts, roll-forward projection, filters, close/cancel, duplicate submissions, unavailable links, permission refusals, write failures and retry identity).
 - Existing CMD suite: 112 tests passed, 14 files.
 - Existing Steward suite: 120 tests passed, 17 files. One shell expectation was updated for the new empty-state copy; existing navigation and gate assertions remain.
 - Disposable PostgreSQL integration: 2 tests passed. The real new persistence service ran through a psql adapter against temporary fixture tables with RLS. Verified inserted updates after a fresh reader, unique-operation replay, authorship, timestamps, roll-forward source/date/status retention, cross-tenant refusal, native completion persistence and stale completion rejection. The cluster used a private Unix socket and was removed after tests. No client tasks were touched.
@@ -50,3 +50,10 @@ Before publication: review the draft PR and screenshots, choose whether/when to 
 - Native commitment statuses remain the existing Planned/Open, Waiting and Completed/Kept contract. Canonical board tasks retain the full existing status set in their editor. No speculative status/schema migration was introduced.
 - Native commitment status and its accompanying update are two existing database writes. If the status saves but the update fails, the UI explicitly reports partial success and asks the user to post the note on the completed task instead of repeating completion. No atomic-history guarantee is claimed. An atomic command would require a separately reviewed database migration.
 - Evidence attachments and richer existing capabilities remain in the original tools; the new update composer posts text. No new attachment storage or permissions were introduced.
+
+## Independent review fixes
+
+- Partial completion cannot round up to 100%: 199/200 shows 99%; “All complete” requires a nonzero total with exact equality. Zero actions still have no score.
+- Incoming roll-forwards are discovered by destination meeting, then their latest task history is read so older destinations cannot resurrect superseded carries. Bounded targeted reads load original conversations, commitments and business tasks through the existing signed-in RLS client, scoped to the organization. The source records support details/history without adding older meetings to the recent overview. No schema or access changes.
+- Failed, capped or inaccessible source reads show incomplete coverage and suppress scores. Empty task panes do not claim there are no actions while coverage is incomplete.
+- Regression coverage includes destination discovery without source task IDs, original source beyond the recent 60, unchanged task identity/denominator, 199/200, exact completion and zero actions. Reran 25 focused and 120 existing Steward tests, TypeScript, changed-file lint and production build successfully.

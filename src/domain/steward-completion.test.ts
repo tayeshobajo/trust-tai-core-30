@@ -31,11 +31,23 @@ function build(statuses: Commitment["status"][]) {
 }
 describe("approved work completion, independent of verification", () => {
   it("has no score without confirmed actions", () =>
-    expect(completionOf(build([])).percentage).toBeNull());
+    expect(completionOf(build([]))).toMatchObject({
+      total: 0,
+      completed: 0,
+      open: 0,
+      percentage: null,
+      allComplete: false,
+    }));
   it("counts kept work without inventing verification or capping for review", () => {
     const m = build(["kept", "kept"]);
     m.openProposals = 9;
-    expect(completionOf(m)).toMatchObject({ percentage: 100, completed: 2, open: 0 });
+    expect(completionOf(m)).toMatchObject({
+      total: 2,
+      percentage: 100,
+      completed: 2,
+      open: 0,
+      allComplete: true,
+    });
     expect(m.rows.every((r) => !r.verified)).toBe(true);
   });
   it("recalculates status, open and overdue while excluding released work", () =>
@@ -68,4 +80,36 @@ it("roll-forward retains original obligation, carries identity once and never ch
   expect(projected[1]?.rows[0]?.forwardedFrom).toBe("meeting");
   expect(completionOf(projected[0]!)).toMatchObject({ total: 1, open: 1 });
   expect(completionOf(projected[1]!)).toMatchObject({ total: 0, percentage: null });
+});
+
+it("never rounds incomplete work to 100%", () => {
+  expect(completionOf(build([...Array(199).fill("kept"), "open"]))).toMatchObject({
+    total: 200,
+    completed: 199,
+    open: 1,
+    percentage: 99,
+    allComplete: false,
+  });
+});
+
+it("projects a targeted older source into a destination among the recent 60 without counting twice", () => {
+  const origin = build(["open"]);
+  const recent = Array.from({ length: 60 }, (_, i) => ({
+    ...build([]),
+    id: `recent-${i}`,
+    occurredAt: "2026-11-01",
+  }));
+  const visibleIds = new Set(recent.map((m) => m.id));
+  const visible = withRollForwards(
+    [...recent, origin],
+    [{ entity_id: "0", payload: { original_meeting_id: origin.id, later_meeting_id: "recent-0" } }],
+  ).filter((m) => visibleIds.has(m.id));
+  expect(visible).toHaveLength(60);
+  expect(visible[0]?.rows[0]).toMatchObject({ id: "0", forwardedFrom: origin.id, status: "open" });
+  expect(completionOf(visible[0]!)).toMatchObject({
+    total: 0,
+    percentage: null,
+    allComplete: false,
+  });
+  expect(origin.rows[0]?.id).toBe("0");
 });

@@ -131,3 +131,26 @@ describe("approved journey", () => {
     expect(screen.queryByLabelText("Task update")).toBeNull();
   });
 });
+
+it("keeps 199 of 200 visibly incomplete", () => {
+  const rows = Array.from({ length: 200 }, (_, i) => ({
+    ...meetings[0]!.rows[0]!,
+    id: String(i),
+    kept: i < 199,
+    status: i < 199 ? "kept" : "open",
+  }));
+  fixture({ meetings: [{ ...meetings[0]!, rows }] });
+  expect(screen.getByText("99%")).toBeTruthy();
+  expect(screen.queryByText("100%")).toBeNull();
+  expect(screen.queryByText("All complete")).toBeNull();
+});
+
+it("does not claim an empty meeting when source coverage is incomplete", () => {
+  fixture({
+    meetings: [{ ...meetings[0]!, rows: [] }],
+    selection: { meetingId: c.conversationId, rowKey: null },
+    linkedRead: { state: "error", truncated: false },
+  });
+  expect(screen.getByText(/Task coverage is incomplete/)).toBeTruthy();
+  expect(screen.queryByText(/No confirmed actions yet/)).toBeNull();
+});

@@ -32,6 +32,7 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 import { ExistingTaskTools, WorkroomView, type WorkroomViewProps } from "./workroom-view";
 
 export interface ApprovedMeetingsProps extends WorkroomViewProps {
+  sourceMeetings?: WorkroomViewProps["meetings"];
   identity: WorkspaceIdentity;
   updates?: Pick<typeof taskUpdates, "list" | "post">;
   canChange: (row: WorkroomRow) => boolean;
@@ -66,7 +67,7 @@ function Completion({ meeting, known = true }: { meeting: WorkroomMeeting; known
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100" aria-hidden>
         <div
-          className={`h-full rounded-full ${score.percentage === 100 ? "bg-green-600" : "bg-royal"}`}
+          className={`h-full rounded-full ${score.allComplete ? "bg-green-600" : "bg-royal"}`}
           style={{ width: `${score.percentage ?? 0}%` }}
         />
       </div>
@@ -114,7 +115,10 @@ export function ApprovedMeetings(props: ApprovedMeetingsProps) {
       <TaskPane
         key={workroomRowKey(row)}
         {...props}
-        meeting={props.meetings.find((m) => m.id === row.forwardedFrom) ?? meeting}
+        meeting={
+          (props.sourceMeetings ?? props.meetings).find((m) => m.id === row.forwardedFrom) ??
+          meeting
+        }
         row={row}
         onClose={close}
       />
@@ -263,13 +267,13 @@ export function ApprovedMeetings(props: ApprovedMeetingsProps) {
                     {scoresReady && score.total ? `${score.open} open` : "—"}
                   </span>
                   <span
-                    className={`text-sm ${score.overdue ? "text-destructive" : score.percentage === 100 ? "text-green-700" : "text-muted-foreground"}`}
+                    className={`text-sm ${score.overdue ? "text-destructive" : score.allComplete ? "text-green-700" : "text-muted-foreground"}`}
                   >
                     {!scoresReady
                       ? "—"
                       : score.overdue
                         ? `${score.overdue} overdue`
-                        : score.percentage === 100
+                        : score.allComplete
                           ? "All complete"
                           : m.openProposals
                             ? "Awaiting review"
@@ -360,9 +364,11 @@ export function ApprovedMeetings(props: ApprovedMeetingsProps) {
             ))}
             {!tasks.length ? (
               <p className="py-8 text-muted-foreground">
-                {taskSearch
-                  ? "No tasks match your search."
-                  : "No confirmed actions yet. Review the meeting to confirm what was agreed."}
+                {!scoresReady
+                  ? "Task coverage is incomplete. Available actions will appear here as records are loaded."
+                  : taskSearch
+                    ? "No tasks match your search."
+                    : "No confirmed actions yet. Review the meeting to confirm what was agreed."}
               </p>
             ) : null}
             {done.length > 2 ? (

@@ -677,6 +677,57 @@ function StewardWorkroomContent({
     queryFn: () => stewardTaskState.list(org),
   });
 
+  const recentMeetingIds = (conversations.data ?? []).map((c) => c.id);
+  const visibleTaskIds = [
+    ...new Set([
+      ...(commitments.data ?? []).map((c) => c.id),
+      ...(business.data?.tasks ?? []).map((t) => t.id),
+    ]),
+  ].sort();
+  const forwardRead = useQuery({
+    queryKey: ["steward", "forwards", org, identity.userId, visibleTaskIds, recentMeetingIds],
+    enabled: !!conversations.data && !!commitments.data && !business.isPending,
+    queryFn: () => taskUpdates.forwards(org, visibleTaskIds, recentMeetingIds),
+  });
+  const forwardSources = useQuery({
+    queryKey: ["steward", "forward-sources", org, identity.userId, forwardRead.data?.events],
+    enabled: !!forwardRead.data,
+    queryFn: () => taskUpdates.forwardSources(org, forwardRead.data?.events ?? []),
+  });
+  const allConversations = useMemo(
+    () => [
+      ...new Map(
+        [...(conversations.data ?? []), ...(forwardSources.data?.conversations ?? [])].map((c) => [
+          c.id,
+          c,
+        ]),
+      ).values(),
+    ],
+    [conversations.data, forwardSources.data],
+  );
+  const allCommitments = useMemo(
+    () => [
+      ...new Map(
+        [...(commitments.data ?? []), ...(forwardSources.data?.commitments ?? [])].map((c) => [
+          c.id,
+          c,
+        ]),
+      ).values(),
+    ],
+    [commitments.data, forwardSources.data],
+  );
+  const allBoardTasks = useMemo(
+    () => [
+      ...new Map(
+        [...(business.data?.tasks ?? []), ...(forwardSources.data?.tasks ?? [])].map((t) => [
+          t.id,
+          t,
+        ]),
+      ).values(),
+    ],
+    [business.data, forwardSources.data],
+  );
+
   const sync = useRecentSync(identity);
 
   /* Canonical task editing from the workroom cells: the same TaskEditor and
@@ -692,9 +743,9 @@ function StewardWorkroomContent({
     enabled: !!editing,
   });
   const taskById = useMemo(() => {
-    const map = new Map((business.data?.tasks ?? []).map((task) => [task.id, task]));
+    const map = new Map(allBoardTasks.map((task) => [task.id, task]));
     return (id: string) => map.get(id);
-  }, [business.data]);
+  }, [allBoardTasks]);
   const actor = { userId: identity.userId, role: identity.role };
   async function saveEdit(input: BoardEdit) {
     if (!editing) return;
@@ -725,7 +776,7 @@ function StewardWorkroomContent({
   const meetings = useMemo(() => {
     if (!conversations.data || !commitments.data) return [];
     return buildWorkroom(
-      conversations.data
+      allConversations
         .filter((c) => c.provider === "fathom")
         .map((c) => {
           const segments = Array.isArray(c.conversation?.segments) ? c.conversation.segments : [];
@@ -743,49 +794,55 @@ function StewardWorkroomContent({
             coverageConfirmed: false,
           };
         }),
-      commitments.data,
+      allCommitments,
       receiptMap,
       proposalCounts,
     );
-  }, [conversations.data, commitments.data, receiptMap, proposalCounts]);
+  }, [
+    conversations.data,
+    commitments.data,
+    allConversations,
+    allCommitments,
+    receiptMap,
+    proposalCounts,
+  ]);
 
   const commitmentById = useMemo(() => {
-    const map = new Map((commitments.data ?? []).map((c) => [c.id, c]));
+    const map = new Map(allCommitments.map((c) => [c.id, c]));
     return (id: string) => map.get(id);
-  }, [commitments.data]);
+  }, [allCommitments]);
   const linkedMeetings = useMemo(
     () =>
       appendLinkedBusinessWork(
         meetings,
-        business.isError || business.isPending ? [] : (business.data?.tasks ?? []),
+        business.isError || business.isPending ? [] : allBoardTasks,
         org,
         typeof window === "undefined" ? undefined : window.location.origin,
       ),
-    [meetings, business.data, business.isError, business.isPending, org],
+    [meetings, allBoardTasks, business.isError, business.isPending, org],
   );
 
-  const visibleTaskIds = [
-    ...new Set(linkedMeetings.flatMap((m) => m.rows.map((r) => r.id))),
-  ].sort();
-  const forwardRead = useQuery({
-    queryKey: ["steward", "forwards", org, identity.userId, visibleTaskIds],
-    enabled: visibleTaskIds.length > 0,
-    queryFn: () => taskUpdates.forwards(org, visibleTaskIds),
-  });
   const displayedMeetings = useMemo(
-    () => withRollForwards(linkedMeetings, forwardRead.data?.events ?? []),
-    [linkedMeetings, forwardRead.data],
+    () =>
+      withRollForwards(linkedMeetings, forwardRead.data?.events ?? []).filter((m) =>
+        recentMeetingIds.includes(m.id),
+      ),
+    [linkedMeetings, forwardRead.data, recentMeetingIds],
   );
+  const forwardIncomplete = (forwardRead.data?.events ?? []).some((event) => {
+    const source = linkedMeetings.find((m) => m.id === event.payload.original_meeting_id);
+    return !source?.rows.some((row) => row.id === event.entity_id);
+  });
 
   // Task details open only after an explicit URL/task selection.
   const effectiveSelection = selection;
 
   const selectedMeetingTaskIds = useMemo(() => {
-    const meeting = linkedMeetings.find((m) => m.id === effectiveSelection?.meetingId);
+    const meeting = displayedMeetings.find((m) => m.id === effectiveSelection?.meetingId);
     return (meeting?.rows ?? [])
       .map((r) => r.boardTask?.id)
       .filter((id): id is string => typeof id === "string");
-  }, [linkedMeetings, effectiveSelection?.meetingId]);
+  }, [displayedMeetings, effectiveSelection?.meetingId]);
   const backend = useStewardBackend(identity, effectiveSelection, selectedMeetingTaskIds);
 
   if (conversations.isPending || commitments.isPending || receipts.isPending) {
@@ -801,10 +858,13 @@ function StewardWorkroomContent({
 
   return (
     <>
-      {forwardRead.isError || forwardRead.data?.truncated ? (
+      {forwardRead.isError ||
+      forwardSources.isError ||
+      forwardRead.data?.truncated ||
+      forwardIncomplete ? (
         <p role="status" className="p-4 text-sm">
-          Some roll-forward history could not be loaded. Original obligations remain listed in their
-          source meetings.
+          Some carried-forward tasks or original records could not be loaded. This task list may be
+          incomplete; completion scores are unavailable.
         </p>
       ) : null}
       <ApprovedMeetings
@@ -859,6 +919,7 @@ function StewardWorkroomContent({
         }}
         embedded
         meetings={displayedMeetings}
+        sourceMeetings={linkedMeetings}
         backend={backend}
         {...(selection ? { selection } : {})}
         {...(onSelect ? { onSelect } : {})}
@@ -909,8 +970,17 @@ function StewardWorkroomContent({
             : undefined
         }
         linkedRead={{
-          state: business.isPending ? "loading" : business.isError ? "error" : "ready",
-          truncated: (business.data?.truncated ?? false) || (commitments.data?.length ?? 0) >= 300,
+          state:
+            business.isError || forwardRead.isError || forwardSources.isError
+              ? "error"
+              : business.isPending || forwardRead.isPending || forwardSources.isPending
+                ? "loading"
+                : "ready",
+          truncated:
+            (business.data?.truncated ?? false) ||
+            (commitments.data?.length ?? 0) >= 300 ||
+            !!forwardRead.data?.truncated ||
+            forwardIncomplete,
           onRetry: () => void business.refetch(),
         }}
         commitmentFor={commitmentById}

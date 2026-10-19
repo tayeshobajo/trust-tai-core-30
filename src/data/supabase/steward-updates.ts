@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { Commitment } from "@/domain/steward";
+import { toConversation, toCommitment } from "./steward-service";
+import { BoardTaskSchema } from "@/domain/cmd-tasks";
 import { BOARD_WRITE_ROLES } from "@/domain/cmd-tasks";
 import { z } from "zod";
 
@@ -112,9 +114,28 @@ export function stewardUpdates(client: SupabaseClient = supabase) {
     async forwards(
       org: string,
       ids: string[],
+      destinations: string[] = [],
     ): Promise<{ events: StewardUpdate[]; truncated: boolean }> {
       const events: StewardUpdate[] = [];
       let truncated = false;
+      // Discover incoming carries by destination even when their source is outside the recent window.
+      if (destinations.length) {
+        const incoming = await client
+          .from("activities")
+          .select("id,entity_id,actor_user_id,occurred_at,summary,payload")
+          .eq("organization_id", org)
+          .eq("app_key", "steward")
+          .eq("entity_type", "task")
+          .eq("payload->>action", "roll_forward")
+          .in("payload->>later_meeting_id", destinations)
+          .order("occurred_at", { ascending: false })
+          .limit(501);
+        if (incoming.error) throw new Error(incoming.error.message);
+        truncated ||= (incoming.data?.length ?? 0) > 500;
+        ids = [
+          ...new Set([...ids, ...(incoming.data ?? []).slice(0, 500).map((e) => e.entity_id)]),
+        ];
+      }
       for (let i = 0; i < ids.length; i += 100) {
         const result = await client
           .from("activities")
@@ -133,6 +154,42 @@ export function stewardUpdates(client: SupabaseClient = supabase) {
       return {
         events: events.sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)),
         truncated,
+      };
+    },
+    async forwardSources(org: string, events: StewardUpdate[]) {
+      const latest = [...new Map([...events].reverse().map((e) => [e.entity_id, e])).values()];
+      const ids = [...new Set(latest.map((e) => e.entity_id))];
+      const sourceIds = [
+        ...new Set(
+          latest.flatMap((e) =>
+            e.payload.original_meeting_id ? [e.payload.original_meeting_id] : [],
+          ),
+        ),
+      ];
+      const read = async (table: string, wanted: string[], business = false) => {
+        const rows = [];
+        for (let i = 0; i < wanted.length; i += 100) {
+          let query = client
+            .from(table)
+            .select("*")
+            .eq("organization_id", org)
+            .in("id", wanted.slice(i, i + 100));
+          if (business) query = query.eq("task_visibility", "business");
+          const result = await query.limit(100);
+          if (result.error) throw new Error(result.error.message);
+          rows.push(...(result.data ?? []));
+        }
+        return rows;
+      };
+      const [sources, commitments, board] = await Promise.all([
+        read("conversations", sourceIds),
+        read("commitments", ids),
+        read("steward_tasks", ids, true),
+      ]);
+      return {
+        conversations: sources.map(toConversation),
+        commitments: commitments.map(toCommitment),
+        tasks: board.map((row) => BoardTaskSchema.parse(row)),
       };
     },
     async list(org: string, taskId: string): Promise<StewardUpdate[]> {
