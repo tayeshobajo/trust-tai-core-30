@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "jsdom",
     include: [
       "src/domain/steward-completion.test.ts",
+      "src/data/steward/board-refresh.test.ts",
       "src/components/tt/steward/approved-meetings.test.tsx",
       "src/data/supabase/steward-updates.test.ts",
     ],

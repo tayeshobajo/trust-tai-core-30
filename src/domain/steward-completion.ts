@@ -75,3 +75,16 @@ export function withRollForwards(
   }
   return copies;
 }
+
+/** Duplicate board reads may finish in either order; never regress the canonical revision. */
+export function mergeTaskRevisions<T extends { id: string; revision: number }>(
+  current: T[],
+  supporting: T[],
+): T[] {
+  const rows = new Map(current.map((task) => [task.id, task]));
+  for (const task of supporting) {
+    const existing = rows.get(task.id);
+    if (!existing || task.revision > existing.revision) rows.set(task.id, task);
+  }
+  return [...rows.values()];
+}

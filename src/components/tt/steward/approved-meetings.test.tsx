@@ -154,3 +154,35 @@ it("does not claim an empty meeting when source coverage is incomplete", () => {
   expect(screen.getByText(/Task coverage is incomplete/)).toBeTruthy();
   expect(screen.queryByText(/No confirmed actions yet/)).toBeNull();
 });
+
+it("copies a reloadable destination link while retaining the older source, and rejects removed access", async () => {
+  const source = { ...meetings[0]!, title: "Older source", occurredAt: "2025-01-01" };
+  const destination = {
+    ...meetings[0]!,
+    id: "later-meeting",
+    rows: [{ ...meetings[0]!.rows[0]!, forwardedFrom: source.id }],
+  };
+  const writeText = vi.fn(async (_text: string) => {});
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  fixture({
+    meetings: [destination],
+    sourceMeetings: [source],
+    selection: { meetingId: destination.id, rowKey: `commitment:${c.id}` },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Copy task link" }));
+  const copied = new URL(writeText.mock.calls[0]![0] as string);
+  expect(copied.searchParams.get("meeting")).toBe(destination.id);
+  cleanup();
+  const selection = {
+    meetingId: copied.searchParams.get("meeting")!,
+    rowKey: copied.searchParams.get("task")!,
+  };
+  fixture({ meetings: [destination], sourceMeetings: [source], selection });
+  expect(screen.getByRole("heading", { name: c.what })).toBeTruthy();
+  fireEvent.click(screen.getByRole("tab", { name: "Details" }));
+  expect(screen.getByText("Original meeting: Older source")).toBeTruthy();
+  cleanup();
+  fixture({ meetings: [{ ...destination, rows: [] }], sourceMeetings: [], selection });
+  expect(screen.getByText("This task is unavailable in this meeting.")).toBeTruthy();
+  expect(screen.queryByLabelText("Task update")).toBeNull();
+});

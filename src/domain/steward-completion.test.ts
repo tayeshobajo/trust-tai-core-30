@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { completionOf, meetingMatches, withRollForwards } from "./steward-completion";
+import {
+  completionOf,
+  meetingMatches,
+  withRollForwards,
+  mergeTaskRevisions,
+} from "./steward-completion";
 import { buildWorkroom } from "./steward-workroom";
 import type { Commitment } from "./steward";
 const meeting = {
@@ -112,4 +117,12 @@ it("projects a targeted older source into a destination among the recent 60 with
     allComplete: false,
   });
   expect(origin.rows[0]?.id).toBe("0");
+});
+
+it("keeps edited status, owner, due and revision when the carry cache is older", () => {
+  const old = { id: "task", revision: 1, status: "open", owner: "Old", due: "2026-10-20" };
+  const saved = { ...old, revision: 2, status: "complete", owner: "New", due: "2026-10-25" };
+  expect(mergeTaskRevisions([saved], [old])).toEqual([saved]);
+  expect(mergeTaskRevisions([old], [saved])).toEqual([saved]);
+  expect(mergeTaskRevisions([], [saved])).toEqual([saved]);
 });

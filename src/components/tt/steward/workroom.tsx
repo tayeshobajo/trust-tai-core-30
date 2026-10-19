@@ -13,7 +13,8 @@ import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ApprovedMeetings } from "./approved-meetings";
-import { withRollForwards } from "@/domain/steward-completion";
+import { refreshStewardBoardReads } from "@/data/steward/board-refresh";
+import { withRollForwards, mergeTaskRevisions } from "@/domain/steward-completion";
 import { taskUpdates } from "@/data/supabase/steward-updates";
 import { editOf } from "@/domain/cmd-tasks";
 import { syncRecentMeetings } from "@/data/steward/recent-sync";
@@ -717,14 +718,7 @@ function StewardWorkroomContent({
     [commitments.data, forwardSources.data],
   );
   const allBoardTasks = useMemo(
-    () => [
-      ...new Map(
-        [...(business.data?.tasks ?? []), ...(forwardSources.data?.tasks ?? [])].map((t) => [
-          t.id,
-          t,
-        ]),
-      ).values(),
-    ],
+    () => mergeTaskRevisions(business.data?.tasks ?? [], forwardSources.data?.tasks ?? []),
     [business.data, forwardSources.data],
   );
 
@@ -750,9 +744,12 @@ function StewardWorkroomContent({
   async function saveEdit(input: BoardEdit) {
     if (!editing) return;
     await cmdTasks.update(editing.task, input);
-    await queryClient.invalidateQueries({
-      queryKey: businessWorkQuery(org, identity.userId).queryKey,
-    });
+    await refreshStewardBoardReads(
+      queryClient,
+      businessWorkQuery(org, identity.userId).queryKey,
+      org,
+      identity.userId,
+    );
     setEditing(null);
   }
 

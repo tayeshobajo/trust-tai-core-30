@@ -120,6 +120,7 @@ export function ApprovedMeetings(props: ApprovedMeetingsProps) {
           meeting
         }
         row={row}
+        linkMeetingId={meeting.id}
         onClose={close}
       />
     ) : null;
@@ -433,6 +434,7 @@ function CompactPane({
 function TaskPane(
   props: ApprovedMeetingsProps & {
     meeting: WorkroomMeeting;
+    linkMeetingId: string;
     row: WorkroomRow;
     onClose: () => void;
   },
@@ -504,7 +506,7 @@ function TaskPane(
             className="p-2"
             onClick={() => {
               const url = new URL(window.location.href);
-              url.searchParams.set("meeting", meeting.id);
+              url.searchParams.set("meeting", props.linkMeetingId);
               url.searchParams.set("task", workroomRowKey(row));
               void navigator.clipboard.writeText(url.href).then(
                 () => setMessage("Task link copied. Existing access rules still apply."),
