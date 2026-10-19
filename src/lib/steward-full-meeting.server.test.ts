@@ -132,6 +132,65 @@ describe("full meeting reasoning", () => {
       reasonFullMeeting(input(), model([finding({ due_text: "Friday" })]), {}),
     ).rejects.toThrow("timeline");
   });
+  it("repairs once using original turns without relaxing exact quotation checks", async () => {
+    const requests: Record<string, unknown>[] = [];
+    const call = vi.fn(async (request: { input: string }) => {
+      const packet = JSON.parse(request.input);
+      requests.push(packet);
+      const findings =
+        requests.length === 1
+          ? [finding({ evidence: [{ index: 0, quote: conversation.segments[1]!.text }] })]
+          : [finding()];
+      return {
+        raw: JSON.stringify({ findings, summary: "Grounded invitation review" }),
+        provider: "fixture",
+        model: "fixture",
+      };
+    });
+    const result = await reasonFullMeeting(input(), call, {});
+    expect(requests.map((p) => p["stage"])).toEqual([
+      "read_every_turn",
+      "repair_grounding",
+      "reconcile_whole_meeting",
+    ]);
+    expect(requests[1]?.["turns"]).toEqual(conversation.segments);
+    expect(requests[1]?.["validation_issues"]).toEqual([
+      expect.objectContaining({ index: 0, exactTurnIds: [1] }),
+    ]);
+    expect(requests[1]).not.toHaveProperty("retrieval");
+    expect(requests[0]).not.toHaveProperty("retrieval");
+    expect(requests[0]).not.toHaveProperty("existing_work");
+    expect(result.signals[0]?.quote).toBe(conversation.segments[1]!.text);
+    expect(requests[2]?.["turns"]).toEqual([conversation.segments[1]]);
+  });
+  it("rejects punctuation changes, fabricated quotes and a still-invalid repair without looping", async () => {
+    for (const quote of [
+      conversation.segments[1]!.text.replace(/\.$/, ","),
+      "Morgan will send a plan template.",
+    ]) {
+      const call = model([finding({ evidence: [{ index: 1, quote }] })]);
+      await expect(reasonFullMeeting(input(), call, {})).rejects.toThrow(
+        "unsupported transcript citation",
+      );
+      expect(call).toHaveBeenCalledTimes(2);
+    }
+  });
+  it("does not accept a citation from a different chunk even when its turn exists globally", async () => {
+    const c = {
+      ...conversation,
+      segments: conversation.segments.map((s) => ({
+        ...s,
+        text: s.text + " context".repeat(2000),
+      })),
+    };
+    const call = model([
+      finding({ evidence: [{ index: 2, quote: c.segments[2]!.text }], due_text: null }),
+    ]);
+    await expect(reasonFullMeeting(input(c), call, {})).rejects.toThrow(
+      "unsupported transcript citation",
+    );
+    expect(call).toHaveBeenCalledTimes(2);
+  });
   it("keeps inferred owners unresolved and reported completion unverified", async () => {
     const run = await reasonFullMeeting(
       input(),
