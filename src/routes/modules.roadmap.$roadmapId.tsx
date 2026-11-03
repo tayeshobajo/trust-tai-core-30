@@ -1,3 +1,5 @@
+import { CanonicalConversation } from "@/components/tt/roadmap/evidence/canonical-conversation";
+import { correspondenceReader } from "@/data/supabase/roadmap-correspondence-read";
 /**
  * One roadmap, read top to bottom.
  *
@@ -139,6 +141,7 @@ function RoadmapWorkspace({
   view: RoadmapView;
 }) {
   const queryClient = useQueryClient();
+  const readConversations = useMemo(() => correspondenceReader(identity.userId), [identity.userId]);
   const context: RoadmapContext = {
     organizationId: identity.organizationId,
     userId: identity.userId,
@@ -1039,6 +1042,12 @@ function RoadmapWorkspace({
 
           {view === "evidence" ? (
             <>
+              <CanonicalConversation
+                key={`${identity.organizationId}:${roadmap.id}`}
+                organizationId={identity.organizationId}
+                roadmapId={roadmap.id}
+                read={readConversations}
+              />
               <EvidenceLinksCard
                 items={evidenceQuery.data?.items ?? []}
                 available={evidenceQuery.data?.available ?? false}

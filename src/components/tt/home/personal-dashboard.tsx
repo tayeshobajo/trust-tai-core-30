@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { DailyHome } from "./daily-home";
+import { ApprovedHome } from "./approved-home";
 import { TaskEditor } from "@/components/tt/steward/business-task-board";
 import { cmdTasks } from "@/data/supabase/cmd-tasks";
 import type { BoardTask } from "@/domain/cmd-tasks";
@@ -61,7 +61,7 @@ export function PersonalDashboard({ identity }: { identity: WorkspaceIdentity })
 
   return (
     <>
-      <DailyHome
+      <ApprovedHome
         identity={identity}
         read={read.data}
         onConfirmGoal={handleConfirmGoal}

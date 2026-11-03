@@ -69,6 +69,7 @@ import { Route as ModulesProjectsIndexRouteImport } from './routes/modules.proje
 import { Route as ModulesProjectsProjectIdRouteImport } from './routes/modules.projects.$projectId'
 import { Route as ModulesRoadmapIndexRouteImport } from './routes/modules.roadmap.index'
 import { Route as ModulesRoadmapRoadmapIdRouteImport } from './routes/modules.roadmap.$roadmapId'
+import { Route as ModulesRoadmapReviewRouteImport } from './routes/modules.roadmap.review'
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
 import { Route as ModulesScoutOutreachRouteImport } from './routes/modules.scout.outreach'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
@@ -105,6 +106,10 @@ import { Route as ApiPublicPreparationRunRouteImport } from './routes/api/public
 import { Route as ApiPublicProjectsAskRouteImport } from './routes/api/public/projects.ask'
 import { Route as ApiPublicProjectsContextPacketRouteImport } from './routes/api/public/projects.context-packet'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
+import { Route as ApiPublicRoadmapConversationSummaryRouteImport } from './routes/api/public/roadmap.conversation-summary'
+import { Route as ApiPublicRoadmapCorrespondenceRouteImport } from './routes/api/public/roadmap.correspondence'
+import { Route as ApiPublicRoadmapCorrespondenceReviewRouteImport } from './routes/api/public/roadmap.correspondence-review'
+import { Route as ApiPublicRoadmapEvidenceRouteImport } from './routes/api/public/roadmap.evidence'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
 import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
 import { Route as ApiPublicRoadmapTrackerRouteImport } from './routes/api/public/roadmap.tracker'
@@ -448,6 +453,11 @@ const ModulesRoadmapRoadmapIdRoute = ModulesRoadmapRoadmapIdRouteImport.update({
   path: '/$roadmapId',
   getParentRoute: () => ModulesRoadmapRoute,
 } as any)
+const ModulesRoadmapReviewRoute = ModulesRoadmapReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => ModulesRoadmapRoute,
+} as any)
 const ModulesScoutIndexRoute = ModulesScoutIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -634,6 +644,30 @@ const ApiPublicRoadmapAskRoute = ApiPublicRoadmapAskRouteImport.update({
   path: '/api/public/roadmap/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRoadmapConversationSummaryRoute =
+  ApiPublicRoadmapConversationSummaryRouteImport.update({
+    id: '/api/public/roadmap/conversation-summary',
+    path: '/api/public/roadmap/conversation-summary',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicRoadmapCorrespondenceRoute =
+  ApiPublicRoadmapCorrespondenceRouteImport.update({
+    id: '/api/public/roadmap/correspondence',
+    path: '/api/public/roadmap/correspondence',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicRoadmapCorrespondenceReviewRoute =
+  ApiPublicRoadmapCorrespondenceReviewRouteImport.update({
+    id: '/api/public/roadmap/correspondence-review',
+    path: '/api/public/roadmap/correspondence-review',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicRoadmapEvidenceRoute =
+  ApiPublicRoadmapEvidenceRouteImport.update({
+    id: '/api/public/roadmap/evidence',
+    path: '/api/public/roadmap/evidence',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicRoadmapResearchRoute =
   ApiPublicRoadmapResearchRouteImport.update({
     id: '/api/public/roadmap/research',
@@ -905,6 +939,7 @@ export interface FileRoutesByFullPath {
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
+  '/modules/roadmap/review': typeof ModulesRoadmapReviewRoute
   '/modules/scout/outreach': typeof ModulesScoutOutreachRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
@@ -945,6 +980,10 @@ export interface FileRoutesByFullPath {
   '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
+  '/api/public/roadmap/conversation-summary': typeof ApiPublicRoadmapConversationSummaryRoute
+  '/api/public/roadmap/correspondence': typeof ApiPublicRoadmapCorrespondenceRoute
+  '/api/public/roadmap/correspondence-review': typeof ApiPublicRoadmapCorrespondenceReviewRoute
+  '/api/public/roadmap/evidence': typeof ApiPublicRoadmapEvidenceRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/roadmap/tracker': typeof ApiPublicRoadmapTrackerRoute
@@ -1033,6 +1072,7 @@ export interface FileRoutesByTo {
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
+  '/modules/roadmap/review': typeof ModulesRoadmapReviewRoute
   '/modules/scout/outreach': typeof ModulesScoutOutreachRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
@@ -1072,6 +1112,10 @@ export interface FileRoutesByTo {
   '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
+  '/api/public/roadmap/conversation-summary': typeof ApiPublicRoadmapConversationSummaryRoute
+  '/api/public/roadmap/correspondence': typeof ApiPublicRoadmapCorrespondenceRoute
+  '/api/public/roadmap/correspondence-review': typeof ApiPublicRoadmapCorrespondenceReviewRoute
+  '/api/public/roadmap/evidence': typeof ApiPublicRoadmapEvidenceRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/roadmap/tracker': typeof ApiPublicRoadmapTrackerRoute
@@ -1169,6 +1213,7 @@ export interface FileRoutesById {
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
+  '/modules/roadmap/review': typeof ModulesRoadmapReviewRoute
   '/modules/scout/outreach': typeof ModulesScoutOutreachRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
@@ -1209,6 +1254,10 @@ export interface FileRoutesById {
   '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
+  '/api/public/roadmap/conversation-summary': typeof ApiPublicRoadmapConversationSummaryRoute
+  '/api/public/roadmap/correspondence': typeof ApiPublicRoadmapCorrespondenceRoute
+  '/api/public/roadmap/correspondence-review': typeof ApiPublicRoadmapCorrespondenceReviewRoute
+  '/api/public/roadmap/evidence': typeof ApiPublicRoadmapEvidenceRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/roadmap/tracker': typeof ApiPublicRoadmapTrackerRoute
@@ -1307,6 +1356,7 @@ export interface FileRouteTypes {
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
+    | '/modules/roadmap/review'
     | '/modules/scout/outreach'
     | '/modules/scout/settings'
     | '/modules/steward/agents'
@@ -1347,6 +1397,10 @@ export interface FileRouteTypes {
     | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
+    | '/api/public/roadmap/conversation-summary'
+    | '/api/public/roadmap/correspondence'
+    | '/api/public/roadmap/correspondence-review'
+    | '/api/public/roadmap/evidence'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
     | '/api/public/roadmap/tracker'
@@ -1435,6 +1489,7 @@ export interface FileRouteTypes {
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
+    | '/modules/roadmap/review'
     | '/modules/scout/outreach'
     | '/modules/scout/settings'
     | '/modules/steward/agents'
@@ -1474,6 +1529,10 @@ export interface FileRouteTypes {
     | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
+    | '/api/public/roadmap/conversation-summary'
+    | '/api/public/roadmap/correspondence'
+    | '/api/public/roadmap/correspondence-review'
+    | '/api/public/roadmap/evidence'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
     | '/api/public/roadmap/tracker'
@@ -1570,6 +1629,7 @@ export interface FileRouteTypes {
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
+    | '/modules/roadmap/review'
     | '/modules/scout/outreach'
     | '/modules/scout/settings'
     | '/modules/steward/agents'
@@ -1610,6 +1670,10 @@ export interface FileRouteTypes {
     | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
+    | '/api/public/roadmap/conversation-summary'
+    | '/api/public/roadmap/correspondence'
+    | '/api/public/roadmap/correspondence-review'
+    | '/api/public/roadmap/evidence'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
     | '/api/public/roadmap/tracker'
@@ -1698,6 +1762,10 @@ export interface RootRouteChildren {
   ApiPublicProjectsAskRoute: typeof ApiPublicProjectsAskRoute
   ApiPublicProjectsContextPacketRoute: typeof ApiPublicProjectsContextPacketRoute
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
+  ApiPublicRoadmapConversationSummaryRoute: typeof ApiPublicRoadmapConversationSummaryRoute
+  ApiPublicRoadmapCorrespondenceRoute: typeof ApiPublicRoadmapCorrespondenceRoute
+  ApiPublicRoadmapCorrespondenceReviewRoute: typeof ApiPublicRoadmapCorrespondenceReviewRoute
+  ApiPublicRoadmapEvidenceRoute: typeof ApiPublicRoadmapEvidenceRoute
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
   ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
   ApiPublicRoadmapTrackerRoute: typeof ApiPublicRoadmapTrackerRoute
@@ -2154,6 +2222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesRoadmapRoadmapIdRouteImport
       parentRoute: typeof ModulesRoadmapRoute
     }
+    '/modules/roadmap/review': {
+      id: '/modules/roadmap/review'
+      path: '/review'
+      fullPath: '/modules/roadmap/review'
+      preLoaderRoute: typeof ModulesRoadmapReviewRouteImport
+      parentRoute: typeof ModulesRoadmapRoute
+    }
     '/modules/scout/': {
       id: '/modules/scout/'
       path: '/'
@@ -2404,6 +2479,34 @@ declare module '@tanstack/react-router' {
       path: '/api/public/roadmap/ask'
       fullPath: '/api/public/roadmap/ask'
       preLoaderRoute: typeof ApiPublicRoadmapAskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/roadmap/conversation-summary': {
+      id: '/api/public/roadmap/conversation-summary'
+      path: '/api/public/roadmap/conversation-summary'
+      fullPath: '/api/public/roadmap/conversation-summary'
+      preLoaderRoute: typeof ApiPublicRoadmapConversationSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/roadmap/correspondence': {
+      id: '/api/public/roadmap/correspondence'
+      path: '/api/public/roadmap/correspondence'
+      fullPath: '/api/public/roadmap/correspondence'
+      preLoaderRoute: typeof ApiPublicRoadmapCorrespondenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/roadmap/correspondence-review': {
+      id: '/api/public/roadmap/correspondence-review'
+      path: '/api/public/roadmap/correspondence-review'
+      fullPath: '/api/public/roadmap/correspondence-review'
+      preLoaderRoute: typeof ApiPublicRoadmapCorrespondenceReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/roadmap/evidence': {
+      id: '/api/public/roadmap/evidence'
+      path: '/api/public/roadmap/evidence'
+      fullPath: '/api/public/roadmap/evidence'
+      preLoaderRoute: typeof ApiPublicRoadmapEvidenceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/roadmap/research': {
@@ -2785,11 +2888,13 @@ const ModulesProjectsRouteWithChildren = ModulesProjectsRoute._addFileChildren(
 
 interface ModulesRoadmapRouteChildren {
   ModulesRoadmapRoadmapIdRoute: typeof ModulesRoadmapRoadmapIdRoute
+  ModulesRoadmapReviewRoute: typeof ModulesRoadmapReviewRoute
   ModulesRoadmapIndexRoute: typeof ModulesRoadmapIndexRoute
 }
 
 const ModulesRoadmapRouteChildren: ModulesRoadmapRouteChildren = {
   ModulesRoadmapRoadmapIdRoute: ModulesRoadmapRoadmapIdRoute,
+  ModulesRoadmapReviewRoute: ModulesRoadmapReviewRoute,
   ModulesRoadmapIndexRoute: ModulesRoadmapIndexRoute,
 }
 
@@ -2934,6 +3039,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicProjectsAskRoute: ApiPublicProjectsAskRoute,
   ApiPublicProjectsContextPacketRoute: ApiPublicProjectsContextPacketRoute,
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
+  ApiPublicRoadmapConversationSummaryRoute:
+    ApiPublicRoadmapConversationSummaryRoute,
+  ApiPublicRoadmapCorrespondenceRoute: ApiPublicRoadmapCorrespondenceRoute,
+  ApiPublicRoadmapCorrespondenceReviewRoute:
+    ApiPublicRoadmapCorrespondenceReviewRoute,
+  ApiPublicRoadmapEvidenceRoute: ApiPublicRoadmapEvidenceRoute,
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
   ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
   ApiPublicRoadmapTrackerRoute: ApiPublicRoadmapTrackerRoute,

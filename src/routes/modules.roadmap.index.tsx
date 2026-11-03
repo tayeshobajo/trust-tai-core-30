@@ -1,3 +1,9 @@
+import { approvedCanonicalBindings } from "@/data/roadmap-approved-bindings";
+import {
+  correspondenceReader,
+  conversationSummaryReader,
+} from "@/data/supabase/roadmap-correspondence-read";
+import { canonicalEvidenceReader } from "@/data/supabase/roadmap-evidence-read";
 /**
  * Roadmap, one company, one roadmap, a clear path forward.
  *
@@ -7,6 +13,7 @@
  * access. A failure is reported as itself; there are no fixtures.
  */
 
+import { publicRoadmapObservation } from "@/data/roadmap-publication-observation";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -17,6 +24,7 @@ import { BuildFromScoutPanel } from "@/components/tt/roadmap/index/build-from-sc
 import { DecisionAttentionCard } from "@/components/tt/roadmap/index/decision-card";
 import { RoadmapHeader } from "@/components/tt/roadmap/index/header";
 import { RoadmapList } from "@/components/tt/roadmap/index/list";
+import { ApprovedRoadmapWorkspace } from "@/components/tt/roadmap/evidence/approved-workspace";
 import { RoadmapTracker } from "@/components/tt/roadmap/tracker/tracker";
 import { ReadyFromScout } from "@/components/tt/roadmap/index/ready-from-scout";
 import { RoadmapSidebar } from "@/components/tt/roadmap/index/sidebar";
@@ -77,8 +85,10 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
   };
 
   const [mode, setMode] = useState<Mode>("idle");
-  const [view, setView] = useState<"roadmaps" | "tracker">("roadmaps");
+  const [view, setView] = useState<"evidence" | "roadmaps" | "tracker">("evidence");
   const [startError, setStartError] = useState<string | null>(null);
+  const readConversations = useMemo(() => correspondenceReader(identity.userId), [identity.userId]);
+  const readCanonical = useMemo(() => canonicalEvidenceReader(identity.userId), [identity.userId]);
   const [preselected, setPreselected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RoadmapFilter>("all");
@@ -87,6 +97,14 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
     queryKey: ["roadmap", "list", identity.organizationId, identity.userId],
     queryFn: () => roadmapService.list(identity.organizationId),
     retry: false,
+  });
+
+  const conversationSummary = useQuery({
+    queryKey: ["roadmap", "conversation-summary", identity.organizationId, identity.userId],
+    queryFn: () => conversationSummaryReader(identity.userId)(identity.organizationId),
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const stagesQuery = useQuery({
@@ -285,20 +303,38 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
   );
 
   return (
-    <AppShell identity={identity} sidebar={<RoadmapSidebar glance={glance} />}>
+    <AppShell
+      identity={identity}
+      sidebar={
+        view === "evidence" ? (
+          <aside className="rounded-xl border border-border bg-card p-4 text-xs leading-6 text-muted-foreground">
+            <p className="tt-eyebrow text-royal">Evidence first</p>
+            <p className="mt-2">
+              Public proposals, saved roadmaps and messages are distinct sources. Identity review
+              connects them.
+            </p>
+            <p className="mt-2">Historical coverage remains incomplete.</p>
+          </aside>
+        ) : (
+          <RoadmapSidebar glance={glance} />
+        )
+      }
+    >
       <div className="space-y-8">
-        <RoadmapHeader
-          glance={glance}
-          onBuildFromScout={() => {
-            setStartError(null);
-            setPreselected(null);
-            setMode("scout");
-          }}
-          onCreate={() => {
-            setStartError(null);
-            setMode("manual");
-          }}
-        />
+        {view !== "evidence" ? (
+          <RoadmapHeader
+            glance={glance}
+            onBuildFromScout={() => {
+              setStartError(null);
+              setPreselected(null);
+              setMode("scout");
+            }}
+            onCreate={() => {
+              setStartError(null);
+              setMode("manual");
+            }}
+          />
+        ) : null}
 
         {mode === "scout" ? (
           <BuildFromScoutPanel
@@ -332,7 +368,17 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
           />
         ) : null}
 
-        <nav aria-label="Roadmap views" className="flex gap-2 border-b border-border pb-3">
+        <nav
+          aria-label="Roadmap views"
+          className="flex flex-wrap gap-2 border-b border-border pb-3"
+        >
+          <TTButton
+            variant={view === "evidence" ? "primary" : "secondary"}
+            aria-pressed={view === "evidence"}
+            onClick={() => setView("evidence")}
+          >
+            Inventory & interactions
+          </TTButton>
           <TTButton
             variant={view === "roadmaps" ? "primary" : "secondary"}
             aria-pressed={view === "roadmaps"}
@@ -348,7 +394,31 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
             Tracker
           </TTButton>
         </nav>
-        {view === "tracker" ? (
+        {view === "evidence" ? (
+          <ApprovedRoadmapWorkspace
+            onCreateRoadmap={() => {
+              setStartError(null);
+              setMode("manual");
+            }}
+            onReviewImports={() => setView("tracker")}
+            {...(identity.organizationId === "ee683a64-e045-4226-a8ff-4ae6590d6789"
+              ? { publication: publicRoadmapObservation }
+              : {})}
+            key={`${identity.organizationId}:${identity.userId}`}
+            readCanonical={readCanonical}
+            readConversations={readConversations}
+            {...(conversationSummary.data && !conversationSummary.isError
+              ? { conversationSummary: conversationSummary.data }
+              : {})}
+            conversationSummaryFailed={conversationSummary.isError}
+            roadmaps={roadmaps}
+            bindings={approvedCanonicalBindings(roadmaps, identity.organizationId)}
+            organizationId={identity.organizationId}
+            loading={roadmapsQuery.isPending}
+            readError={roadmapsQuery.isError}
+            onRetry={() => void roadmapsQuery.refetch()}
+          />
+        ) : view === "tracker" ? (
           <RoadmapTracker
             key={`${identity.organizationId}:${identity.userId}`}
             roadmaps={roadmaps}

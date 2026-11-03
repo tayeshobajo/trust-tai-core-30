@@ -35,3 +35,10 @@ dist-ssr
 .visual/current/
 .env.local.bak
 .acceptance-state.json
+
+# Private, local-only reconciliation evidence
+.private/
+qa/roadmaps/proof/
+
+# Local review exports may contain private interaction screenshots.
+/deliverables/cmd-roadmaps-review/

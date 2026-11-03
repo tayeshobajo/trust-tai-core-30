@@ -8,6 +8,7 @@ export default defineConfig({
     environment: "node",
     include: [
       "src/components/tt/home/daily-home.test.tsx",
+      "src/components/tt/home/approved-home.test.tsx",
       "src/domain/cmd-tasks.test.ts",
       "src/data/supabase/cmd-tasks.test.ts",
       "src/data/supabase/weekly-goals-confirm.test.ts",
