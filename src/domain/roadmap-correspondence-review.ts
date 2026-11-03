@@ -56,3 +56,15 @@ export const reviewReceiptSchema = z
   .strict();
 export type ReviewReceipt = z.infer<typeof reviewReceiptSchema>;
 export type ReviewAction = (scope: ReviewScope, confirm?: boolean) => Promise<ReviewReceipt>;
+export const correspondenceImportReceiptSchema = z
+  .object({
+    batchId: z.string().uuid(),
+    inserted: z.number().int().min(0).max(250),
+    duplicates: z.number().int().min(0).max(250),
+  })
+  .strict()
+  .refine((receipt) => receipt.inserted + receipt.duplicates <= 250);
+export type CorrespondenceImportReceipt = z.infer<typeof correspondenceImportReceiptSchema>;
+export type CorrespondenceImportAction = (
+  scope: ReviewScope,
+) => Promise<CorrespondenceImportReceipt>;

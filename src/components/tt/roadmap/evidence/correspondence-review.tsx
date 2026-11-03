@@ -3,14 +3,18 @@ import type {
   ReviewAction,
   ReviewReceipt,
   ReviewScope,
+  CorrespondenceImportAction,
+  CorrespondenceImportReceipt,
 } from "@/domain/roadmap-correspondence-review";
 /** Local review surface. No navigation entry until the schema and publication are approved. */
 export function CorrespondenceReview({
   scope,
   action,
+  importAction,
 }: {
   scope: ReviewScope;
   action: ReviewAction;
+  importAction?: CorrespondenceImportAction;
 }) {
   const key = JSON.stringify(scope);
   const [state, setState] = useState<{
@@ -18,6 +22,8 @@ export function CorrespondenceReview({
     receipt?: ReviewReceipt;
     error?: boolean;
     busy?: boolean;
+    imported?: CorrespondenceImportReceipt;
+    importUncertain?: boolean;
   }>({ key, busy: true });
   const [acknowledged, setAcknowledged] = useState(false);
   useEffect(() => {
@@ -40,7 +46,12 @@ export function CorrespondenceReview({
   if (!receipt)
     return (
       <section aria-label="Correspondence approval">
-        {state.error ? (
+        {state.importUncertain ? (
+          <p role="alert">
+            Import outcome is not confirmed. Private text cleared. Check the saved batch receipt
+            before reopening this review or retrying.
+          </p>
+        ) : state.error ? (
           <p role="alert">
             Review unavailable. Private text cleared. Reopen the review before confirming.
           </p>
@@ -53,10 +64,24 @@ export function CorrespondenceReview({
     setState({ key, receipt, busy: true });
     try {
       const approved = await action(scope, true);
+      setAcknowledged(false);
       setState({ key, receipt: approved });
     } catch {
       setAcknowledged(false);
       setState({ key, error: true });
+    }
+  };
+  const importApproved = async () => {
+    if (!importAction || !receipt.approvedAt || !acknowledged || state.busy) return;
+    setState({ key, receipt, busy: true });
+    try {
+      const imported = await importAction(scope);
+      if (imported.inserted + imported.duplicates !== receipt.envelope.selections.length)
+        throw new Error("Import count needs verification");
+      setState({ key, receipt, imported });
+    } catch {
+      setAcknowledged(false);
+      setState({ key, importUncertain: true });
     }
   };
   return (
@@ -108,10 +133,34 @@ export function CorrespondenceReview({
         Approval fingerprint: <code>{receipt.digest}</code>
       </p>
       {receipt.approvedAt ? (
-        <p role="status">
-          Approved by {receipt.approvedBy} at {receipt.approvedAt}. Operator staging and import are
-          separate steps.
-        </p>
+        <>
+          <p role="status">
+            Approved by {receipt.approvedBy} at {receipt.approvedAt}. Operator staging and import
+            are separate steps.
+          </p>
+          {state.imported ? (
+            <p role="status">
+              Import receipt: {state.imported.inserted} added · {state.imported.duplicates} already
+              present · batch {state.imported.batchId}. No outreach sent.
+            </p>
+          ) : importAction ? (
+            <>
+              <p>Complete operator staging first. This imports approved history into CMD only.</p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={acknowledged}
+                  disabled={state.busy}
+                  onChange={(e) => setAcknowledged(e.target.checked)}
+                />
+                Import this exact approved scope for authorized Roadmaps team members.
+              </label>
+              <button disabled={!acknowledged || state.busy} onClick={() => void importApproved()}>
+                Import approved correspondence
+              </button>
+            </>
+          ) : null}
+        </>
       ) : (
         <>
           <label>

@@ -1,8 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { reviewFixture, reviewScope } from "@/domain/roadmap-correspondence-review.fixtures";
 const auth = vi.hoisted(() => ({ getSession: vi.fn() }));
-vi.mock("@/integrations/trust-tai/supabase", () => ({ supabase: { auth } }));
-import { correspondenceReviewAction } from "./roadmap-correspondence-review";
+const rpc = vi.hoisted(() => vi.fn());
+vi.mock("@/integrations/trust-tai/supabase", () => ({ supabase: { auth, rpc } }));
+import {
+  correspondenceImportAction,
+  correspondenceReviewAction,
+} from "./roadmap-correspondence-review";
 const user = reviewFixture.envelope.approverId;
 const session = (id = user, token = "synthetic-session-only") => ({
   error: null,
@@ -57,4 +61,41 @@ it("fails closed on permission errors and malformed schema", async () => {
     vi.fn().mockResolvedValue(Response.json({ ...reviewFixture, envelope: {} })),
   );
   await expect(correspondenceReviewAction(user)(reviewScope)).rejects.toThrow();
+});
+it("imports only the approved reference through the existing guarded caller RPC", async () => {
+  auth.getSession.mockResolvedValue(session());
+  const receipt = { batchId: reviewScope.reviewId, inserted: 1, duplicates: 0 };
+  rpc.mockResolvedValue({ data: receipt, error: null });
+  expect(await correspondenceImportAction(user)(reviewScope)).toEqual(receipt);
+  expect(rpc).toHaveBeenCalledExactlyOnceWith("apply_roadmap_correspondence_batch", {
+    batch: reviewScope.reviewId,
+    expected_digest: reviewScope.expectedDigest,
+  });
+});
+it("does not import with a different or missing session", async () => {
+  auth.getSession.mockResolvedValue(session(reviewScope.reviewId));
+  await expect(correspondenceImportAction(user)(reviewScope)).rejects.toThrow("Sign in again");
+  expect(rpc).not.toHaveBeenCalled();
+});
+it("does not retry or disclose database errors on failed import", async () => {
+  auth.getSession.mockResolvedValue(session());
+  rpc.mockResolvedValue({ error: { message: "PRIVATE BODY" } });
+  await expect(correspondenceImportAction(user)(reviewScope)).rejects.toThrow("saved receipt");
+  expect(rpc).toHaveBeenCalledTimes(1);
+});
+it("rejects another batch receipt, impossible counts and post-call session changes", async () => {
+  auth.getSession.mockResolvedValue(session());
+  rpc.mockResolvedValueOnce({ data: { batchId: user, inserted: 1, duplicates: 0 }, error: null });
+  await expect(correspondenceImportAction(user)(reviewScope)).rejects.toThrow("needs verification");
+  rpc.mockResolvedValueOnce({
+    data: { batchId: reviewScope.reviewId, inserted: 251, duplicates: 0 },
+    error: null,
+  });
+  await expect(correspondenceImportAction(user)(reviewScope)).rejects.toThrow("needs verification");
+  auth.getSession.mockResolvedValueOnce(session()).mockResolvedValueOnce(session(user, "changed"));
+  rpc.mockResolvedValueOnce({
+    data: { batchId: reviewScope.reviewId, inserted: 1, duplicates: 0 },
+    error: null,
+  });
+  await expect(correspondenceImportAction(user)(reviewScope)).rejects.toThrow("needs verification");
 });

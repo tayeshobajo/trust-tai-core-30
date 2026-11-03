@@ -4,7 +4,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { AppShell } from "@/components/tt/app-shell";
 import { CorrespondenceReview } from "@/components/tt/roadmap/evidence/correspondence-review";
-import { correspondenceReviewAction } from "@/data/supabase/roadmap-correspondence-review";
+import {
+  correspondenceImportAction,
+  correspondenceReviewAction,
+} from "@/data/supabase/roadmap-correspondence-review";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 const search = z.object({
   reviewId: z.string().uuid().optional(),
@@ -32,6 +35,10 @@ export const Route = createFileRoute("/modules/roadmap/review")({
 function ReviewRoom({ identity }: { identity: WorkspaceIdentity }) {
   const { reviewId, expectedDigest } = Route.useSearch();
   const action = useMemo(() => correspondenceReviewAction(identity.userId), [identity.userId]);
+  const importAction = useMemo(
+    () => correspondenceImportAction(identity.userId),
+    [identity.userId],
+  );
   return (
     <AppShell identity={identity}>
       <main className="mx-auto max-w-4xl space-y-6 p-6">
@@ -39,6 +46,7 @@ function ReviewRoom({ identity }: { identity: WorkspaceIdentity }) {
           <CorrespondenceReview
             scope={{ reviewId, expectedDigest, organizationId: identity.organizationId }}
             action={action}
+            importAction={importAction}
           />
         ) : (
           <p>
