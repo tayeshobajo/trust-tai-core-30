@@ -1,0 +1,135 @@
+DO
+CREATE SCHEMA
+CREATE SCHEMA
+CREATE SCHEMA
+CREATE FUNCTION
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE FUNCTION
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+GRANT
+GRANT
+GRANT
+BEGIN
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+CREATE POLICY
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+CREATE FUNCTION
+REVOKE
+GRANT
+ALTER TABLE
+REVOKE
+GRANT
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+DO
+ALTER TABLE
+REVOKE
+GRANT
+CREATE POLICY
+CREATE POLICY
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+DO
+INSERT 0 1
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+COMMIT
+BEGIN
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+DO
+GRANT
+COMMIT
+INSERT 0 2
+INSERT 0 3
+INSERT 0 3
+INSERT 0 2
+GRANT
+CREATE POLICY
+SET
+SET
+INSERT 0 1
+DO
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+DO
+SET
+DO
+RESET
+INSERT 0 1
+SET
+SET
+DO
+SET
+DO
+RESET
+                                                        result                                                         
+-----------------------------------------------------------------------------------------------------------------------
+ PASS: creator, same-org unshared, shared viewer, cross-org, immutable draft, duplicate, submission and identity gates
+(1 row)
+
+SET
+SET
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+DO
+INSERT 0 1
+DO
+SET
+DO
+RESET
+DELETE 1
+SET
+DO
+SET
+DO
+RESET
+SET
+DO
+RESET
+                                                                     result                                                                     
+------------------------------------------------------------------------------------------------------------------------------------------------
+ PASS: document/amendment creator, viewer, unshared, cross-org, anonymous, forged author/time, URL, immutable history, cross-opportunity checks
+(1 row)
+
+SET
+SET
+INSERT 0 1
+DO
+RESET
+                          result                           
+-----------------------------------------------------------
+ PASS: independent document and file foreign-key isolation
+(1 row)
+

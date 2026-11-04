@@ -1,0 +1,6 @@
+
+/Users/tayeshobajo/Documents/Codex/2026-11-04/task-7/rfp-docs/src/components/tt/rfps/workspace.tsx
+  26:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+✖ 1 problem (0 errors, 1 warning)
+
