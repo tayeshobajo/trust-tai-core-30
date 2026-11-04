@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["qa/rfps-staging/**/*.ts", "qa/rfps-staging/**/*.tsx", "vite.rfps-staging.config.ts"]
+}

@@ -68,7 +68,7 @@ it("reports a saved change separately from a failed refresh", async () => {
       canWork
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Add opportunity", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: /^Add opportunity$/ }));
   fireEvent.change(screen.getByLabelText("Opportunity title *"), {
     target: { value: "Synthetic capture" },
   });

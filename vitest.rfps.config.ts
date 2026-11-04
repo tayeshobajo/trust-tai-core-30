@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "jsdom",
     include: [
       "src/domain/rfps.test.ts",
+      "qa/rfps-staging/guard.test.ts",
       "src/components/tt/rfps/*.test.tsx",
       "src/domain/registry.test.ts",
       "src/domain/app-access.test.ts",

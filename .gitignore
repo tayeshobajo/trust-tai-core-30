@@ -42,3 +42,6 @@ qa/roadmaps/proof/
 
 # Local review exports may contain private interaction screenshots.
 /deliverables/cmd-roadmaps-review/
+
+# Local isolated staging output (never publish this QA artifact).
+qa/rfps-staging/dist/
