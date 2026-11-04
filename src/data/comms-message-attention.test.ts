@@ -1,8 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
 const { from, pages, calls } = vi.hoisted(() => ({
   from: vi.fn(),
-  pages: [] as any[],
-  calls: [] as any[],
+  pages: [] as unknown[],
+  calls: [] as unknown[][],
 }));
 vi.mock("@/integrations/trust-tai/supabase", () => ({ supabase: { from } }));
 import { listMessageAttention } from "./comms-message-attention";
@@ -10,13 +10,13 @@ beforeEach(() => {
   pages.length = 0;
   calls.length = 0;
   from.mockImplementation((table: string) => {
-    const q: any = {};
+    const q: Record<string, (...args: unknown[]) => unknown> = {};
     for (const name of ["select", "eq", "order"])
       q[name] = (...args: unknown[]) => {
         calls.push([table, name, ...args]);
         return q;
       };
-    q.range = (start: number, end: number) => {
+    q["range"] = (...[start, end]: unknown[]) => {
       calls.push(["range", start, end]);
       return Promise.resolve(pages.shift());
     };
@@ -42,7 +42,7 @@ it("reads scoped metadata and pages beyond the provider default", async () => {
   expect(await listMessageAttention("o")).toHaveLength(501);
   expect(calls).toContainEqual(["comms_messages", "eq", "organization_id", "o"]);
   expect(calls).toContainEqual(["range", 500, 999]);
-  expect(calls[0][2]).not.toContain("body_text");
+  expect(calls[0]?.[2]).not.toContain("body_text");
 });
 it("rejects a later-page failure instead of returning partial success", async () => {
   pages.push(

@@ -16,10 +16,10 @@ function fixture(fail = false) {
               return q;
             },
             is(key: string, value: null) {
-            expect(value).toBeNull();
-            return q.or(`${key}.is.null`);
-          },
-          or(filter: string) {
+              expect(value).toBeNull();
+              return q.or(`${key}.is.null`);
+            },
+            or(filter: string) {
               write.filter = filter;
               return Promise.resolve({ error: fail ? { message: "write failed" } : null });
             },
@@ -38,9 +38,7 @@ describe("conservative sync summaries", () => {
     expect(writes[0]!.filter).toBe(
       "last_touch_at.is.null,last_touch_at.lt.2026-11-04T00:00:00.000Z",
     );
-    expect(writes[1]!.filter).toBe(
-      "response_due_at.is.null",
-    );
+    expect(writes[1]!.filter).toBe("response_due_at.is.null");
     for (const write of writes)
       expect(write.scope).toEqual([
         ["organization_id", "o"],
