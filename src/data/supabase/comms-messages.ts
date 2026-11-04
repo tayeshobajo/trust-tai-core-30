@@ -130,17 +130,38 @@ export async function listRelationshipMessages(
   relationshipId: ID,
   limit = 200,
 ): Promise<StoredMailboxMessage[]> {
+  return readRelationshipMessages(organizationId, relationshipId, limit);
+}
+
+/** Read only the explicitly linked stored message, under the same member/RLS scope. */
+export async function getRelationshipMessage(
+  organizationId: ID,
+  relationshipId: ID,
+  messageId: ID,
+): Promise<StoredMailboxMessage | null> {
+  const rows = await readRelationshipMessages(organizationId, relationshipId, 1, messageId);
+  return rows[0] ?? null;
+}
+
+async function readRelationshipMessages(
+  organizationId: ID,
+  relationshipId: ID,
+  limit: number,
+  messageId?: ID,
+): Promise<StoredMailboxMessage[]> {
   let data: MessageRow[] | null = null;
   let index = 0;
 
   for (; index < COLUMN_VARIANTS.length; index += 1) {
-    const result = await supabase
+    let request = supabase
       .from("comms_messages")
       .select(COLUMN_VARIANTS[index]!)
       .eq("organization_id", organizationId)
       .eq("relationship_id", relationshipId)
       .order("occurred_at", { ascending: true })
       .limit(limit);
+    if (messageId) request = request.eq("id", messageId);
+    const result = await request;
 
     if (!result.error) {
       data = result.data as unknown as MessageRow[];

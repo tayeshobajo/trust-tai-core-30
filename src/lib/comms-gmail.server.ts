@@ -1647,8 +1647,13 @@ async function runSyncPass(input: {
         newInbound.push({ relationship, message });
       }
 
-      await advanceRelationshipSummary(client, organizationId, relationshipId,
-        reading.lastMessageAt, reading.responseDueAt);
+      await advanceRelationshipSummary(
+        client,
+        organizationId,
+        relationshipId,
+        reading.lastMessageAt,
+        reading.responseDueAt,
+      );
     }
   }
 

@@ -171,3 +171,42 @@ it("keeps history errors visible in Files and does not claim complete history", 
   expect(screen.getByText(/This history is incomplete/)).toBeTruthy();
   expect(screen.getByText(/Part of this history could not be read/)).toBeTruthy();
 });
+
+it("focuses a separately loaded link while history is pending, then retains it through history arrival and navigation", () => {
+  const scroll = vi.fn();
+  const original = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = scroll;
+  try {
+    const linkedDay = day("2026-09-01", 1);
+    linkedDay.events[0]!.messageId = "linked";
+    const props = {
+      relationship,
+      health,
+      onViewProfile: vi.fn(),
+      focusMessageId: "linked",
+      historyLoading: true,
+    };
+    const rendered = render(<ConversationRoom {...props} days={[]} />);
+    expect(screen.getByRole("status").textContent).toContain("Loading stored email history");
+    rendered.rerender(<ConversationRoom {...props} days={[linkedDay]} />);
+    expect(document.activeElement?.getAttribute("data-message-id")).toBe("linked");
+    rendered.rerender(
+      <ConversationRoom
+        {...props}
+        historyLoading={false}
+        days={[linkedDay, day("2026-09-02", 1), day("2026-09-03", 1), day("2026-09-04", 1)]}
+      />,
+    );
+    expect(document.activeElement?.getAttribute("data-message-id")).toBe("linked");
+    expect(screen.queryByRole("status")).toBeNull();
+    const nextDay = day("2026-09-05", 1);
+    nextDay.events[0]!.messageId = "next";
+    rendered.rerender(
+      <ConversationRoom {...props} focusMessageId="next" days={[linkedDay, nextDay]} />,
+    );
+    expect(document.activeElement?.getAttribute("data-message-id")).toBe("next");
+    expect(scroll).toHaveBeenCalled();
+  } finally {
+    HTMLElement.prototype.scrollIntoView = original;
+  }
+});

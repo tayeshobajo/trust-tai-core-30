@@ -6,14 +6,16 @@ it.each([root, dashboard, conversations])(
   "redirects legacy entries preserving exact record focus",
   (route) => {
     const search = { relationship: "person", thread: "subject", message: "email" };
-    let thrown: any;
+    let thrown: unknown;
     try {
-      (route.options.beforeLoad as any)({ search });
+      (route.options.beforeLoad as unknown as (context: { search: typeof search }) => unknown)({
+        search,
+      });
     } catch (error) {
       thrown = error;
     }
-    expect(thrown.options.to).toBe("/modules/comms/relationships");
-    expect(thrown.options.search).toEqual(search);
-    expect(thrown.options.replace).toBe(true);
+    expect(thrown).toMatchObject({
+      options: { to: "/modules/comms/relationships", search, replace: true },
+    });
   },
 );
