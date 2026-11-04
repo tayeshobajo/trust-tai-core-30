@@ -228,6 +228,7 @@ export function ConversationRoom({
   health,
   organizationId,
   focusMessageId,
+  historyLoading,
   historyGaps,
   onRetryHistory,
   onBack,
@@ -248,6 +249,7 @@ export function ConversationRoom({
   organizationId?: string;
   /** The stored message a deep link named. Opened on, never marked read. */
   focusMessageId?: string;
+  historyLoading?: boolean;
   /** Reads that failed. The thread says so rather than looking quiet. */
   historyGaps?: HistoryGap[];
   onRetryHistory?: () => void;
@@ -466,6 +468,11 @@ export function ConversationRoom({
         {/* The thread gets the room the third rail released, held to a
             readable column rather than stretched edge to edge. */}
         <div className="mx-auto w-full max-w-[880px] space-y-6">
+          {historyLoading ? (
+            <p role="status" className="text-[13px] text-muted-foreground">
+              Loading stored email history…
+            </p>
+          ) : null}
           {gaps.length ? (
             <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2.5">
               <p className="text-[13px] font-medium text-foreground">
@@ -513,7 +520,7 @@ export function ConversationRoom({
                 ? "No files in the loaded history."
                 : "No notes in the loaded history."}
             </p>
-          ) : days.length === 0 && gaps.length ? null : days.length === 0 ? (
+          ) : days.length === 0 && (gaps.length || historyLoading) ? null : days.length === 0 ? (
             <p className="py-10 text-center text-[13px] text-muted-foreground">
               Nothing is on the record yet. Add an interaction that already happened, or prepare the
               first message below.

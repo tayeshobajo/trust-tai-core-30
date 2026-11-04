@@ -48,7 +48,7 @@ import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
 import { gmailDownloadAttachment, gmailSync } from "@/data/supabase/comms-gmail";
-import { listRelationshipMessages } from "@/data/supabase/comms-messages";
+import { getRelationshipMessage, listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
 import {
@@ -344,8 +344,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   // A deep link, above all a Scout handoff, names the relationship to open
   // on. It seeds the selection once; a person's own clicks always win after.
   useEffect(() => {
-    if (deepLink.relationship) setSelectedId(deepLink.relationship);
-  }, [deepLink.relationship]);
+    if (deepLink.relationship) {
+      setSelectedId(deepLink.relationship);
+      setMobilePane("room");
+    }
+  }, [deepLink.relationship, deepLink.message]);
 
   // Relationship context is an overlay drawer at every size, the room grid
   // keeps only inbox + conversation. Escape closes it, focus returns to the
@@ -376,17 +379,32 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => commsService.listDrafts(selected!.id),
   });
 
+  // An exact link must not wait for every historical email body to transfer.
+  // Scope the extra read to the selected relationship and authenticated organization.
+  const linkedMessageId = selected?.id === deepLink.relationship ? deepLink.message : undefined;
+  const linkedMessageQuery = useQuery({
+    queryKey: ["comms", "linked-message", identity.organizationId, selected?.id, linkedMessageId],
+    enabled: Boolean(selected && linkedMessageId),
+    queryFn: () => getRelationshipMessage(identity.organizationId, selected!.id, linkedMessageId!),
+  });
+
   // Mail the sync already stored for this person. Folds into the same thread
   // as manual touches; it is never re-written as touches.
   const messagesQuery = useQuery({
-    queryKey: ["comms", "messages", selected?.id],
+    queryKey: ["comms", "messages", identity.organizationId, selected?.id],
     enabled: Boolean(selected),
     queryFn: () => listRelationshipMessages(identity.organizationId, selected!.id),
   });
 
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
-  const selectedMessages = messagesQuery.data ?? [];
+  const selectedMessages = useMemo(() => {
+    const messages = messagesQuery.data ?? [];
+    const linked = linkedMessageQuery.data;
+    return linked && !messages.some((message) => message.id === linked.id)
+      ? [...messages, linked]
+      : messages;
+  }, [messagesQuery.data, linkedMessageQuery.data]);
 
   /**
    * A read that failed is not an empty history. Each part of the thread says
@@ -404,6 +422,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     if (messagesQuery.isError) {
       gaps.push({ source: "Email", message: (messagesQuery.error as Error).message });
     }
+    if (linkedMessageId && linkedMessageQuery.isError) {
+      gaps.push({ source: "Linked message", message: (linkedMessageQuery.error as Error).message });
+    } else if (linkedMessageId && linkedMessageQuery.isSuccess && !linkedMessageQuery.data) {
+      gaps.push({
+        source: "Linked message",
+        message: "This message is unavailable in this relationship.",
+      });
+    }
     if (draftsQuery.isError) {
       gaps.push({ source: "Drafts", message: (draftsQuery.error as Error).message });
     }
@@ -415,6 +441,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     messagesQuery.error,
     draftsQuery.isError,
     draftsQuery.error,
+    linkedMessageId,
+    linkedMessageQuery.isError,
+    linkedMessageQuery.error,
+    linkedMessageQuery.isSuccess,
+    linkedMessageQuery.data,
   ]);
   const health = selected
     ? withMessageAttention(deriveConversationHealth(selected, selectedTouches), [
@@ -932,11 +963,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 days={days}
                 health={health}
                 organizationId={context.organizationId}
-                {...(deepLink.message ? { focusMessageId: deepLink.message } : {})}
+                {...(linkedMessageId ? { focusMessageId: linkedMessageId } : {})}
+                historyLoading={messagesQuery.isPending}
                 historyGaps={historyGaps}
                 onRetryHistory={() => {
                   void touchesQuery.refetch();
                   void messagesQuery.refetch();
+                  if (linkedMessageId) void linkedMessageQuery.refetch();
                   void draftsQuery.refetch();
                 }}
                 onBack={() => setMobilePane("list")}
