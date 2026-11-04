@@ -416,6 +416,7 @@ export function RfpWorkspace({
                             : e.key === "End"
                               ? tabs[2]
                               : tabs[(tabs.indexOf(t) + (e.key === "ArrowRight" ? 1 : 2)) % 3];
+                        if (next === undefined) return;
                         setTab(next);
                         document.getElementById(`tab-${next}`)?.focus();
                       }}

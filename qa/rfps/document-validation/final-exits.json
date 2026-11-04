@@ -1,0 +1,10 @@
+{
+  "typescript": 0,
+  "production_build": 0,
+  "vitest": {"exit_code": 0, "tests_passed": 54, "files_passed": 5},
+  "eslint": {"exit_code": 0, "errors": 0, "existing_warnings": 1},
+  "fresh_local_postgresql_authorization": 0,
+  "playwright": {"exit_code": 0, "viewport_state_checks": 16},
+  "live_and_remote_revision": "11a1cc041a9362bdcfaa4a6f6bf486292474ab12",
+  "production_mutations": false
+}

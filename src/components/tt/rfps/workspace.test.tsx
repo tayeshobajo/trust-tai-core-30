@@ -168,3 +168,29 @@ it("appends missing evidence without rewriting the original submission", async (
     }),
   );
 });
+
+it("moves tab selection and keyboard focus with arrows, Home and End", () => {
+  render(
+    <RfpWorkspace
+      service={service}
+      refresh={async () => {}}
+      data={{ ...emptySnapshot, opportunities: [row] }}
+    />,
+  );
+  const overview = screen.getByRole("tab", { name: "Overview" });
+  const drafts = screen.getByRole("tab", { name: "Drafts (0)" });
+  const submissions = screen.getByRole("tab", { name: "Submissions (0)" });
+  overview.focus();
+  for (const [key, target] of [
+    ["ArrowRight", drafts],
+    ["End", submissions],
+    ["ArrowRight", overview],
+    ["ArrowLeft", submissions],
+    ["Home", overview],
+  ] as const) {
+    fireEvent.keyDown(document.activeElement!, { key });
+    expect(document.activeElement).toBe(target);
+    expect(target.getAttribute("aria-selected")).toBe("true");
+    expect(target.tabIndex).toBe(0);
+  }
+});
