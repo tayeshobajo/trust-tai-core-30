@@ -54,6 +54,7 @@ import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backen
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { openSecret, sealSecret } from "@/lib/comms-crypto.server";
+import { advanceRelationshipSummary } from "@/lib/comms-sync-summary.server";
 import { readThread } from "@/data/comms-thread-state";
 import {
   attachmentMetaToJson,
@@ -1646,14 +1647,8 @@ async function runSyncPass(input: {
         newInbound.push({ relationship, message });
       }
 
-      await client
-        .from("comms_relationships")
-        .update({
-          last_touch_at: reading.lastMessageAt ?? null,
-          response_due_at: reading.responseDueAt ?? null,
-          updated_at: nowIso,
-        })
-        .eq("id", relationshipId);
+      await advanceRelationshipSummary(client, organizationId, relationshipId,
+        reading.lastMessageAt, reading.responseDueAt);
     }
   }
 

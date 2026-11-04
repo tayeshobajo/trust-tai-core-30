@@ -23,22 +23,28 @@ describe("Comms white-card visual contract", () => {
 
   it("uses the compact shared header and keeps all five destinations plus New draft", () => {
     expect(tabs).toContain("export function CommsPageHeader");
-    for (const label of ["Dashboard", "Conversations", "Drafts & Reviews", "Voice DNA", "Connections"]) {
+    for (const label of [
+      "Conversations",
+      "Drafts & Reviews",
+      "History",
+      "Voice DNA",
+      "Connections",
+    ]) {
       expect(tabs).toContain(`label: "${label}"`);
     }
     expect(tabs).toContain("New draft");
     expect(tabs).toContain("overflow-x-auto");
   });
 
-  it("keeps Dashboard cards content-sized and uses the reviewed copy", () => {
-    expect(dashboard).toContain("columns-1");
-    expect(dashboard).toContain("break-inside-avoid");
-    expect(dashboard).toContain('note="Ready for review."');
-    expect(dashboard).not.toContain("Held at the human boundary.");
+  it("redirects the former Dashboard into Conversations and removes Dashboard navigation", () => {
+    expect(dashboard).toContain('to: "/modules/comms/relationships"');
+    expect(dashboard).toContain("validateSearch: conversationSearch");
+    expect(tabs).not.toContain('label: "Dashboard"');
+    expect(tabs).not.toContain("                Dashboard");
   });
 
   it("applies the opaque primary surface to all real Comms workspaces", () => {
-    for (const source of [dashboard, conversations, drafts, voice, connections]) {
+    for (const source of [conversations, drafts, voice, connections]) {
       expect(source).toContain("comms-card");
     }
   });
