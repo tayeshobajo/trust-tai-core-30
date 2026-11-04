@@ -1,5 +1,22 @@
 import { useState, useEffect, type FormEvent, type ReactNode } from "react";
-import { FileText, Plus, Search, Trophy, ExternalLink, Clock, Layers, Radio } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  Search,
+  Trophy,
+  ExternalLink,
+  Clock,
+  Layers,
+  Radio,
+  Send,
+  CircleSlash,
+  Filter,
+  Calendar,
+  ArrowLeft,
+  Upload,
+  Pencil,
+  Link as LinkIcon,
+} from "lucide-react";
 import { TTButton } from "@/components/tt/primitives";
 import {
   Dialog,
@@ -25,6 +42,17 @@ import {
 } from "@/domain/rfps";
 import type { RfpService } from "@/data/supabase/rfps";
 import "./workspace.css";
+const workflowGroups: Record<string, readonly Stage[]> = {
+  all: stages,
+  captured: ["captured"],
+  needsReview: ["qualifying", "review"],
+  inProgress: ["preparing", "ready"],
+  submitted: ["submitted"],
+  awarded: ["awarded"],
+  closed: ["declined", "closed"],
+  decisions: ["awarded", "declined", "closed"],
+};
+const detailTabs = ["overview", "eligibility", "requirements", "submissions", "notes", "proposal"];
 export const emptySnapshot: Snapshot = {
   opportunities: [],
   versions: [],
@@ -206,7 +234,25 @@ export function RfpWorkspace({
     [message, setMessage] = useState(""),
     [actionError, setActionError] = useState("");
   const [amending, setAmending] = useState<Submission | null>(null);
-  const rows = filterOpportunities(data.opportunities, query, filter, kind);
+  const [group, setGroup] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [sort, setSort] = useState("deadline");
+  const [mobileDetail, setMobileDetail] = useState(false);
+  const scoped = filterOpportunities(data.opportunities, query, "all", kind);
+  const countGroup = (key: string) =>
+    scoped.filter((o) => workflowGroups[key]?.includes(o.stage)).length;
+  const rows = filterOpportunities(scoped, "", filter, "all")
+    .filter((o) => workflowGroups[group]?.includes(o.stage))
+    .sort((a, b) =>
+      sort === "title"
+        ? a.title.localeCompare(b.title)
+        : (a.deadline_date || "9999").localeCompare(b.deadline_date || "9999"),
+    );
+  const chooseGroup = (key: string) => {
+    setGroup(key);
+    setFilter("all");
+    setMobileDetail(false);
+  };
   const current = rows.find((o) => o.id === selected) ?? rows[0];
   const versions = data.versions.filter((v) => v.opportunity_id === current?.id);
   const submissions = data.submissions.filter((v) => v.opportunity_id === current?.id);
@@ -237,7 +283,7 @@ export function RfpWorkspace({
   }
   const available = canWork && !loading && !error && !busy && !offline;
   return (
-    <div className="rfp-workspace">
+    <div className={`rfp-workspace ${mobileDetail ? "rfp-show-detail" : ""}`}>
       {offline && (
         <p role="status" className="rfp-notice">
           You are offline. Showing the last loaded records; reconnect before saving or uploading.
@@ -245,14 +291,57 @@ export function RfpWorkspace({
       )}
       <header className="rfp-header">
         <div>
-          <p className="rfp-eyebrow">OPPORTUNITIES / PROPOSALS</p>
+          <p className="rfp-eyebrow">RFPS</p>
           <h1>RFPs &amp; Grants</h1>
-          <p>Find the right fit. Prepare a stronger proposal. Keep the evidence.</p>
+          <p>Track sourced opportunities, proposals, and decisions.</p>
         </div>
+      </header>
+      <div className="rfp-stats" aria-label="Opportunity totals for current search and type">
+        {[
+          ["captured", "New opportunities", FileText],
+          ["needsReview", "Needs review", Clock],
+          ["inProgress", "In progress", Layers],
+          ["submitted", "Submitted", Send],
+          ["awarded", "Awarded", Trophy],
+          ["closed", "Closed", CircleSlash],
+        ].map(([key, label, Icon]) => {
+          const Glyph = Icon as typeof FileText;
+          return (
+            <button
+              key={String(key)}
+              className={`rfp-metric tone-${key} ${group === key ? "active" : ""}`}
+              onClick={() => chooseGroup(String(key))}
+              aria-pressed={group === key}
+            >
+              <span className="rfp-metric-icon">
+                <Glyph size={22} />
+              </span>
+              <span>
+                {String(label)}
+                <strong>{loading || error ? "—" : countGroup(String(key))}</strong>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="rfp-workflow-bar">
+        <nav className="rfp-workflow-tabs" aria-label="Opportunity workflow filters">
+          {[
+            ["needsReview", "Needs review"],
+            ["inProgress", "In progress"],
+            ["submitted", "Submitted"],
+            ["decisions", "Decisions"],
+            ["all", "All"],
+          ].map(([key, label]) => (
+            <button key={key} aria-pressed={group === key} onClick={() => chooseGroup(key!)}>
+              {label} <span>{loading || error ? "…" : countGroup(key!)}</span>
+            </button>
+          ))}
+        </nav>
         <TTButton disabled={!available} onClick={() => open("create")}>
           <Plus size={16} /> Add opportunity
         </TTButton>
-      </header>
+      </div>
       <section className="rfp-discovery" aria-label="Discovery status">
         <Radio size={20} />
         <div>
@@ -273,64 +362,6 @@ export function RfpWorkspace({
           Log daily review
         </TTButton>
       </section>
-      <div className="rfp-stats">
-        {[
-          ["captured", "Incoming", FileText],
-          ["review", "In review", Clock],
-          ["preparing", "Preparing", Layers],
-          ["submitted", "Submitted", FileText],
-          ["awarded", "Awarded", Trophy],
-        ].map(([stage, label, Icon]) => {
-          const Glyph = Icon as typeof FileText;
-          return (
-            <button
-              key={String(stage)}
-              className={filter === stage ? "active" : ""}
-              onClick={() => setFilter(String(stage))}
-              aria-pressed={filter === stage}
-            >
-              <Glyph size={21} />
-              <span>
-                {String(label)}
-                <strong>
-                  {loading || error
-                    ? "—"
-                    : data.opportunities.filter((o) => o.stage === stage).length}
-                </strong>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="rfp-toolbar">
-        <Field label="Search opportunities">
-          <span className="rfp-search">
-            <Search size={16} />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Title, issuer, applicant, owner…"
-            />
-          </span>
-        </Field>
-        <Field label="Stage">
-          <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-            <option value="all">All stages</option>
-            {stages.map((s) => (
-              <option value={s} key={s}>
-                {stageLabel[s]}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Opportunity type">
-          <select value={kind} onChange={(e) => setKind(e.target.value)}>
-            <option value="all">RFPs & Grants</option>
-            <option value="rfp">RFPs</option>
-            <option value="grant">Grants</option>
-          </select>
-        </Field>
-      </div>
       {message && (
         <p role="status" className="rfp-notice">
           {message}
@@ -364,11 +395,61 @@ export function RfpWorkspace({
       ) : (
         <div className="rfp-columns">
           <section className="rfp-panel rfp-list" aria-label="Opportunity list">
+            <div className="rfp-toolbar">
+              <Field label="Search opportunities">
+                <span className="rfp-search">
+                  <Search size={16} />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search opportunities…"
+                  />
+                </span>
+              </Field>
+              <button
+                className="rfp-filter-button"
+                aria-expanded={showFilters}
+                aria-controls="rfp-filters"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter size={16} /> Filter
+              </button>
+            </div>
+            <div className="rfp-filter-fields" id="rfp-filters" hidden={!showFilters}>
+              <Field label="Stage">
+                <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+                  <option value="all">All stages</option>
+                  {stages.map((s) => (
+                    <option value={s} key={s}>
+                      {stageLabel[s]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Opportunity type">
+                <select value={kind} onChange={(e) => setKind(e.target.value)}>
+                  <option value="all">RFPs & Grants</option>
+                  <option value="rfp">RFPs</option>
+                  <option value="grant">Grants</option>
+                </select>
+              </Field>
+            </div>
+
             <div className="rfp-list-heading">
               <strong>
                 {rows.length} {rows.length === 1 ? "opportunity" : "opportunities"}
               </strong>
-              <span>Deadline date</span>
+              <label className="rfp-sort">
+                Sort:{" "}
+                <select
+                  aria-label="Sort opportunities"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                >
+                  <option value="deadline">Deadline earliest</option>
+                  <option value="title">Title A–Z</option>
+                </select>
+              </label>
             </div>
             {rows.length ? (
               rows.map((o) => (
@@ -378,20 +459,21 @@ export function RfpWorkspace({
                   aria-pressed={current?.id === o.id}
                   onClick={() => {
                     setSelected(o.id);
+                    setMobileDetail(true);
                     setTab("overview");
                   }}
                 >
-                  <span className="rfp-type-icon">
+                  <span className={`rfp-type-icon kind-${o.kind}`}>
                     {o.kind === "grant" ? <Trophy size={19} /> : <FileText size={19} />}
                   </span>
                   <span className="rfp-row-body">
                     <strong>{o.title}</strong>
                     <span>{o.source_name}</span>
-                    <small>
-                      {o.kind === "grant" ? "Grant" : "RFP"} ·{" "}
-                      {o.deadline_date || "Deadline unknown"}
-                    </small>
-                    <span className="rfp-pill">{stageLabel[o.stage]}</span>
+                  </span>
+                  <span className="rfp-row-meta">
+                    <span className="rfp-pill">{o.kind === "grant" ? "Grant" : "RFP"}</span>
+                    <small>{o.deadline_date || "Date unknown"}</small>
+                    <span className={`rfp-pill status-${o.stage}`}>{stageLabel[o.stage]}</span>
                   </span>
                 </button>
               ))
@@ -414,6 +496,7 @@ export function RfpWorkspace({
                       setQuery("");
                       setFilter("all");
                       setKind("all");
+                      setGroup("all");
                     }}
                   >
                     Clear filters
@@ -429,6 +512,9 @@ export function RfpWorkspace({
           {current ? (
             <>
               <section className="rfp-panel rfp-detail">
+                <button className="rfp-back" onClick={() => setMobileDetail(false)}>
+                  <ArrowLeft size={16} /> Back to opportunities
+                </button>
                 <div className="rfp-detail-head">
                   <p className="rfp-eyebrow">
                     {current.kind === "grant" ? "GRANT OPPORTUNITY" : "REQUEST FOR PROPOSALS"}
@@ -438,26 +524,37 @@ export function RfpWorkspace({
                     {current.source_name} · {current.cycle}
                   </p>
                   <div className="rfp-tags">
-                    <span className="rfp-pill">{deadlineLabel(current)}</span>
+                    <span className={`rfp-pill kind-${current.kind}`}>
+                      {current.kind === "grant" ? <Trophy size={14} /> : <FileText size={14} />}{" "}
+                      {current.kind === "grant" ? "Grant" : "RFP"}
+                    </span>
+                    <span className="rfp-pill">
+                      <Calendar size={14} />
+                      {deadlineLabel(current)}
+                    </span>
                     <span className="rfp-pill">Eligibility: {current.eligibility}</span>
                   </div>
                 </div>
                 <div className="rfp-tabs" role="tablist" aria-label="Opportunity details">
-                  {["overview", "proposal", "submissions"].map((t) => (
+                  {detailTabs.map((t) => (
                     <button
                       role="tab"
                       aria-selected={tab === t}
                       tabIndex={tab === t ? 0 : -1}
                       onKeyDown={(e) => {
-                        const tabs = ["overview", "proposal", "submissions"];
+                        const tabs = detailTabs;
                         if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
                         e.preventDefault();
                         const next =
                           e.key === "Home"
                             ? tabs[0]
                             : e.key === "End"
-                              ? tabs[2]
-                              : tabs[(tabs.indexOf(t) + (e.key === "ArrowRight" ? 1 : 2)) % 3];
+                              ? tabs[tabs.length - 1]
+                              : tabs[
+                                  (tabs.indexOf(t) +
+                                    (e.key === "ArrowRight" ? 1 : tabs.length - 1)) %
+                                    tabs.length
+                                ];
                         if (next === undefined) return;
                         setTab(next);
                         document.getElementById(`tab-${next}`)?.focus();
@@ -468,10 +565,16 @@ export function RfpWorkspace({
                       onClick={() => setTab(t)}
                     >
                       {t === "proposal"
-                        ? `Drafts (${versions.length + documents.length})`
+                        ? `Proposal (${versions.length + documents.length})`
                         : t === "submissions"
-                          ? `Submissions (${submissions.length})`
-                          : "Overview"}
+                          ? `Activity (${submissions.length})`
+                          : t === "eligibility"
+                            ? "Eligibility"
+                            : t === "requirements"
+                              ? "Required docs"
+                              : t === "notes"
+                                ? "Notes"
+                                : "Overview"}
                     </button>
                   ))}
                 </div>
@@ -483,11 +586,70 @@ export function RfpWorkspace({
                 >
                   {tab === "overview" ? (
                     <>
+                      <div className="rfp-facts">
+                        <div>
+                          <ExternalLink size={18} />
+                          <span>Source</span>
+                          <strong>{current.source_name}</strong>
+                        </div>
+                        <div>
+                          <Calendar size={18} />
+                          <span>Deadline</span>
+                          <strong>{deadlineLabel(current)}</strong>
+                        </div>
+                        <div>
+                          <FileText size={18} />
+                          <span>Applicant</span>
+                          <strong>{current.applicant || "Not recorded"}</strong>
+                        </div>
+                      </div>
+                      <div className="rfp-summary-grid">
+                        <section className="rfp-summary-card">
+                          <h3>Key details</h3>
+                          <p className="rfp-pre">
+                            {current.requirements || "Requirements have not been recorded."}
+                          </p>
+                        </section>
+                        <section className="rfp-summary-card">
+                          <h3>Next step</h3>
+                          <span className={`rfp-pill status-${current.stage}`}>
+                            {stageLabel[current.stage]}
+                          </span>
+                          <p>{current.next_action || "Decide the next step."}</p>
+                          <TTButton variant="quiet" onClick={() => setTab("proposal")}>
+                            <Layers size={16} /> View proposal
+                          </TTButton>
+                        </section>
+                      </div>
+                      <section className="rfp-summary-card rfp-glance">
+                        <h3>At a glance</h3>
+                        <dl>
+                          <div>
+                            <dt>Eligibility</dt>
+                            <dd>{current.eligibility}</dd>
+                          </div>
+                          <div>
+                            <dt>Owner</dt>
+                            <dd>{current.owner_label || "Unassigned"}</dd>
+                          </div>
+                          <div>
+                            <dt>Source availability</dt>
+                            <dd>{current.source_state}</dd>
+                          </div>
+                        </dl>
+                      </section>
+                    </>
+                  ) : tab === "eligibility" ? (
+                    <>
                       <h3>Applicant &amp; eligibility</h3>
                       <p>{current.applicant || "Applicant legal entity not recorded."}</p>
+                      <span className="rfp-pill">{current.eligibility}</span>
                       <p className="rfp-pre">
                         {current.eligibility_notes || "Eligibility has not been reviewed."}
                       </p>
+                    </>
+                  ) : tab === "requirements" ? (
+                    <>
                       <h3>
                         {current.kind === "grant"
                           ? "Grant requirements"
@@ -496,7 +658,16 @@ export function RfpWorkspace({
                       <p className="rfp-pre">
                         {current.requirements || "Requirements have not been recorded."}
                       </p>
-                      <h3>Source evidence</h3>
+                      <p className="rfp-muted">
+                        These are recorded requirements, not a verified completion checklist.
+                      </p>
+                      <TTButton variant="quiet" onClick={() => setTab("proposal")}>
+                        View drafts and working documents
+                      </TTButton>
+                    </>
+                  ) : tab === "notes" ? (
+                    <>
+                      <h3>Source evidence &amp; notes</h3>
                       <p className="rfp-pre">{current.source_evidence}</p>
                       <a href={current.source_url} target="_blank" rel="noreferrer">
                         Open official source <ExternalLink size={14} />
@@ -675,7 +846,7 @@ export function RfpWorkspace({
                 </div>
               </section>
               <aside className="rfp-panel rfp-sidebar">
-                <h3>Move this opportunity forward</h3>
+                <h3 className="rfp-sr-only">Opportunity actions</h3>
                 <Field label="Workflow stage">
                   <select
                     disabled={!available}
@@ -712,27 +883,49 @@ export function RfpWorkspace({
                   <dd>{current.owner_label || "Unassigned"}</dd>
                   <dt>Deadline</dt>
                   <dd>{deadlineLabel(current)}</dd>
-                  <dt>Next action</dt>
-                  <dd>{current.next_action || "Decide the next step."}</dd>
+                  <dt>Eligibility</dt>
+                  <dd>{current.eligibility}</dd>
+                  <dt>Source</dt>
+                  <dd>
+                    <a href={current.source_url} target="_blank" rel="noreferrer">
+                      {current.source_name}
+                      <ExternalLink size={14} />
+                    </a>
+                  </dd>
                 </dl>
+                <section className="rfp-submission-summary">
+                  <h3>
+                    <FileText size={16} /> Submission
+                  </h3>
+                  <p>
+                    {submissions.length
+                      ? `${submissions.length} external submission record${submissions.length === 1 ? "" : "s"}`
+                      : "No submission recorded in CMD."}
+                  </p>
+                  <p>
+                    {versions.length
+                      ? `${versions.length} private file version(s)`
+                      : "No preserved draft file."}
+                  </p>
+                  <button onClick={() => setTab("submissions")}>View recorded evidence</button>
+                </section>
+                <h3>Quick actions</h3>
                 <TTButton variant="quiet" disabled={!available} onClick={() => open("edit")}>
-                  Edit opportunity
+                  <Pencil size={16} /> Edit opportunity
                 </TTButton>
-                <hr />
-                <h3>Proposal</h3>
                 <p>
                   {versions.length
                     ? `${versions.length} saved draft version${versions.length === 1 ? "" : "s"}`
                     : "No draft uploaded yet."}
                 </p>
                 <TTButton disabled={!available} onClick={() => open("document")}>
-                  Link Google Doc
+                  <LinkIcon size={16} /> Link Google Doc
                 </TTButton>
                 <TTButton disabled={!available} onClick={() => open("upload")}>
-                  Upload draft
+                  <Upload size={16} /> Upload draft
                 </TTButton>
                 <TTButton variant="quiet" disabled={!available} onClick={() => open("submission")}>
-                  Record external submission
+                  <Send size={16} /> Record external submission
                 </TTButton>
                 <p className="rfp-muted">
                   Record a submission only after it happened. This does not send an application.

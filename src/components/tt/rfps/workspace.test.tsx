@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import { RfpWorkspace, emptySnapshot } from "./workspace";
 import { blankOpportunity, type Opportunity } from "@/domain/rfps";
 import type { RfpService } from "@/data/supabase/rfps";
@@ -25,7 +25,7 @@ it("does not show zero counts when database unavailable", () => {
     <RfpWorkspace service={service} refresh={async () => {}} error="Database not installed" />,
   );
   expect(screen.getByText("Opportunities are unavailable")).toBeTruthy();
-  expect(screen.getAllByText("—")).toHaveLength(5);
+  expect(screen.getAllByText("—")).toHaveLength(6);
 });
 it("blocks submitted stage without evidence record and disables read-only writes", () => {
   render(
@@ -145,7 +145,7 @@ it("appends missing evidence without rewriting the original submission", async (
       }}
     />,
   );
-  fireEvent.click(screen.getByRole("tab", { name: "Submissions (1)" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Activity (1)" }));
   fireEvent.click(screen.getByRole("button", { name: "Add / correct evidence" }));
   fireEvent.change(screen.getByLabelText("Reason for amendment"), {
     target: { value: "Found receipt" },
@@ -178,8 +178,8 @@ it("moves tab selection and keyboard focus with arrows, Home and End", () => {
     />,
   );
   const overview = screen.getByRole("tab", { name: "Overview" });
-  const drafts = screen.getByRole("tab", { name: "Drafts (0)" });
-  const submissions = screen.getByRole("tab", { name: "Submissions (0)" });
+  const drafts = screen.getByRole("tab", { name: "Eligibility" });
+  const submissions = screen.getByRole("tab", { name: "Proposal (0)" });
   overview.focus();
   for (const [key, target] of [
     ["ArrowRight", drafts],
@@ -230,4 +230,70 @@ it("records minute-level evidence with explicit precision", async () => {
       submitted_at: new Date("2026-01-05T12:34").toISOString(),
     }),
   );
+});
+
+it("accounts for every stage and keeps workflow counts aligned with search", () => {
+  const stages = [
+    "captured",
+    "qualifying",
+    "review",
+    "preparing",
+    "ready",
+    "submitted",
+    "awarded",
+    "declined",
+    "closed",
+  ] as const;
+  render(
+    <RfpWorkspace
+      service={service}
+      refresh={async () => {}}
+      data={{
+        ...emptySnapshot,
+        opportunities: stages.map((stage, i) => ({
+          ...row,
+          id: String(i),
+          title: `Item ${stage}`,
+          stage,
+        })),
+      }}
+    />,
+  );
+  const filters = within(screen.getByRole("navigation", { name: "Opportunity workflow filters" }));
+  expect(filters.getByRole("button", { name: "All 9" })).toBeTruthy();
+  fireEvent.click(filters.getByRole("button", { name: "Needs review 2" }));
+  expect(screen.getByText("2 opportunities")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Item qualifying" })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Search opportunities"), {
+    target: { value: "Item review" },
+  });
+  expect(filters.getByRole("button", { name: "Needs review 1" })).toBeTruthy();
+  expect(screen.getByText("1 opportunity")).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Item qualifying" })).toBeNull();
+});
+
+it("preserves source evidence and requirements in separate detail sections", () => {
+  render(
+    <RfpWorkspace
+      service={service}
+      refresh={async () => {}}
+      data={{
+        ...emptySnapshot,
+        opportunities: [
+          {
+            ...row,
+            source_evidence: "Source uncertainty retained",
+            requirements: "Original requirements retained",
+          },
+        ],
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+  expect(screen.getByText("Source uncertainty retained")).toBeTruthy();
+  fireEvent.click(screen.getByRole("tab", { name: "Required docs" }));
+  expect(screen.getByText("Original requirements retained")).toBeTruthy();
+  expect(
+    screen.getByText("These are recorded requirements, not a verified completion checklist."),
+  ).toBeTruthy();
 });

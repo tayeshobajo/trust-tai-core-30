@@ -1,9 +1,32 @@
-import React from "react";
+import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RfpWorkspace, emptySnapshot } from "@/components/tt/rfps/workspace";
 import { blankOpportunity, type Opportunity } from "@/domain/rfps";
 import type { RfpService } from "@/data/supabase/rfps";
 import "@/styles.css";
+function AuditButton() {
+  const [result, setResult] = useState("");
+  return (
+    <>
+      <button
+        onClick={async () => {
+          const axe = (await import("axe-core")).default;
+          const report = await axe.run(document, {
+            runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] },
+          });
+          setResult(
+            JSON.stringify(
+              report.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })),
+            ),
+          );
+        }}
+      >
+        Run accessibility audit
+      </button>
+      <output aria-label="Accessibility result">{result}</output>
+    </>
+  );
+}
 const mode = new URLSearchParams(location.search).get("mode");
 const row = {
   ...blankOpportunity,
@@ -32,7 +55,7 @@ const service = new Proxy(
 createRoot(document.getElementById("root")!).render(
   <main>
     <div style={{ padding: "10px 28px", borderBottom: "1px solid var(--border)" }}>
-      Trust Tai / CMD · isolated component QA · no live data
+      Trust Tai / CMD · isolated component QA · no live data <AuditButton />
     </div>
     <RfpWorkspace
       service={service}
@@ -44,7 +67,21 @@ createRoot(document.getElementById("root")!).render(
         mode === "detail" || mode === "readonly"
           ? {
               ...emptySnapshot,
-              opportunities: [row],
+              opportunities: Array.from({ length: 8 }, (_, i) => ({
+                ...row,
+                id: i === 0 ? row.id : `synthetic-${i}`,
+                title:
+                  i === 0
+                    ? row.title
+                    : `Synthetic ${i % 2 ? "website services RFP" : "community grant"} · QA ${i}`,
+                kind: i % 2 ? ("rfp" as const) : ("grant" as const),
+                stage:
+                  i % 3 === 0
+                    ? ("qualifying" as const)
+                    : i % 3 === 1
+                      ? ("captured" as const)
+                      : ("preparing" as const),
+              })),
               documents: [
                 {
                   id: "doc",

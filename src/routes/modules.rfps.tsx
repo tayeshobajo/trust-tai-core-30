@@ -16,7 +16,7 @@ function RfpRoute() {
   return (
     <WorkspaceGate appId="rfps">
       {(identity) => (
-        <AppShell identity={identity}>
+        <AppShell identity={identity} canvas="workroom">
           <Room key={identity.organizationId + identity.userId} identity={identity} />
         </AppShell>
       )}
