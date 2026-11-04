@@ -194,3 +194,40 @@ it("moves tab selection and keyboard focus with arrows, Home and End", () => {
     expect(target.tabIndex).toBe(0);
   }
 });
+
+it("records minute-level evidence with explicit precision", async () => {
+  const recordSubmission = vi.fn().mockResolvedValue({ id: "submission" });
+  render(
+    <RfpWorkspace
+      service={{ ...service, recordSubmission }}
+      refresh={async () => {}}
+      canWork
+      data={{ ...emptySnapshot, opportunities: [row] }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Record external submission" }));
+  fireEvent.change(screen.getByLabelText("Submission time precision"), {
+    target: { value: "minute" },
+  });
+  fireEvent.change(screen.getByLabelText("Submitted at (your browser timezone)"), {
+    target: { value: "2026-01-05T12:34" },
+  });
+  fireEvent.change(screen.getByLabelText("Submission channel / recipient"), {
+    target: { value: "Email" },
+  });
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "Record submission" }));
+  expect(
+    await screen.findByText(
+      "External submission recorded. Review its evidence, then update the workflow stage.",
+    ),
+  ).toBeTruthy();
+  expect(recordSubmission).toHaveBeenCalledWith(
+    row,
+    expect.objectContaining({
+      time_precision: "minute",
+      submitted_date: null,
+      submitted_at: new Date("2026-01-05T12:34").toISOString(),
+    }),
+  );
+});

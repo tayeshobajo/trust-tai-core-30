@@ -25,6 +25,24 @@
       "violations": []
     },
     {
+      "width": 1440,
+      "state": "submission-minute",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "state": "submission-date",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "state": "submission-unknown",
+      "overflow": false,
+      "violations": []
+    },
+    {
       "width": 768,
       "state": "drafts",
       "overflow": false,
@@ -49,6 +67,24 @@
       "violations": []
     },
     {
+      "width": 768,
+      "state": "submission-minute",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 768,
+      "state": "submission-date",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 768,
+      "state": "submission-unknown",
+      "overflow": false,
+      "violations": []
+    },
+    {
       "width": 430,
       "state": "drafts",
       "overflow": false,
@@ -73,6 +109,24 @@
       "violations": []
     },
     {
+      "width": 430,
+      "state": "submission-minute",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 430,
+      "state": "submission-date",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 430,
+      "state": "submission-unknown",
+      "overflow": false,
+      "violations": []
+    },
+    {
       "width": 390,
       "state": "drafts",
       "overflow": false,
@@ -93,6 +147,24 @@
     {
       "width": 390,
       "state": "amend",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "submission-minute",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "submission-date",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "submission-unknown",
       "overflow": false,
       "violations": []
     }

@@ -36,6 +36,34 @@ for (const width of [1440, 768, 430, 390]) {
       await page.getByRole("dialog").waitFor({ state: "detached" });
     }
   }
+  for (const precision of ["minute", "date", "unknown"]) {
+    await page.getByRole("button", { name: "Record external submission" }).click();
+    await page.getByLabel("Submission time precision").selectOption(precision);
+    await page.evaluate(() => document.getAnimations().forEach((animation) => animation.finish()));
+    if (
+      precision === "minute" &&
+      (await page.getByLabel("Submitted at (your browser timezone)").getAttribute("step")) !== "60"
+    )
+      throw Error("Minute precision step lost");
+    if (
+      precision === "date" &&
+      (await page
+        .getByLabel("Submission date (as recorded in the evidence)")
+        .getAttribute("type")) !== "date"
+    )
+      throw Error("Date input missing");
+    const result = await page.evaluate(async () => ({
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      violations: (
+        await axe.run(document, {
+          runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] },
+        })
+      ).violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })),
+    }));
+    results.push({ width, state: `submission-${precision}`, ...result });
+    await page.keyboard.press("Escape");
+    await page.getByRole("dialog").waitFor({ state: "detached" });
+  }
 }
 await browser.close();
 fs.writeFileSync(
@@ -45,5 +73,5 @@ fs.writeFileSync(
 if (errors.length || results.some((r) => r.overflow || r.violations.length))
   throw Error("Browser checks failed");
 console.log(
-  "PASS: 16 document/submission viewport checks, axe WCAG A/AA, Escape and no overflow/errors",
+  "PASS: 28 document/submission/precision viewport checks, axe WCAG A/AA, Escape and no overflow/errors",
 );

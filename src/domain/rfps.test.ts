@@ -104,3 +104,59 @@ it("allows honest evidence gaps but requires a reason for an amendment", () => {
   expect(evidenceInput.safeParse(value).success).toBe(true);
   expect(evidenceInput.safeParse({ ...value, reason: "" }).success).toBe(false);
 });
+
+import { submissionTimeLabel, submissionTimeFromForm } from "./rfps";
+it("preserves minute precision without displaying invented seconds", () => {
+  const value = { submitted_at: "2026-01-05T12:34:00Z", time_precision: "minute" as const };
+  expect(submissionTimeLabel(value)).toContain("seconds unknown");
+  expect(submissionTimeLabel(value)).not.toContain(":00");
+  const input = { ...value, channel: "Email", reference: "", evidence_url: "", draft_id: null };
+  expect(submissionInput.safeParse(input).success).toBe(true);
+  expect(
+    submissionInput.safeParse({ ...input, submitted_at: "2026-01-05T12:34:12Z" }).success,
+  ).toBe(false);
+});
+it("represents date-only and unknown evidence without a fabricated instant", () => {
+  const base = { channel: "Portal", reference: "", evidence_url: "", draft_id: null };
+  expect(
+    submissionInput.safeParse({
+      ...base,
+      submitted_at: null,
+      submitted_date: "2026-01-05",
+      time_precision: "date",
+    }).success,
+  ).toBe(true);
+  expect(
+    submissionInput.safeParse({
+      ...base,
+      submitted_at: null,
+      submitted_date: "2026-02-30",
+      time_precision: "date",
+    }).success,
+  ).toBe(false);
+  expect(
+    submissionInput.safeParse({ ...base, submitted_at: null, time_precision: "unknown" }).success,
+  ).toBe(true);
+  expect(
+    submissionTimeLabel({
+      submitted_at: null,
+      submitted_date: "2026-01-05",
+      time_precision: "date",
+    }),
+  ).toBe("2026-01-05 · date only; time unknown");
+  expect(submissionTimeLabel({ submitted_at: "2026-01-05T12:34:56Z" })).toBe(
+    "Submission time precision not recorded (legacy)",
+  );
+});
+it("leaves timing untouched for an evidence-only amendment and clears unknown times", () => {
+  const f = new FormData();
+  f.set("time_precision", "unchanged");
+  f.set("time", "2026-01-05T12:34");
+  expect(submissionTimeFromForm(f)).toEqual({
+    time_precision: null,
+    submitted_at: null,
+    submitted_date: null,
+  });
+  f.set("time_precision", "unknown");
+  expect(submissionTimeFromForm(f).submitted_at).toBeNull();
+});

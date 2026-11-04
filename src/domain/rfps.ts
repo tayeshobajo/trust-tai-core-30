@@ -122,7 +122,9 @@ export interface DraftVersion {
 export interface Submission {
   id: string;
   opportunity_id: string;
-  submitted_at: string;
+  submitted_at: string | null;
+  submitted_date?: string | null;
+  time_precision?: TimePrecision;
   channel: string;
   reference: string;
   evidence_url: string;
@@ -189,17 +191,80 @@ export function validateUpload(file: Pick<File, "size" | "name" | "type">) {
     throw new Error("Choose a non-empty file up to 20 MB.");
   if (!/\.(pdf|docx|txt)$/i.test(file.name)) throw new Error("Choose a PDF, DOCX, or TXT draft.");
 }
+export type TimePrecision = "second" | "minute" | "date" | "unknown" | "legacy";
+export interface SubmissionTime {
+  submitted_at?: string | null;
+  submitted_date?: string | null;
+  time_precision?: TimePrecision | null;
+}
+const timeFields = {
+  submitted_at: z.string().datetime({ offset: true }).nullable(),
+  submitted_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .default(null),
+  time_precision: z.enum(["second", "minute", "date", "unknown", "legacy"]),
+};
+function validSubmissionTime(v: SubmissionTime): boolean {
+  const p = v.time_precision;
+  if (p == null) return v.submitted_at == null && v.submitted_date == null;
+  if (p === "unknown") return v.submitted_at == null && v.submitted_date == null;
+  if (p === "date")
+    return (
+      v.submitted_at == null &&
+      !!v.submitted_date &&
+      !Number.isNaN(Date.parse(v.submitted_date)) &&
+      new Date(v.submitted_date).toISOString().slice(0, 10) === v.submitted_date &&
+      v.submitted_date <= new Date().toISOString().slice(0, 10)
+    );
+  if (!v.submitted_at || v.submitted_date != null) return false;
+  const ms = Date.parse(v.submitted_at);
+  return (
+    Number.isFinite(ms) &&
+    ms <= Date.now() &&
+    (p !== "minute" || ms % 60000 === 0) &&
+    (p !== "second" || ms % 1000 === 0)
+  );
+}
+export function submissionTimeLabel(v: SubmissionTime): string {
+  if (v.time_precision === "unknown") return "Submission time unknown";
+  if (v.time_precision === "date") return `${v.submitted_date} · date only; time unknown`;
+  if (v.time_precision == null || v.time_precision === "legacy")
+    return "Submission time precision not recorded (legacy)";
+  if (!v.submitted_at) return "Submission time unknown";
+  return `${new Date(v.submitted_at).toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(v.time_precision === "second" ? { second: "2-digit" as const } : {}),
+    timeZoneName: "short",
+  })} · ${v.time_precision === "minute" ? "minute precision; seconds unknown" : "second precision"}`;
+}
+export function submissionTimeFromForm(f: FormData): SubmissionTime {
+  const precision = String(f.get("time_precision"));
+  return {
+    time_precision: precision === "unchanged" ? null : (precision as TimePrecision),
+    submitted_at: ["minute", "second"].includes(precision)
+      ? new Date(String(f.get("time"))).toISOString()
+      : null,
+    submitted_date: precision === "date" ? String(f.get("submission_date")) : null,
+  };
+}
 export const submissionInput = z
   .object({
-    submitted_at: z.string().datetime({ offset: true }),
+    ...timeFields,
+    time_precision: timeFields.time_precision.default("legacy"),
     channel: z.string().trim().min(1).max(240),
     reference: z.string().trim().max(2000),
     evidence_url: z.union([source, z.literal("")]),
     draft_id: z.string().uuid().nullable(),
   })
   .refine(
-    (v) => new Date(v.submitted_at).getTime() <= Date.now(),
-    "Submission time cannot be in the future.",
+    validSubmissionTime,
+    "Provide a valid past submission date/time matching its precision; unknown times must be empty.",
   );
 
 export function googleDocUrl(value: string): string {
@@ -240,14 +305,22 @@ export interface DocumentReference {
   note: string;
   created_at: string;
 }
-export const evidenceInput = z.object({
-  draft_id: z.string().uuid().nullable(),
-  document_id: z.string().uuid().nullable(),
-  submitted_version: z.string().trim().max(2000),
-  reference: z.string().trim().max(2000),
-  evidence_url: z.union([source, z.literal("")]),
-  reason: z.string().trim().min(1).max(2000),
-});
+export const evidenceInput = z
+  .object({
+    ...timeFields,
+    submitted_at: timeFields.submitted_at.default(null),
+    time_precision: z.enum(["second", "minute", "date", "unknown"]).nullable().default(null),
+    draft_id: z.string().uuid().nullable(),
+    document_id: z.string().uuid().nullable(),
+    submitted_version: z.string().trim().max(2000),
+    reference: z.string().trim().max(2000),
+    evidence_url: z.union([source, z.literal("")]),
+    reason: z.string().trim().min(1).max(2000),
+  })
+  .refine(
+    validSubmissionTime,
+    "Submission timing must match its precision and cannot be in the future.",
+  );
 export interface EvidenceAmendment extends z.infer<typeof evidenceInput> {
   id: string;
   submission_id: string;

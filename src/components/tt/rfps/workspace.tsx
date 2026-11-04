@@ -9,6 +9,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  submissionTimeLabel,
+  submissionTimeFromForm,
   blankOpportunity,
   deadlineLabel,
   filterOpportunities,
@@ -36,6 +38,46 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+function SubmissionTimeFields({ amendment = false }: { amendment?: boolean }) {
+  const [precision, setPrecision] = useState(amendment ? "unchanged" : "unknown");
+  return (
+    <>
+      <Field label="Submission time precision">
+        <select
+          name="time_precision"
+          value={precision}
+          onChange={(e) => setPrecision(e.target.value)}
+        >
+          {amendment && <option value="unchanged">Leave timing unchanged</option>}
+          <option value="unknown">Unknown</option>
+          <option value="date">Date only</option>
+          <option value="minute">Known to the minute</option>
+          <option value="second">Known to the second</option>
+        </select>
+      </Field>
+      {precision === "date" && (
+        <Field label="Submission date (as recorded in the evidence)">
+          <input name="submission_date" required type="date" />
+        </Field>
+      )}
+      {["minute", "second"].includes(precision) && (
+        <Field label="Submitted at (your browser timezone)">
+          <input
+            key={precision}
+            name="time"
+            required
+            type="datetime-local"
+            step={precision === "minute" ? 60 : 1}
+          />
+        </Field>
+      )}
+      <p className="rfp-muted">
+        Choose only the precision the evidence supports. Minute-level times do not establish
+        seconds. Date-only evidence has no implied time or timezone.
+      </p>
+    </>
   );
 }
 function OpportunityForm({
@@ -552,7 +594,7 @@ export function RfpWorkspace({
                       {submissions.map((s) => (
                         <article className="rfp-version" key={s.id}>
                           <strong>
-                            {new Date(s.submitted_at).toLocaleString()} · {s.channel}
+                            {submissionTimeLabel(s)} · {s.channel}
                           </strong>
                           <p>{s.reference || "Reference not recorded"}</p>
                           <p>
@@ -562,6 +604,14 @@ export function RfpWorkspace({
                               : "Historical submission · draft unavailable"}
                           </p>
                           <p>Original submission record · preserved</p>
+                          {(() => {
+                            const timing = (data.amendments ?? []).find(
+                              (a) => a.submission_id === s.id && a.time_precision != null,
+                            );
+                            return timing ? (
+                              <p>Latest timing correction: {submissionTimeLabel(timing)}</p>
+                            ) : null;
+                          })()}
                           {(data.amendments ?? [])
                             .filter((a) => a.submission_id === s.id)
                             .map((a, i) => (
@@ -574,6 +624,9 @@ export function RfpWorkspace({
                                 <p>
                                   {new Date(a.created_at).toLocaleString()} · {a.reason}
                                 </p>
+                                {a.time_precision != null && (
+                                  <p>Timing correction: {submissionTimeLabel(a)}</p>
+                                )}
                                 <p>
                                   Submitted file:{" "}
                                   {versions.find((v) => v.id === a.draft_id)?.file_name ||
@@ -799,6 +852,7 @@ export function RfpWorkspace({
                       () =>
                         service.amendEvidence(current, amending.id, {
                           ...Object.fromEntries(f),
+                          ...submissionTimeFromForm(f),
                           draft_id: f.get("draft_id") || null,
                           document_id: f.get("document_id") || null,
                         }),
@@ -811,6 +865,7 @@ export function RfpWorkspace({
                     can stay unknown. Every amendment preserves earlier records; a Google Doc alone
                     is not an immutable submitted version.
                   </p>
+                  <SubmissionTimeFields amendment />
                   <Field label="Actual submitted file (preserved upload)">
                     <select
                       name="draft_id"
@@ -896,7 +951,7 @@ export function RfpWorkspace({
                 const f = new FormData(e.currentTarget);
                 void run(async () => {
                   await service.recordSubmission(current, {
-                    submitted_at: new Date(String(f.get("time"))).toISOString(),
+                    ...submissionTimeFromForm(f),
                     channel: f.get("channel"),
                     reference: f.get("reference"),
                     evidence_url: f.get("evidence"),
@@ -905,9 +960,7 @@ export function RfpWorkspace({
                 }, "External submission recorded. Review its evidence, then update the workflow stage.");
               }}
             >
-              <Field label="Submitted at (your browser timezone)">
-                <input name="time" required type="datetime-local" />
-              </Field>
+              <SubmissionTimeFields />
               <Field label="Submission channel / recipient">
                 <input name="channel" required maxLength={240} />
               </Field>

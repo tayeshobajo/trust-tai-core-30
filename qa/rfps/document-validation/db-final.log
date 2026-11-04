@@ -93,7 +93,7 @@ DO
 SET
 DO
 RESET
-                                                        result                                                         
+                                                        result
 -----------------------------------------------------------------------------------------------------------------------
  PASS: creator, same-org unshared, shared viewer, cross-org, immutable draft, duplicate, submission and identity gates
 (1 row)
@@ -118,7 +118,7 @@ RESET
 SET
 DO
 RESET
-                                                                     result                                                                     
+                                                                     result
 ------------------------------------------------------------------------------------------------------------------------------------------------
  PASS: document/amendment creator, viewer, unshared, cross-org, anonymous, forged author/time, URL, immutable history, cross-opportunity checks
 (1 row)
@@ -128,8 +128,28 @@ SET
 INSERT 0 1
 DO
 RESET
-                          result                           
+                          result
 -----------------------------------------------------------
  PASS: independent document and file foreign-key isolation
+(1 row)
+
+BEGIN
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+COMMIT
+SET
+SET
+INSERT 0 1
+INSERT 0 2
+INSERT 0 1
+DO
+SET
+DO
+RESET
+                                                       result
+---------------------------------------------------------------------------------------------------------------------
+ PASS: minute/date/unknown, legacy preservation, append-only timing corrections, invalid precision and authorization
 (1 row)
 

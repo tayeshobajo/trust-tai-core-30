@@ -3,7 +3,7 @@
 
 
  Test Files  5 passed (5)
-      Tests  54 passed (54)
-   Start at  15:23:51
-   Duration  2.68s (transform 388ms, setup 0ms, import 883ms, tests 831ms, environment 5.63s)
+      Tests  58 passed (58)
+   Start at  15:45:15
+   Duration  1.71s (transform 318ms, setup 0ms, import 665ms, tests 512ms, environment 3.80s)
 

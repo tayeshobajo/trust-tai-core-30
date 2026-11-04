@@ -1,3 +1,5 @@
+> Subsequent precision addition: see [TIMESTAMP-PRECISION-APPROVAL.md](TIMESTAMP-PRECISION-APPROVAL.md). Its expanded migration scope and rollback requirements supersede the original scope below. Final combined validation is 58 tests and 28 browser checks.
+
 # Google Doc references and submission evidence — review candidate
 
 ## Behavior
