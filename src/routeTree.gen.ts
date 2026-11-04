@@ -32,6 +32,7 @@ import { Route as ModulesConductorRouteImport } from './routes/modules.conductor
 import { Route as ModulesOpsRouteImport } from './routes/modules.ops'
 import { Route as ModulesProjectsRouteImport } from './routes/modules.projects'
 import { Route as ModulesPulseRouteImport } from './routes/modules.pulse'
+import { Route as ModulesRfpsRouteImport } from './routes/modules.rfps'
 import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesStewardRouteImport } from './routes/modules.steward'
@@ -262,6 +263,11 @@ const ModulesProjectsRoute = ModulesProjectsRouteImport.update({
 const ModulesPulseRoute = ModulesPulseRouteImport.update({
   id: '/modules/pulse',
   path: '/modules/pulse',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesRfpsRoute = ModulesRfpsRouteImport.update({
+  id: '/modules/rfps',
+  path: '/modules/rfps',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesRoadmapRoute = ModulesRoadmapRouteImport.update({
@@ -906,6 +912,7 @@ export interface FileRoutesByFullPath {
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/projects': typeof ModulesProjectsRouteWithChildren
   '/modules/pulse': typeof ModulesPulseRoute
+  '/modules/rfps': typeof ModulesRfpsRoute
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
@@ -1043,6 +1050,7 @@ export interface FileRoutesByTo {
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
+  '/modules/rfps': typeof ModulesRfpsRoute
   '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
@@ -1180,6 +1188,7 @@ export interface FileRoutesById {
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/projects': typeof ModulesProjectsRouteWithChildren
   '/modules/pulse': typeof ModulesPulseRoute
+  '/modules/rfps': typeof ModulesRfpsRoute
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
@@ -1323,6 +1332,7 @@ export interface FileRouteTypes {
     | '/modules/ops'
     | '/modules/projects'
     | '/modules/pulse'
+    | '/modules/rfps'
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
@@ -1460,6 +1470,7 @@ export interface FileRouteTypes {
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
+    | '/modules/rfps'
     | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
@@ -1596,6 +1607,7 @@ export interface FileRouteTypes {
     | '/modules/ops'
     | '/modules/projects'
     | '/modules/pulse'
+    | '/modules/rfps'
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
@@ -1737,6 +1749,7 @@ export interface RootRouteChildren {
   ModulesOpsRoute: typeof ModulesOpsRoute
   ModulesProjectsRoute: typeof ModulesProjectsRouteWithChildren
   ModulesPulseRoute: typeof ModulesPulseRoute
+  ModulesRfpsRoute: typeof ModulesRfpsRoute
   ModulesRoadmapRoute: typeof ModulesRoadmapRouteWithChildren
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ModulesStewardRoute: typeof ModulesStewardRouteWithChildren
@@ -1961,6 +1974,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/pulse'
       fullPath: '/modules/pulse'
       preLoaderRoute: typeof ModulesPulseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/rfps': {
+      id: '/modules/rfps'
+      path: '/modules/rfps'
+      fullPath: '/modules/rfps'
+      preLoaderRoute: typeof ModulesRfpsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/roadmap': {
@@ -3014,6 +3034,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesOpsRoute: ModulesOpsRoute,
   ModulesProjectsRoute: ModulesProjectsRouteWithChildren,
   ModulesPulseRoute: ModulesPulseRoute,
+  ModulesRfpsRoute: ModulesRfpsRoute,
   ModulesRoadmapRoute: ModulesRoadmapRouteWithChildren,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ModulesStewardRoute: ModulesStewardRouteWithChildren,

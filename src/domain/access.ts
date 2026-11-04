@@ -58,6 +58,8 @@ export type Permission =
   | "workspace.read"
   | "org.manage"
   | "intelligence.read"
+  | "rfps.read"
+  | "rfps.write"
   | "scout.read"
   | "scout.write"
   | "comms.read"
@@ -98,6 +100,7 @@ export type Permission =
 const READ_ONLY: Permission[] = [
   "workspace.read",
   "intelligence.read",
+  "rfps.read",
   "scout.read",
   "comms.read",
   "roadmap.read",
@@ -108,6 +111,7 @@ const READ_ONLY: Permission[] = [
 
 const OPERATOR: Permission[] = [
   ...READ_ONLY,
+  "rfps.write",
   "scout.write",
   "comms.write",
   "roadmap.write",
@@ -208,6 +212,7 @@ export interface AppEntitlement {
 }
 
 const APP_READ_PERMISSION: Record<string, Permission> = {
+  rfps: "rfps.read",
   scout: "scout.read",
   comms: "comms.read",
   roadmap: "roadmap.read",

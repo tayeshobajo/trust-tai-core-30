@@ -20,6 +20,7 @@ describe("the ordinary navigation is the charter's, in the charter's order", () 
       "Clients",
       "Scout",
       "Comms",
+      "RFPs & Grants",
       "Roadmaps",
       "Website",
       "Ops",

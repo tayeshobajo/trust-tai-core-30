@@ -1,0 +1,13 @@
+do $$begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon;end if;if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated;end if;end $$;
+create schema auth; create schema private; create schema storage;
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+create table auth.users(id uuid primary key);
+create table public.organizations(id uuid primary key);
+create table public.organization_memberships(organization_id uuid,user_id uuid);
+create function private.is_org_member(org uuid) returns boolean language sql stable as $$select exists(select 1 from public.organization_memberships where organization_id=org and user_id=auth.uid())$$;
+create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);
+alter table storage.objects enable row level security;
+grant usage on schema auth,private,storage to authenticated;
+grant select on public.organization_memberships to authenticated;
+grant select,insert on storage.objects to authenticated;

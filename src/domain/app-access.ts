@@ -74,6 +74,7 @@ const APP_PERMISSIONS: Record<string, AppPermissions> = {
    * Row-level security on `clients` governs the actual write either way.
    */
   clients: { read: "workspace.read", write: "roadmap.write" },
+  rfps: { read: "rfps.read", write: "rfps.write" },
   scout: { read: "scout.read", write: "scout.write" },
   comms: { read: "comms.read", write: "comms.write" },
   roadmap: { read: "roadmap.read", write: "roadmap.write" },
