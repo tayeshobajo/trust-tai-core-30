@@ -11,10 +11,13 @@
  * caller's own access. Nothing is sent from here; a person always sends.
  */
 
+import { listMessageAttention } from "@/data/comms-message-attention";
+import { withMessageAttention } from "@/domain/comms-message-attention";
 import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { RecentEmail } from "@/components/tt/comms/recent-email";
 import { RelationshipSummary } from "@/components/tt/comms/relationship-summary";
 import "@/components/tt/comms/comms-workspace.css";
 import { toast } from "sonner";
@@ -254,6 +257,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => commsService.listRecentTouches(identity.organizationId),
   });
 
+  const attentionMessages = useQuery({
+    queryKey: ["comms", "message-attention", identity.organizationId],
+    queryFn: () => listMessageAttention(identity.organizationId),
+    refetchOnWindowFocus: true,
+  });
+
   const relationships = useMemo(() => relationshipsQuery.data ?? [], [relationshipsQuery.data]);
 
   const touchesByRelationship = useMemo(() => {
@@ -267,8 +276,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }, [orgTouchesQuery.data]);
 
   const entries = useMemo(
-    () => inboxEntries(relationships, touchesByRelationship),
-    [relationships, touchesByRelationship],
+    () =>
+      inboxEntries(relationships, touchesByRelationship).map((entry) => ({
+        ...entry,
+        health: withMessageAttention(entry.health, attentionMessages.data ?? []),
+      })),
+    [relationships, touchesByRelationship, attentionMessages.data],
   );
 
   const view = useMemo(
@@ -403,7 +416,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     draftsQuery.isError,
     draftsQuery.error,
   ]);
-  const health = selected ? deriveConversationHealth(selected, selectedTouches) : null;
+  const health = selected
+    ? withMessageAttention(deriveConversationHealth(selected, selectedTouches), [
+        ...(attentionMessages.data ?? []),
+        ...selectedMessages,
+      ])
+    : null;
   const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
   const days = useMemo(
     () => groupByDay(conversationTimeline(selectedTouches, drafts, selectedMessages)),
@@ -838,6 +856,21 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         <div className="comms-workspace-navigation">
           <CommsTabs active="conversations" workspace />
         </div>
+
+        <p role="status" className="my-2 text-xs text-muted-foreground">
+          Gmail is limited to labelled threads and bounded sync passes. LinkedIn inbox coverage is
+          not verified.
+          {attentionMessages.isPending
+            ? " Reading stored message attention…"
+            : attentionMessages.isError
+              ? " Stored message attention is unavailable; this list may omit messages needing attention."
+              : " Attention includes stored messages; it is not proof every mailbox message was captured."}
+          {orgTouchesQuery.isError ? " Manual interaction history is unavailable." : null}
+        </p>
+        <details className="comms-card my-3 p-3">
+          <summary className="cursor-pointer text-sm">Stored email & coverage</summary>
+          <RecentEmail identity={identity} relationships={relationships} />
+        </details>
 
         {capturing ? (
           <div className="comms-card mt-5 space-y-5 p-4 sm:p-6">
