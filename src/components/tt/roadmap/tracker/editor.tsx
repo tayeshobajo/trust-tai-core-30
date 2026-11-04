@@ -41,6 +41,7 @@ export function TrackerEditor({
   canWork,
   onSaved,
   onDirtyChange,
+  initialField,
 }: {
   roadmap: Roadmap;
   userId: string;
@@ -48,7 +49,15 @@ export function TrackerEditor({
   canWork: boolean;
   onSaved: (r: Roadmap) => void;
   onDirtyChange?: (dirty: boolean) => void;
+  initialField?: EditField;
 }) {
+  const editorRoot = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (initialField)
+      editorRoot.current
+        ?.querySelector<HTMLElement>(`[data-tracker-field="${initialField}"]`)
+        ?.focus();
+  }, [initialField]);
   const [base, setBase] = useState(roadmap);
   const [draft, setDraft] = useState(() => values(roadmap));
   const [current, setCurrent] = useState<Roadmap | null>(null);
@@ -164,6 +173,7 @@ export function TrackerEditor({
       pending.current = null;
     };
     const props = {
+      "data-tracker-field": key,
       value: draft[key],
       disabled: !canWork || busy || uncertain || Boolean(current),
       onChange: (
@@ -208,6 +218,7 @@ export function TrackerEditor({
   }
   return (
     <section
+      ref={editorRoot}
       aria-label={`Edit ${base.subjectLabel} tracker`}
       className="rounded-xl border border-border bg-card p-5 space-y-5"
     >

@@ -12,18 +12,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
+import {
+  ChevronDown,
+  MessageSquare,
+  Link2,
+  AudioLines,
+  Clock3,
+  FileText,
+  LayoutDashboard,
+  Layers,
+} from "lucide-react";
 
 import { TTButton } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 
 export type CommsSection =
-  | "dashboard"
-  | "conversations"
-  | "drafts"
-  | "history"
-  | "voice"
-  | "integrations";
+  "dashboard" | "conversations" | "drafts" | "history" | "voice" | "integrations";
 
 /** What a new piece of writing is. Carried into the intake as its kind. */
 export type NewDraftKind = "message" | "email" | "proposal";
@@ -52,7 +56,13 @@ const TABS: { to: string; section: CommsSection; label: string }[] = [
   { to: "/modules/comms/integrations", section: "integrations", label: "Connections" },
 ];
 
-function NewDraftMenu() {
+function NewDraftMenu({
+  label = "New draft",
+  workspace = false,
+}: {
+  label?: string;
+  workspace?: boolean;
+}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const holder = useRef<HTMLDivElement>(null);
@@ -86,7 +96,7 @@ function NewDraftMenu() {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        New draft
+        {label}
         <ChevronDown className="ml-1 h-4 w-4" aria-hidden />
       </TTButton>
       {open ? (
@@ -105,13 +115,46 @@ function NewDraftMenu() {
               {NEW_DRAFT_LABEL[kind]}
             </button>
           ))}
+          {workspace ? (
+            <div className="border-t border-border">
+              <Link
+                to="/modules/comms/drafts"
+                role="menuitem"
+                className="block px-3 py-2 text-[13px] hover:bg-secondary"
+              >
+                Drafts & Reviews
+              </Link>
+              <Link
+                to="/modules/comms"
+                role="menuitem"
+                className="block px-3 py-2 text-[13px] hover:bg-secondary"
+              >
+                Dashboard
+              </Link>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-export function CommsTabs({ active }: { active: CommsSection }) {
+export function CommsTabs({
+  active,
+  workspace = false,
+}: {
+  active: CommsSection;
+  workspace?: boolean;
+}) {
+  const icons = {
+    conversations: MessageSquare,
+    integrations: Link2,
+    voice: AudioLines,
+    history: Clock3,
+    drafts: FileText,
+    dashboard: LayoutDashboard,
+  };
+  const entries = workspace ? [TABS[1]!, TABS[5]!, TABS[4]!, TABS[3]!] : TABS;
   return (
     <nav
       aria-label="Comms sections"
@@ -119,19 +162,44 @@ export function CommsTabs({ active }: { active: CommsSection }) {
     >
       <div className="min-w-0 overflow-x-auto">
         <div className="flex w-max min-w-full items-end gap-1 sm:gap-3">
-          {TABS.map((tab) => (
-            <Link
-              key={tab.section}
-              to={tab.to}
-              aria-current={active === tab.section ? "page" : undefined}
-              className={tabClass(active === tab.section)}
-            >
-              {tab.label}
-            </Link>
+          {entries.map((tab) => (
+            <span key={tab.section} className="contents">
+              {workspace && tab.section === "history" ? (
+                <button
+                  type="button"
+                  disabled
+                  title="Templates are not available in this workspace"
+                  aria-label="Templates — not available in this workspace"
+                  className="inline-flex h-11 shrink-0 items-center gap-2 px-3 text-[13px] text-muted-foreground opacity-65"
+                >
+                  <Layers className="h-4 w-4" aria-hidden />
+                  Templates
+                </button>
+              ) : null}
+              <Link
+                key={tab.section}
+                to={tab.to}
+                activeOptions={{ exact: true }}
+                aria-current={active === tab.section ? "page" : undefined}
+                className={tabClass(active === tab.section)}
+              >
+                {workspace
+                  ? (() => {
+                      const Icon = icons[tab.section];
+                      return <Icon className="mr-2 h-4 w-4" aria-hidden />;
+                    })()
+                  : null}
+                {workspace && tab.section === "integrations"
+                  ? "Accounts & Connections"
+                  : workspace && tab.section === "history"
+                    ? "Activity"
+                    : tab.label}
+              </Link>
+            </span>
           ))}
         </div>
       </div>
-      <NewDraftMenu />
+      <NewDraftMenu label={workspace ? "New Message" : "New draft"} workspace={workspace} />
     </nav>
   );
 }

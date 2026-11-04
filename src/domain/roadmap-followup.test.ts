@@ -74,3 +74,24 @@ it("new activity invalidates an earlier review without generating a date", () =>
   expect(followUpState(r, now, review).standing).not.toBe("good");
   expect(r.followUp).toBe("2026-11-10");
 });
+it("newer canonical imported correspondence invalidates an older standing review", () => {
+  const r = {
+    ...record(),
+    importedActivity: {
+      roadmapId: native.id,
+      latest: {
+        channel: "linkedin_sales_navigator" as const,
+        kind: "received" as const,
+        at: "2026-11-03T15:00:00Z",
+      },
+      hasSent: true,
+      hasReceived: true,
+      coverage: "partial" as const,
+    },
+  };
+  expect(followUpState(r, now, review).standing).not.toBe("good");
+  expect(followUpState(r, now, { ...review, reviewedAt: "2026-11-03T16:00:00Z" }).standing).toBe(
+    "good",
+  );
+  expect(r.followUp).toBe("2026-11-10");
+});

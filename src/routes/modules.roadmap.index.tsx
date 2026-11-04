@@ -24,7 +24,10 @@ import { BuildFromScoutPanel } from "@/components/tt/roadmap/index/build-from-sc
 import { DecisionAttentionCard } from "@/components/tt/roadmap/index/decision-card";
 import { RoadmapHeader } from "@/components/tt/roadmap/index/header";
 import { RoadmapList } from "@/components/tt/roadmap/index/list";
-import { ApprovedRoadmapWorkspace } from "@/components/tt/roadmap/evidence/approved-workspace";
+import { RelationshipRoadmapWorkspace } from "@/components/tt/roadmap/evidence/relationship-workspace";
+import { TrackerEditor } from "@/components/tt/roadmap/tracker/editor";
+import { listMembers } from "@/data/supabase/settings-service";
+import type { Roadmap } from "@/domain/roadmap";
 import { RoadmapTracker } from "@/components/tt/roadmap/tracker/tracker";
 import { ReadyFromScout } from "@/components/tt/roadmap/index/ready-from-scout";
 import { RoadmapSidebar } from "@/components/tt/roadmap/index/sidebar";
@@ -305,6 +308,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
   return (
     <AppShell
       identity={identity}
+      canvas={view === "evidence" ? "roadmap" : "default"}
       sidebar={
         view === "evidence" ? (
           <aside className="rounded-xl border border-border bg-card p-4 text-xs leading-6 text-muted-foreground">
@@ -320,7 +324,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
         )
       }
     >
-      <div className="space-y-8">
+      <div className={view === "evidence" ? "min-w-0" : "space-y-8"}>
         {view !== "evidence" ? (
           <RoadmapHeader
             glance={glance}
@@ -368,39 +372,50 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
           />
         ) : null}
 
-        <nav
-          aria-label="Roadmap views"
-          className="flex flex-wrap gap-2 border-b border-border pb-3"
-        >
-          <TTButton
-            variant={view === "evidence" ? "primary" : "secondary"}
-            aria-pressed={view === "evidence"}
-            onClick={() => setView("evidence")}
+        {view !== "evidence" ? (
+          <nav
+            aria-label="Roadmap views"
+            className="flex flex-wrap gap-2 border-b border-border pb-3"
           >
-            Inventory & interactions
-          </TTButton>
-          <TTButton
-            variant={view === "roadmaps" ? "primary" : "secondary"}
-            aria-pressed={view === "roadmaps"}
-            onClick={() => setView("roadmaps")}
-          >
-            Roadmaps
-          </TTButton>
-          <TTButton
-            variant={view === "tracker" ? "primary" : "secondary"}
-            aria-pressed={view === "tracker"}
-            onClick={() => setView("tracker")}
-          >
-            Tracker
-          </TTButton>
-        </nav>
+            <TTButton variant="secondary" aria-pressed={false} onClick={() => setView("evidence")}>
+              Inventory & interactions
+            </TTButton>
+            <TTButton
+              variant={view === "roadmaps" ? "primary" : "secondary"}
+              aria-pressed={view === "roadmaps"}
+              onClick={() => setView("roadmaps")}
+            >
+              Roadmaps
+            </TTButton>
+            <TTButton
+              variant={view === "tracker" ? "primary" : "secondary"}
+              aria-pressed={view === "tracker"}
+              onClick={() => setView("tracker")}
+            >
+              Tracker
+            </TTButton>
+          </nav>
+        ) : null}
         {view === "evidence" ? (
-          <ApprovedRoadmapWorkspace
+          <RelationshipRoadmapWorkspace
+            userId={identity.userId}
+            canWork={identity.apps.some((app) => app.appId === "roadmap" && app.canWork)}
+            renderUpdate={(roadmap, field, onDirtyChange) => (
+              <RelationshipTrackerUpdate
+                key={`${roadmap.organizationId}:${roadmap.id}`}
+                roadmap={roadmap}
+                userId={identity.userId}
+                canWork={identity.apps.some((app) => app.appId === "roadmap" && app.canWork)}
+                initialField={field}
+                onDirtyChange={onDirtyChange}
+              />
+            )}
             onCreateRoadmap={() => {
               setStartError(null);
               setMode("manual");
             }}
             onReviewImports={() => setView("tracker")}
+            onLegacyRoadmaps={() => setView("roadmaps")}
             {...(identity.organizationId === "ee683a64-e045-4226-a8ff-4ae6590d6789"
               ? { publication: publicRoadmapObservation }
               : {})}
@@ -433,5 +448,46 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function RelationshipTrackerUpdate({
+  roadmap,
+  userId,
+  canWork,
+  initialField,
+  onDirtyChange,
+}: {
+  roadmap: Roadmap;
+  userId: string;
+  canWork: boolean;
+  initialField: "nextAction" | "followUpDate";
+  onDirtyChange: (dirty: boolean) => void;
+}) {
+  const cache = useQueryClient();
+  const members = useQuery({
+    queryKey: ["roadmap", "tracker-owners", roadmap.organizationId, userId],
+    queryFn: () => listMembers(roadmap.organizationId),
+    retry: false,
+    enabled: canWork,
+  });
+  const owners = (members.data ?? [])
+    .filter((m) => m.status === "active")
+    .map((m) => ({ userId: m.userId, label: m.name === "Unnamed person" ? m.userId : m.name }));
+  return (
+    <>
+      {members.isError ? (
+        <p role="alert">The owner list is unavailable. Existing ownership is preserved.</p>
+      ) : null}
+      <TrackerEditor
+        roadmap={roadmap}
+        userId={userId}
+        canWork={canWork}
+        owners={owners}
+        initialField={initialField}
+        onDirtyChange={onDirtyChange}
+        onSaved={() => void cache.invalidateQueries({ queryKey: ["roadmap"] })}
+      />
+    </>
   );
 }

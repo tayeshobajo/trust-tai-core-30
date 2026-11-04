@@ -7,6 +7,8 @@
  * classification marks, kind is never condition.
  */
 
+import { useState } from "react";
+
 import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
 import { relationshipSegment } from "@/domain/comms";
 import {
@@ -25,12 +27,7 @@ import { initialsOf } from "@/domain/steward-accountability";
 import { TTInput } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 
-import {
-  HealthDot,
-  SegmentPill,
-  SEGMENT_AVATAR,
-  SEGMENT_EDGE,
-} from "./health-marks";
+import { HealthDot, SegmentPill, SEGMENT_AVATAR, SEGMENT_EDGE } from "./health-marks";
 import { CommsPagination } from "./pagination";
 
 const HEALTH_FILTERS: ConversationHealthStatus[] = [
@@ -74,11 +71,14 @@ export function ConversationListItem({
         onClick={onSelect}
         aria-current={active ? "true" : undefined}
         className={cn(
-          "flex w-full items-start gap-3 border-b border-border/70 border-l-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          "comms-inbox-row flex w-full items-start gap-3 border-b border-border/70 border-l-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
           SEGMENT_EDGE[segment],
           active ? "bg-secondary" : "bg-card hover:bg-secondary/60",
         )}
       >
+        <span className="comms-row-health" title={HEALTH_LABEL[health.status]}>
+          <HealthDot status={health.status} />
+        </span>
         <span
           aria-hidden
           className={cn(
@@ -104,7 +104,7 @@ export function ConversationListItem({
             </span>
           ) : null}
           {/* What kind of relationship, and how the conversation is doing. */}
-          <span className="mt-1.5 flex flex-wrap items-center gap-2">
+          <span className="comms-row-metadata mt-1.5 flex flex-wrap items-center gap-2">
             <SegmentPill segment={segment} />
             {development ? (
               <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-violet-700">
@@ -177,7 +177,9 @@ export function CommsInbox({
   selectedId,
   onSelect,
   empty,
+  compact = false,
 }: {
+  compact?: boolean;
   view: InboxView;
   /** The current page of the view, the only rows rendered below. */
   page: PageView<InboxEntry>;
@@ -192,30 +194,31 @@ export function CommsInbox({
   onSelect: (id: string) => void;
   empty: boolean;
 }) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const filtered = Boolean(query.trim() || health);
   const priorityRows = page.rows.filter(isPriority);
   const otherRows = page.rows.filter((entry) => !isPriority(entry));
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="comms-inbox flex h-full flex-col">
       <div className="space-y-3 border-b border-border p-3">
         <div className="flex items-center justify-between">
-          <p className="tt-eyebrow">Inbox</p>
+          <h2 className="comms-panel-title">
+            Inbox <span className="comms-count">{view.tabCounts.all}</span>
+          </h2>
           <button
             type="button"
-            onClick={() => {
-              onHealth(null);
-              onQuery("");
-              onTab("all");
-            }}
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((open) => !open)}
             className="rounded-md border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Filter
+            Filters
+            {health || (compact && (tab === "clients" || tab === "nurture")) ? " · active" : ""}
           </button>
         </div>
 
         <nav aria-label="Inbox tabs" className="flex flex-wrap gap-1">
-          {TABS.map((entry) => (
+          {(compact ? (["all", "needs_you"] as InboxTab[]) : TABS).map((entry) => (
             <button
               key={entry}
               type="button"
@@ -228,24 +231,59 @@ export function CommsInbox({
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {TAB_LABEL[entry]}
+              {compact && entry === "needs_you" ? "Needs Action" : TAB_LABEL[entry]}
               <span className="ml-1 font-mono text-[10px] opacity-70">{view.tabCounts[entry]}</span>
             </button>
           ))}
+          {compact ? (
+            <button
+              type="button"
+              disabled
+              aria-label="Following — not available in this workspace"
+              title="Following is not available in this workspace"
+              className="rounded-full px-2.5 py-1 text-[12px] text-muted-foreground opacity-65"
+            >
+              Following
+            </button>
+          ) : null}
         </nav>
 
         {/* What this view is for, in one calm line. */}
-        <p className="text-[12px] text-muted-foreground">{VIEW_SUMMARY[tab]}</p>
+        <p className="sr-only">{VIEW_SUMMARY[tab]}</p>
 
         <TTInput
           className="h-9"
           value={query}
           onChange={(event) => onQuery(event.target.value)}
-          placeholder="Search people, companies, events…"
+          placeholder="Search conversations…"
           aria-label="Search conversations"
         />
 
-        <div className="flex flex-wrap gap-1">
+        <div className={cn("flex flex-wrap gap-1", !filtersOpen && "hidden")}>
+          <button
+            type="button"
+            className="rounded-full border border-border px-2 py-0.5 text-[11px] focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => {
+              onHealth(null);
+              onQuery("");
+              onTab("all");
+            }}
+          >
+            Clear filters
+          </button>
+          {compact
+            ? (["clients", "nurture"] as InboxTab[]).map((entry) => (
+                <button
+                  key={entry}
+                  type="button"
+                  aria-pressed={tab === entry}
+                  onClick={() => onTab(entry)}
+                  className="rounded-full border border-border px-2 py-0.5 text-[11px] focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {TAB_LABEL[entry]} {view.tabCounts[entry]}
+                </button>
+              ))
+            : null}
           {HEALTH_FILTERS.map((status) => {
             const active = health === status;
             return (

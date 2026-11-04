@@ -115,3 +115,59 @@ describe("the relationship room", () => {
     expect(onBack).toHaveBeenCalled();
   });
 });
+
+it("filters Notes and Files from loaded records without losing the complete timeline", () => {
+  const days = [
+    {
+      key: "2026-11-03",
+      label: "Nov 3",
+      events: [
+        {
+          id: "note",
+          kind: "note",
+          title: "A recorded note",
+          body: "Remember this",
+          occurredAt: "2026-11-03T10:00:00Z",
+        },
+        {
+          id: "text",
+          kind: "they_texted",
+          title: "A received message",
+          body: "Hello",
+          occurredAt: "2026-11-03T11:00:00Z",
+        },
+      ],
+    },
+  ] as ConversationDay[];
+  render(
+    <ConversationRoom
+      relationship={relationship}
+      health={health}
+      days={days}
+      onViewProfile={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+  expect(screen.getByText("A recorded note")).toBeTruthy();
+  expect(screen.queryByText("A received message")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Files" }));
+  expect(screen.getByText("No files in the loaded history.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Timeline" }));
+  expect(screen.getByText("A received message")).toBeTruthy();
+  expect(screen.getByText("A recorded note")).toBeTruthy();
+});
+
+it("keeps history errors visible in Files and does not claim complete history", () => {
+  render(
+    <ConversationRoom
+      relationship={relationship}
+      health={health}
+      days={[]}
+      historyGaps={[{ source: "Email", message: "Unavailable" }]}
+      onViewProfile={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Files" }));
+  expect(screen.getByText(/This history is incomplete/)).toBeTruthy();
+  expect(screen.getByText(/Part of this history could not be read/)).toBeTruthy();
+});

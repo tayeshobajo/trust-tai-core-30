@@ -1,8 +1,10 @@
 import type { Roadmap } from "@/domain/roadmap";
 import type { ReviewedBinding } from "@/domain/roadmap-evidence";
-// Approved canonical batch receipt b63265d9-cc34-4012-a9ea-924e6e51db99; identity links only, no message bodies.
+// Explicit approved canonical identities only; never infer bindings from company names or metadata.
+// Receipts: b63265d9-cc34-4012-a9ea-924e6e51db99 (initial 22), a5f98b33-e90f-4cef-8c21-4c715b9b3cca (next seven).
+// No message bodies, contact merges, access grants or workflow-state changes.
 const organizationId = "ee683a64-e045-4226-a8ff-4ae6590d6789";
-const entries = [
+const initialEntries = [
   {
     slug: "highview",
     roadmapId: "55d288a0-e8f1-5f54-aa4a-61afbd77368e",
@@ -136,6 +138,61 @@ const entries = [
     prospectId: null,
   },
 ] as const;
+
+const additionalEntries = [
+  {
+    slug: "classy-cactus-farm",
+    roadmapId: "82146b24-036b-41a5-afab-ebc1ebf9641c",
+    relationshipId: "4394a189-b2b0-41a5-9fd3-62d573b9933d",
+    prospectId: "96c50123-341c-4f4b-b1a1-aec532a366c8",
+  },
+  {
+    slug: "crenshaw-landscaping",
+    roadmapId: "337e79af-52d6-4fae-9546-39fb5d3d1866",
+    relationshipId: "d011b12a-9659-4c57-9d48-b6c8efebc52c",
+    prospectId: "d909c2e8-547c-4728-b52a-838442580b53",
+  },
+  {
+    slug: "littlebranch-farm",
+    roadmapId: "2a2c2a7e-aec4-4fa8-a9de-c85c33328243",
+    relationshipId: "f9042865-f1c3-4f60-bfda-de9163d59f61",
+    prospectId: "44c1caeb-6339-4541-9282-b3dd7cacc36b",
+  },
+  {
+    slug: "turnip-green",
+    roadmapId: "a49dd512-40bb-444e-be43-e0abe8a5a331",
+    relationshipId: "aa5aa4a2-3929-4167-811a-fa13f528de71",
+    prospectId: "73de4cc7-0846-45ab-94ba-d4aebe092ffc",
+  },
+  {
+    slug: "one-chance-bookkeeping",
+    roadmapId: "4d24fc7d-75bb-45f9-9707-35c32399e187",
+    relationshipId: "94cac80d-0d93-4c74-9771-47c278932bec",
+    prospectId: "a1ba16a7-fc04-4419-b06e-e8a31f619c30",
+  },
+  {
+    slug: "nashville-glasshaus",
+    roadmapId: "9ecf1d17-c533-4e6e-9d51-bb7686b20902",
+    relationshipId: "0e5315f5-8c6f-4b77-b0e6-58a880bdeb5f",
+    prospectId: "22afe17d-5ab9-4396-b5e7-e04352b4af62",
+  },
+  {
+    slug: "sase",
+    roadmapId: "e84cbd41-2fdb-4d0e-8372-ae694335b17c",
+    relationshipId: "9145d6a3-f7d0-459e-b060-b6057b920a56",
+    prospectId: "1231fa2f-3a63-47ac-8aec-f4ac4e959c9f",
+  },
+] as const;
+const entries = [
+  ...initialEntries.map((entry) => ({
+    ...entry,
+    reviewedAt: "2026-11-03T18:25:22.418683Z",
+  })),
+  ...additionalEntries.map((entry) => ({
+    ...entry,
+    reviewedAt: "2026-11-03T22:21:43.799148Z",
+  })),
+];
 export function approvedCanonicalBindings(roadmaps: Roadmap[], org: string): ReviewedBinding[] {
   if (org !== organizationId) return [];
   return entries
@@ -153,6 +210,6 @@ export function approvedCanonicalBindings(roadmaps: Roadmap[], org: string): Rev
       roadmapId: entry.roadmapId,
       organizationId: org,
       reviewedBy: "Tai-approved canonical batch",
-      reviewedAt: "2026-11-03T18:25:22.418683Z",
+      reviewedAt: entry.reviewedAt,
     }));
 }

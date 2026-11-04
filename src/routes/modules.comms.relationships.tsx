@@ -2,8 +2,8 @@
  * Comms, the relationship room.
  *
  * Relationships on the left, the relationship itself owning the rest.
- * Intelligence appears when called, in an overlay context drawer, never a
- * permanent third column taxing the reading width. Reading a relationship
+ * A compact summary sits beside the conversation on wide screens; detailed
+ * intelligence remains in the context drawer. Reading a relationship
  * should feel like continuing a conversation, not administering a record.
  *
  * Comms remembers what happened, holds what was promised, and only suggests
@@ -15,6 +15,8 @@ import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { RelationshipSummary } from "@/components/tt/comms/relationship-summary";
+import "@/components/tt/comms/comms-workspace.css";
 import { toast } from "sonner";
 
 import { setConversationClosed } from "@/data/comms-dashboard";
@@ -694,7 +696,9 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       return true;
     } catch (error) {
       setDraftError(
-        error instanceof Error ? error.message : "That draft could not be saved. Your words are still here.",
+        error instanceof Error
+          ? error.message
+          : "That draft could not be saved. Your words are still here.",
       );
       return false;
     }
@@ -761,6 +765,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   return (
     <AppShell
+      appearance="comms"
       identity={identity}
       sidebar={
         <CommsSidebarPanels
@@ -781,11 +786,18 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         />
       }
     >
-      <div className="-mx-4 -mt-8 w-auto px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-mt-10 lg:px-8">
-        {/* One compact header. The room itself says who this is, so the page
-            does not repeat it in a hero. */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className="comms-workspace">
+        <header className="comms-workspace-hero">
           <p className="tt-eyebrow">Comms</p>
+          <h1>Conversations</h1>
+          <p>
+            All client communication in one place. Stay responsive, keep momentum, and never miss a
+            follow-up.
+          </p>
+        </header>
+        {/* Preserve existing relationship actions and their permission/data paths. */}
+        <details className="comms-workspace-tools">
+          <summary>Relationship actions</summary>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {selected ? (
               <SequenceInRoadmap
@@ -821,10 +833,10 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               {capturing ? "Close" : "Add relationship"}
             </TTButton>
           </div>
-        </div>
+        </details>
 
-        <div className="mt-3">
-          <CommsTabs active="conversations" />
+        <div className="comms-workspace-navigation">
+          <CommsTabs active="conversations" workspace />
         </div>
 
         {capturing ? (
@@ -844,16 +856,17 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           </div>
         ) : null}
 
-        {/* Inbox finds the person; conversation owns the room. Intelligence
-          appears when called, context is an overlay drawer, never a column. */}
-        <div className="mt-4 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
+        {/* Inbox, conversation, and a compact factual summary. Detailed
+            intelligence stays available through the context drawer. */}
+        <div className="comms-workspace-grid">
           <aside
             className={cn(
-              "comms-card max-h-[calc(100dvh-190px)] overflow-hidden p-0 lg:sticky lg:top-20 lg:block",
+              "comms-card comms-inbox-pane overflow-hidden p-0 lg:block",
               mobilePane === "room" ? "hidden" : "",
             )}
           >
             <CommsInbox
+              compact
               view={view}
               page={pageView}
               onPage={changePage}
@@ -872,7 +885,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           <section
             aria-label="Selected conversation"
             className={cn(
-              "comms-card h-[calc(100dvh-190px)] min-h-[560px] flex-col overflow-hidden p-0 lg:flex",
+              "comms-card comms-room-pane flex-col overflow-hidden p-0 lg:flex",
               mobilePane === "list" ? "hidden" : "flex",
             )}
           >
@@ -1113,6 +1126,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                       )}
                     </div>
                     <ReplyRecordBar
+                      compact
                       drafting={drafting}
                       busy={recordInteraction.isPending}
                       saving={saveWritten.isPending}
@@ -1143,6 +1157,21 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               </div>
             )}
           </section>
+          {selected && health ? (
+            <aside
+              className={cn("comms-summary-pane", mobilePane === "list" ? "hidden lg:block" : "")}
+              aria-label="Relationship summary"
+            >
+              <RelationshipSummary
+                relationship={selected}
+                health={health}
+                {...(selected.ownerUserId === identity.userId ? { ownerLabel: identity.name } : {})}
+                onContext={() => setContextOpen(true)}
+                onProfile={() => setProfileOpen(true)}
+                onInteraction={() => setInteracting(true)}
+              />
+            </aside>
+          ) : null}
         </div>
 
         {/*

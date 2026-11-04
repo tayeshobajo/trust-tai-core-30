@@ -7,12 +7,24 @@
  * matters, who put it on the record.
  *
  * Inbox finds the person; conversation owns the room. The header stays
- * compact, who this is, how it stands, and the few actions that matter, * and relationship intelligence lives one click away in the context drawer,
- * never as a permanent tax on reading width.
+ * compact: identity, state, and actions. History views share the same loaded
+ * records; detailed relationship intelligence remains in the context drawer.
  */
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, FileText } from "lucide-react";
+import {
+  ChevronDown,
+  FileText,
+  MessageSquare,
+  Paperclip,
+  StickyNote,
+  Clock3,
+  MoreHorizontal,
+  CalendarDays,
+  Star,
+  Phone,
+  Video,
+} from "lucide-react";
 
 import {
   EVENT_LABEL,
@@ -99,7 +111,8 @@ export function ConversationEvent({
         {...(focused ? { tabIndex: -1 } : {})}
         {...(event.messageId ? { "data-message-id": event.messageId } : {})}
         className={cn(
-          "rounded-2xl border px-3.5 py-2.5",
+          "comms-message rounded-2xl border px-3.5 py-2.5",
+          side === "us" ? "comms-message-sent" : "comms-message-received",
           side === "center" ? "w-full max-w-[92%] rounded-lg" : "max-w-[85%]",
           side === "us" ? "rounded-br-md" : side === "them" ? "rounded-bl-md" : "",
           KIND_TONE[event.kind],
@@ -269,13 +282,48 @@ export function ConversationRoom({
   // reveals the real records; nothing is summarised and nothing is written.
   const focusInEarlier = Boolean(
     focusMessageId &&
-      earlier.some((day) => day.events.some((event) => event.messageId === focusMessageId)),
+    earlier.some((day) => day.events.some((event) => event.messageId === focusMessageId)),
   );
-  const shownDays = showEarlier || focusInEarlier ? days : recent;
+  const [viewSelection, setViewSelection] = useState({
+    relationshipId: relationship.id,
+    messageId: focusMessageId ?? null,
+    view: "conversation",
+  });
+  const view =
+    viewSelection.relationshipId === relationship.id &&
+    viewSelection.messageId === (focusMessageId ?? null)
+      ? viewSelection.view
+      : "conversation";
+  const filesCount = days.reduce(
+    (sum, day) =>
+      sum +
+      day.events.reduce((count, event) => count + fileAttachments(event.attachments).length, 0),
+    0,
+  );
+  const shownDays =
+    view === "notes" || view === "files"
+      ? days
+          .map((day) => ({
+            ...day,
+            events: day.events.filter((event) =>
+              view === "notes"
+                ? event.kind === "note"
+                : fileAttachments(event.attachments).length > 0,
+            ),
+          }))
+          .filter((day) => day.events.length > 0)
+      : view === "timeline" || showEarlier || focusInEarlier
+        ? days
+        : recent;
+  const followUp = relationship.followUpDueAt ? new Date(relationship.followUpDueAt) : null;
+  const followUpLabel =
+    followUp && !Number.isNaN(followUp.getTime())
+      ? followUp.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      : null;
   const gaps = historyGaps ?? [];
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="comms-conversation flex h-full min-h-0 flex-col">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-4 py-2.5 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           {onBack ? (
@@ -294,9 +342,9 @@ export function ConversationRoom({
             {initialsOf(relationship.fullName)}
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-base font-medium text-foreground">
+            <h2 className="truncate text-base font-medium text-foreground">
               {relationship.fullName}
-            </h1>
+            </h2>
             <p className="truncate text-[12px] text-muted-foreground">
               {[relationship.companyName, relationship.email, relationship.metWhere]
                 .filter(Boolean)
@@ -318,43 +366,101 @@ export function ConversationRoom({
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-          {onAddInteraction ? (
-            <button
-              type="button"
-              onClick={onAddInteraction}
-              className="rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              + Add interaction
-            </button>
-          ) : null}
-          {onExportSummary ? (
-            <button
-              type="button"
-              onClick={onExportSummary}
-              className="rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Export summary
-            </button>
-          ) : null}
-          {onOpenContext ? (
-            <button
-              type="button"
-              onClick={onOpenContext}
-              className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Context
-            </button>
-          ) : null}
+        <div className="comms-room-toolbar">
           <button
             type="button"
-            onClick={onViewProfile}
-            className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            disabled
+            aria-label="Favorite — not available in this workspace"
+            title="Favorites are not available in this workspace"
           >
-            View profile
+            <Star size={17} aria-hidden />
           </button>
+          <button
+            type="button"
+            disabled
+            aria-label="Call — not available in this workspace"
+            title="Calling is not connected in this workspace"
+          >
+            <Phone size={17} aria-hidden />
+          </button>
+          <button
+            type="button"
+            disabled
+            aria-label="Video call — not available in this workspace"
+            title="Video calling is not connected in this workspace"
+          >
+            <Video size={17} aria-hidden />
+          </button>
+          <details className="comms-room-actions">
+            <summary aria-label="More conversation actions">
+              <MoreHorizontal size={20} aria-hidden />
+            </summary>
+            <div>
+              {onAddInteraction ? (
+                <button
+                  type="button"
+                  onClick={onAddInteraction}
+                  className="rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  + Add interaction
+                </button>
+              ) : null}
+              {onExportSummary ? (
+                <button
+                  type="button"
+                  onClick={onExportSummary}
+                  className="rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Export summary
+                </button>
+              ) : null}
+              {onOpenContext ? (
+                <button
+                  type="button"
+                  onClick={onOpenContext}
+                  className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Context
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onViewProfile}
+                className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                View profile
+              </button>
+            </div>
+          </details>
         </div>
       </header>
+      <nav className="comms-conversation-views" aria-label="Conversation views">
+        {[
+          { key: "conversation", label: "Conversation", icon: MessageSquare },
+          { key: "files", label: "Files", icon: Paperclip },
+          { key: "notes", label: "Notes", icon: StickyNote },
+          { key: "timeline", label: "Timeline", icon: Clock3 },
+        ].map(({ key, label, icon: Icon }) => (
+          <button
+            type="button"
+            key={key}
+            aria-pressed={view === key}
+            onClick={() =>
+              setViewSelection({
+                relationshipId: relationship.id,
+                messageId: focusMessageId ?? null,
+                view: key,
+              })
+            }
+          >
+            <Icon size={16} aria-hidden />
+            {label}
+            {key === "files" && filesCount > 0 ? (
+              <span className="comms-count">{filesCount}</span>
+            ) : null}
+          </button>
+        ))}
+      </nav>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
         {/* The thread gets the room the third rail released, held to a
@@ -386,7 +492,7 @@ export function ConversationRoom({
               ) : null}
             </div>
           ) : null}
-          {earlier.length ? (
+          {earlier.length && view === "conversation" ? (
             <button
               type="button"
               onClick={() => setShowEarlier((value) => !value)}
@@ -400,7 +506,14 @@ export function ConversationRoom({
               {showEarlier ? "Hide earlier history" : `Earlier history · ${earlierCount}`}
             </button>
           ) : null}
-          {days.length === 0 && gaps.length ? null : days.length === 0 ? (
+          {(view === "files" || view === "notes") && shownDays.length === 0 ? (
+            <p className="py-10 text-center text-[13px] text-muted-foreground">
+              {gaps.length ? "This history is incomplete. " : ""}
+              {view === "files"
+                ? "No files in the loaded history."
+                : "No notes in the loaded history."}
+            </p>
+          ) : days.length === 0 && gaps.length ? null : days.length === 0 ? (
             <p className="py-10 text-center text-[13px] text-muted-foreground">
               Nothing is on the record yet. Add an interaction that already happened, or prepare the
               first message below.
@@ -439,6 +552,20 @@ export function ConversationRoom({
         </div>
       </div>
 
+      {followUpLabel ? (
+        <div className="comms-followup">
+          <CalendarDays size={22} aria-hidden />
+          <div>
+            <strong>Follow-up · {followUpLabel}</strong>
+            <p>{relationship.nextAction || "Review the next step for this relationship."}</p>
+          </div>
+          {onOpenContext ? (
+            <button type="button" onClick={onOpenContext}>
+              Review follow-up
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {children}
     </div>
   );

@@ -35,6 +35,7 @@ export function followUpState(record: EvidenceRecord, now: Date, review?: Standi
             : "scheduled";
   const holds = evidenceHolds(record);
   const latest = conversationEvents(record)[0];
+  const importedLatest = record.importedActivity?.latest;
   const reviewed = Boolean(
     review &&
     review.coverage === "reviewed_current" &&
@@ -44,7 +45,8 @@ export function followUpState(record: EvidenceRecord, now: Date, review?: Standi
     Date.parse(review.reviewedAt) <= now.getTime() &&
     validDay(review.validThrough) &&
     Date.parse(review.validThrough) >= Date.parse(today) &&
-    (!latest || Date.parse(latest.at) <= Date.parse(review.reviewedAt)),
+    (!latest || Date.parse(latest.at) <= Date.parse(review.reviewedAt)) &&
+    (!importedLatest || Date.parse(importedLatest.at) <= Date.parse(review.reviewedAt)),
   );
   const good =
     reviewed &&

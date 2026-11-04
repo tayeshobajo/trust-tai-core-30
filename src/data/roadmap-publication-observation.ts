@@ -1,7 +1,10 @@
-/** Public DOM observation, 2026-10-20. Publication is not delivery or a canonical binding.
+/** Scoped public DOM observation, 2026-11-03: existing 39 plus four references
+ * needed for the seven approved canonical bindings. The broader 59-page inventory
+ * is separate reconciliation work; this list is not a complete directory total.
+ * Publication is not delivery or a canonical binding.
  * Refresh through a reviewed source observation; never interpret absent entries as deletions. */
 export const publicRoadmapObservation = {
-  checkedAt: "2026-10-20T16:09:19Z",
+  checkedAt: "2026-11-03T21:43:23Z",
   sourceUrl: "https://trusttai.com/clients",
   entries: [
     ["teamsynerg", "TeamsynerG"],
@@ -43,6 +46,10 @@ export const publicRoadmapObservation = {
     ["olive-sinclair", "Olive & Sinclair"],
     ["sequatchie", "Sequatchie Cove Creamery"],
     ["ryan-partners", "Ryan Partners"],
+    ["nashville-glasshaus", "Nashville Glasshaüs"],
+    ["turnip-green", "Turnip Green Creative Reuse"],
+    ["littlebranch-farm", "Littlebranch Farm"],
+    ["one-chance-bookkeeping", "One Chance Bookkeeping"],
   ].map(([slug, name]) => ({
     slug: slug!,
     name: name!,

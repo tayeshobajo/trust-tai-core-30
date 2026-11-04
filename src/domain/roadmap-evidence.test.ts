@@ -189,8 +189,10 @@ it("reconciles public identity by exact slug/URL without binding a canonical nam
   expect(records).toHaveLength(2);
   expect(records[0]!.publication).toBeUndefined();
   expect(records[1]!.publication?.slug).toBe("qa-company");
-  expect(publicRoadmapObservation.entries).toHaveLength(39);
-  expect(new Set(publicRoadmapObservation.entries.map((r) => r.slug)).size).toBe(39);
+  expect(publicRoadmapObservation.entries).toHaveLength(43);
+  expect(new Set(publicRoadmapObservation.entries.map((r) => r.slug)).size).toBe(43);
+  expect(new Set(publicRoadmapObservation.entries.map((r) => r.url)).size).toBe(43);
+  expect(publicRoadmapObservation.checkedAt).toBe("2026-11-03T21:43:23Z");
 });
 it("deduplicates identical provider identity across exact HTML and reviewer-sanitized representations", () => {
   const m = structuredClone(manifest);

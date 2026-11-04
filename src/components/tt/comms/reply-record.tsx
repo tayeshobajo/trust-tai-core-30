@@ -39,7 +39,9 @@ export function ReplyRecordBar({
   onSaveWriting,
   onRecordInteraction,
   onDirtyChange,
+  compact = false,
 }: {
+  compact?: boolean;
   drafting: boolean;
   busy: boolean;
   /** A save of the person's own words is in flight. */
@@ -66,7 +68,12 @@ export function ReplyRecordBar({
   const [mode, setMode] = useState<ReplyMode>("reply");
 
   return (
-    <div className="border-t border-border bg-card px-4 pb-4 pt-0 sm:px-5">
+    <div
+      className={cn(
+        "border-t border-border bg-card px-4 pb-4 pt-0 sm:px-5",
+        compact && "comms-reply-compact",
+      )}
+    >
       <div className="flex items-center gap-5 border-b border-border">
         {[
           { mode: "reply" as const, label: "Reply" },
@@ -91,7 +98,7 @@ export function ReplyRecordBar({
 
       {mode === "reply" ? (
         <div className="pt-3">
-          <div className="flex flex-wrap gap-1.5">
+          <div className={cn("flex flex-wrap gap-1.5", compact && "hidden")}>
             {INTENTS.map((intent) => (
               <button
                 key={intent.register}
@@ -128,7 +135,21 @@ export function ReplyRecordBar({
                 ? `Comms will use: ${purposeHint}`
                 : "Drafts only. Nothing leaves Comms without you."}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="comms-reply-actions flex items-center gap-2">
+              {compact ? (
+                <select
+                  aria-label="Writing intent"
+                  value={register}
+                  onChange={(event) => onRegisterChange(event.target.value as VoiceRegister)}
+                  className="rounded-lg border border-border bg-card px-2 py-2 text-[12px] focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {INTENTS.map((intent) => (
+                    <option key={intent.register} value={intent.register}>
+                      {intent.label}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               {purposeHint ? (
                 <TTButton
                   variant="quiet"

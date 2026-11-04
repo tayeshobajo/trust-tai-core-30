@@ -133,13 +133,16 @@ export function AppShell({
   identity,
   sidebar,
   canvas = "default",
+  appearance,
 }: {
   children: ReactNode;
   identity?: WorkspaceIdentity;
   /** Room-specific panels rendered below the suite navigation. */
   sidebar?: ReactNode;
   /** Opt-in continuous canvas for dense workrooms; ordinary pages are unchanged. */
-  canvas?: "default" | "workroom";
+  canvas?: "default" | "workroom" | "roadmap";
+  /** Independent opt-in appearance; preserves each canvas variant. */
+  appearance?: "comms";
 }) {
   const [open, setOpen] = useState(false);
   const allowedApps = identity?.apps.map((app) => app.appId) ?? [];
@@ -162,9 +165,9 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur lg:px-8">
-        {canvas === "workroom" ? (
+    <div className="min-h-screen bg-background" data-shell-appearance={appearance}>
+      <header className="tt-shell-header sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur lg:px-8">
+        {canvas !== "default" ? (
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <TTButton
@@ -262,7 +265,12 @@ export function AppShell({
 
       {/* One continuous shell: full-bleed rail directly beneath the header, fluid canvas beside it. */}
       <div className="flex w-full">
-        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[248px] shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar px-3 py-5 lg:flex xl:w-[276px]">
+        <aside
+          className={cn(
+            "tt-shell-rail sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar px-3 py-5 lg:flex",
+            canvas === "roadmap" ? "w-[184px] xl:w-[184px]" : "w-[248px] xl:w-[276px]",
+          )}
+        >
           <p className="tt-eyebrow mb-2 px-4">Suite</p>
 
           <NavList allowed={allowedApps} />
@@ -275,7 +283,7 @@ export function AppShell({
         </aside>
 
         {open && canvas === "default" ? (
-          <div className="fixed inset-x-0 top-16 z-20 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-border bg-card p-4 lg:hidden">
+          <div className="tt-shell-mobile-nav fixed inset-x-0 top-16 z-20 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-border bg-card p-4 lg:hidden">
             <NavList allowed={allowedApps} onNavigate={() => setOpen(false)} />
             {sidebar ? <div className="mt-5 space-y-3">{sidebar}</div> : null}
           </div>
@@ -283,14 +291,16 @@ export function AppShell({
 
         <main
           className={cn(
-            "min-w-0 flex-1",
-            canvas === "workroom"
+            "tt-shell-main min-w-0 flex-1",
+            canvas !== "default"
               ? "@container/workroom"
               : "mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-4 2xl:px-10",
           )}
         >
           {/* One calm reading canvas for every room, never edge to edge. */}
-          <div className={cn("w-full", canvas === "default" && "mx-auto max-w-canvas")}>
+          <div
+            className={cn("tt-shell-canvas w-full", canvas === "default" && "mx-auto max-w-canvas")}
+          >
             {children}
           </div>
         </main>

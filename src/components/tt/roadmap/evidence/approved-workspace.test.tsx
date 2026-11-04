@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { ApprovedRoadmapWorkspace } from "./approved-workspace";
 import { manifest, message, native } from "@/domain/roadmap-evidence.fixtures";
 import type { PartialCoverage } from "@/domain/roadmap-evidence";
+import { approvedCanonicalBindings } from "@/data/roadmap-approved-bindings";
+import { publicRoadmapObservation } from "@/data/roadmap-publication-observation";
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
   vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
@@ -14,6 +16,58 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 const props = { organizationId: "org", roadmaps: [], review: manifest };
+it("opens the newly bound SASE card with its canonical readers while retaining unknown history", async () => {
+  const org = "ee683a64-e045-4226-a8ff-4ae6590d6789";
+  const roadmap = {
+    ...native,
+    organizationId: org,
+    id: "e84cbd41-2fdb-4d0e-8372-ae694335b17c",
+    prospectId: "1231fa2f-3a63-47ac-8aec-f4ac4e959c9f",
+    relationshipId: "9145d6a3-f7d0-459e-b060-b6057b920a56",
+    title: "SASE",
+    subjectLabel: "SASE",
+    metadata: {
+      outreach_holds: [
+        {
+          kind: "recipient_identity_not_merged",
+          source: "Synthetic hold",
+          outreach_suppressed: true,
+        },
+      ],
+    },
+  };
+  const readConversations = vi.fn(async () => ({
+    organizationId: org,
+    roadmapId: roadmap.id,
+    relationshipId: roadmap.relationshipId,
+    events: [],
+    nextCursor: null,
+    coverage: "unknown" as const,
+    readAt: "2026-11-03T22:26:08Z",
+  }));
+  render(
+    <ApprovedRoadmapWorkspace
+      organizationId={org}
+      roadmaps={[roadmap]}
+      bindings={approvedCanonicalBindings([roadmap], org)}
+      publication={publicRoadmapObservation}
+      readConversations={readConversations}
+    />,
+  );
+  expect(readConversations).not.toHaveBeenCalled();
+  expect(screen.getAllByRole("button", { name: "View SASE details" })).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "View SASE details" }));
+  expect(await screen.findByText("No approved messages imported yet")).toBeTruthy();
+  expect(readConversations).toHaveBeenCalledWith(org, roadmap.id);
+  expect(new URL(window.location.href).searchParams.get("evidence")).toBe("sase");
+  expect(screen.getByRole("link", { name: "Open roadmap" }).getAttribute("href")).toBe(
+    "https://trusttai.com/clients/sase",
+  );
+  expect(screen.queryByText("0 sent")).toBeNull();
+  expect(screen.getAllByText(/Canonical outreach hold/).length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole("button", { name: "All roadmaps" }));
+  expect(screen.getByRole("button", { name: "View SASE details" })).toBeTruthy();
+});
 it("opens a full detail page and supports back/forward selection without inventing messages", () => {
   render(<ApprovedRoadmapWorkspace {...props} />);
   fireEvent.click(screen.getByRole("button", { name: "View QA company details" }));

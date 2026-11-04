@@ -13,7 +13,11 @@ import { useState } from "react";
 import { ReplyRecordBar } from "./reply-record";
 import type { VoiceRegister } from "@/domain/voice";
 
-function Harness({ onSaveWriting }: { onSaveWriting: (r: VoiceRegister, t: string) => Promise<boolean> }) {
+function Harness({
+  onSaveWriting,
+}: {
+  onSaveWriting: (r: VoiceRegister, t: string) => Promise<boolean>;
+}) {
   const [value, setValue] = useState("");
   const [register, setRegister] = useState<VoiceRegister>("follow_up");
   return (
@@ -75,4 +79,32 @@ describe("saving your own reply", () => {
     render(<Harness onSaveWriting={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Prepare draft" })).toBeTruthy();
   });
+});
+
+it("keeps compact writing intent separate from saving and preparing", () => {
+  const onRegisterChange = vi.fn(),
+    onSaveWriting = vi.fn().mockResolvedValue(false),
+    onPrepareDraft = vi.fn();
+  render(
+    <ReplyRecordBar
+      compact
+      drafting={false}
+      busy={false}
+      value="Keep this exact reply"
+      onValueChange={vi.fn()}
+      register="follow_up"
+      onRegisterChange={onRegisterChange}
+      onSaveWriting={onSaveWriting}
+      onPrepareDraft={onPrepareDraft}
+      onRecordInteraction={vi.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("Writing intent"), { target: { value: "sensitive" } });
+  expect(onRegisterChange).toHaveBeenCalledWith("sensitive");
+  expect(onPrepareDraft).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  expect(onSaveWriting).toHaveBeenCalledWith("follow_up", "Keep this exact reply");
+  expect((screen.getByLabelText("Your reply") as HTMLTextAreaElement).value).toBe(
+    "Keep this exact reply",
+  );
 });
