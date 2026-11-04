@@ -1,7 +1,7 @@
 /**
  * Comms navigation.
  *
- * Six destinations, agreed with Tai: what needs action, the conversations
+ * Five destinations, agreed with Tai: what needs action, the conversations
  * themselves, the drafts waiting on a review, the record of what has already
  * left and come back, how we sound, and what we are connected to. Everything
  * else in Comms is reached from inside the work it belongs to.
@@ -19,15 +19,13 @@ import {
   AudioLines,
   Clock3,
   FileText,
-  LayoutDashboard,
   Layers,
 } from "lucide-react";
 
 import { TTButton } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 
-export type CommsSection =
-  "dashboard" | "conversations" | "drafts" | "history" | "voice" | "integrations";
+export type CommsSection = "conversations" | "drafts" | "history" | "voice" | "integrations";
 
 /** What a new piece of writing is. Carried into the intake as its kind. */
 export type NewDraftKind = "message" | "email" | "proposal";
@@ -48,7 +46,6 @@ function tabClass(active: boolean) {
 }
 
 const TABS: { to: string; section: CommsSection; label: string }[] = [
-  { to: "/modules/comms", section: "dashboard", label: "Dashboard" },
   { to: "/modules/comms/relationships", section: "conversations", label: "Conversations" },
   { to: "/modules/comms/drafts", section: "drafts", label: "Drafts & Reviews" },
   { to: "/modules/comms/history", section: "history", label: "History" },
@@ -124,13 +121,6 @@ function NewDraftMenu({
               >
                 Drafts & Reviews
               </Link>
-              <Link
-                to="/modules/comms"
-                role="menuitem"
-                className="block px-3 py-2 text-[13px] hover:bg-secondary"
-              >
-                Dashboard
-              </Link>
             </div>
           ) : null}
         </div>
@@ -152,9 +142,8 @@ export function CommsTabs({
     voice: AudioLines,
     history: Clock3,
     drafts: FileText,
-    dashboard: LayoutDashboard,
   };
-  const entries = workspace ? [TABS[1]!, TABS[5]!, TABS[4]!, TABS[3]!] : TABS;
+  const entries = workspace ? [TABS[0]!, TABS[4]!, TABS[3]!, TABS[2]!] : TABS;
   return (
     <nav
       aria-label="Comms sections"
