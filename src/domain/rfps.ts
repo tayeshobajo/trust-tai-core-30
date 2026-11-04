@@ -130,6 +130,8 @@ export interface Submission {
   recorded_at: string;
 }
 export interface Snapshot {
+  documents?: DocumentReference[];
+  amendments?: EvidenceAmendment[];
   opportunities: Opportunity[];
   versions: DraftVersion[];
   submissions: Submission[];
@@ -199,3 +201,56 @@ export const submissionInput = z
     (v) => new Date(v.submitted_at).getTime() <= Date.now(),
     "Submission time cannot be in the future.",
   );
+
+export function googleDocUrl(value: string): string {
+  const url = new URL(value.trim());
+  if (
+    url.protocol !== "https:" ||
+    url.hostname !== "docs.google.com" ||
+    url.port ||
+    url.username ||
+    url.password
+  )
+    throw new Error(
+      "Use a Google Docs document URL beginning https://docs.google.com/document/d/.",
+    );
+  const match = url.pathname.match(
+    /^\/document\/d\/([a-zA-Z0-9_-]+)(?:\/(?:edit|view|preview))?\/?$/,
+  );
+  if (!match) throw new Error("Use a Google Docs document link, not a folder or published page.");
+  return `https://docs.google.com/document/d/${match[1]}/edit`;
+}
+export const documentInput = z.object({
+  title: z.string().trim().min(1).max(240),
+  url: z.string().transform((value, ctx) => {
+    try {
+      return googleDocUrl(value);
+    } catch (error) {
+      ctx.addIssue({ code: "custom", message: (error as Error).message });
+      return z.NEVER;
+    }
+  }),
+  note: z.string().trim().max(2000),
+});
+export interface DocumentReference {
+  id: string;
+  opportunity_id: string;
+  title: string;
+  url: string;
+  note: string;
+  created_at: string;
+}
+export const evidenceInput = z.object({
+  draft_id: z.string().uuid().nullable(),
+  document_id: z.string().uuid().nullable(),
+  submitted_version: z.string().trim().max(2000),
+  reference: z.string().trim().max(2000),
+  evidence_url: z.union([source, z.literal("")]),
+  reason: z.string().trim().min(1).max(2000),
+});
+export interface EvidenceAmendment extends z.infer<typeof evidenceInput> {
+  id: string;
+  submission_id: string;
+  opportunity_id: string;
+  created_at: string;
+}

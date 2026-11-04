@@ -75,3 +75,32 @@ describe("RFP domain truth", () => {
     ).not.toThrow();
   });
 });
+
+import { googleDocUrl, evidenceInput } from "./rfps";
+it("canonicalizes Google Doc links without granting access or keeping tracking fragments", () => {
+  expect(
+    googleDocUrl("https://docs.google.com/document/d/abc_123/edit?usp=sharing#heading=x"),
+  ).toBe("https://docs.google.com/document/d/abc_123/edit");
+});
+it.each([
+  "https://docs.google.com.evil.test/document/d/abc/edit",
+  "javascript:alert(1)",
+  "https://evil@docs.google.com/document/d/abc/edit",
+  "http://docs.google.com/document/d/abc/edit",
+  "https://docs.google.com/document/d/e/abc/pub",
+  "https://drive.google.com/folders/abc",
+])("rejects non-document reference %s", (value) => {
+  expect(() => googleDocUrl(value)).toThrow();
+});
+it("allows honest evidence gaps but requires a reason for an amendment", () => {
+  const value = {
+    draft_id: null,
+    document_id: null,
+    submitted_version: "",
+    reference: "",
+    evidence_url: "",
+    reason: "Receipt still unavailable",
+  };
+  expect(evidenceInput.safeParse(value).success).toBe(true);
+  expect(evidenceInput.safeParse({ ...value, reason: "" }).success).toBe(false);
+});

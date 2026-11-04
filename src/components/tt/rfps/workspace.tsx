@@ -15,6 +15,7 @@ import {
   opportunityInput,
   stages,
   stageLabel,
+  type Submission,
   type Opportunity,
   type OpportunityInput,
   type Snapshot,
@@ -156,16 +157,18 @@ export function RfpWorkspace({
     [kind, setKind] = useState("all"),
     [selected, setSelected] = useState<string | null>(null),
     [tab, setTab] = useState("overview");
-  const [modal, setModal] = useState<"create" | "edit" | "upload" | "submission" | "check" | null>(
-      null,
-    ),
+  const [modal, setModal] = useState<
+      "create" | "edit" | "upload" | "submission" | "check" | "document" | "amend" | null
+    >(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [actionError, setActionError] = useState("");
+  const [amending, setAmending] = useState<Submission | null>(null);
   const rows = filterOpportunities(data.opportunities, query, filter, kind);
   const current = rows.find((o) => o.id === selected) ?? rows[0];
   const versions = data.versions.filter((v) => v.opportunity_id === current?.id);
   const submissions = data.submissions.filter((v) => v.opportunity_id === current?.id);
+  const documents = (data.documents ?? []).filter((v) => v.opportunity_id === current?.id);
   async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true);
     setActionError("");
@@ -402,13 +405,27 @@ export function RfpWorkspace({
                     <button
                       role="tab"
                       aria-selected={tab === t}
+                      tabIndex={tab === t ? 0 : -1}
+                      onKeyDown={(e) => {
+                        const tabs = ["overview", "proposal", "submissions"];
+                        if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
+                        e.preventDefault();
+                        const next =
+                          e.key === "Home"
+                            ? tabs[0]
+                            : e.key === "End"
+                              ? tabs[2]
+                              : tabs[(tabs.indexOf(t) + (e.key === "ArrowRight" ? 1 : 2)) % 3];
+                        setTab(next);
+                        document.getElementById(`tab-${next}`)?.focus();
+                      }}
                       aria-controls={`rfp-${t}`}
                       id={`tab-${t}`}
                       key={t}
                       onClick={() => setTab(t)}
                     >
                       {t === "proposal"
-                        ? `Drafts (${versions.length})`
+                        ? `Drafts (${versions.length + documents.length})`
                         : t === "submissions"
                           ? `Submissions (${submissions.length})`
                           : "Overview"}
@@ -451,7 +468,10 @@ export function RfpWorkspace({
                   ) : tab === "proposal" ? (
                     <>
                       <div className="rfp-section-title">
-                        <h3>Draft version history</h3>
+                        <h3>Drafts and working documents</h3>
+                        <TTButton disabled={!available} onClick={() => open("document")}>
+                          Link Google Doc
+                        </TTButton>
                         <TTButton disabled={!available} onClick={() => open("upload")}>
                           Upload version
                         </TTButton>
@@ -460,7 +480,22 @@ export function RfpWorkspace({
                         Private files. New uploads preserve previous versions. Download to view PDF,
                         DOCX or TXT; no public file links.
                       </p>
-                      {!versions.length && (
+                      <p className="rfp-muted">
+                        Google Doc links open the live document using existing Drive permissions.
+                        Linking does not upload, copy, grant access, or preserve a snapshot. Export
+                        and upload a PDF to preserve the version you submitted.
+                      </p>
+                      {documents.map((d) => (
+                        <article className="rfp-version" key={d.id}>
+                          <strong>{d.title}</strong>
+                          <p>Google Doc · mutable working document</p>
+                          <p>{d.note}</p>
+                          <a href={d.url} target="_blank" rel="noreferrer">
+                            Open Google Doc <ExternalLink size={14} />
+                          </a>
+                        </article>
+                      ))}
+                      {!versions.length && !documents.length && (
                         <p>No draft yet. Upload the first version when you are ready.</p>
                       )}
                       {versions.map((v, index) => (
@@ -525,6 +560,53 @@ export function RfpWorkspace({
                                 "Linked draft"
                               : "Historical submission · draft unavailable"}
                           </p>
+                          <p>Original submission record · preserved</p>
+                          {(data.amendments ?? [])
+                            .filter((a) => a.submission_id === s.id)
+                            .map((a, i) => (
+                              <div className="rfp-version" key={a.id}>
+                                <strong>
+                                  {i === 0
+                                    ? "Latest evidence amendment"
+                                    : "Earlier evidence amendment"}
+                                </strong>
+                                <p>
+                                  {new Date(a.created_at).toLocaleString()} · {a.reason}
+                                </p>
+                                <p>
+                                  Submitted file:{" "}
+                                  {versions.find((v) => v.id === a.draft_id)?.file_name ||
+                                    "Not preserved / unavailable"}
+                                </p>
+                                <p>
+                                  Submitted version (team-reported):{" "}
+                                  {a.submitted_version || "Unknown"}
+                                </p>
+                                <p>Receipt / reference: {a.reference || "Pending"}</p>
+                                {a.document_id && (
+                                  <p>
+                                    Related Google Doc (mutable, not a snapshot):{" "}
+                                    {documents.find((d) => d.id === a.document_id)?.title ||
+                                      "Unavailable"}
+                                  </p>
+                                )}
+                                {a.evidence_url && (
+                                  <a href={a.evidence_url} target="_blank" rel="noreferrer">
+                                    Open receipt evidence
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          <TTButton
+                            disabled={!available}
+                            variant="quiet"
+                            onClick={() => {
+                              setAmending(s);
+                              open("amend");
+                            }}
+                          >
+                            Add / correct evidence
+                          </TTButton>
                           {s.evidence_url ? (
                             <a href={s.evidence_url} rel="noreferrer" target="_blank">
                               View recorded evidence <ExternalLink size={14} />
@@ -589,6 +671,9 @@ export function RfpWorkspace({
                     ? `${versions.length} saved draft version${versions.length === 1 ? "" : "s"}`
                     : "No draft uploaded yet."}
                 </p>
+                <TTButton disabled={!available} onClick={() => open("document")}>
+                  Link Google Doc
+                </TTButton>
                 <TTButton disabled={!available} onClick={() => open("upload")}>
                   Upload draft
                 </TTButton>
@@ -625,15 +710,19 @@ export function RfpWorkspace({
         <DialogContent className="rfp-dialog">
           <DialogHeader>
             <DialogTitle>
-              {modal === "create"
-                ? "Capture an opportunity"
-                : modal === "edit"
-                  ? "Edit opportunity"
-                  : modal === "upload"
-                    ? "Upload a new draft version"
-                    : modal === "submission"
-                      ? "Record an external submission"
-                      : "Log a manual discovery review"}
+              {modal === "document"
+                ? "Link a Google Doc"
+                : modal === "amend"
+                  ? "Amend submission evidence"
+                  : modal === "create"
+                    ? "Capture an opportunity"
+                    : modal === "edit"
+                      ? "Edit opportunity"
+                      : modal === "upload"
+                        ? "Upload a new draft version"
+                        : modal === "submission"
+                          ? "Record an external submission"
+                          : "Log a manual discovery review"}
             </DialogTitle>
             <DialogDescription>
               {modal === "submission"
@@ -659,6 +748,121 @@ export function RfpWorkspace({
               }
             />
           )}
+          {modal === "document" && current && (
+            <form
+              className="rfp-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                void run(
+                  () => service.linkDocument(current, Object.fromEntries(f)),
+                  "Google Doc reference saved. Drive permissions are unchanged.",
+                );
+              }}
+            >
+              <p>
+                This saves a reference to a live, editable document. Existing Google Drive
+                permissions still apply. CMD does not read or copy its contents.
+              </p>
+              <Field label="Document title">
+                <input name="title" required maxLength={240} />
+              </Field>
+              <Field label="Google Doc URL">
+                <input
+                  name="url"
+                  type="url"
+                  required
+                  placeholder="https://docs.google.com/document/d/…/edit"
+                />
+              </Field>
+              <Field label="Document notes">
+                <textarea name="note" maxLength={2000} />
+              </Field>
+              <TTButton type="submit" disabled={busy}>
+                Save Google Doc reference
+              </TTButton>
+            </form>
+          )}
+          {modal === "amend" &&
+            current &&
+            amending &&
+            (() => {
+              const latest = (data.amendments ?? []).find((a) => a.submission_id === amending.id);
+              return (
+                <form
+                  className="rfp-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const f = new FormData(e.currentTarget);
+                    void run(
+                      () =>
+                        service.amendEvidence(current, amending.id, {
+                          ...Object.fromEntries(f),
+                          draft_id: f.get("draft_id") || null,
+                          document_id: f.get("document_id") || null,
+                        }),
+                      "Evidence amendment saved. Earlier records are preserved.",
+                    );
+                  }}
+                >
+                  <p>
+                    Record the file or version actually submitted and its receipt. Missing evidence
+                    can stay unknown. Every amendment preserves earlier records; a Google Doc alone
+                    is not an immutable submitted version.
+                  </p>
+                  <Field label="Actual submitted file (preserved upload)">
+                    <select
+                      name="draft_id"
+                      defaultValue={latest?.draft_id ?? amending.draft_id ?? ""}
+                    >
+                      <option value="">Unknown / not preserved</option>
+                      {versions.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.file_name} · {v.created_at}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Related Google Doc (mutable reference)">
+                    <select name="document_id" defaultValue={latest?.document_id ?? ""}>
+                      <option value="">None / unknown</option>
+                      {documents.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.title}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Submitted version description / named revision (team-reported)">
+                    <textarea
+                      name="submitted_version"
+                      maxLength={2000}
+                      defaultValue={latest?.submitted_version ?? ""}
+                    />
+                  </Field>
+                  <Field label="Receipt / reference">
+                    <input
+                      name="reference"
+                      maxLength={2000}
+                      defaultValue={latest?.reference ?? amending.reference}
+                    />
+                  </Field>
+                  <Field label="Receipt evidence URL">
+                    <input
+                      type="url"
+                      name="evidence_url"
+                      defaultValue={latest?.evidence_url ?? amending.evidence_url}
+                    />
+                  </Field>
+                  <Field label="Reason for amendment">
+                    <textarea required name="reason" maxLength={2000} />
+                  </Field>
+                  <TTButton type="submit" disabled={busy}>
+                    Append evidence amendment
+                  </TTButton>
+                </form>
+              );
+            })()}
           {modal === "upload" && current && (
             <form
               className="rfp-form"
@@ -712,6 +916,11 @@ export function RfpWorkspace({
               <Field label="Evidence URL (optional; otherwise evidence pending)">
                 <input name="evidence" type="url" />
               </Field>
+              <p>
+                Choose the actual submitted file below. For a Google Doc submission, save this
+                record, then use Add / correct evidence to identify the related document and
+                submitted revision. Missing files and receipts remain explicitly unknown.
+              </p>
               <Field label="Submitted draft">
                 <select name="draft">
                   <option value="">Historical / draft unavailable</option>

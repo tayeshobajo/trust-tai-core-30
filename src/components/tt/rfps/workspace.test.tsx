@@ -92,3 +92,79 @@ it("reports a saved change separately from a failed refresh", async () => {
   ).toBeTruthy();
   expect(create).toHaveBeenCalledTimes(1);
 });
+
+it("saves a Google Doc reference through its own operation", async () => {
+  const linkDocument = vi.fn().mockResolvedValue({ id: "doc" });
+  render(
+    <RfpWorkspace
+      service={{ ...service, linkDocument }}
+      refresh={async () => {}}
+      canWork
+      data={{ ...emptySnapshot, opportunities: [row] }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Link Google Doc" }));
+  fireEvent.change(screen.getByLabelText("Document title"), {
+    target: { value: "Working proposal" },
+  });
+  fireEvent.change(screen.getByLabelText("Google Doc URL"), {
+    target: { value: "https://docs.google.com/document/d/qa/edit" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save Google Doc reference" }));
+  expect(
+    await screen.findByText("Google Doc reference saved. Drive permissions are unchanged."),
+  ).toBeTruthy();
+  expect(linkDocument).toHaveBeenCalledWith(row, {
+    title: "Working proposal",
+    url: "https://docs.google.com/document/d/qa/edit",
+    note: "",
+  });
+});
+it("appends missing evidence without rewriting the original submission", async () => {
+  const amendEvidence = vi.fn().mockResolvedValue({ id: "amendment" });
+  render(
+    <RfpWorkspace
+      service={{ ...service, amendEvidence }}
+      refresh={async () => {}}
+      canWork
+      data={{
+        ...emptySnapshot,
+        opportunities: [row],
+        submissions: [
+          {
+            id: "submission",
+            opportunity_id: "test",
+            submitted_at: "2026-01-01T00:00:00Z",
+            channel: "Portal",
+            reference: "",
+            evidence_url: "",
+            draft_id: null,
+            recorded_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("tab", { name: "Submissions (1)" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add / correct evidence" }));
+  fireEvent.change(screen.getByLabelText("Reason for amendment"), {
+    target: { value: "Found receipt" },
+  });
+  fireEvent.change(screen.getByLabelText("Receipt / reference"), {
+    target: { value: "Receipt 123" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Append evidence amendment" }));
+  expect(
+    await screen.findByText("Evidence amendment saved. Earlier records are preserved."),
+  ).toBeTruthy();
+  expect(amendEvidence).toHaveBeenCalledWith(
+    row,
+    "submission",
+    expect.objectContaining({
+      reference: "Receipt 123",
+      reason: "Found receipt",
+      draft_id: null,
+      document_id: null,
+    }),
+  );
+});

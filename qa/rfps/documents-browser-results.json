@@ -1,0 +1,101 @@
+{
+  "results": [
+    {
+      "width": 1440,
+      "state": "drafts",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "state": "document",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "state": "submissions",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "state": "amend",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 768,
+      "state": "drafts",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 768,
+      "state": "document",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 768,
+      "state": "submissions",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 768,
+      "state": "amend",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 430,
+      "state": "drafts",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 430,
+      "state": "document",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 430,
+      "state": "submissions",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 430,
+      "state": "amend",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "drafts",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "document",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "submissions",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "amend",
+      "overflow": false,
+      "violations": []
+    }
+  ],
+  "errors": []
+}

@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/trust-tai/supabase";
 import {
+  documentInput,
+  evidenceInput,
   opportunityInput,
   submissionInput,
   validateUpload,
@@ -23,7 +25,9 @@ export function rfpService(org: string) {
       .from(table)
       .select("*")
       .eq("organization_id", org)
-      .order("created_at", { ascending: false })
+      .order(table === "rfp_submission_amendments" ? "sequence" : "created_at", {
+        ascending: false,
+      })
       .limit(501);
     if (error) throw fail(error);
     if (data.length > 500)
@@ -54,16 +58,21 @@ export function rfpService(org: string) {
         throw new Error(
           "RFP workspace access has not been provisioned. Ask your administrator to review your access; no records were loaded.",
         );
-      const [opportunities, versions, submissions, approvals, checks] = await Promise.all(
-        [
-          "rfp_opportunities",
-          "rfp_draft_versions",
-          "rfp_submissions",
-          "rfp_draft_approvals",
-          "rfp_discovery_checks",
-        ].map(list),
-      );
+      const [opportunities, versions, submissions, approvals, checks, documents, amendments] =
+        await Promise.all(
+          [
+            "rfp_opportunities",
+            "rfp_draft_versions",
+            "rfp_submissions",
+            "rfp_draft_approvals",
+            "rfp_discovery_checks",
+            "rfp_document_references",
+            "rfp_submission_amendments",
+          ].map(list),
+        );
       return {
+        documents: documents ?? [],
+        amendments: amendments ?? [],
         opportunities: opportunities ?? [],
         versions: versions ?? [],
         submissions: submissions ?? [],
@@ -136,6 +145,19 @@ export function rfpService(org: string) {
     async recordSubmission(o: Opportunity, input: unknown) {
       const values = submissionInput.parse(input);
       return insert("rfp_submissions", { opportunity_id: o.id, ...values });
+    },
+    async linkDocument(o: Opportunity, input: unknown) {
+      return insert("rfp_document_references", {
+        opportunity_id: o.id,
+        ...documentInput.parse(input),
+      });
+    },
+    async amendEvidence(o: Opportunity, submissionId: string, input: unknown) {
+      return insert("rfp_submission_amendments", {
+        opportunity_id: o.id,
+        submission_id: submissionId,
+        ...evidenceInput.parse(input),
+      });
     },
     async check(note: string, source_count: number, failed_count: number) {
       if (

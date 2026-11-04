@@ -42,7 +42,32 @@ createRoot(document.getElementById("root")!).render(
       loading={mode === "loading"}
       data={
         mode === "detail" || mode === "readonly"
-          ? { ...emptySnapshot, opportunities: [row] }
+          ? {
+              ...emptySnapshot,
+              opportunities: [row],
+              documents: [
+                {
+                  id: "doc",
+                  opportunity_id: row.id,
+                  title: "Synthetic working proposal",
+                  url: "https://docs.google.com/document/d/synthetic/edit",
+                  note: "QA only",
+                  created_at: "2026-01-01T00:00:00Z",
+                },
+              ],
+              submissions: [
+                {
+                  id: "submission",
+                  opportunity_id: row.id,
+                  submitted_at: "2026-01-01T00:00:00Z",
+                  channel: "Synthetic portal",
+                  reference: "",
+                  evidence_url: "",
+                  draft_id: null,
+                  recorded_at: "2026-01-01T00:00:00Z",
+                },
+              ],
+            }
           : emptySnapshot
       }
     />
