@@ -58,19 +58,29 @@ export function rfpService(org: string) {
         throw new Error(
           "RFP workspace access has not been provisioned. Ask your administrator to review your access; no records were loaded.",
         );
-      const [opportunities, versions, submissions, approvals, checks, documents, amendments] =
-        await Promise.all(
-          [
-            "rfp_opportunities",
-            "rfp_draft_versions",
-            "rfp_submissions",
-            "rfp_draft_approvals",
-            "rfp_discovery_checks",
-            "rfp_document_references",
-            "rfp_submission_amendments",
-          ].map(list),
-        );
+      const [
+        opportunities,
+        versions,
+        submissions,
+        approvals,
+        checks,
+        documents,
+        amendments,
+        sourceFiles,
+      ] = await Promise.all(
+        [
+          "rfp_opportunities",
+          "rfp_draft_versions",
+          "rfp_submissions",
+          "rfp_draft_approvals",
+          "rfp_discovery_checks",
+          "rfp_document_references",
+          "rfp_submission_amendments",
+          "rfp_source_files",
+        ].map(list),
+      );
       return {
+        sourceFiles: sourceFiles ?? [],
         documents: documents ?? [],
         amendments: amendments ?? [],
         opportunities: opportunities ?? [],
@@ -79,6 +89,43 @@ export function rfpService(org: string) {
         approvals: approvals ?? [],
         checks: checks ?? [],
       };
+    },
+    async readSource(url: string) {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch("/api/public/rfps/source", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${data.session?.access_token || ""}`,
+        },
+        body: JSON.stringify({ url, organization_id: org }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Source could not be read.");
+      return result as import("@/domain/rfp-intake").IntakeSource;
+    },
+    async preserveSource(o: Opportunity, file: File, sha256: string) {
+      validateUpload(file);
+      const id = crypto.randomUUID();
+      const path = `${org}/${o.id}/${id}/${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const { error } = await supabase.storage.from("rfp-drafts").upload(path, file, {
+        upsert: false,
+        contentType: file.type || "application/octet-stream",
+      });
+      if (error) throw fail(error);
+      try {
+        return await insert("rfp_source_files", {
+          id,
+          opportunity_id: o.id,
+          file_name: file.name,
+          object_path: path,
+          sha256,
+        });
+      } catch {
+        throw new Error(
+          "Source file transfer completed but its record failed. Do not retry blindly; ask an administrator to reconcile it.",
+        );
+      }
     },
     async create(input: OpportunityInput) {
       return insert("rfp_opportunities", opportunityInput.parse(input));
@@ -127,7 +174,7 @@ export function rfpService(org: string) {
         );
       }
     },
-    async download(version: DraftVersion) {
+    async download(version: Pick<DraftVersion, "object_path" | "file_name">) {
       const { data, error } = await supabase.storage
         .from("rfp-drafts")
         .download(version.object_path);

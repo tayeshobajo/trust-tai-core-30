@@ -106,6 +106,7 @@ import { Route as ApiPublicIntelligenceStatusRouteImport } from './routes/api/pu
 import { Route as ApiPublicPreparationRunRouteImport } from './routes/api/public/preparation.run'
 import { Route as ApiPublicProjectsAskRouteImport } from './routes/api/public/projects.ask'
 import { Route as ApiPublicProjectsContextPacketRouteImport } from './routes/api/public/projects.context-packet'
+import { Route as ApiPublicRfpsSourceRouteImport } from './routes/api/public/rfps.source'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapConversationSummaryRouteImport } from './routes/api/public/roadmap.conversation-summary'
 import { Route as ApiPublicRoadmapCorrespondenceRouteImport } from './routes/api/public/roadmap.correspondence'
@@ -645,6 +646,11 @@ const ApiPublicProjectsContextPacketRoute =
     path: '/api/public/projects/context-packet',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicRfpsSourceRoute = ApiPublicRfpsSourceRouteImport.update({
+  id: '/api/public/rfps/source',
+  path: '/api/public/rfps/source',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicRoadmapAskRoute = ApiPublicRoadmapAskRouteImport.update({
   id: '/api/public/roadmap/ask',
   path: '/api/public/roadmap/ask',
@@ -986,6 +992,7 @@ export interface FileRoutesByFullPath {
   '/api/public/preparation/run': typeof ApiPublicPreparationRunRoute
   '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
+  '/api/public/rfps/source': typeof ApiPublicRfpsSourceRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/conversation-summary': typeof ApiPublicRoadmapConversationSummaryRoute
   '/api/public/roadmap/correspondence': typeof ApiPublicRoadmapCorrespondenceRoute
@@ -1119,6 +1126,7 @@ export interface FileRoutesByTo {
   '/api/public/preparation/run': typeof ApiPublicPreparationRunRoute
   '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
+  '/api/public/rfps/source': typeof ApiPublicRfpsSourceRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/conversation-summary': typeof ApiPublicRoadmapConversationSummaryRoute
   '/api/public/roadmap/correspondence': typeof ApiPublicRoadmapCorrespondenceRoute
@@ -1262,6 +1270,7 @@ export interface FileRoutesById {
   '/api/public/preparation/run': typeof ApiPublicPreparationRunRoute
   '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
+  '/api/public/rfps/source': typeof ApiPublicRfpsSourceRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/conversation-summary': typeof ApiPublicRoadmapConversationSummaryRoute
   '/api/public/roadmap/correspondence': typeof ApiPublicRoadmapCorrespondenceRoute
@@ -1406,6 +1415,7 @@ export interface FileRouteTypes {
     | '/api/public/preparation/run'
     | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
+    | '/api/public/rfps/source'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/conversation-summary'
     | '/api/public/roadmap/correspondence'
@@ -1539,6 +1549,7 @@ export interface FileRouteTypes {
     | '/api/public/preparation/run'
     | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
+    | '/api/public/rfps/source'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/conversation-summary'
     | '/api/public/roadmap/correspondence'
@@ -1681,6 +1692,7 @@ export interface FileRouteTypes {
     | '/api/public/preparation/run'
     | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
+    | '/api/public/rfps/source'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/conversation-summary'
     | '/api/public/roadmap/correspondence'
@@ -1774,6 +1786,7 @@ export interface RootRouteChildren {
   ApiPublicPreparationRunRoute: typeof ApiPublicPreparationRunRoute
   ApiPublicProjectsAskRoute: typeof ApiPublicProjectsAskRoute
   ApiPublicProjectsContextPacketRoute: typeof ApiPublicProjectsContextPacketRoute
+  ApiPublicRfpsSourceRoute: typeof ApiPublicRfpsSourceRoute
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
   ApiPublicRoadmapConversationSummaryRoute: typeof ApiPublicRoadmapConversationSummaryRoute
   ApiPublicRoadmapCorrespondenceRoute: typeof ApiPublicRoadmapCorrespondenceRoute
@@ -2494,6 +2507,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicProjectsContextPacketRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/rfps/source': {
+      id: '/api/public/rfps/source'
+      path: '/api/public/rfps/source'
+      fullPath: '/api/public/rfps/source'
+      preLoaderRoute: typeof ApiPublicRfpsSourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/roadmap/ask': {
       id: '/api/public/roadmap/ask'
       path: '/api/public/roadmap/ask'
@@ -3059,6 +3079,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPreparationRunRoute: ApiPublicPreparationRunRoute,
   ApiPublicProjectsAskRoute: ApiPublicProjectsAskRoute,
   ApiPublicProjectsContextPacketRoute: ApiPublicProjectsContextPacketRoute,
+  ApiPublicRfpsSourceRoute: ApiPublicRfpsSourceRoute,
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
   ApiPublicRoadmapConversationSummaryRoute:
     ApiPublicRoadmapConversationSummaryRoute,

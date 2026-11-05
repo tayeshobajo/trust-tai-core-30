@@ -1,0 +1,5 @@
+Title: Synthetic website services
+Issued by: Example Test Board
+RFP No: TEST-2026
+Deadline: 2026-12-01
+This fixture is not a real opportunity.

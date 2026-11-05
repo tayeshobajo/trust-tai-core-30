@@ -42,6 +42,7 @@ import {
 } from "@/domain/rfps";
 import type { RfpService } from "@/data/supabase/rfps";
 import "./workspace.css";
+import { OpportunityIntake } from "./intake";
 const workflowGroups: Record<string, readonly Stage[]> = {
   all: stages,
   captured: ["captured"],
@@ -154,10 +155,12 @@ function OpportunityForm({
         </Field>
         {text(
           "source_name",
-          v.kind === "grant" ? "Funder / administrator *" : "Issuing organization *",
+          v.kind === "grant"
+            ? "Funder / administrator (if known)"
+            : "Issuing organization (if known)",
         )}
-        {text("source_url", "Official source URL *", "url")}
-        {text("cycle", "Application cycle / solicitation ID *")}
+        {text("source_url", "Source URL (optional for a document)", "url")}
+        {text("cycle", "Application cycle / solicitation ID (if known)")}
         {text("applicant", "Applicant legal entity")}
         <Field label="Eligibility">
           <select
@@ -468,7 +471,7 @@ export function RfpWorkspace({
                   </span>
                   <span className="rfp-row-body">
                     <strong>{o.title}</strong>
-                    <span>{o.source_name}</span>
+                    <span>{o.source_name || "Issuer unknown"}</span>
                   </span>
                   <span className="rfp-row-meta">
                     <span className="rfp-pill">{o.kind === "grant" ? "Grant" : "RFP"}</span>
@@ -669,9 +672,32 @@ export function RfpWorkspace({
                     <>
                       <h3>Source evidence &amp; notes</h3>
                       <p className="rfp-pre">{current.source_evidence}</p>
-                      <a href={current.source_url} target="_blank" rel="noreferrer">
-                        Open official source <ExternalLink size={14} />
-                      </a>
+                      {current.source_url && (
+                        <a href={current.source_url} target="_blank" rel="noreferrer">
+                          Open source <ExternalLink size={14} />
+                        </a>
+                      )}
+                      <h3>Original source documents</h3>
+                      {(data.sourceFiles ?? [])
+                        .filter((f) => f.opportunity_id === current.id)
+                        .map((f) => (
+                          <div key={f.id}>
+                            <TTButton
+                              variant="quiet"
+                              onClick={() =>
+                                void service.download(f).catch((e) => setActionError(e.message))
+                              }
+                            >
+                              {f.file_name}
+                            </TTButton>
+                            <p className="rfp-muted">
+                              Private source document · not a proposal draft
+                            </p>
+                          </div>
+                        ))}
+                      {!(data.sourceFiles ?? []).some((f) => f.opportunity_id === current.id) && (
+                        <p>No original source file is preserved in CMD.</p>
+                      )}
                       <p className="rfp-muted">
                         Availability: {current.source_state}.{" "}
                         {current.source_checked_at
@@ -887,10 +913,14 @@ export function RfpWorkspace({
                   <dd>{current.eligibility}</dd>
                   <dt>Source</dt>
                   <dd>
-                    <a href={current.source_url} target="_blank" rel="noreferrer">
-                      {current.source_name}
-                      <ExternalLink size={14} />
-                    </a>
+                    {current.source_url ? (
+                      <a href={current.source_url} target="_blank" rel="noreferrer">
+                        {current.source_name || "Open source"}
+                        <ExternalLink size={14} />
+                      </a>
+                    ) : (
+                      <span>Source document · see Notes</span>
+                    )}
                   </dd>
                 </dl>
                 <section className="rfp-submission-summary">
@@ -979,7 +1009,39 @@ export function RfpWorkspace({
                   : "Keep the source, responsibility and next action clear."}
             </DialogDescription>
           </DialogHeader>
-          {(modal === "create" || modal === "edit") && (
+          {modal === "create" && (
+            <OpportunityIntake
+              onBusy={setBusy}
+              service={service}
+              opportunities={data.opportunities}
+              onExisting={(id) => {
+                setSelected(id);
+                setGroup("all");
+                setQuery("");
+                setFilter("all");
+                setKind("all");
+                setModal(null);
+                setMobileDetail(true);
+              }}
+              onComplete={async (id, message) => {
+                setSelected(id);
+                setGroup("all");
+                setQuery("");
+                setFilter("all");
+                setKind("all");
+                setModal(null);
+                setMessage(message);
+                try {
+                  await refresh();
+                } catch {
+                  setActionError(
+                    "Saved, but refresh failed. Refresh before making another change.",
+                  );
+                }
+              }}
+            />
+          )}
+          {modal === "edit" && (
             <OpportunityForm
               key={modal + current?.id}
               initial={modal === "edit" && current ? current : blankOpportunity}

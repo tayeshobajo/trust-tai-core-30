@@ -69,26 +69,17 @@ it("reports a saved change separately from a failed refresh", async () => {
     />,
   );
   fireEvent.click(screen.getByRole("button", { name: /^Add opportunity$/ }));
-  fireEvent.change(screen.getByLabelText("Opportunity title *"), {
-    target: { value: "Synthetic capture" },
-  });
-  fireEvent.change(screen.getByLabelText("Issuing organization *"), {
-    target: { value: "QA issuer" },
-  });
-  fireEvent.change(screen.getByLabelText("Official source URL *"), {
+  fireEvent.change(screen.getByLabelText("RFP or grant URL"), {
     target: { value: "https://example.org/qa" },
   });
-  fireEvent.change(screen.getByLabelText("Application cycle / solicitation ID *"), {
-    target: { value: "QA" },
+  fireEvent.change(screen.getByLabelText("Source text"), {
+    target: { value: "Synthetic capture\nIssued by: QA issuer" },
   });
-  fireEvent.change(screen.getByLabelText("Source evidence / relevant excerpt *"), {
-    target: { value: "Synthetic source note" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Save opportunity" }));
+  fireEvent.click(screen.getByRole("button", { name: "Review source" }));
+  await screen.findByText("Review opportunity");
+  fireEvent.click(screen.getByRole("button", { name: "Create opportunity" }));
   expect(
-    await screen.findByText(
-      "The change completed, but the latest records could not be loaded. Refresh before making another change.",
-    ),
+    await screen.findByText("Saved, but refresh failed. Refresh before making another change."),
   ).toBeTruthy();
   expect(create).toHaveBeenCalledTimes(1);
 });

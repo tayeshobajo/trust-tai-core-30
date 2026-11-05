@@ -48,9 +48,14 @@ export const opportunityInput = z
   .object({
     title: z.string().trim().min(1).max(240),
     kind: z.enum(["rfp", "grant"]),
-    source_url: source,
-    source_name: z.string().trim().min(1).max(240),
-    cycle: z.string().trim().min(1).max(120),
+    source_url: source.or(z.literal("")),
+    source_file_sha256: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .or(z.literal(""))
+      .optional(),
+    source_name: z.string().trim().max(240),
+    cycle: z.string().trim().max(120),
     applicant: z.string().trim().max(240),
     eligibility: z.enum(["unknown", "reviewing", "eligible", "ineligible"]),
     eligibility_notes: z.string().max(10000),
@@ -77,6 +82,12 @@ export const opportunityInput = z
     source_evidence: z.string().trim().min(1).max(20000),
   })
   .superRefine((v, ctx) => {
+    if (!v.source_url && !v.source_file_sha256)
+      ctx.addIssue({
+        code: "custom",
+        path: ["source_url"],
+        message: "Provide a source URL or source document.",
+      });
     if (
       v.deadline_date &&
       (Number.isNaN(Date.parse(v.deadline_date)) ||
@@ -131,7 +142,9 @@ export interface Submission {
   draft_id: string | null;
   recorded_at: string;
 }
+export type SourceFile = Omit<DraftVersion, "note">;
 export interface Snapshot {
+  sourceFiles?: SourceFile[];
   documents?: DocumentReference[];
   amendments?: EvidenceAmendment[];
   opportunities: Opportunity[];
