@@ -1296,3 +1296,236 @@
   cursor: not-allowed;
   opacity: 0.55;
 }
+/* Local fonts already used by Trust Tai's Content Engine. */
+@font-face {
+  font-family: "Studio Playfair";
+  src: url("/fonts/studio/PlayfairDisplay-Variable.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+.sv-root,
+.sv-dialog {
+  font-family: Arial, Arial, sans-serif;
+}
+.sv-shell > div > aside nav[aria-label="Trust Tai suite"] > a {
+  font-family: Arial, Arial, sans-serif;
+}
+.sv-brand {
+  display: flex;
+  align-items: center;
+  width: 174px;
+  gap: 4px;
+  height: 40px;
+}
+.sv-brand-mark {
+  width: 44px;
+  height: 28px;
+  overflow: hidden;
+  display: block;
+  flex-shrink: 0;
+}
+.sv-brand-mark img {
+  width: 143px !important;
+  height: 26px !important;
+  max-width: none;
+  filter: sepia(1) saturate(5) hue-rotate(340deg) brightness(0.68);
+}
+.sv-brand-type {
+  font:
+    700 25px/27px Arial,
+    Arial,
+    sans-serif;
+  letter-spacing: -0.9px;
+  color: #101329;
+  white-space: nowrap;
+}
+.sv-brand-type small {
+  display: block;
+  font-size: 7.7px;
+  line-height: 11px;
+  letter-spacing: -0.1px;
+  font-weight: 600;
+}
+.sv-shell > header > a > .sv-brand {
+  display: flex;
+}
+.sv-shell > header > div > button {
+  white-space: nowrap;
+}
+.sv-search {
+  margin-left: 64px;
+}
+.sv-focus {
+  background-size: auto 270px;
+}
+.sv-focus::before {
+  background: linear-gradient(90deg, #f6eade 0%, #f6eadee0 37%, #f6eade33 80%);
+}
+.sv-focus h2 {
+  font-family: "Studio Playfair", Georgia, serif;
+  font-size: 32px;
+  letter-spacing: -1.1px;
+}
+.sv-thumb {
+  filter: saturate(0.65) brightness(1.08);
+}
+.sv-tabs {
+  gap: 8px;
+}
+.sv-tabs button,
+.sv-tabs a {
+  gap: 9px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.sv-tabs button:disabled,
+.sv-rail-nav button:disabled {
+  opacity: 0.8;
+}
+.sv-brief footer .sv-button {
+  font-size: 12px;
+  letter-spacing: -0.35px;
+}
+@media (min-width: 1500px) {
+  .sv-focus h2 {
+    font-size: 32px;
+    line-height: 40px;
+    margin-top: 4px;
+    margin-bottom: 2px;
+  }
+  .sv-focus .sv-actions {
+    margin-top: 23px;
+  }
+}
+@media (max-width: 1450px) {
+  .sv-search {
+    margin-left: 28px;
+  }
+}
+@media (max-width: 1250px) {
+  .sv-search {
+    margin-left: 3px;
+  }
+}
+@media (max-width: 1023px) {
+  .sv-brand {
+    width: 143px;
+    gap: 1px;
+  }
+  .sv-brand-type {
+    font-size: 21px;
+    line-height: 24px;
+  }
+  .sv-brand-type small {
+    font-size: 6.5px;
+  }
+  .sv-brand-mark {
+    width: 37px;
+  }
+  .sv-brand-mark img {
+    width: 123px !important;
+    height: 23px !important;
+  }
+  .sv-search {
+    margin-left: 0;
+  }
+}
+@media (max-width: 700px) {
+  .sv-focus h2 {
+    font-size: 30px;
+    line-height: 36px;
+  }
+  .sv-brand {
+    width: 143px;
+  }
+  .sv-tabs {
+    gap: 0;
+  }
+}
+/* Reference paragraph wrapping matches Arial more closely than Inter. */
+.sv-root,
+.sv-dialog {
+  font-family: Arial, Helvetica, sans-serif;
+}
+.sv-shell > div > aside nav[aria-label="Trust Tai suite"] > a {
+  font-family: Arial, Helvetica, sans-serif;
+}
+.sv-brand-type {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 25px;
+  letter-spacing: -0.8px;
+}
+.sv-suite-unavailable {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 9px 12px;
+  margin-bottom: 4px;
+  font-size: 14px;
+  cursor: not-allowed;
+}
+.sv-suite-unavailable > svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.sv-suite-unavailable > span {
+  white-space: nowrap;
+}
+.sv-suite-unavailable > small {
+  margin-left: auto;
+  font: 8px monospace;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #69666b;
+}
+.sv-rail-nav {
+  margin-bottom: 4px;
+}
+@media (min-width: 1500px) {
+  .sv-focus h2 {
+    font-size: 34px;
+  }
+}
+/* Align internal baselines and thumbnail spacing with the reference. */
+.sv-why {
+  padding-top: 17px;
+}
+.sv-why > p {
+  margin-bottom: 18px;
+}
+.sv-why li {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.sv-goal {
+  margin-bottom: 13px;
+}
+.sv-message {
+  padding-top: 10px;
+  padding-bottom: 9px;
+  margin-bottom: 10px;
+}
+@media (min-width: 1500px) {
+  .sv-right {
+    margin-top: -3px;
+    gap: 19px;
+  }
+  .sv-topics {
+    padding-top: 17px;
+  }
+  .sv-topics h2 {
+    padding-bottom: 16px;
+  }
+  .sv-topic {
+    padding-bottom: 12px;
+  }
+}
+.sv-right,
+.sv-plan,
+.sv-topics {
+  min-width: 0;
+}

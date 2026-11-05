@@ -225,6 +225,7 @@ export function VideoStudio({ identity }: { identity?: WorkspaceIdentity }) {
           return (
             <Link
               key={name}
+              activeOptions={{ exact: true }}
               to={name === "People" ? "/modules/studio/audience" : "/modules/studio"}
             >
               <Icon />
@@ -363,7 +364,7 @@ export function VideoStudio({ identity }: { identity?: WorkspaceIdentity }) {
                       </li>
                     ))}
                   </ul>
-                  <small>
+                  <small className="sr-only">
                     {draft.id.startsWith("starter")
                       ? "Example rationale · not an audience analysis"
                       : "Manual brief · no audience analysis"}

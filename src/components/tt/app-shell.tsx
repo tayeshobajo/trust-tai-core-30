@@ -9,6 +9,7 @@ import {
   Compass,
   HeartHandshake,
   MessagesSquare,
+  Network,
   PenTool,
   Route as RouteIcon,
   Search,
@@ -43,6 +44,7 @@ const ICONS: Record<string, LucideIcon> = {
   Compass,
   Search,
   MessagesSquare,
+  Network,
   HeartHandshake,
   Route: RouteIcon,
   SquareStack,
@@ -124,6 +126,17 @@ function NavList({
                 <AmbientDot appId={app.id} />
               )}
             </AppLink>
+            {app.id === "comms" && studioNavigation ? (
+              <div
+                className="sv-suite-unavailable"
+                aria-disabled="true"
+                title="Reference placeholder: RFPs & Grants is not connected in this application."
+              >
+                <Network aria-hidden="true" />
+                <span>RFPs &amp; Grants</span>
+                <small>In build</small>
+              </div>
+            ) : null}
             {app.id === "studio" && studioNavigation ? (
               <div onClick={onNavigate}>{studioNavigation}</div>
             ) : null}
@@ -214,7 +227,18 @@ export function AppShell({
         )}
 
         <Link to="/welcome" className="flex items-center gap-3" aria-label="Trust Tai OS · welcome">
-          <BrandLogo height={26} className="sm:h-[30px] sm:w-auto" />
+          {canvas === "studio" ? (
+            <span className="sv-brand" aria-hidden="true">
+              <span className="sv-brand-mark">
+                <BrandLogo height={26} alt="" />
+              </span>
+              <span className="sv-brand-type">
+                Trust Tai<small>CONSULTANCY + AI AGENCY</small>
+              </span>
+            </span>
+          ) : (
+            <BrandLogo height={26} className="sm:h-[30px] sm:w-auto" />
+          )}
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:inline">
             OS
           </span>
