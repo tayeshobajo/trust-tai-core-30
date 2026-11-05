@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useRef, type ReactNode } from "react";
 import {
   FileText,
@@ -15,6 +15,7 @@ import { AppShell } from "@/components/tt/app-shell";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import "./video-studio.css";
 import "./studio-workspace.css";
+import "./studio-polish.css";
 
 export type StudioSection =
   "Overview" | "Posts" | "Video" | "Ideas" | "People" | "Content DNA" | "Sources";
@@ -34,23 +35,43 @@ export function StudioSectionNav({
   current: StudioSection;
   rail?: boolean;
 }) {
+  const navigate = useNavigate();
   return (
-    <nav
-      aria-label={rail ? "Studio sidebar sections" : "Studio sections"}
-      className={rail ? "sv-rail-nav" : "sv-tabs"}
-    >
-      {sections.map(({ name, to, Icon }) => (
-        <Link
-          key={name}
-          to={to}
-          activeOptions={{ exact: true }}
-          aria-current={current === name ? "page" : undefined}
-        >
-          <Icon />
-          {name}
-        </Link>
-      ))}
-    </nav>
+    <>
+      {!rail && (
+        <label className="sp-section-select">
+          Studio section
+          <select
+            value={current}
+            onChange={(e) => {
+              const section = sections.find((s) => s.name === e.target.value);
+              if (section) void navigate({ to: section.to });
+            }}
+          >
+            {sections.map((s) => (
+              <option key={s.name}>{s.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      <nav
+        aria-label={rail ? "Studio sidebar sections" : "Studio sections"}
+        className={rail ? "sv-rail-nav" : "sv-tabs"}
+      >
+        {sections.map(({ name, to, Icon }) => (
+          <Link
+            key={name}
+            data-section={name}
+            to={to}
+            activeOptions={{ exact: true }}
+            aria-current={current === name ? "page" : undefined}
+          >
+            <Icon />
+            {name}
+          </Link>
+        ))}
+      </nav>
+    </>
   );
 }
 export function StudioShell({
@@ -79,7 +100,7 @@ export function StudioShell({
       <AppShell
         identity={identity}
         canvas="studio"
-        studioNavigation={<StudioSectionNav current={section} rail />}
+
         headerContent={
           onSearch ? (
             <label className="sv-search">

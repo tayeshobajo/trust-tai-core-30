@@ -1,3 +1,4 @@
+import { FeaturedImageReview } from "./featured-image";
 import { StudioSectionNav } from "./studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -98,6 +99,8 @@ export function VideoStudio({ identity }: { identity?: WorkspaceIdentity }) {
   >(null);
   const [editing, setEditing] = useState<VideoDraft>(starter);
   const [week, setWeek] = useState(0);
+  const [imageReview, setImageReview] = useState(false);
+  const imageTrigger = useRef<HTMLButtonElement>(null);
   const briefRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const key = `trusttai:studio-video:v1:${identity?.organizationId ?? "preview"}:${identity?.userId ?? "preview"}`;
@@ -221,7 +224,7 @@ export function VideoStudio({ identity }: { identity?: WorkspaceIdentity }) {
       <AppShell
         {...(identity ? { identity } : {})}
         canvas="studio"
-        studioNavigation={nav(true)}
+
         headerContent={
           <label className="sv-search">
             <Search />
@@ -262,14 +265,46 @@ export function VideoStudio({ identity }: { identity?: WorkspaceIdentity }) {
                 <button onClick={() => setSearch("")}>Clear search</button>
               </p>
             )}
+            <div className="sp-video-image-bar">
+              <span>Featured image · needs image</span>
+              <button ref={imageTrigger} className="sv-button" onClick={() => setImageReview(true)}>
+                Review featured image
+              </button>
+            </div>
+            <Dialog open={imageReview} onOpenChange={setImageReview}>
+              <DialogContent
+                className="sv-dialog sp-wide-dialog"
+                onCloseAutoFocus={(e) => {
+                  e.preventDefault();
+                  imageTrigger.current?.focus();
+                }}
+              >
+                <DialogHeader>
+                  <DialogTitle>Video featured image</DialogTitle>
+                  <DialogDescription>
+                    Review a local visual preview for this brief. No asset is saved to the video.
+                  </DialogDescription>
+                </DialogHeader>
+                <FeaturedImageReview
+                  key={draft.id}
+                  title={draft.title}
+                  image={{
+                    state: "unavailable",
+                    assetUrl: null,
+                    brief: draft.message,
+                    altText: "",
+                    provider: null,
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
             <div className="sv-grid">
               <section className="sv-focus">
                 <div>
-                  <p className="sv-eyebrow">TODAY’S VIDEO FOCUS</p>
+                  <p className="sv-eyebrow">EXAMPLE VIDEO BRIEF</p>
                   <h2>{draft.title}</h2>
                   <p>
-                    A 5-minute video you can record today, based on your recent ideas and
-                    conversations.
+                    A starter brief to adapt in your own words. Saved plans stay on this device.
                   </p>
                   <div className="sv-actions">
                     <button

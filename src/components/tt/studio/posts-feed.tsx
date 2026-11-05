@@ -6,6 +6,8 @@ import { contentService } from "@/data/supabase/content-service";
 import { CONTENT_ITEM_STATE_LABEL, type ContentBatch } from "@/domain/content";
 import type { ContentSource } from "@/domain/content-source";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+import { FeaturedImage } from "./featured-image";
+import { imageReviewStatus } from "@/domain/studio-image-review";
 import { StudioState } from "./studio-shell";
 export function PostsFeed({
   identity,
@@ -45,7 +47,7 @@ export function PostsFeed({
     text
       .replace(/[#*_`>]/g, "")
       .trim()
-      .slice(0, 440);
+      .slice(0, 220);
   return (
     <section className="sw-post-feed">
       <section className="sw-profile-card">
@@ -111,12 +113,14 @@ export function PostsFeed({
                   </div>
                   <span className="sw-status">{CONTENT_ITEM_STATE_LABEL[item.state]}</span>
                 </header>
+                <FeaturedImage image={item.image} title={item.title} />
+                <span className="sp-image-status">{imageReviewStatus(item.image)}</span>
                 <h3>{item.title}</h3>
                 <p>
                   {excerpt(item.draftMarkdown) ||
                     item.angle ||
                     "This draft has no article text yet."}
-                  {item.draftMarkdown.length > 440 ? "…" : ""}
+                  {item.draftMarkdown.length > 220 ? "…" : ""}
                 </p>
                 <div className="sw-post-tags">
                   {[item.taxonomy.category, ...item.taxonomy.tags.slice(0, 3)]

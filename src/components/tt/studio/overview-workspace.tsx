@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  FileText,
-  Lightbulb,
-  BookOpen,
-  Video,
-  Sparkles,
-  CheckCircle2,
-} from "lucide-react";
+import { ArrowRight, FileText, Lightbulb, BookOpen, Video } from "lucide-react";
 import { StudioShell, StudioState } from "./studio-shell";
 import { useStudioBatches, useStudioBriefs, useStudioSources } from "./use-studio-library";
 import { isStudioIdea } from "@/domain/studio-ideas";
@@ -44,63 +36,6 @@ export function OverviewWorkspace({ identity }: { identity: WorkspaceIdentity })
       }
     >
       <div className="sw-overview-grid">
-        <section className="sw-overview-hero">
-          <span className="sw-kicker">YOUR CONTENT STARTS HERE</span>
-          <h2>
-            Make something
-            <br />
-            worth sharing.
-          </h2>
-          <p>
-            Turn what you know, notice, and believe into useful content. Start with a thought. Keep
-            your voice. Decide what goes out.
-          </p>
-          <div className="sv-actions">
-            <Link className="sv-button sv-orange" to="/modules/studio/ideas">
-              <Lightbulb />
-              Capture an idea
-            </Link>
-            <Link className="sv-button sv-outline" to="/modules/studio/posts">
-              Start writing
-              <ArrowRight />
-            </Link>
-          </div>
-          <div className="sw-hero-art" aria-hidden>
-            <div />
-            <span>
-              <PenIcon />
-            </span>
-            <i />
-            <b />
-          </div>
-        </section>
-        <aside className="sv-card sw-next">
-          <span className="sw-kicker">
-            <Sparkles />A SIMPLE NEXT STEP
-          </span>
-          <h2>
-            {ideas.length
-              ? "A saved idea is ready when you are."
-              : "Start with what’s on your mind."}
-          </h2>
-          <p>
-            {ideas.length
-              ? "You don’t need a new topic. Choose a thought you’ve already kept and give it a little space."
-              : "A lesson, a question, a conversation. Capture it before the day moves on."}
-          </p>
-          <Link className="sw-text-button" to="/modules/studio/ideas">
-            {ideas.length ? "Open your ideas" : "Save your first idea"}
-            <ArrowRight />
-          </Link>
-          <hr />
-          <div className="sw-next-status">
-            <CheckCircle2 />
-            <p>
-              Nothing publishes on its own.
-              <small>Your existing approval flow stays in place.</small>
-            </p>
-          </div>
-        </aside>
         <section className="sw-stats" aria-label="Recent workspace counts">
           {[
             {
@@ -135,8 +70,8 @@ export function OverviewWorkspace({ identity }: { identity: WorkspaceIdentity })
         <section className="sw-recent">
           <header className="sw-section-heading">
             <div>
-              <span className="sw-kicker">PICK UP THE THREAD</span>
-              <h2>Recent work</h2>
+              <span className="sw-kicker">YOUR WORKSPACE</span>
+              <h2>Continue working</h2>
             </div>
             <Link to="/modules/studio/posts" className="sw-text-button">
               Open Posts
@@ -208,7 +143,7 @@ export function OverviewWorkspace({ identity }: { identity: WorkspaceIdentity })
             <span className="sw-line-icon">
               <Lightbulb />
             </span>
-            <h2>Ideas you’ve kept</h2>
+            <h2>Your next idea</h2>
             {briefs.isError ? (
               <p className="sw-error">
                 Ideas could not be read.{" "}
@@ -269,7 +204,4 @@ function PlusIcon() {
       +
     </span>
   );
-}
-function PenIcon() {
-  return <FileText size={74} strokeWidth={1} />;
 }

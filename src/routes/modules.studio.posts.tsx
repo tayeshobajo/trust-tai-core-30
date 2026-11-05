@@ -121,7 +121,7 @@ export function StudioPosts({
     if (composing)
       document
         .getElementById("studio-compose")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        ?.scrollIntoView({ behavior: "auto", block: "start" });
   }, [composing]);
   const { organizationId, userId } = identity;
   const context = useMemo(() => ({ organizationId, userId }), [organizationId, userId]);
@@ -474,19 +474,48 @@ export function StudioPosts({
         </button>
       }
     >
-      <section className="sw-post-intro">
-        <div>
-          <span className="sw-kicker">WRITE WITH INTENTION</span>
-          <h2>Your next post starts with a clear idea.</h2>
-          <p>
-            Prepare a draft, review it in your own voice, and send it through your existing approval
-            flow.
+      <details
+        id="studio-compose"
+        open={composing}
+        onToggle={(e) => setComposing(e.currentTarget.open)}
+        className="sw-compose-details"
+      >
+        <summary>
+          Write a post <span>Idea → plan → draft → your decision</span>
+        </summary>
+        {sources.isPending || (ideaId && briefs.isPending) ? (
+          <p>Reading your writing workspace…</p>
+        ) : ideaId && !briefs.data?.value.some((b) => b.id === ideaId) ? (
+          <p role="alert" className="sw-error">
+            This idea could not be read. Your saved ideas have not changed.{" "}
+            <Link to="/modules/studio/ideas">Return to Ideas</Link>
           </p>
-        </div>
-        <Link className="sv-button" to="/modules/studio/ideas">
-          Choose a saved idea
-        </Link>
-      </section>
+        ) : (
+          <StudioComposer
+            key={ideaId ?? "new-post"}
+            initialPrompt={
+              ideaId
+                ? `Write 1 post about: ${briefs.data?.value.find((b) => b.id === ideaId)?.coreIdea ?? ""}`
+                : ""
+            }
+            sources={sources.data ?? []}
+            onAddPasted={(input) => addSource.mutate(input)}
+            onAddFile={(file) => {
+              void readFileAsSource(file)
+                .then((source) => addSource.mutate(source))
+                .catch((error) => toast.error((error as Error).message));
+            }}
+            onRemoveSource={(sourceId) => removeSource.mutate(sourceId)}
+            onSubmit={(submission) => generate.mutate(submission)}
+            running={running}
+            progress={progress}
+            {...(publisher.data && !publisher.data.configured
+              ? { publisherNote: publisher.data.because }
+              : {})}
+          />
+        )}
+      </details>
+
       {(batches.isError || sources.isError) && (
         <p className="sw-error" role="alert">
           Some workspace data could not be read. {batches.error?.message ?? sources.error?.message}{" "}
@@ -618,47 +647,6 @@ export function StudioPosts({
         />
       ) : null}
 
-      <details
-        id="studio-compose"
-        open={composing}
-        onToggle={(e) => setComposing(e.currentTarget.open)}
-        className="sw-compose-details"
-      >
-        <summary>
-          Write a post <span>Idea → plan → draft → your decision</span>
-        </summary>
-        {sources.isPending || (ideaId && briefs.isPending) ? (
-          <p>Reading your writing workspace…</p>
-        ) : ideaId && !briefs.data?.value.some((b) => b.id === ideaId) ? (
-          <p role="alert" className="sw-error">
-            This idea could not be read. Your saved ideas have not changed.{" "}
-            <Link to="/modules/studio/ideas">Return to Ideas</Link>
-          </p>
-        ) : (
-          <StudioComposer
-            key={ideaId ?? "new-post"}
-            initialPrompt={
-              ideaId
-                ? `Write 1 post about: ${briefs.data?.value.find((b) => b.id === ideaId)?.coreIdea ?? ""}`
-                : ""
-            }
-            sources={sources.data ?? []}
-            onAddPasted={(input) => addSource.mutate(input)}
-            onAddFile={(file) => {
-              void readFileAsSource(file)
-                .then((source) => addSource.mutate(source))
-                .catch((error) => toast.error((error as Error).message));
-            }}
-            onRemoveSource={(sourceId) => removeSource.mutate(sourceId)}
-            onSubmit={(submission) => generate.mutate(submission)}
-            running={running}
-            progress={progress}
-            {...(publisher.data && !publisher.data.configured
-              ? { publisherNote: publisher.data.because }
-              : {})}
-          />
-        )}
-      </details>
       <details className="sw-batch-workspace" open={Boolean(openBatchId)}>
         <summary>
           Editorial batches <span>Review plans, drafts, approvals and publishing receipts</span>

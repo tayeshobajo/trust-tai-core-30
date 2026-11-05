@@ -1,0 +1,497 @@
+/* Studio uses the existing suite type tokens; these overrides stay inside Studio. */
+.sv-root,
+.sv-dialog,
+.sv-root .sv-shell > div > aside nav[aria-label="Trust Tai suite"] > a,
+.sv-root .sv-brand-type,
+.studio-content input,
+.studio-content textarea,
+.sv-dialog input,
+.sv-dialog textarea,
+.sv-dialog select,
+.sv-root button,
+.sv-root select {
+  font-family: var(--font-sans, "Manrope", system-ui, sans-serif);
+}
+.sv-root h1,
+.sv-root h2,
+.sv-root h3,
+.sv-dialog h2,
+.sv-dialog h3,
+.sv-root .sv-focus h2,
+.sv-root .sw-idea-capture h2,
+.sv-root .sw-dna-banner h2,
+.sv-root .sw-person-heading h2,
+.sv-root .sw-people-banner h2 {
+  font-family: var(--font-display, "Sora", system-ui, sans-serif);
+  letter-spacing: -0.035em;
+}
+.sv-root {
+  --sv-ink: #191d2a;
+  --sv-soft: #f9eee4;
+  --sv-border: #e3e1dd;
+}
+.sv-root .sv-page {
+  padding: 24px 28px 40px;
+  max-width: 1600px;
+  margin-inline: auto;
+}
+.sv-root .sv-heading {
+  padding: 0;
+  margin-bottom: 20px;
+}
+.sv-root .sv-heading h1 {
+  font-size: 26px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.sv-root .sv-heading p {
+  margin-top: 7px;
+  color: #62616b;
+  font-size: 14px;
+}
+.sv-root .sv-tabs {
+  margin: 0 0 24px;
+  padding: 0;
+  gap: 6px;
+  border-bottom: 1px solid #dededb;
+  border-radius: 0;
+}
+.sv-root .sv-tabs a {
+  min-height: 46px;
+  border-radius: 0;
+  padding: 10px 14px;
+  border-bottom: 2px solid transparent;
+}
+.sv-root .sv-tabs a[aria-current="page"],
+.sv-root .sv-tabs a[aria-current="page"]:hover {
+  background: transparent;
+  color: #8d390b;
+  border-bottom-color: #a54813;
+  box-shadow: none;
+}
+.sv-root .sv-tabs a:hover:not([aria-current="page"]) {
+  background: #f4f1ed;
+}
+.sv-root a:focus-visible,
+.sv-root button:focus-visible,
+.sv-root select:focus-visible,
+.sv-dialog button:focus-visible,
+.sv-dialog select:focus-visible {
+  outline: 2px solid #954014;
+  outline-offset: 3px;
+}
+.sv-root .sv-button,
+.sv-dialog .sv-button {
+  min-height: 42px;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 13px;
+  padding: 10px 16px;
+}
+.sv-root .sv-primary,
+.sv-dialog .sv-primary,
+.sv-root .sv-orange {
+  background: #a54813;
+  border-color: #a54813;
+  color: white;
+}
+.sv-root .sv-card,
+.sv-dialog .sv-card {
+  box-shadow: none;
+  border-radius: 12px;
+}
+.sv-root .sw-filter button {
+  min-height: 40px;
+}
+.sv-root .sw-status,
+.sv-root .sw-quiet-note,
+.sv-dialog .sw-quiet-note {
+  color: #62616b;
+}
+.sp-section-select {
+  display: none;
+}
+.sv-root .sw-overview-grid {
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+}
+.sv-root .sw-stats {
+  grid-column: 1/-1;
+  grid-row: auto;
+  gap: 12px;
+}
+.sv-root .sw-stat {
+  padding: 16px 20px;
+}
+.sv-root .sw-stat strong {
+  font-size: 24px;
+}
+.sv-root .sw-stat span {
+  font-size: 12px;
+}
+.sv-root .sw-recent {
+  grid-row: auto;
+}
+.sv-root .sw-overview-aside {
+  grid-row: auto;
+}
+.sv-root .sw-feed-row {
+  padding: 20px 0;
+}
+.sv-root .sw-feed-row h3 {
+  font-size: 17px;
+}
+.sv-root .sw-feed-row p {
+  max-width: 70ch;
+}
+.sv-root .sw-compose-details {
+  margin-bottom: 24px;
+  scroll-margin-top: 20px;
+  padding: 12px 20px;
+}
+.sv-root .sw-compose-details summary {
+  min-height: 44px;
+  align-content: center;
+}
+.sv-root .sw-post-intro {
+  display: none;
+}
+.sv-root .sw-post-card {
+  margin-bottom: 20px;
+  padding: 20px;
+}
+.sv-root .sw-post-card h3 {
+  font-size: 20px;
+  line-height: 1.45;
+  max-width: 60ch;
+}
+.sv-root .sw-post-card > p {
+  max-width: 70ch;
+}
+.sv-root .sw-idea-capture {
+  padding: 24px;
+}
+.sv-root .sw-idea-capture h2 {
+  font-size: 28px;
+}
+.sp-pagination,
+.sp-video-image-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.sv-root .sw-person-aside {
+  position: static;
+}
+.sp-person-detail {
+  max-width: 640px;
+}
+.sp-person-detail .sv-card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.sp-person-detail h3 {
+  margin-top: 22px;
+}
+.sp-person-detail dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid #e3e1dd;
+  padding: 10px 0;
+  font-size: 14px;
+}
+.sp-person-detail dd {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.sp-person-detail .sw-person-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 14px 0;
+}
+.sp-featured-image {
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  background: #f3f1eb;
+  border: 1px solid #e4e0d8;
+  border-radius: 9px;
+  margin: 16px 0;
+}
+.sp-featured-image img,
+.sp-review-crop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sp-image-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  height: 100%;
+  color: #625c52;
+}
+.sp-image-empty svg {
+  width: 28px;
+  height: 28px;
+  color: #987046;
+}
+.sp-image-empty small {
+  max-width: 45ch;
+}
+.sp-image-status {
+  font-size: 12px;
+  color: #884112;
+}
+.sp-image-review {
+  min-width: 0;
+}
+.sp-image-review .sw-section-heading {
+  flex-wrap: wrap;
+}
+.sp-image-review h2 {
+  font-size: 22px;
+}
+.sp-integration-note {
+  padding: 12px 16px;
+  border-left: 3px solid #ad672a;
+  background: #faf2e7;
+  color: #594c3c;
+  font-size: 13px;
+  margin: 20px 0;
+}
+.sp-image-stages {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+  font-size: 12px;
+  color: #69636a;
+  margin: 20px 0;
+}
+.sp-image-stages li {
+  padding: 6px 10px;
+  border: 1px solid #dedbd6;
+  border-radius: 6px;
+}
+.sp-image-review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 24px;
+}
+.sp-review-crop {
+  overflow: hidden;
+  background: #f3f1eb;
+  border: 1px solid #dedbd6;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  max-height: 560px;
+}
+.sp-image-review label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 16px 0 6px;
+}
+.sp-image-review select {
+  min-height: 42px;
+  border: 1px solid #c8c4bd;
+  border-radius: 6px;
+  padding: 8px;
+  background: white;
+}
+.sp-image-review .sv-actions {
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.sp-review-fields {
+  min-width: 0;
+}
+.sp-review-fields textarea {
+  width: 100%;
+}
+.sp-wide-dialog {
+  max-width: 1000px;
+}
+.sp-article-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+}
+.sp-article-layout > div {
+  min-width: 0;
+  display: grid;
+  gap: 20px;
+}
+.sp-article-layout > aside {
+  position: sticky;
+  top: 20px;
+}
+.sv-root .sv-plan-title,
+.sv-root .sv-record-toggle {
+  min-height: 32px;
+}
+@media (max-width: 900px) {
+  .sp-section-select {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: #55525a;
+    margin-bottom: 20px;
+  }
+  .sp-section-select select {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid #c9c5bf;
+    border-radius: 8px;
+    background: white;
+    color: #191d2a;
+  }
+  .sv-root .sv-tabs {
+    display: none;
+  }
+
+  .sv-root .sw-overview-grid {
+    grid-template-columns: 1fr;
+  }
+  .sp-article-layout {
+    grid-template-columns: 1fr;
+  }
+  .sp-article-layout > aside {
+    position: static;
+  }
+  .sp-image-review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .sv-root .sv-page {
+    padding: 18px 14px 32px;
+  }
+  .sv-root .sv-heading h1 {
+    font-size: 22px;
+  }
+  .sv-root .sv-heading p {
+    margin-left: 0;
+    font-size: 13px;
+  }
+  .sv-root .sv-heading {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .sv-root .sv-heading > .sv-button {
+    width: auto;
+  }
+  .sv-root .sw-stats {
+    grid-row: auto;
+    gap: 8px;
+  }
+  .sv-root .sw-stat {
+    padding: 12px 8px;
+  }
+  .sv-root .sw-stat span {
+    font-size: 11px;
+  }
+  .sv-root .sw-recent,
+  .sv-root .sw-overview-aside {
+    grid-row: auto;
+  }
+  .sv-root .sw-idea-capture {
+    padding: 18px;
+  }
+  .sv-root .sw-idea-capture h2 {
+    font-size: 24px;
+  }
+  .sv-root .sw-post-card {
+    padding: 16px;
+  }
+  .sv-root .sw-post-card h3 {
+    font-size: 18px;
+  }
+  .sv-root .sw-person-aside {
+    margin-top: 20px;
+  }
+  .sv-root .sw-person-row {
+    padding: 16px;
+  }
+  .sv-dialog .sp-image-review {
+    padding: 0;
+    border: 0;
+  }
+  .sp-image-stages {
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sv-root *,
+  .sv-dialog * {
+    scroll-behavior: auto;
+    animation: none;
+    transition: none;
+  }
+}
+
+.sv-root .sw-ideas-inspired .sw-idea-capture {
+  padding: 24px;
+}
+.sv-root .sw-ideas-inspired .sw-idea-capture h2 {
+  font: 600 28px/1.35 var(--font-display);
+  margin-bottom: 18px;
+}
+.sv-root .sw-ideas-inspired form {
+  max-width: 900px;
+}
+.sv-root .sw-ideas-inspired form button {
+  width: auto;
+  min-width: 105px;
+  padding: 0 14px;
+}
+.sv-root .sw-ideas-inspired textarea {
+  padding-right: 150px;
+}
+.sv-root .sw-ideas-inspired .sw-idea-types {
+  margin-top: 16px;
+}
+.sv-root .sw-ideas-inspired .sw-quiet-note {
+  font-size: 12px;
+}
+.sv-root .sw-ideas-inspired {
+  margin-bottom: 24px;
+}
+.sv-root .sv-plan-row button {
+  min-height: 32px;
+}
+@media (max-width: 640px) {
+  .sv-root .sw-ideas-inspired .sw-idea-capture {
+    padding: 18px;
+  }
+  .sv-root .sw-ideas-inspired .sw-idea-capture h2 {
+    font-size: 23px;
+  }
+  .sv-root .sw-ideas-inspired textarea {
+    padding: 14px;
+  }
+  .sv-root .sw-ideas-inspired form footer {
+    position: static;
+  }
+  .sv-root .sw-ideas-inspired form button {
+    position: static;
+    margin: 10px 0 0 auto;
+    display: flex;
+  }
+}

@@ -101,9 +101,7 @@ export function IdeasWorkspace({ identity }: { identity: WorkspaceIdentity }) {
                 className="sv-button sv-orange"
                 disabled={save.isPending || q.isPending || unavailable || !text.trim()}
               >
-                <span className="sr-only">
-                  {save.isPending ? "Saving…" : editing ? "Save changes" : "Save idea"}
-                </span>
+                <span>{save.isPending ? "Saving…" : editing ? "Save changes" : "Save idea"}</span>
                 <ArrowRight />
               </button>
             </footer>

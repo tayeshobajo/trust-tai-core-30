@@ -233,7 +233,7 @@
   padding-right: 23px;
 }
 .sv-tabs button:hover:not([aria-current="page"]),
-.sv-tabs a:hover {
+.sv-tabs a:hover:not([aria-current="page"]) {
   background: var(--sv-soft);
 }
 .sv-rail-nav {

@@ -30,6 +30,7 @@ export function SourcesWorkspace({ identity }: { identity: WorkspaceIdentity }) 
   const [removing, setRemoving] = useState<ContentSource | null>(null);
   const [notice, setNotice] = useState("");
   const [fileError, setFileError] = useState("");
+  const addTrigger = useRef<HTMLButtonElement>(null);
   const file = useRef<HTMLInputElement>(null);
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["studio-workspace", "sources"] });
@@ -95,6 +96,7 @@ export function SourcesWorkspace({ identity }: { identity: WorkspaceIdentity }) 
       searchLabel="Search your source library"
       action={
         <button
+          ref={addTrigger}
           className="sv-button sv-primary"
           disabled={q.isPending || q.isError || q.data?.provisioned === false}
           onClick={() => {
@@ -152,10 +154,8 @@ export function SourcesWorkspace({ identity }: { identity: WorkspaceIdentity }) 
           The existing Content Engine source store must be available before sources can be saved.
         </StudioState>
       ) : !rows.length ? (
-        <StudioState
-          title={search ? "No matching sources" : "Start with something you’ve already written"}
-        >
-          A post, a short article, or a few paragraphs in your own words is enough.
+        <StudioState title={search ? "No matching sources" : "Start with a thought or reference"}>
+          No writing ready yet? Capture a thought in Ideas, or add a reference when you have one.
         </StudioState>
       ) : (
         <div className="sv-card sw-source-list">
@@ -204,7 +204,13 @@ export function SourcesWorkspace({ identity }: { identity: WorkspaceIdentity }) 
         </Link>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sv-dialog">
+        <DialogContent
+          className="sv-dialog"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            addTrigger.current?.focus();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Add a source</DialogTitle>
             <DialogDescription>

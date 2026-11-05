@@ -15,7 +15,9 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { AppShell } from "@/components/tt/app-shell";
+import { StudioShell, StudioState } from "@/components/tt/studio/studio-shell";
+import { FeaturedImageReview, FeaturedImage } from "@/components/tt/studio/featured-image";
+import { imageReviewStatus } from "@/domain/studio-image-review";
 import { Markdown } from "@/components/tt/markdown";
 import { EmptyState, MetaPill, SectionHeading, TTCard } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -57,7 +59,7 @@ function ArticleRoute() {
   );
 }
 
-function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: string }) {
+export function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: string }) {
   const { organizationId, userId } = identity;
   const context = useMemo(() => ({ organizationId, userId }), [organizationId, userId]);
   const [section, setSection] = useState<Section>("Article");
@@ -100,6 +102,7 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
     queryKey: ["studio", "image-provider"],
     queryFn: async () => {
       const response = await fetch("/api/public/content/image");
+      if (!response.ok) throw new Error("Image provider status could not be read.");
       return (await response.json()) as { ready: boolean; because: string; missing: string[] };
     },
   });
@@ -109,7 +112,11 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
   );
 
   return (
-    <AppShell identity={identity}>
+    <StudioShell
+      identity={identity}
+      section="Posts"
+      description="Review your writing, visual and publishing readiness together."
+    >
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <Link to="/modules/studio/posts" className="text-sm underline">
           Back to Studio
@@ -127,17 +134,20 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
 
       {item.isLoading ? (
         <p className="text-sm text-muted-foreground">Opening the article…</p>
+      ) : item.isError ? (
+        <StudioState title="The article could not be read" onRetry={() => void item.refetch()}>
+          {item.error.message}
+        </StudioState>
       ) : item.data ? (
         <div className="space-y-6">
           <ArticleHeader item={item.data} />
 
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Review sections">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Review sections">
             {SECTIONS.map((name) => (
               <button
                 key={name}
                 type="button"
-                role="tab"
-                aria-selected={section === name}
+                aria-pressed={section === name}
                 onClick={() => setSection(name)}
                 className={`rounded-full border px-4 py-1.5 text-sm transition ${
                   section === name
@@ -150,12 +160,31 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
             ))}
           </div>
 
-          {section === "Article" ? <ArticleSection item={item.data} /> : null}
+          {section === "Article" ? (
+            <div className="sp-article-layout">
+              <div>
+                <ArticleSection item={item.data} />
+              </div>
+              <aside>
+                <FeaturedImage image={item.data.image} title={item.data.title} />
+                <p className="sw-status">{imageReviewStatus(item.data.image)}</p>
+                <button className="sv-button" onClick={() => setSection("Featured image")}>
+                  Review featured image
+                </button>
+                <p className="sw-quiet-note">Image readiness is separate from article approval.</p>
+              </aside>
+            </div>
+          ) : null}
           {section === "Featured image" ? (
-            <ImageSection
-              item={item.data}
-              providerBecause={imageStatus.data?.because ?? "Checking the image provider…"}
-              missing={imageStatus.data?.missing ?? []}
+            <FeaturedImageReview
+              key={item.data.id}
+              image={item.data.image}
+              title={item.data.title}
+              providerNote={
+                imageStatus.isError
+                  ? "Provider status unavailable. You can still inspect the existing image."
+                  : (imageStatus.data?.because ?? "Checking provider status…")
+              }
             />
           ) : null}
           {section === "SEO" ? <SeoSection item={item.data} /> : null}
@@ -188,7 +217,7 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
           whyItMatters="Nothing outside your workspace is ever shown here."
         />
       )}
-    </AppShell>
+    </StudioShell>
   );
 }
 
@@ -197,14 +226,12 @@ function ArticleHeader({ item }: { item: ContentItem }) {
   return (
     <TTCard className="p-6">
       <p className="tt-eyebrow">{item.seo.slug}</p>
-      <h1 className="mt-2 text-2xl font-medium">{item.title}</h1>
+      <h2 className="mt-2 text-2xl font-medium">{item.title}</h2>
       {item.angle ? <p className="mt-2 text-muted-foreground">{item.angle}</p> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         <MetaPill>{CONTENT_ITEM_STATE_LABEL[item.state]}</MetaPill>
         <MetaPill>{wordCount(item.draftMarkdown)} words</MetaPill>
-        <MetaPill>
-          {item.image.state === "ready" ? "Image ready" : "No featured image yet"}
-        </MetaPill>
+        <MetaPill>{imageReviewStatus(item.image)}</MetaPill>
         {unresolved.length > 0 ? <MetaPill>{unresolved.length} links unresolved</MetaPill> : null}
       </div>
       {item.hitRationale ? <p className="mt-4">{item.hitRationale}</p> : null}
@@ -254,54 +281,6 @@ function ArticleSection({ item }: { item: ContentItem }) {
         )}
       </TTCard>
     </>
-  );
-}
-
-function ImageSection({
-  item,
-  providerBecause,
-  missing,
-}: {
-  item: ContentItem;
-  providerBecause: string;
-  missing: string[];
-}) {
-  return (
-    <TTCard className="p-6">
-      <SectionHeading
-        title="Featured image"
-        description="The brief is real. The picture only exists once a provider really returns one."
-      />
-      {item.image.assetUrl ? (
-        <img
-          src={item.image.assetUrl}
-          alt={item.image.altText || item.title}
-          className="mb-4 w-full rounded-lg border border-border"
-        />
-      ) : null}
-      <dl className="space-y-3 text-sm">
-        <div>
-          <dt className="text-muted-foreground">Brief</dt>
-          <dd>{item.image.brief || "No image brief was written."}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Alt text</dt>
-          <dd>{item.image.altText || "Not written yet"}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">State</dt>
-          <dd>{item.image.state}</dd>
-        </div>
-      </dl>
-      <p className="mt-4 text-sm text-muted-foreground">{providerBecause}</p>
-      {missing.length > 0 ? (
-        <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground">
-          {missing.map((entry) => (
-            <li key={entry}>{entry}</li>
-          ))}
-        </ul>
-      ) : null}
-    </TTCard>
   );
 }
 

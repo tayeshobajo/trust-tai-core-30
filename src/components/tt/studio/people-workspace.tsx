@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -41,6 +41,10 @@ export function PeopleWorkspace({ identity }: { identity: WorkspaceIdentity }) {
     enabled: canRead,
     retry: false,
   });
+  const [page, setPage] = useState(0);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const detailTrigger = useRef<HTMLButtonElement | null>(null);
+  const introTrigger = useRef<HTMLElement | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -61,6 +65,7 @@ export function PeopleWorkspace({ identity }: { identity: WorkspaceIdentity }) {
     );
   const selected = rows.find((p) => p.id === selectedId) ?? rows[0] ?? null;
   function openIntro(person: Person) {
+    introTrigger.current = document.activeElement as HTMLElement;
     setIntro(person);
     setReason("");
     setDraft("");
@@ -72,7 +77,10 @@ export function PeopleWorkspace({ identity }: { identity: WorkspaceIdentity }) {
       section="People"
       description="Find the people already in your world. Start with a real reason to connect."
       search={search}
-      onSearch={setSearch}
+      onSearch={(value) => {
+        setSearch(value);
+        setPage(0);
+      }}
       searchLabel="Search workspace people"
       action={
         <Link className="sv-button" to="/modules/studio/audience">
@@ -104,7 +112,14 @@ export function PeopleWorkspace({ identity }: { identity: WorkspaceIdentity }) {
                 ["operations", "Operations"],
                 ["linkedin", "With LinkedIn"],
               ].map(([id, name]) => (
-                <button key={id} aria-pressed={filter === id} onClick={() => setFilter(id!)}>
+                <button
+                  key={id}
+                  aria-pressed={filter === id}
+                  onClick={() => {
+                    setFilter(id!);
+                    setPage(0);
+                  }}
+                >
                   {name}
                 </button>
               ))}
@@ -134,14 +149,19 @@ export function PeopleWorkspace({ identity }: { identity: WorkspaceIdentity }) {
             </StudioState>
           ) : (
             <div className="sw-person-list">
-              {rows.map((person) => (
+              {rows.slice(page * 24, (page + 1) * 24).map((person) => (
                 <article
                   key={person.id}
                   className={`sv-card sw-person-row ${selected?.id === person.id ? "is-selected" : ""}`}
                 >
                   <button
                     className="sw-person-select"
-                    onClick={() => setSelectedId(person.id)}
+                    aria-label={`View ${person.fullName}`}
+                    onClick={(e) => {
+                      detailTrigger.current = e.currentTarget;
+                      setSelectedId(person.id);
+                      setDetailOpen(true);
+                    }}
                     aria-pressed={selected?.id === person.id}
                   >
                     <span className="sw-avatar">
@@ -178,13 +198,60 @@ export function PeopleWorkspace({ identity }: { identity: WorkspaceIdentity }) {
               ))}
             </div>
           )}
+          {rows.length > 24 && (
+            <nav className="sp-pagination" aria-label="People pages">
+              <button className="sv-button" disabled={page === 0} onClick={() => setPage(page - 1)}>
+                Previous
+              </button>
+              <span role="status">
+                {page * 24 + 1}–{Math.min((page + 1) * 24, rows.length)} of {rows.length}
+              </span>
+              <button
+                className="sv-button"
+                disabled={(page + 1) * 24 >= rows.length}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </button>
+            </nav>
+          )}
           <p className="sw-quiet-note">
             {q.isSuccess ? `${q.data.length} records returned by the shared contact reader. ` : ""}
             This is not a curated match list. Search and filters apply only to returned records.
           </p>
         </div>
         <aside className="sw-person-aside">
-          {selected ? (
+          <section className="sv-card sw-learning-note">
+            <ShieldCheck />
+            <span className="sw-kicker">NASHVILLE-FIRST DISCOVERY</span>
+            <h2>Find people who share your world.</h2>
+            <p>
+              LinkedIn theme matching and Nashville-area recommendations are not connected. Local
+              suggestions need a source with verified location and interest data. Recent-post
+              retrieval and sending introductions are also unavailable.
+            </p>
+            <Link className="sw-text-button" to="/modules/studio/audience">
+              View the newsletter audience
+              <ArrowRight />
+            </Link>
+          </section>
+        </aside>
+      </div>
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent
+          className="sv-dialog sp-person-detail"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            detailTrigger.current?.focus();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Contact details</DialogTitle>
+            <DialogDescription>
+              Existing workspace record. Close to return to your results.
+            </DialogDescription>
+          </DialogHeader>
+          {selected && (
             <section className="sv-card">
               <span className="sw-kicker">
                 <BookOpen />
@@ -244,38 +311,22 @@ export function PeopleWorkspace({ identity }: { identity: WorkspaceIdentity }) {
                 Draft an introduction
               </button>
             </section>
-          ) : (
-            <section className="sv-card">
-              <Users />
-              <h2>People, with context.</h2>
-              <p>
-                Choose a workspace contact to see the role, source, and context already on record.
-              </p>
-            </section>
           )}
-          <section className="sv-card sw-learning-note">
-            <ShieldCheck />
-            <span className="sw-kicker">NASHVILLE-FIRST DISCOVERY</span>
-            <h2>Find people who share your world.</h2>
-            <p>
-              LinkedIn theme matching and Nashville-area recommendations are not connected. Local
-              suggestions need a source with verified location and interest data. Recent-post
-              retrieval and sending introductions are also unavailable.
-            </p>
-            <Link className="sw-text-button" to="/modules/studio/audience">
-              View the newsletter audience
-              <ArrowRight />
-            </Link>
-          </section>
-        </aside>
-      </div>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={Boolean(intro)}
         onOpenChange={(o) => {
           if (!o) setIntro(null);
         }}
       >
-        <DialogContent className="sv-dialog">
+        <DialogContent
+          className="sv-dialog"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            introTrigger.current?.focus();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Draft an introduction to {intro?.fullName}</DialogTitle>
             <DialogDescription>
