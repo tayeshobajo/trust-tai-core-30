@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 
 import { EmailBodyView, fileAttachments } from "./email-body";
 import { HealthDot } from "./health-marks";
+import { anchorConversationMessage } from "./message-scroll-anchor";
 
 function timeOf(value: string): string {
   const date = new Date(value);
@@ -75,7 +76,7 @@ export function ConversationEvent({
   event: EventShape;
   /** The workspace, the access handle for inline images in email bodies. */
   organizationId?: string;
-  /** This is the message a deep link named. Scrolled to and focused, once. */
+  /** This is the message a deep link named. Kept visible through async layout until user interaction. */
   focused?: boolean;
   onEdit?: (touchId: string) => void;
   onRetract?: (touchId: string) => void;
@@ -95,9 +96,8 @@ export function ConversationEvent({
   // view and the keyboard focus, and changes no record.
   useEffect(() => {
     if (!focused || !box.current) return;
-    box.current.scrollIntoView({ block: "center" });
-    box.current.focus({ preventScroll: true });
-  }, [focused]);
+    return anchorConversationMessage(box.current);
+  }, [focused, event.messageId]);
 
   return (
     <li
@@ -464,10 +464,10 @@ export function ConversationRoom({
         ))}
       </nav>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+      <div data-conversation-scroll className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
         {/* The thread gets the room the third rail released, held to a
             readable column rather than stretched edge to edge. */}
-        <div className="mx-auto w-full max-w-[880px] space-y-6">
+        <div data-conversation-content className="mx-auto w-full max-w-[880px] space-y-6">
           {historyLoading ? (
             <p role="status" className="text-[13px] text-muted-foreground">
               Loading stored email history…
