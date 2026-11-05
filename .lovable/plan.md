@@ -17,7 +17,10 @@ at https://jsr.io/@supabase/supabase-js/2.119.0/src/index.ts:27:15
 - Verdict: the history label is not stale — the hosted check really fails, on every commit since the upstream release. "Project ready / error null" refers to the edit sync, not this check. The auth-check screen in the preview is the app's normal sign-in gate, not a build failure.
 - I can't open the platform's hosted build logs directly; the error above is the build log carried over into this sandbox, which matches what you're seeing.
 
-## Smallest fix (needs your approval, one line)
+## Decision
+You chose to stop at the diagnosis. Lovable will make no changes. Approving this plan only records the diagnosis; it doesn't edit, rebuild or publish anything.
+
+## Smallest fix (for you to apply outside Lovable)
 Change the import in `supabase/functions/paperclip-reconcile/index.ts` to match the other functions:
 
 ```ts
