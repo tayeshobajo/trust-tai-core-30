@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RfpWorkspace, emptySnapshot } from "@/components/tt/rfps/workspace";
-import { blankOpportunity, type Opportunity } from "@/domain/rfps";
+import { blankOpportunity, stages, type Opportunity } from "@/domain/rfps";
 import type { RfpService } from "@/data/supabase/rfps";
 import "@/styles.css";
+import { CmdAction } from "@/components/tt/cmd/action";
+import { RfpStageBadge } from "@/components/tt/rfps/stage-badge";
 function AuditButton() {
   const [result, setResult] = useState("");
   return (
@@ -57,6 +59,30 @@ createRoot(document.getElementById("root")!).render(
     <div style={{ padding: "10px 28px", borderBottom: "1px solid var(--border)" }}>
       Trust Tai / CMD · isolated component QA · no live data <AuditButton />
     </div>
+    {mode === "design" && (
+      <section className="cmd-page" aria-label="CMD design system samples">
+        <h2>CMD component catalog · synthetic QA only</h2>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBlock: 16 }}>
+          {stages.map((stage) => (
+            <RfpStageBadge stage={stage} key={stage} />
+          ))}
+        </div>
+        {(["primary", "secondary", "tertiary"] as const).map((variant) => (
+          <div
+            key={variant}
+            style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBlock: 16 }}
+          >
+            <CmdAction variant={variant}>{variant} action</CmdAction>
+            <CmdAction variant={variant} disabled>
+              {variant} disabled
+            </CmdAction>
+            <CmdAction variant={variant} pending pendingLabel="Saving…">
+              Save
+            </CmdAction>
+          </div>
+        ))}
+      </section>
+    )}
     <RfpWorkspace
       service={service}
       canWork={mode !== "readonly"}
@@ -64,10 +90,10 @@ createRoot(document.getElementById("root")!).render(
       error={mode === "error" ? "Database not installed. No data loaded." : ""}
       loading={mode === "loading"}
       data={
-        mode === "detail" || mode === "readonly"
+        mode === "detail" || mode === "readonly" || mode === "design"
           ? {
               ...emptySnapshot,
-              opportunities: Array.from({ length: 8 }, (_, i) => ({
+              opportunities: Array.from({ length: mode === "design" ? 9 : 8 }, (_, i) => ({
                 ...row,
                 id: i === 0 ? row.id : `synthetic-${i}`,
                 title:
@@ -76,11 +102,13 @@ createRoot(document.getElementById("root")!).render(
                     : `Synthetic ${i % 2 ? "website services RFP" : "community grant"} · QA ${i}`,
                 kind: i % 2 ? ("rfp" as const) : ("grant" as const),
                 stage:
-                  i % 3 === 0
-                    ? ("qualifying" as const)
-                    : i % 3 === 1
-                      ? ("captured" as const)
-                      : ("preparing" as const),
+                  mode === "design"
+                    ? stages[i]!
+                    : i % 3 === 0
+                      ? ("qualifying" as const)
+                      : i % 3 === 1
+                        ? ("captured" as const)
+                        : ("preparing" as const),
               })),
               documents: [
                 {

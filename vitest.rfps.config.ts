@@ -11,6 +11,7 @@ export default defineConfig({
       "src/routes/api/public/rfps.source.test.ts",
       "qa/rfps-staging/guard.test.ts",
       "src/components/tt/rfps/*.test.tsx",
+      "src/components/tt/cmd/*.test.tsx",
       "src/domain/registry.test.ts",
       "src/domain/app-access.test.ts",
     ],

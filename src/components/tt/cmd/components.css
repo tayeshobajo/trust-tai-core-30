@@ -1,0 +1,145 @@
+@import "./tokens.css";
+.cmd-action[data-variant] {
+  --cmd-action-bg: var(--cmd-action-secondary);
+  --cmd-action-hover: var(--cmd-action-secondary-hover);
+  --cmd-action-active: var(--cmd-action-secondary-active);
+  --cmd-action-text: var(--cmd-action-secondary-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cmd-space-icon);
+  min-height: var(--cmd-control-height);
+  height: auto;
+  padding: var(--cmd-space-control-y) var(--cmd-space-control-x);
+  border: 1px solid var(--cmd-action-border);
+  border-radius: var(--cmd-radius-control);
+  background: var(--cmd-action-bg);
+  color: var(--cmd-action-text);
+  font-size: var(--cmd-control-font-size);
+  font-weight: var(--cmd-control-font-weight);
+  line-height: 20px;
+  white-space: normal;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    background-color var(--cmd-motion-duration),
+    border-color var(--cmd-motion-duration),
+    box-shadow var(--cmd-motion-duration);
+}
+.cmd-action[data-variant="primary"] {
+  --cmd-action-bg: var(--cmd-action-primary);
+  --cmd-action-hover: var(--cmd-action-primary-hover);
+  --cmd-action-active: var(--cmd-action-primary-active);
+  --cmd-action-text: var(--cmd-action-on-primary);
+  border-color: var(--cmd-action-primary);
+  box-shadow: var(--cmd-shadow-action);
+}
+.cmd-action[data-variant="tertiary"] {
+  --cmd-action-bg: var(--cmd-action-tertiary);
+  --cmd-action-hover: var(--cmd-action-tertiary-hover);
+  --cmd-action-active: var(--cmd-action-tertiary-active);
+  --cmd-action-text: var(--cmd-action-tertiary-text);
+}
+.cmd-action[data-variant]:hover:not(:disabled) {
+  background: var(--cmd-action-hover);
+  border-color: var(--cmd-action-text);
+}
+.cmd-action[data-variant]:active:not(:disabled) {
+  background: var(--cmd-action-active);
+  transform: none;
+}
+.cmd-action[data-variant]:focus-visible {
+  outline: 3px solid var(--cmd-focus);
+  outline-offset: 3px;
+}
+.cmd-action[data-variant]:disabled {
+  background: var(--cmd-action-disabled-bg);
+  color: var(--cmd-action-disabled-text);
+  border-color: var(--cmd-action-border);
+  box-shadow: none;
+  opacity: 1;
+  cursor: not-allowed;
+}
+.cmd-action[data-variant] svg {
+  color: currentColor;
+  flex-shrink: 0;
+}
+.cmd-action-full {
+  width: 100%;
+}
+.cmd-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.cmd-status svg {
+  flex-shrink: 0;
+}
+.cmd-status[data-tone="captured"] {
+  color: var(--cmd-status-captured-text);
+  background: var(--cmd-status-captured-bg);
+}
+.cmd-status[data-tone="qualifying"] {
+  color: var(--cmd-status-qualifying-text);
+  background: var(--cmd-status-qualifying-bg);
+}
+.cmd-status[data-tone="preparing"] {
+  color: var(--cmd-status-preparing-text);
+  background: var(--cmd-status-preparing-bg);
+}
+.cmd-status[data-tone="review"] {
+  color: var(--cmd-status-review-text);
+  background: var(--cmd-status-review-bg);
+}
+.cmd-status[data-tone="ready"] {
+  color: var(--cmd-status-ready-text);
+  background: var(--cmd-status-ready-bg);
+}
+.cmd-status[data-tone="submitted"] {
+  color: var(--cmd-status-submitted-text);
+  background: var(--cmd-status-submitted-bg);
+}
+.cmd-status[data-tone="awarded"] {
+  color: var(--cmd-status-awarded-text);
+  background: var(--cmd-status-awarded-bg);
+}
+.cmd-status[data-tone="declined"] {
+  color: var(--cmd-status-declined-text);
+  background: var(--cmd-status-declined-bg);
+}
+.cmd-status[data-tone="closed"] {
+  color: var(--cmd-status-closed-text);
+  background: var(--cmd-status-closed-bg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmd-action[data-variant] {
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  .cmd-action[data-variant],
+  .cmd-status {
+    border: 1px solid ButtonText;
+  }
+  .cmd-action[data-variant]:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+/* Optional page frame; adopt only when removing a page's old outer gutters. */
+.cmd-page {
+  width: 100%;
+  max-width: var(--cmd-page-max-width);
+  margin-inline: auto;
+  padding: var(--cmd-page-block-gap) var(--cmd-page-gutter);
+  min-width: 0;
+}
