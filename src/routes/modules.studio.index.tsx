@@ -12,7 +12,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { AppShell } from "@/components/tt/app-shell";
+import { VideoStudio } from "@/components/tt/studio/video-studio";
 import { RoomHero } from "@/components/tt/room-hero";
 import { Markdown } from "@/components/tt/markdown";
 import { EmptyState, MetaPill, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
@@ -74,7 +74,13 @@ export const Route = createFileRoute("/modules/studio/")({
 
 function StudioRoute() {
   return (
-    <WorkspaceGate appId="studio">{(identity) => <Studio identity={identity} />}</WorkspaceGate>
+    <WorkspaceGate appId="studio">
+      {(identity) => (
+        <VideoStudio identity={identity}>
+          <Studio identity={identity} />
+        </VideoStudio>
+      )}
+    </WorkspaceGate>
   );
 }
 
@@ -425,7 +431,7 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
   const running = generate.isPending;
 
   return (
-    <AppShell identity={identity}>
+    <>
       <div className="mb-6">
         <StudioNav current="content" />
       </div>
@@ -530,7 +536,7 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
           )}
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }
 
