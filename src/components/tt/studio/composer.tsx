@@ -94,6 +94,7 @@ export function StudioComposer({
   running,
   progress,
   publisherNote,
+  initialPrompt = "",
 }: {
   sources: ContentSource[];
   onAddPasted: (input: PastedSource) => void;
@@ -103,9 +104,12 @@ export function StudioComposer({
   running: boolean;
   progress: string[];
   publisherNote?: string;
+  initialPrompt?: string;
 }) {
-  const [prompt, setPrompt] = useState("");
-  const [overrides, setOverrides] = useState<Partial<Record<keyof ContentRequestSettings, string>>>({});
+  const [prompt, setPrompt] = useState(initialPrompt);
+  const [overrides, setOverrides] = useState<Partial<Record<keyof ContentRequestSettings, string>>>(
+    {},
+  );
   const [countOverride, setCountOverride] = useState<number | null>(null);
   const [refine, setRefine] = useState(false);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -120,13 +124,8 @@ export function StudioComposer({
   /* Anything already in the library when this screen opened is "saved
      material". Anything that appears afterwards was attached for this
      request, so it starts active. */
-  const librarySnapshot = useRef<Set<string> | null>(null);
-  useEffect(() => {
-    if (librarySnapshot.current === null && sources.length >= 0) {
-      librarySnapshot.current = new Set(sources.map((source) => source.id));
-    }
-  }, [sources]);
-  const savedBefore = librarySnapshot.current ?? new Set<string>();
+  const librarySnapshot = useRef<Set<string>>(new Set(sources.map((source) => source.id)));
+  const savedBefore = librarySnapshot.current;
 
   /* Interpretation is deterministic: no model call happens before a person
      has seen the plan and agreed with it. */
@@ -225,7 +224,9 @@ export function StudioComposer({
         {prompt.trim() ? (
           <div className="mt-5 rounded-lg border border-border p-4">
             <p className="text-sm font-medium">Here is what I understood</p>
-            <p className="mt-1 text-sm text-muted-foreground">{planLine(request, activeSources.length)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {planLine(request, activeSources.length)}
+            </p>
 
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <label className="text-sm">
@@ -285,7 +286,9 @@ export function StudioComposer({
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <TTButton
-            onClick={() => onSubmit({ request, sourceIds: activeSources.map((source) => source.id) })}
+            onClick={() =>
+              onSubmit({ request, sourceIds: activeSources.map((source) => source.id) })
+            }
             disabled={running || blockers.length > 0}
           >
             {running ? "Writing" : "Prepare the batch"}
@@ -303,7 +306,9 @@ export function StudioComposer({
           </ol>
         ) : null}
 
-        {publisherNote ? <p className="mt-4 text-sm text-muted-foreground">{publisherNote}</p> : null}
+        {publisherNote ? (
+          <p className="mt-4 text-sm text-muted-foreground">{publisherNote}</p>
+        ) : null}
       </TTCard>
 
       <TTCard className="p-6">
@@ -329,8 +334,8 @@ export function StudioComposer({
         >
           <p className="text-sm">Drop files here</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Text and Markdown are read. PDFs, documents and recordings are kept as references and say
-            so.
+            Text and Markdown are read. PDFs, documents and recordings are kept as references and
+            say so.
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-3">
             <TTButton variant="secondary" onClick={() => fileInput.current?.click()}>

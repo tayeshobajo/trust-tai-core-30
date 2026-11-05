@@ -1,3 +1,4 @@
+import { StudioSectionNav } from "./studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -8,8 +9,6 @@ import {
   Clapperboard,
   FileText,
   GripVertical,
-  HeartHandshake,
-  House,
   Image,
   Layers,
   Lightbulb,
@@ -21,7 +20,6 @@ import {
   Search,
   Sparkles,
   Target,
-  Users,
   Video,
   X,
   Zap,
@@ -76,15 +74,6 @@ const topics = [
     image: "systems",
     message: "Build a simple system around the outcome that matters most.",
   },
-];
-const sections = [
-  { name: "Overview", Icon: House },
-  { name: "Posts", Icon: FileText },
-  { name: "Video", Icon: Play },
-  { name: "Ideas", Icon: Lightbulb },
-  { name: "People", Icon: Users },
-  { name: "Content DNA", Icon: HeartHandshake },
-  { name: "Sources", Icon: PenTool },
 ];
 function validDraft(value: unknown): value is VideoDraft {
   if (!value || typeof value !== "object") return false;
@@ -215,42 +204,7 @@ export function VideoStudio({ identity }: { identity?: WorkspaceIdentity }) {
     }
     persist(saved, [...plan, title]);
   }
-  const nav = (rail = false) => (
-    <nav
-      aria-label={rail ? "Studio sidebar sections" : "Studio sections"}
-      className={rail ? "sv-rail-nav" : "sv-tabs"}
-    >
-      {sections.map(({ name, Icon }) => {
-        if (name === "People" || name === "Overview" || name === "Posts") {
-          return (
-            <Link
-              key={name}
-              activeOptions={{ exact: true }}
-              to={name === "People" ? "/modules/studio/audience" : "/modules/studio"}
-            >
-              <Icon />
-              {name}
-            </Link>
-          );
-        }
-        return (
-          <button
-            key={name}
-            aria-current={name === "Video" ? "page" : undefined}
-            disabled={name !== "Video"}
-            title={
-              name === "Video"
-                ? "Video"
-                : "Separate screen not implemented yet; existing content and source tools remain in Posts."
-            }
-          >
-            <Icon />
-            {name}
-          </button>
-        );
-      })}
-    </nav>
-  );
+  const nav = (rail = false) => <StudioSectionNav current="Video" rail={rail} />;
   const filteredTopics = topics
     .map((topic, index) => ({ ...topic, index }))
     .filter((t) => `${t.title} ${t.description}`.toLowerCase().includes(search.toLowerCase()));

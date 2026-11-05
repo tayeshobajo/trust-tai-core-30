@@ -86,6 +86,11 @@ import { Route as ModulesStewardTimelineRouteImport } from './routes/modules.ste
 import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.index'
 import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
 import { Route as ModulesStudioAudienceRouteImport } from './routes/modules.studio.audience'
+import { Route as ModulesStudioDnaRouteImport } from './routes/modules.studio.dna'
+import { Route as ModulesStudioIdeasRouteImport } from './routes/modules.studio.ideas'
+import { Route as ModulesStudioPeopleRouteImport } from './routes/modules.studio.people'
+import { Route as ModulesStudioPostsRouteImport } from './routes/modules.studio.posts'
+import { Route as ModulesStudioSourcesRouteImport } from './routes/modules.studio.sources'
 import { Route as ModulesStudioVideoRouteImport } from './routes/modules.studio.video'
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/clients.ask'
@@ -534,6 +539,31 @@ const ModulesStudioAudienceRoute = ModulesStudioAudienceRouteImport.update({
   path: '/audience',
   getParentRoute: () => ModulesStudioRoute,
 } as any)
+const ModulesStudioDnaRoute = ModulesStudioDnaRouteImport.update({
+  id: '/dna',
+  path: '/dna',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
+const ModulesStudioIdeasRoute = ModulesStudioIdeasRouteImport.update({
+  id: '/ideas',
+  path: '/ideas',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
+const ModulesStudioPeopleRoute = ModulesStudioPeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
+const ModulesStudioPostsRoute = ModulesStudioPostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
+const ModulesStudioSourcesRoute = ModulesStudioSourcesRouteImport.update({
+  id: '/sources',
+  path: '/sources',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
 const ModulesStudioVideoRoute = ModulesStudioVideoRouteImport.update({
   id: '/video',
   path: '/video',
@@ -925,6 +955,11 @@ export interface FileRoutesByFullPath {
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
+  '/modules/studio/dna': typeof ModulesStudioDnaRoute
+  '/modules/studio/ideas': typeof ModulesStudioIdeasRoute
+  '/modules/studio/people': typeof ModulesStudioPeopleRoute
+  '/modules/studio/posts': typeof ModulesStudioPostsRoute
+  '/modules/studio/sources': typeof ModulesStudioSourcesRoute
   '/modules/studio/video': typeof ModulesStudioVideoRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/clients/': typeof ModulesClientsIndexRoute
@@ -1053,6 +1088,11 @@ export interface FileRoutesByTo {
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
+  '/modules/studio/dna': typeof ModulesStudioDnaRoute
+  '/modules/studio/ideas': typeof ModulesStudioIdeasRoute
+  '/modules/studio/people': typeof ModulesStudioPeopleRoute
+  '/modules/studio/posts': typeof ModulesStudioPostsRoute
+  '/modules/studio/sources': typeof ModulesStudioSourcesRoute
   '/modules/studio/video': typeof ModulesStudioVideoRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/clients': typeof ModulesClientsIndexRoute
@@ -1191,6 +1231,11 @@ export interface FileRoutesById {
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
+  '/modules/studio/dna': typeof ModulesStudioDnaRoute
+  '/modules/studio/ideas': typeof ModulesStudioIdeasRoute
+  '/modules/studio/people': typeof ModulesStudioPeopleRoute
+  '/modules/studio/posts': typeof ModulesStudioPostsRoute
+  '/modules/studio/sources': typeof ModulesStudioSourcesRoute
   '/modules/studio/video': typeof ModulesStudioVideoRoute
   '/modules/website_/page': typeof ModulesWebsitePageRoute
   '/modules/clients/': typeof ModulesClientsIndexRoute
@@ -1330,6 +1375,11 @@ export interface FileRouteTypes {
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
+    | '/modules/studio/dna'
+    | '/modules/studio/ideas'
+    | '/modules/studio/people'
+    | '/modules/studio/posts'
+    | '/modules/studio/sources'
     | '/modules/studio/video'
     | '/modules/website/page'
     | '/modules/clients/'
@@ -1458,6 +1508,11 @@ export interface FileRouteTypes {
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
+    | '/modules/studio/dna'
+    | '/modules/studio/ideas'
+    | '/modules/studio/people'
+    | '/modules/studio/posts'
+    | '/modules/studio/sources'
     | '/modules/studio/video'
     | '/modules/website/page'
     | '/modules/clients'
@@ -1595,6 +1650,11 @@ export interface FileRouteTypes {
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
+    | '/modules/studio/dna'
+    | '/modules/studio/ideas'
+    | '/modules/studio/people'
+    | '/modules/studio/posts'
+    | '/modules/studio/sources'
     | '/modules/studio/video'
     | '/modules/website_/page'
     | '/modules/clients/'
@@ -2285,6 +2345,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStudioAudienceRouteImport
       parentRoute: typeof ModulesStudioRoute
     }
+    '/modules/studio/dna': {
+      id: '/modules/studio/dna'
+      path: '/dna'
+      fullPath: '/modules/studio/dna'
+      preLoaderRoute: typeof ModulesStudioDnaRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
+    '/modules/studio/ideas': {
+      id: '/modules/studio/ideas'
+      path: '/ideas'
+      fullPath: '/modules/studio/ideas'
+      preLoaderRoute: typeof ModulesStudioIdeasRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
+    '/modules/studio/people': {
+      id: '/modules/studio/people'
+      path: '/people'
+      fullPath: '/modules/studio/people'
+      preLoaderRoute: typeof ModulesStudioPeopleRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
+    '/modules/studio/posts': {
+      id: '/modules/studio/posts'
+      path: '/posts'
+      fullPath: '/modules/studio/posts'
+      preLoaderRoute: typeof ModulesStudioPostsRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
+    '/modules/studio/sources': {
+      id: '/modules/studio/sources'
+      path: '/sources'
+      fullPath: '/modules/studio/sources'
+      preLoaderRoute: typeof ModulesStudioSourcesRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
     '/modules/studio/video': {
       id: '/modules/studio/video'
       path: '/video'
@@ -2892,6 +2987,11 @@ const ModulesStewardRouteWithChildren = ModulesStewardRoute._addFileChildren(
 interface ModulesStudioRouteChildren {
   ModulesStudioItemIdRoute: typeof ModulesStudioItemIdRoute
   ModulesStudioAudienceRoute: typeof ModulesStudioAudienceRoute
+  ModulesStudioDnaRoute: typeof ModulesStudioDnaRoute
+  ModulesStudioIdeasRoute: typeof ModulesStudioIdeasRoute
+  ModulesStudioPeopleRoute: typeof ModulesStudioPeopleRoute
+  ModulesStudioPostsRoute: typeof ModulesStudioPostsRoute
+  ModulesStudioSourcesRoute: typeof ModulesStudioSourcesRoute
   ModulesStudioVideoRoute: typeof ModulesStudioVideoRoute
   ModulesStudioIndexRoute: typeof ModulesStudioIndexRoute
 }
@@ -2899,6 +2999,11 @@ interface ModulesStudioRouteChildren {
 const ModulesStudioRouteChildren: ModulesStudioRouteChildren = {
   ModulesStudioItemIdRoute: ModulesStudioItemIdRoute,
   ModulesStudioAudienceRoute: ModulesStudioAudienceRoute,
+  ModulesStudioDnaRoute: ModulesStudioDnaRoute,
+  ModulesStudioIdeasRoute: ModulesStudioIdeasRoute,
+  ModulesStudioPeopleRoute: ModulesStudioPeopleRoute,
+  ModulesStudioPostsRoute: ModulesStudioPostsRoute,
+  ModulesStudioSourcesRoute: ModulesStudioSourcesRoute,
   ModulesStudioVideoRoute: ModulesStudioVideoRoute,
   ModulesStudioIndexRoute: ModulesStudioIndexRoute,
 }
