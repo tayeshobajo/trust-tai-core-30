@@ -40,3 +40,13 @@ LinkedIn activity/comment sync, external curated feeds, interest matching, Nashv
 Video drafts remain device-local, as in the approved Video implementation. The new Ideas and Sources pages instead call existing workspace services, whose live availability depends on the target environment. URLs are not crawled; PDF extraction and audio/video transcription are unavailable. The six tabs use available icons, initials and warm surfaces rather than inventing portraits, location facts or feed activity. Original mockup photography is not reproduced on the new inspiration-based pages.
 
 Seven final review PNGs exist locally: Overview, Posts, Ideas, People, Content DNA, Sources and Ideas mobile, all marked as fictional design previews. The required Library upload helper failed before preparation with `Library prepare_uploads is not available`. No screenshot upload was finalized and no alternate write was attempted.
+
+## Screenshot delivery follow-up
+
+After the parent requested another supported creation attempt, the direct Library create workflow succeeded for Ideas, Posts and People. Each is version 0, with local Library identity persisted:
+
+- Ideas: `libfile_b76dbcc72058819192fef5df271bf688` (`file_000000004b5c81f6a1e5d9beaee5770b`).
+- Posts: `libfile_9d4d1886e8b08191988a6ad3797f2391` (`file_000000005dc481f68eda5e53f9d1d880`).
+- People: `libfile_dded1764bebc8191bfcc4e06f3eb514e` (`file_000000007cf081f68f7e81608db89f37`).
+
+The earlier prepared-upload error did not prevent this newly requested direct creation. No private storage URL was used or invented.
