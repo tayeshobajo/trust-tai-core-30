@@ -13,6 +13,7 @@ import {
 import { cmdTasks } from "@/data/supabase/cmd-tasks";
 import { listClientCommercialState } from "@/data/supabase/commercial-service";
 import { stewardService } from "@/data/supabase/steward-service";
+import { CmdTaskStatus } from "@/components/tt/cmd/task-status";
 import { BOARD_STATUS_LABEL } from "@/domain/cmd-tasks";
 import { canSeeApp } from "@/lib/workspace";
 import type { DailyHome } from "./daily-home";
@@ -174,7 +175,9 @@ export function ApprovedHome({
                       aria-hidden="true"
                     />
                     <div className="cmd-priority-copy">
-                      <span className="cmd-status">{BOARD_STATUS_LABEL[task.status]}</span>
+                      <span className="cmd-home-task-status">
+                        <CmdTaskStatus status={task.status} />
+                      </span>
                       <h3>{task.title}</h3>
                     </div>
                     <p className="cmd-next-action">

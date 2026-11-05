@@ -18,11 +18,11 @@ export function CmdStatusBadge({
 }: {
   tone: CmdStatusTone;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
 }) {
   return (
     <span className="cmd-status" data-tone={tone}>
-      <Icon aria-hidden="true" size={14} />
+      {Icon && <Icon aria-hidden="true" size={14} />}
       <span>{label}</span>
     </span>
   );

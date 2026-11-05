@@ -226,10 +226,8 @@
   display: flex;
   flex-direction: column-reverse;
 }
-.cmd-status {
-  text-transform: uppercase;
-  font-size: 10px;
-  color: var(--muted-foreground);
+.cmd-home-task-status {
+  align-self: flex-start;
   margin-top: 3px;
 }
 .cmd-next-action {
@@ -498,8 +496,7 @@
   .cmd-priority-copy {
     flex-direction: column;
   }
-  .cmd-status {
-    font-size: 9px;
+  .cmd-home-task-status {
     margin: 0 0 4px;
   }
   .cmd-priority-list li {
