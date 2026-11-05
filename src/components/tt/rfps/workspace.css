@@ -348,20 +348,20 @@
   width: 20px;
   height: 20px;
 }
-.rfp-workspace button:focus-visible,
+.rfp-workspace button:not(.cmd-action):focus-visible,
 .rfp-workspace input:focus-visible,
 .rfp-workspace select:focus-visible,
 .rfp-workspace textarea:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
-.rfp-workspace button {
+.rfp-workspace button:not(.cmd-action) {
   cursor: pointer;
 }
-.rfp-workspace button:disabled {
+.rfp-workspace button:not(.cmd-action):disabled {
   cursor: not-allowed;
 }
-.rfp-workspace button:active:not(:disabled) {
+.rfp-workspace button:not(.cmd-action):active:not(:disabled) {
   transform: translateY(1px);
 }
 @media (max-width: 1200px) {
@@ -720,24 +720,6 @@
   font-size: 10px;
   line-height: 15px;
 }
-.status-qualifying,
-.status-ready {
-  color: var(--plum);
-  background: color-mix(in oklab, var(--plum) 7%, var(--paper));
-}
-.status-review {
-  color: var(--ink);
-  background: color-mix(in oklab, var(--warning) 12%, var(--paper));
-}
-.status-preparing,
-.status-submitted {
-  color: var(--royal);
-  background: var(--royal-wash);
-}
-.status-awarded {
-  color: var(--success);
-  background: color-mix(in oklab, var(--success) 7%, var(--paper));
-}
 .rfp-detail-head {
   padding: 18px 16px 12px;
 }
@@ -817,7 +799,7 @@
 .rfp-summary-card h3 {
   margin: 0 0 10px;
 }
-.rfp-summary-card button {
+.rfp-summary-card button:not(.cmd-action) {
   width: 100%;
   font-size: 12px;
 }
@@ -884,12 +866,12 @@
   margin: 6px 0;
   font-size: 11px;
 }
-.rfp-submission-summary button {
+.rfp-submission-summary button:not(.cmd-action) {
   color: var(--royal);
   min-height: 32px;
   font-size: 11px;
 }
-.rfp-sidebar > button {
+.rfp-sidebar > button:not(.cmd-action) {
   width: 100%;
   justify-content: flex-start;
   font-size: 12px;
@@ -901,7 +883,7 @@
   color: var(--ink);
   box-shadow: none;
 }
-.rfp-sidebar > button svg {
+.rfp-sidebar > button:not(.cmd-action) svg {
   color: var(--royal);
 }
 .rfp-sidebar > p {
@@ -923,7 +905,7 @@
     grid-template-columns: minmax(270px, 1fr) minmax(330px, 1.2fr) minmax(220px, 0.7fr);
   }
   .rfp-row-meta {
-    max-width: 100px;
+    max-width: 145px;
   }
   .rfp-row-meta > .rfp-pill:first-child {
     display: none;
@@ -1028,7 +1010,7 @@
   .rfp-filter-button,
   .rfp-toolbar input,
   .rfp-sort select,
-  .rfp-sidebar > button {
+  .rfp-sidebar > button:not(.cmd-action) {
     min-height: 44px;
   }
   .rfp-toolbar {
@@ -1134,4 +1116,33 @@
   .rfp-intake-options {
     grid-template-columns: 1fr;
   }
+}
+
+/* Reuse the same semantic colors for metrics and their status badges. */
+.rfp-sidebar > .cmd-action {
+  justify-content: flex-start;
+}
+.rfp-stats .tone-captured .rfp-metric-icon {
+  background: var(--cmd-status-captured-bg);
+}
+.rfp-stats .tone-captured svg {
+  color: var(--cmd-status-captured-text);
+}
+.rfp-stats .tone-inProgress .rfp-metric-icon {
+  background: var(--cmd-status-preparing-bg);
+}
+.rfp-stats .tone-inProgress svg {
+  color: var(--cmd-status-preparing-text);
+}
+.rfp-stats .tone-submitted .rfp-metric-icon {
+  background: var(--cmd-status-submitted-bg);
+}
+.rfp-stats .tone-submitted svg {
+  color: var(--cmd-status-submitted-text);
+}
+.rfp-stats .tone-needsReview .rfp-metric-icon {
+  background: var(--cmd-status-review-bg);
+}
+.rfp-stats .tone-needsReview svg {
+  color: var(--cmd-status-review-text);
 }

@@ -43,6 +43,8 @@ import {
 import type { RfpService } from "@/data/supabase/rfps";
 import "./workspace.css";
 import { OpportunityIntake } from "./intake";
+import { CmdAction } from "@/components/tt/cmd/action";
+import { RfpStageBadge } from "./stage-badge";
 const workflowGroups: Record<string, readonly Stage[]> = {
   all: stages,
   captured: ["captured"],
@@ -476,7 +478,7 @@ export function RfpWorkspace({
                   <span className="rfp-row-meta">
                     <span className="rfp-pill">{o.kind === "grant" ? "Grant" : "RFP"}</span>
                     <small>{o.deadline_date || "Date unknown"}</small>
-                    <span className={`rfp-pill status-${o.stage}`}>{stageLabel[o.stage]}</span>
+                    <RfpStageBadge stage={o.stage} />
                   </span>
                 </button>
               ))
@@ -615,13 +617,11 @@ export function RfpWorkspace({
                         </section>
                         <section className="rfp-summary-card">
                           <h3>Next step</h3>
-                          <span className={`rfp-pill status-${current.stage}`}>
-                            {stageLabel[current.stage]}
-                          </span>
+                          <RfpStageBadge stage={current.stage} />
                           <p>{current.next_action || "Decide the next step."}</p>
-                          <TTButton variant="quiet" onClick={() => setTab("proposal")}>
-                            <Layers size={16} /> View proposal
-                          </TTButton>
+                          <CmdAction variant="primary" fullWidth onClick={() => setTab("proposal")}>
+                            <Layers aria-hidden="true" size={16} /> View proposal
+                          </CmdAction>
                         </section>
                       </div>
                       <section className="rfp-summary-card rfp-glance">
@@ -709,12 +709,16 @@ export function RfpWorkspace({
                     <>
                       <div className="rfp-section-title">
                         <h3>Drafts and working documents</h3>
-                        <TTButton disabled={!available} onClick={() => open("document")}>
+                        <CmdAction disabled={!available} onClick={() => open("document")}>
                           Link Google Doc
-                        </TTButton>
-                        <TTButton disabled={!available} onClick={() => open("upload")}>
+                        </CmdAction>
+                        <CmdAction
+                          variant="primary"
+                          disabled={!available}
+                          onClick={() => open("upload")}
+                        >
                           Upload version
-                        </TTButton>
+                        </CmdAction>
                       </div>
                       <p className="rfp-muted">
                         Private files. New uploads preserve previous versions. Download to view PDF,
@@ -937,26 +941,38 @@ export function RfpWorkspace({
                       ? `${versions.length} private file version(s)`
                       : "No preserved draft file."}
                   </p>
-                  <button onClick={() => setTab("submissions")}>View recorded evidence</button>
+                  <CmdAction variant="tertiary" fullWidth onClick={() => setTab("submissions")}>
+                    View recorded evidence
+                  </CmdAction>
                 </section>
                 <h3>Quick actions</h3>
-                <TTButton variant="quiet" disabled={!available} onClick={() => open("edit")}>
-                  <Pencil size={16} /> Edit opportunity
-                </TTButton>
+                <CmdAction fullWidth disabled={!available} onClick={() => open("edit")}>
+                  <Pencil aria-hidden="true" size={16} /> Edit opportunity
+                </CmdAction>
                 <p>
                   {versions.length
                     ? `${versions.length} saved draft version${versions.length === 1 ? "" : "s"}`
                     : "No draft uploaded yet."}
                 </p>
-                <TTButton disabled={!available} onClick={() => open("document")}>
-                  <LinkIcon size={16} /> Link Google Doc
-                </TTButton>
-                <TTButton disabled={!available} onClick={() => open("upload")}>
-                  <Upload size={16} /> Upload draft
-                </TTButton>
-                <TTButton variant="quiet" disabled={!available} onClick={() => open("submission")}>
-                  <Send size={16} /> Record external submission
-                </TTButton>
+                <CmdAction fullWidth disabled={!available} onClick={() => open("document")}>
+                  <LinkIcon aria-hidden="true" size={16} /> Link Google Doc
+                </CmdAction>
+                <CmdAction
+                  variant="primary"
+                  fullWidth
+                  disabled={!available}
+                  onClick={() => open("upload")}
+                >
+                  <Upload aria-hidden="true" size={16} /> Upload draft
+                </CmdAction>
+                <CmdAction
+                  variant="tertiary"
+                  fullWidth
+                  disabled={!available}
+                  onClick={() => open("submission")}
+                >
+                  <Send aria-hidden="true" size={16} /> Record external submission
+                </CmdAction>
                 <p className="rfp-muted">
                   Record a submission only after it happened. This does not send an application.
                 </p>
