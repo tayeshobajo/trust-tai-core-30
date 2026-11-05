@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "jsdom",
     include: [
       "src/domain/rfps.test.ts",
+      "src/domain/rfp-visibility.test.ts",
       "src/domain/rfp-intake.test.ts",
       "src/lib/rfp-source-url.server.test.ts",
       "src/routes/api/public/rfps.source.test.ts",

@@ -1146,3 +1146,52 @@
 .rfp-stats .tone-needsReview svg {
   color: var(--cmd-status-review-text);
 }
+
+.rfp-expiry-note {
+  padding: 0 16px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.rfp-expiry-note p {
+  margin: 0 0 8px;
+}
+.rfp-expiry-note label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+}
+.rfp-expiry-note input {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.rfp-source-top {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  border: 1px solid var(--cmd-action-border);
+  border-radius: var(--cmd-radius-control);
+  color: var(--cmd-action-secondary-text);
+  background: var(--cmd-action-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.rfp-source-top:hover {
+  background: var(--cmd-action-secondary-hover);
+}
+.rfp-source-top:focus-visible {
+  outline: 3px solid var(--cmd-focus);
+  outline-offset: 3px;
+}
+.rfp-source-top span {
+  font-weight: 400;
+}

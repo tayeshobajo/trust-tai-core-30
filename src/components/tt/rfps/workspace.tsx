@@ -40,6 +40,7 @@ import {
   type Snapshot,
   type Stage,
 } from "@/domain/rfps";
+import { hiddenPastRfpIds, safeSourceLink } from "@/domain/rfp-visibility";
 import type { RfpService } from "@/data/supabase/rfps";
 import "./workspace.css";
 import { OpportunityIntake } from "./intake";
@@ -243,7 +244,22 @@ export function RfpWorkspace({
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState("deadline");
   const [mobileDetail, setMobileDetail] = useState(false);
-  const scoped = filterOpportunities(data.opportunities, query, "all", kind);
+  const [now, setNow] = useState(() => new Date());
+  const [includePast, setIncludePast] = useState(false);
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const timer = window.setInterval(tick, 60000);
+    window.addEventListener("focus", tick);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", tick);
+    };
+  }, []);
+  const hiddenPast = hiddenPastRfpIds(data.opportunities, data.submissions, now);
+  const visible = includePast
+    ? data.opportunities
+    : data.opportunities.filter((o) => !hiddenPast.has(o.id));
+  const scoped = filterOpportunities(visible, query, "all", kind);
   const countGroup = (key: string) =>
     scoped.filter((o) => workflowGroups[key]?.includes(o.stage)).length;
   const rows = filterOpportunities(scoped, "", filter, "all")
@@ -259,6 +275,7 @@ export function RfpWorkspace({
     setMobileDetail(false);
   };
   const current = rows.find((o) => o.id === selected) ?? rows[0];
+  const sourceLink = safeSourceLink(current?.source_url ?? "");
   const versions = data.versions.filter((v) => v.opportunity_id === current?.id);
   const submissions = data.submissions.filter((v) => v.opportunity_id === current?.id);
   const documents = (data.documents ?? []).filter((v) => v.opportunity_id === current?.id);
@@ -420,6 +437,22 @@ export function RfpWorkspace({
                 <Filter size={16} /> Filter
               </button>
             </div>
+            <div className="rfp-expiry-note">
+              <p>
+                {includePast
+                  ? "Including past RFPs for reference."
+                  : `${hiddenPast.size} past RFP${hiddenPast.size === 1 ? "" : "s"} with no recorded submission hidden.`}{" "}
+                Submitted RFPs and uncertain deadlines remain visible. Records are not deleted.
+              </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={includePast}
+                  onChange={(e) => setIncludePast(e.target.checked)}
+                />{" "}
+                Include past RFPs with no recorded submission
+              </label>
+            </div>
             <div className="rfp-filter-fields" id="rfp-filters" hidden={!showFilters}>
               <Field label="Stage">
                 <select value={filter} onChange={(e) => setFilter(e.target.value)}>
@@ -525,6 +558,21 @@ export function RfpWorkspace({
                     {current.kind === "grant" ? "GRANT OPPORTUNITY" : "REQUEST FOR PROPOSALS"}
                   </p>
                   <h2>{current.title}</h2>
+                  {sourceLink ? (
+                    <a
+                      className="rfp-source-top"
+                      href={sourceLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink size={16} aria-hidden="true" /> Open{" "}
+                      {current.kind === "grant" ? "grant" : "RFP"} source <span>(new tab)</span>
+                    </a>
+                  ) : (
+                    <p className="rfp-muted">
+                      No source URL recorded. Check Notes for source documents.
+                    </p>
+                  )}
                   <p>
                     {current.source_name} · {current.cycle}
                   </p>

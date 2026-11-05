@@ -288,3 +288,71 @@ it("preserves source evidence and requirements in separate detail sections", () 
     screen.getByText("These are recorded requirements, not a verified completion checklist."),
   ).toBeTruthy();
 });
+
+it("hides past unsubmitted RFPs and updates every visible count without deleting history", () => {
+  const past = {
+    ...row,
+    id: "expired",
+    title: "Past RFP",
+    kind: "rfp" as const,
+    deadline_date: "2000-01-01",
+  };
+  render(
+    <RfpWorkspace
+      service={service}
+      refresh={async () => {}}
+      data={{
+        ...emptySnapshot,
+        opportunities: [past, { ...past, id: "sent", title: "Submitted RFP", stage: "submitted" }],
+        submissions: [
+          {
+            id: "s",
+            opportunity_id: "sent",
+            submitted_at: null,
+            channel: "Historical",
+            reference: "",
+            evidence_url: "",
+            draft_id: null,
+            recorded_at: "2000-01-01",
+          },
+        ],
+      }}
+    />,
+  );
+  const list = screen.getByRole("region", { name: "Opportunity list" });
+  expect(within(list).queryByRole("button", { name: /^Past RFP/ })).toBeNull();
+  expect(within(list).getByRole("button", { name: /^Submitted RFP/ })).toBeTruthy();
+  const filters = within(screen.getByRole("navigation", { name: "Opportunity workflow filters" }));
+  expect(filters.getByRole("button", { name: "All 1" })).toBeTruthy();
+  fireEvent.click(screen.getByLabelText("Include past RFPs with no recorded submission"));
+  expect(within(list).getByRole("button", { name: /^Past RFP/ })).toBeTruthy();
+  expect(filters.getByRole("button", { name: "All 2" })).toBeTruthy();
+  expect(past.stage).toBe("captured");
+});
+it("places a safe new-tab source link in the detail header and explains missing links", () => {
+  const { rerender } = render(
+    <RfpWorkspace
+      service={service}
+      refresh={async () => {}}
+      data={{
+        ...emptySnapshot,
+        opportunities: [{ ...row, kind: "rfp", source_url: "https://example.org/rfp" }],
+      }}
+    />,
+  );
+  const link = screen.getByRole("link", { name: "Open RFP source (new tab)" });
+  expect(link.getAttribute("target")).toBe("_blank");
+  expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  expect(link.closest(".rfp-detail-head")).toBeTruthy();
+  rerender(
+    <RfpWorkspace
+      service={service}
+      refresh={async () => {}}
+      data={{ ...emptySnapshot, opportunities: [{ ...row, source_url: "" }] }}
+    />,
+  );
+  expect(screen.queryByRole("link", { name: /Open .* source/ })).toBeNull();
+  expect(
+    screen.getByText("No source URL recorded. Check Notes for source documents."),
+  ).toBeTruthy();
+});
