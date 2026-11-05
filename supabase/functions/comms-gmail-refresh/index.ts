@@ -23,7 +23,7 @@ const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
 
 // ----------------------------------------------------------------- crypto
 
-function fromBase64(value: string): Uint8Array {
+function fromBase64(value: string) {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
