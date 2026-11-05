@@ -9,7 +9,7 @@
  * On-demand: POST /functions/v1/paperclip-reconcile with { organizationId }
  */
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const PAPERCLIP_API_URL = Deno.env.get("PAPERCLIP_API_URL") ?? "http://127.0.0.1:3100";
 const PAPERCLIP_BOARD_KEY = Deno.env.get("PAPERCLIP_BOARD_KEY") ?? "";
