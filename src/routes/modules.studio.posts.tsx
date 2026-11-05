@@ -1,0 +1,854 @@
+import { PostsFeed } from "@/components/tt/studio/posts-feed";
+import { ArrowRight, Sparkles, Lightbulb } from "lucide-react";
+import { isStudioIdea } from "@/domain/studio-ideas";
+/**
+ * Studio, the content room.
+ *
+ * One command in, an editorial package out: a cluster plan a person can argue
+ * with, then ten prepared articles, each with the reason it should exist. The
+ * room prepares; it never decides. Approving the batch happens in Approvals,
+ * and publishing to trusttai.com happens only after that, with a receipt.
+ */
+
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
+import { StudioShell } from "@/components/tt/studio/studio-shell";
+import { Markdown } from "@/components/tt/markdown";
+import { EmptyState, MetaPill, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
+import {
+  StudioComposer,
+  readFileAsSource,
+  type ComposerSubmission,
+  type PastedSource,
+} from "@/components/tt/studio/composer";
+import { StudioOpportunities } from "@/components/tt/studio/opportunities";
+import { StudioBrief } from "@/components/tt/studio/brief";
+import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import { submitContentBatchForApproval, submitContentBatchQuietly } from "@/data/content/intake";
+import { deriveOpportunities } from "@/data/content/opportunity-read";
+import { studioOpportunitiesView, type OpportunityRowView } from "@/data/content/opportunity-view";
+import { readContentDemand } from "@/data/website/content-demand";
+import { contentService } from "@/data/supabase/content-service";
+import { contentCommandService } from "@/data/supabase/content-request-service";
+import { studioBriefService } from "@/data/supabase/studio-brief-service";
+import { listSearchMetrics, listWebsitePages } from "@/data/supabase/website-analytics-service";
+import { supabase } from "@/integrations/trust-tai/supabase";
+import { readNdjsonStream } from "@/lib/ndjson-stream";
+import {
+  CONTENT_ITEM_STATE_LABEL,
+  readBatch,
+  wordCount,
+  type ContentBatch,
+  type ContentItem,
+} from "@/domain/content";
+import { voiceExcerpts } from "@/domain/content-source";
+import type { ContentRequestSettings } from "@/domain/content-request";
+import type { ContentBrief } from "@/domain/content-brief";
+import { applyDecisions } from "@/domain/content-opportunity";
+import type { PreparedItem, PreparedPlan } from "@/lib/content-engine.server";
+import type { WorkspaceIdentity } from "@/lib/workspace";
+
+/** The same bounded window the Website room reads over. One policy, not two. */
+const DEMAND_WINDOW_DAYS = 30;
+
+const TITLE = "Studio · The content room · Trust Tai OS";
+const DESCRIPTION =
+  "One command becomes an editorial package: a topic cluster, per-post briefs, drafts in Trust Tai's voice, and one approval that a person still has to give.";
+
+export const Route = createFileRoute("/modules/studio/posts")({
+  validateSearch: (search: Record<string, unknown>): { idea?: string; batch?: string } => ({
+    ...(typeof search["idea"] === "string" ? { idea: search["idea"] } : {}),
+    ...(typeof search["batch"] === "string" ? { batch: search["batch"] } : {}),
+  }),
+  head: () => ({
+    meta: [
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
+  component: StudioRoute,
+});
+
+function StudioRoute() {
+  const search = Route.useSearch();
+  return (
+    <WorkspaceGate appId="studio">
+      {(identity) => (
+        <StudioPosts
+          identity={identity}
+          initialIdeaId={search.idea}
+          initialBatchId={search.batch}
+        />
+      )}
+    </WorkspaceGate>
+  );
+}
+
+async function accessToken(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Your session expired. Sign in again.");
+  return token;
+}
+
+/** Settings travel to the engine as plain label/value pairs a person could read. */
+function settingPairs(settings: ContentRequestSettings): { label: string; value: string }[] {
+  return Object.entries(settings)
+    .filter(([, setting]) => setting.value.trim())
+    .map(([label, setting]) => ({ label, value: setting.value }));
+}
+
+export function StudioPosts({
+  identity,
+  initialIdeaId: ideaId,
+  initialBatchId: batchId,
+}: {
+  identity: WorkspaceIdentity;
+  initialIdeaId?: string | undefined;
+  initialBatchId?: string | undefined;
+}) {
+  const [composing, setComposing] = useState(Boolean(ideaId));
+  const [postSearch, setPostSearch] = useState("");
+  useEffect(() => {
+    if (composing)
+      document
+        .getElementById("studio-compose")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [composing]);
+  const { organizationId, userId } = identity;
+  const context = useMemo(() => ({ organizationId, userId }), [organizationId, userId]);
+  const queryClient = useQueryClient();
+
+  const [progress, setProgress] = useState<string[]>([]);
+  const [openBatchId, setOpenBatchId] = useState<string | null>(batchId ?? null);
+  useEffect(() => {
+    if (batchId) setOpenBatchId(batchId);
+  }, [batchId]);
+  useEffect(() => {
+    if (ideaId) setComposing(true);
+  }, [ideaId]);
+  /* Set aside. Recorded when the brief store is there, this visit if not. */
+  const [setAside, setSetAside] = useState<string[]>([]);
+  /* The brief a person is reading right now. Nothing is written until they
+     keep it, and discarding leaves no trace. */
+  const [openBrief, setOpenBrief] = useState<{
+    row: OpportunityRowView;
+    brief: ContentBrief;
+  } | null>(null);
+
+  const sources = useQuery({
+    queryKey: ["studio", "sources", organizationId],
+    queryFn: () => contentCommandService.listSources(organizationId),
+  });
+
+  const addSource = useMutation({
+    mutationFn: async (input: PastedSource) => contentCommandService.addSource(context, input),
+    onSuccess: (source) => {
+      toast.success(`Kept "${source.label}" as a reference.`);
+      void queryClient.invalidateQueries({ queryKey: ["studio", "sources"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const removeSource = useMutation({
+    mutationFn: async (sourceId: string) => contentCommandService.removeSource(context, sourceId),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["studio", "sources"] }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const batches = useQuery({
+    queryKey: ["studio", "batches", organizationId],
+    queryFn: () => contentService.listBatches(context, 20),
+  });
+
+  const open = useQuery({
+    queryKey: ["studio", "batch", openBatchId],
+    queryFn: () => (openBatchId ? contentService.getBatch(context, openBatchId) : null),
+    enabled: Boolean(openBatchId),
+  });
+
+  /* Internal links are only allowed to point at pages that really exist, so
+     the room hands the engine the live inventory of trusttai.com. */
+  const pages = useQuery({
+    queryKey: ["studio", "pages", organizationId],
+    queryFn: () => listWebsitePages(organizationId),
+  });
+
+  /* What the market already asked for. The Website room owns the observation;
+     Studio only reads it, over the same bounded window Website uses. */
+  const sinceDate = useMemo(
+    () =>
+      new Date(Date.now() - DEMAND_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    [],
+  );
+  const searchMetrics = useQuery({
+    queryKey: ["studio", "search-metrics", organizationId, sinceDate],
+    queryFn: () => listSearchMetrics(organizationId, sinceDate),
+  });
+
+  /* What a person already decided about these rows, and the briefs they kept.
+     Both are optional stores: a missing one reads as nothing decided yet. */
+  const decisions = useQuery({
+    queryKey: ["studio", "opportunity-decisions", organizationId],
+    queryFn: () => studioBriefService.listOpportunityDecisions(organizationId),
+  });
+
+  const briefs = useQuery({
+    queryKey: ["studio", "briefs", organizationId],
+    queryFn: () => studioBriefService.listBriefs(organizationId),
+  });
+
+  const opportunities = useMemo(() => {
+    const demand = readContentDemand({
+      searchMetrics: searchMetrics.data?.value ?? [],
+      pages: pages.data?.value ?? [],
+      inventoryRead: pages.data?.provisioned === true,
+      searchRead: searchMetrics.data?.provisioned === true,
+    });
+    const derived = deriveOpportunities({
+      organizationId,
+      demand,
+      asOf: new Date().toISOString(),
+    });
+    return studioOpportunitiesView(
+      demand,
+      applyDecisions(derived, decisions.data?.value ?? {}),
+      setAside,
+    );
+  }, [searchMetrics.data, pages.data, organizationId, setAside, decisions.data]);
+
+  /* Which rows already have a brief a person kept, so the row offers to open
+     it rather than writing a second one. */
+  const keptBriefs = useMemo(() => {
+    const map = new Map<string, ContentBrief>();
+    for (const brief of briefs.data?.value ?? []) {
+      if (brief.sourceOpportunityId && !map.has(brief.sourceOpportunityId)) {
+        map.set(brief.sourceOpportunityId, brief);
+      }
+    }
+    return map;
+  }, [briefs.data]);
+
+  /* One brief, reasoned from one row. It writes nothing on its own. */
+  const buildBrief = useMutation({
+    mutationFn: async (row: OpportunityRowView) => {
+      const token = await accessToken();
+      const response = await fetch("/api/public/content/brief", {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          organization_id: organizationId,
+          opportunity_id: row.id,
+          phrase: row.phrase,
+          audience_language: [row.phrase],
+          observed: [
+            `Appearances: ${row.impressions}`,
+            `Clicks: ${row.clicks}`,
+            `Click rate: ${row.ctr}`,
+            `Average position: ${row.averagePosition}`,
+            `Observed window: ${row.windowLabel}`,
+            ...(row.overlap ? [`Our own pages overlap: ${row.overlap}`] : []),
+          ],
+          studio_read: row.interpretation,
+          suggested_move: row.moveLabel,
+          known_pages: (pages.data?.value ?? []).map((page) => ({
+            path: page.path,
+            title: page.title,
+          })),
+        }),
+      });
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) throw new Error(String(payload["error"] ?? "That did not work."));
+      return { row, brief: payload["brief"] as ContentBrief };
+    },
+    onSuccess: (result) => setOpenBrief(result),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const keepBrief = useMutation({
+    mutationFn: async (brief: ContentBrief) => {
+      const saved = await studioBriefService.saveBrief(context, brief);
+      if (brief.sourceOpportunityId) {
+        await studioBriefService.recordOpportunityDecision(context, {
+          opportunityId: brief.sourceOpportunityId,
+          subjectLabel: openBrief?.row.phrase ?? "",
+          state: "brief_built",
+        });
+      }
+      return saved;
+    },
+    onSuccess: () => {
+      toast.success("Brief kept. Nothing has been written or published from it.");
+      setOpenBrief(null);
+      void queryClient.invalidateQueries({ queryKey: ["studio", "briefs"] });
+      void queryClient.invalidateQueries({ queryKey: ["studio", "opportunity-decisions"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  /* Setting a row aside is a decision, so it is recorded when the store is
+     there. When it is not, it is honestly only for this visit. */
+  const dismiss = useMutation({
+    mutationFn: async (row: OpportunityRowView) =>
+      studioBriefService.recordOpportunityDecision(context, {
+        opportunityId: row.id,
+        subjectLabel: row.phrase,
+        state: "dismissed",
+      }),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: ["studio", "opportunity-decisions"] }),
+    onError: () =>
+      toast.message("Set aside for this visit only. The brief store is not in this database yet."),
+  });
+
+  const publisher = useQuery({
+    queryKey: ["studio", "publisher"],
+    queryFn: async () => {
+      const response = await fetch("/api/public/content/publish");
+      return (await response.json()) as { configured: boolean; because: string };
+    },
+  });
+
+  /* The run streams, so the room says which article is being written. */
+  const generate = useMutation({
+    mutationFn: async (submission: ComposerSubmission) => {
+      const { request } = submission;
+      setProgress([]);
+
+      const chosen = (sources.data ?? []).filter((source) =>
+        submission.sourceIds.includes(source.id),
+      );
+
+      /* The request is recorded before the work starts, so what was asked for
+         survives even if the run fails. */
+      const record = await contentCommandService.recordRequest(context, {
+        prompt: request.prompt,
+        keyword: request.keyword,
+        postCount: request.count,
+        settings: request.settings,
+        sourceIds: submission.sourceIds,
+      });
+
+      try {
+        const token = await accessToken();
+        const response = await fetch("/api/public/content/generate", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            organization_id: organizationId,
+            keyword: request.keyword,
+            count: request.count,
+            instructions: request.instructions,
+            settings: settingPairs(request.settings),
+            voice_references: voiceExcerpts(chosen),
+            known_paths: (pages.data?.value ?? []).map((page) => ({
+              path: page.path,
+              title: page.title,
+            })),
+          }),
+        });
+
+        const payload = await readNdjsonStream(response, (stage) => {
+          setProgress((current) => [...current, stage.message]);
+        });
+        if (!payload) throw new Error("The run ended without returning a batch.");
+
+        const plan = payload["plan"] as PreparedPlan;
+        const items = (payload["items"] ?? []) as PreparedItem[];
+
+        /* The room writes its own truth, under its own membership. */
+        const batch = await contentService.createBatch(context, {
+          keyword: plan.keyword,
+          topicCluster: plan.topicCluster,
+          searchIntent: plan.searchIntent,
+          audienceProblem: plan.audienceProblem,
+          whyTogether: plan.whyTogether,
+          editorialPlan: plan.editorialPlan,
+          provenance: {
+            ...plan.provenance,
+            requestId: record.id,
+            requestPrompt: request.prompt,
+            settings: request.settings,
+            sources: chosen.map((source) => ({
+              id: source.id,
+              label: source.label,
+              kind: source.kind,
+              origin: source.origin,
+            })),
+          },
+        });
+        for (const item of items) {
+          await contentService.saveItem(context, batch.id, {
+            ...item,
+            generation: item.generation ?? null,
+          });
+        }
+        await contentService.setBatchState(context, batch.id, "prepared");
+        await contentCommandService.settleRequest(context, record.id, {
+          state: "prepared",
+          because: "Studio prepared the batch and sent it for one decision.",
+          batchId: batch.id,
+        });
+        /* One prepared batch is one decision. Submitting is idempotent on the
+           batch id, so this never becomes a second card. */
+        await submitContentBatchQuietly(batch.id, context);
+        return batch;
+      } catch (error) {
+        await contentCommandService
+          .settleRequest(context, record.id, {
+            state: "failed",
+            because: (error as Error).message,
+          })
+          .catch(() => undefined);
+        throw error;
+      }
+    },
+    onSuccess: (batch) => {
+      toast.success(
+        "The batch is prepared and waiting in Approvals. Nothing publishes until you decide.",
+      );
+      setOpenBatchId(batch.id);
+      void queryClient.invalidateQueries({ queryKey: ["studio", "batches"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const submit = useMutation({
+    mutationFn: async (batchId: string) => submitContentBatchForApproval(batchId, context),
+    onSuccess: (request) => {
+      if (!request) {
+        toast.warning("Every post in this batch has already been decided.");
+        return;
+      }
+      toast.success("Sent to Approvals as one decision. Nothing publishes until you approve it.");
+      void queryClient.invalidateQueries({ queryKey: ["studio"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const publish = useMutation({
+    mutationFn: async (input: { itemId: string; action: "publish" | "verify" }) => {
+      const token = await accessToken();
+      const response = await fetch("/api/public/content/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          organization_id: organizationId,
+          item_id: input.itemId,
+          action: input.action,
+        }),
+      });
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) throw new Error(String(payload["error"] ?? "That did not work."));
+      return payload;
+    },
+    onSuccess: (payload) => {
+      const verification = payload["verification"] as { because?: string } | undefined;
+      toast.success(String(verification?.because ?? payload["because"] ?? "Recorded."));
+      void queryClient.invalidateQueries({ queryKey: ["studio"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const running = generate.isPending;
+
+  return (
+    <StudioShell
+      identity={identity}
+      section="Posts"
+      description="Turn a clear idea into useful writing, in your voice."
+      search={postSearch}
+      onSearch={setPostSearch}
+      searchLabel="Search recent article batches"
+      action={
+        <button className="sv-button sv-primary" onClick={() => setComposing(true)}>
+          Write a post
+        </button>
+      }
+    >
+      <section className="sw-post-intro">
+        <div>
+          <span className="sw-kicker">WRITE WITH INTENTION</span>
+          <h2>Your next post starts with a clear idea.</h2>
+          <p>
+            Prepare a draft, review it in your own voice, and send it through your existing approval
+            flow.
+          </p>
+        </div>
+        <Link className="sv-button" to="/modules/studio/ideas">
+          Choose a saved idea
+        </Link>
+      </section>
+      {(batches.isError || sources.isError) && (
+        <p className="sw-error" role="alert">
+          Some workspace data could not be read. {batches.error?.message ?? sources.error?.message}{" "}
+          <button
+            onClick={() => {
+              void batches.refetch();
+              void sources.refetch();
+            }}
+          >
+            Try again
+          </button>
+        </p>
+      )}
+      <div className="sw-post-activity-grid">
+        <PostsFeed
+          identity={identity}
+          batches={(batches.data ?? []).filter((b) =>
+            b.keyword.toLowerCase().includes(postSearch.toLowerCase()),
+          )}
+          sources={sources.data ?? []}
+          loading={batches.isPending || sources.isPending}
+          error={batches.isError || sources.isError}
+        />
+        <aside className="sw-curated">
+          <section className="sv-card">
+            <span className="sw-kicker">
+              <Sparkles />
+              TOPICS FROM YOUR WEBSITE
+            </span>
+            <h2>Worth a closer look</h2>
+            <p>Suggestions from your existing website search observations, when available.</p>
+            {opportunities.rows.length ? (
+              <ul className="sw-topic-queue">
+                {opportunities.rows.slice(0, 3).map((row, i) => (
+                  <li key={row.id}>
+                    <span>{i + 1}</span>
+                    <div>
+                      <h3>{row.phrase}</h3>
+                      <p>{row.interpretation}</p>
+                      {row.actionable && (
+                        <button
+                          className="sw-text-button"
+                          disabled={buildBrief.isPending}
+                          onClick={() => buildBrief.mutate(row)}
+                        >
+                          Build a brief
+                          <ArrowRight />
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="sw-quiet-note">
+                No supported topic suggestions are available in this view. Open “Topics from your
+                website” below for the source status.
+              </div>
+            )}
+          </section>
+          <section className="sv-card">
+            <span className="sw-kicker">
+              <Lightbulb />
+              YOUR SAVED IDEAS
+            </span>
+            <h2>A thought you can build on</h2>
+            {briefs.isError ? (
+              <p className="sw-error">Saved ideas could not be read.</p>
+            ) : (briefs.data?.value ?? []).filter(isStudioIdea).length ? (
+              <ul className="sw-mini-list">
+                {(briefs.data?.value ?? [])
+                  .filter(isStudioIdea)
+                  .slice(0, 3)
+                  .map((idea) => (
+                    <li key={idea.id}>
+                      <Link to="/modules/studio/posts" search={{ idea: idea.id }}>
+                        {idea.chosenTitle}
+                        <ArrowRight />
+                      </Link>
+                    </li>
+                  ))}
+              </ul>
+            ) : (
+              <p>Save something you’ve noticed. It doesn’t have to be a finished angle.</p>
+            )}
+            <Link className="sw-text-button" to="/modules/studio/ideas">
+              Open Ideas
+              <ArrowRight />
+            </Link>
+          </section>
+          <section className="sw-quiet-note">
+            LinkedIn post/comment sync, external topic curation, and social publishing are not
+            connected. No engagement counts or algorithmic matches are invented.
+          </section>
+        </aside>
+      </div>
+      <details className="sv-card sw-discovery">
+        <summary>
+          Topics from your website <span>Observed demand, when available</span>
+        </summary>
+        <StudioOpportunities
+          view={opportunities}
+          loading={searchMetrics.isPending || pages.isPending}
+          keptBriefIds={[...keptBriefs.keys()]}
+          buildingId={buildBrief.isPending ? (buildBrief.variables?.id ?? null) : null}
+          onDismiss={(id) => {
+            setSetAside((current) => [...current, id]);
+            const row = opportunities.rows.find((entry) => entry.id === id);
+            if (row) dismiss.mutate(row);
+          }}
+          onBuildBrief={(row) => buildBrief.mutate(row)}
+          onOpenBrief={(row) => {
+            const kept = keptBriefs.get(row.id);
+            if (kept) setOpenBrief({ row, brief: kept });
+          }}
+        />
+      </details>
+      {openBrief ? (
+        <StudioBrief
+          /* A different row is a different brief: never carry one row's edits
+             into another. */
+          key={`${openBrief.row.id}:${openBrief.brief.id}`}
+          phrase={openBrief.row.phrase}
+
+          brief={openBrief.brief}
+          saving={keepBrief.isPending}
+          onKeep={(edited) => keepBrief.mutate(edited)}
+          onDiscard={() => setOpenBrief(null)}
+        />
+      ) : null}
+
+      <details
+        id="studio-compose"
+        open={composing}
+        onToggle={(e) => setComposing(e.currentTarget.open)}
+        className="sw-compose-details"
+      >
+        <summary>
+          Write a post <span>Idea → plan → draft → your decision</span>
+        </summary>
+        {sources.isPending || (ideaId && briefs.isPending) ? (
+          <p>Reading your writing workspace…</p>
+        ) : ideaId && !briefs.data?.value.some((b) => b.id === ideaId) ? (
+          <p role="alert" className="sw-error">
+            This idea could not be read. Your saved ideas have not changed.{" "}
+            <Link to="/modules/studio/ideas">Return to Ideas</Link>
+          </p>
+        ) : (
+          <StudioComposer
+            key={ideaId ?? "new-post"}
+            initialPrompt={
+              ideaId
+                ? `Write 1 post about: ${briefs.data?.value.find((b) => b.id === ideaId)?.coreIdea ?? ""}`
+                : ""
+            }
+            sources={sources.data ?? []}
+            onAddPasted={(input) => addSource.mutate(input)}
+            onAddFile={(file) => {
+              void readFileAsSource(file)
+                .then((source) => addSource.mutate(source))
+                .catch((error) => toast.error((error as Error).message));
+            }}
+            onRemoveSource={(sourceId) => removeSource.mutate(sourceId)}
+            onSubmit={(submission) => generate.mutate(submission)}
+            running={running}
+            progress={progress}
+            {...(publisher.data && !publisher.data.configured
+              ? { publisherNote: publisher.data.because }
+              : {})}
+          />
+        )}
+      </details>
+      <details className="sw-batch-workspace" open={Boolean(openBatchId)}>
+        <summary>
+          Editorial batches <span>Review plans, drafts, approvals and publishing receipts</span>
+        </summary>
+        <div className="sw-posts-layout">
+          <TTCard className="p-5">
+            <SectionHeading
+              title="Recent batches"
+              description="Your article plans and drafts, newest first."
+            />
+            <div className="mt-4 space-y-2">
+              {(batches.data ?? []).length === 0 ? (
+                <EmptyState
+                  title="Nothing prepared yet"
+                  belongsHere="Studio holds the editorial packages this workspace has written."
+                  whyItMatters="Give Studio a keyword and it will plan a cluster you can argue with."
+                />
+              ) : null}
+              {(batches.data ?? [])
+                .filter((b) => b.keyword.toLowerCase().includes(postSearch.toLowerCase()))
+                .map((batch) => (
+                  <button
+                    key={batch.id}
+                    type="button"
+                    onClick={() => setOpenBatchId(batch.id)}
+                    className={`w-full rounded-lg border p-3 text-left transition ${
+                      openBatchId === batch.id
+                        ? "border-primary"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <p className="font-medium">{batch.keyword}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {batch.state.replace(/_/g, " ")}
+                    </p>
+                  </button>
+                ))}
+            </div>
+          </TTCard>
+
+          <div>
+            {open.data ? (
+              <BatchView
+                batch={open.data.batch}
+                items={open.data.items}
+                onSubmit={() => submit.mutate(open.data!.batch.id)}
+                submitting={submit.isPending}
+                canPublish={Boolean(publisher.data?.configured)}
+                onPublish={(itemId, action) => publish.mutate({ itemId, action })}
+                publishing={publish.isPending}
+              />
+            ) : (
+              <EmptyState
+                title="Open a batch"
+                belongsHere="The plan and the posts sit here, side by side."
+                whyItMatters="Read them before anything is submitted for approval."
+              />
+            )}
+          </div>
+        </div>
+      </details>
+    </StudioShell>
+  );
+}
+
+function BatchView({
+  batch,
+  items,
+  onSubmit,
+  submitting,
+  canPublish,
+  onPublish,
+  publishing,
+}: {
+  batch: ContentBatch;
+  items: ContentItem[];
+  onSubmit: () => void;
+  submitting: boolean;
+  canPublish: boolean;
+  onPublish: (itemId: string, action: "publish" | "verify") => void;
+  publishing: boolean;
+}) {
+  const readout = readBatch(items);
+  const undecided = readout.ready + readout.exceptions + readout.failed;
+
+  return (
+    <div className="space-y-6">
+      <TTCard className="p-6">
+        <SectionHeading title={batch.keyword} description={batch.searchIntent} />
+        {batch.audienceProblem ? <p className="mt-3">{batch.audienceProblem}</p> : null}
+        {batch.whyTogether ? (
+          <p className="mt-3 text-sm text-muted-foreground">{batch.whyTogether}</p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <MetaPill>{readout.total} posts</MetaPill>
+          <MetaPill>{readout.ready} ready</MetaPill>
+          <MetaPill>{readout.exceptions} need review</MetaPill>
+          <MetaPill>{readout.failed} failed</MetaPill>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <TTButton onClick={onSubmit} disabled={submitting || undecided === 0}>
+            {undecided === 0 ? "Already decided" : "Send to Approvals"}
+          </TTButton>
+          <Link to="/modules/approvals" className="text-sm underline">
+            Open Approvals
+          </Link>
+        </div>
+      </TTCard>
+
+      {items.map((item) => (
+        <TTCard key={item.id} className="p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-medium">{item.title}</h3>
+              <p className="text-sm text-muted-foreground">{item.angle}</p>
+            </div>
+            <MetaPill>{CONTENT_ITEM_STATE_LABEL[item.state]}</MetaPill>
+          </div>
+
+          {item.hitRationale ? <p className="mt-4">{item.hitRationale}</p> : null}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <MetaPill>{wordCount(item.draftMarkdown)} words</MetaPill>
+            <MetaPill>{item.seo.slug}</MetaPill>
+            <MetaPill>
+              {item.image.state === "ready" ? "Image ready" : "No featured image yet"}
+            </MetaPill>
+            {item.internalLinks.some((link) => !link.resolved) ? (
+              <MetaPill>
+                {item.internalLinks.filter((link) => !link.resolved).length} links unresolved
+              </MetaPill>
+            ) : null}
+          </div>
+
+          {item.exceptionReasons.length > 0 ? (
+            <ul className="mt-3 list-disc pl-5 text-sm text-muted-foreground">
+              {item.exceptionReasons.map((reason) => (
+                <li key={reason}>{reason.replace(/_/g, " ")}</li>
+              ))}
+            </ul>
+          ) : null}
+
+          {item.failureReason ? (
+            <p className="mt-3 text-sm text-muted-foreground">{item.failureReason}</p>
+          ) : null}
+
+          <p className="mt-4 text-sm">
+            <Link to="/modules/studio/$itemId" params={{ itemId: item.id }} className="underline">
+              Open the article
+            </Link>
+          </p>
+
+          {item.draftMarkdown ? (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm underline">Read the draft</summary>
+              <div className="mt-3">
+                <Markdown content={item.draftMarkdown} />
+              </div>
+            </details>
+          ) : null}
+
+          {item.state === "queued" || item.state === "published" || item.state === "verified" ? (
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {item.state === "queued" ? (
+                <TTButton
+                  onClick={() => onPublish(item.id, "publish")}
+                  disabled={publishing || !canPublish}
+                >
+                  Publish to trusttai.com
+                </TTButton>
+              ) : null}
+              {item.canonicalUrl ? (
+                <a href={item.canonicalUrl} className="text-sm underline">
+                  {item.canonicalUrl}
+                </a>
+              ) : null}
+              {item.state === "published" ? (
+                <TTButton
+                  variant="secondary"
+                  onClick={() => onPublish(item.id, "verify")}
+                  disabled={publishing}
+                >
+                  Verify the live page
+                </TTButton>
+              ) : null}
+              <span className="text-sm text-muted-foreground">{item.verification.because}</span>
+            </div>
+          ) : null}
+        </TTCard>
+      ))}
+    </div>
+  );
+}

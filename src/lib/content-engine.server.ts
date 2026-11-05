@@ -1,3 +1,4 @@
+import { CONTENT_VOICE_PRINCIPLES } from "@/domain/content-voice";
 /**
  * The Content Engine (server only).
  *
@@ -25,7 +26,12 @@ import {
   runtimeModelCaller,
   type RuntimeModelCaller,
 } from "./intelligence-runtime.server";
-import { assessItem, type ContentItem, type EditorialStep, type InternalLink } from "@/domain/content";
+import {
+  assessItem,
+  type ContentItem,
+  type EditorialStep,
+  type InternalLink,
+} from "@/domain/content";
 
 export interface ContentStage {
   stage: "plan" | "post" | "complete" | "error";
@@ -52,14 +58,7 @@ export interface ContentCommandInput {
 
 /* ---------------------------------------------------------------- voice */
 
-const VOICE = [
-  "Voice: warm, calm, direct, first person where a person is speaking.",
-  "Commercially intelligent, never salesy. No hype, no growth-hacking register.",
-  "Never use em dashes.",
-  "No generic agency or consulting language, no visible formula, no tagline writing.",
-  "Short paragraphs. Concrete nouns. Interpret facts for what they mean commercially.",
-  "Every sentence must fail this test: could it belong to another company if the name changed? If it could, rewrite it.",
-].join(" ");
+const VOICE = CONTENT_VOICE_PRINCIPLES.join(" ");
 
 const PLAN_INSTRUCTIONS = [
   "You are the editorial planner for Trust Tai, a small services business that builds operating systems for founders.",
@@ -100,7 +99,9 @@ function requestContext(input: ContentCommandInput): Record<string, unknown> {
   const references = (input.voiceReferences ?? []).filter((entry) => entry.excerpt.trim());
   return {
     ...(input.instructions?.trim() ? { person_request: input.instructions.trim() } : {}),
-    ...(settings.length ? { settings: Object.fromEntries(settings.map((s) => [s.label, s.value])) } : {}),
+    ...(settings.length
+      ? { settings: Object.fromEntries(settings.map((s) => [s.label, s.value])) }
+      : {}),
     ...(references.length
       ? {
           voice_references: references.slice(0, 6).map((reference) => ({
@@ -166,7 +167,9 @@ function resolveLinks(
   const byPath = new Map(known.map((entry) => [entry.path.replace(/\/$/, ""), entry]));
   return (raw ?? []).slice(0, 3).map((link) => {
     const anchor = String(link?.anchor ?? "").trim() || "Related reading";
-    const candidate = String(link?.path ?? "").trim().replace(/\/$/, "");
+    const candidate = String(link?.path ?? "")
+      .trim()
+      .replace(/\/$/, "");
     const match = candidate ? byPath.get(candidate) : undefined;
     return match
       ? {
@@ -372,9 +375,7 @@ async function writePost(
  * The plan is one model call; each post is its own call, so one bad post
  * cannot take the package down with it.
  */
-export async function* runContentCommand(
-  input: ContentCommandInput,
-): AsyncGenerator<ContentStage> {
+export async function* runContentCommand(input: ContentCommandInput): AsyncGenerator<ContentStage> {
   const callModel = await runtimeModelCaller({
     token: input.token,
     organizationId: input.organizationId,

@@ -3,15 +3,13 @@
  * No copy is kept, no consent is changed, nothing is sent from here.
  */
 
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 
-import { AppShell } from "@/components/tt/app-shell";
-import { RoomHero } from "@/components/tt/room-hero";
+import { StudioShell } from "@/components/tt/studio/studio-shell";
 import { EmptyState, TTButton, TTCard, TonePill } from "@/components/tt/primitives";
-import { StudioNav } from "@/components/tt/studio/studio-nav";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { getStudioAudience } from "@/data/studio-audience.functions";
 import {
@@ -52,12 +50,17 @@ const FILTERS: { id: AudienceFilter; label: string }[] = [
 
 function when(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
-function Audience({ identity }: { identity: WorkspaceIdentity }) {
+export function Audience({ identity }: { identity: WorkspaceIdentity }) {
   const [filter, setFilter] = useState<AudienceFilter>("all");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   const read = useServerFn(getStudioAudience);
   const q = useQuery({
     queryKey: ["studio-audience", identity.organizationId, filter, page],
@@ -69,15 +72,27 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
 
   const result = q.data;
   return (
-    <AppShell identity={identity}>
-      <div className="mb-6">
-        <StudioNav current="audience" />
+    <StudioShell
+      identity={identity}
+      section="People"
+      description="The people who chose to hear from you."
+      search={search}
+      onSearch={setSearch}
+      searchLabel="Search people on this page"
+      action={
+        <Link className="sv-button" to="/modules/studio/people">
+          Workspace people
+        </Link>
+      }
+    >
+      <div className="sw-people-intro">
+        <span className="sw-kicker">YOUR NEWSLETTER AUDIENCE</span>
+        <h2>See the people behind the list.</h2>
+        <p>
+          Read directly from trusttai.com. Studio keeps no copy, changes no consent, and sends
+          nothing.
+        </p>
       </div>
-      <RoomHero
-        eyebrow="Studio"
-        title="Who is listening."
-        supporting="The trusttai.com newsletter list, read straight from the website. Studio keeps no copy, changes no one's consent and sends nothing."
-      />
 
       {q.isPending ? (
         <TTCard className="mt-6 bg-card" aria-busy="true">
@@ -94,7 +109,9 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
       ) : result && !result.ok ? (
         <TTCard className="mt-6 bg-card" role="alert">
           <p className="text-sm font-medium">The audience isn't shown.</p>
-          <p className="mt-1 text-sm text-muted-foreground">{AUDIENCE_FAILURE_TEXT[result.failure]}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {AUDIENCE_FAILURE_TEXT[result.failure]}
+          </p>
           {result.failure.startsWith("source_") ? (
             <TTButton className="mt-4" variant="secondary" onClick={() => q.refetch()}>
               Try again
@@ -103,7 +120,10 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
         </TTCard>
       ) : result && result.ok ? (
         <>
-          <section aria-label="Audience counts" className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <section
+            aria-label="Audience counts"
+            className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+          >
             {(
               [
                 ["Total", result.feed.counts.total],
@@ -128,7 +148,11 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
           </p>
 
           <TTCard className="mt-6 bg-card p-0">
-            <div role="radiogroup" aria-label="Filter by status" className="flex flex-wrap gap-2 border-b border-border p-4">
+            <div
+              role="radiogroup"
+              aria-label="Filter by status"
+              className="flex flex-wrap gap-2 border-b border-border p-4"
+            >
               {FILTERS.map((f) => (
                 <button
                   key={f.id}
@@ -138,9 +162,12 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
                   onClick={() => {
                     setFilter(f.id);
                     setPage(1);
+                    setSearch("");
                   }}
                   className={`rounded-full border px-3 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                    filter === f.id ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:text-foreground"
+                    filter === f.id
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {f.label}
@@ -158,34 +185,70 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
               </div>
             ) : (
               <ul className="divide-y divide-border" aria-busy={q.isFetching}>
-                {result.rows.map((s) => (
-                  <li key={`${s.email}-${s.createdAt}`} className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{s.email}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Joined {when(s.createdAt)}
-                        {s.confirmedAt ? ` · Confirmed ${when(s.confirmedAt)}` : ""}
-                        {s.source ? ` · From ${s.source}` : ""}
-                        {s.providerSyncState ? ` · Sync: ${s.providerSyncState}` : ""}
-                      </p>
-                    </div>
-                    <TonePill tone={s.status === "confirmed" ? "good" : s.status === "unsubscribed" ? "neutral" : "caution"}>
-                      {s.status === "unknown" ? "Unknown" : s.status[0]!.toUpperCase() + s.status.slice(1)}
-                    </TonePill>
-                  </li>
-                ))}
+                {result.rows
+                  .filter((s) => s.email.toLowerCase().includes(search.toLowerCase()))
+                  .map((s) => (
+                    <li
+                      key={`${s.email}-${s.createdAt}`}
+                      className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{s.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Joined {when(s.createdAt)}
+                          {s.confirmedAt ? ` · Confirmed ${when(s.confirmedAt)}` : ""}
+                          {s.source ? ` · From ${s.source}` : ""}
+                          {s.providerSyncState ? ` · Sync: ${s.providerSyncState}` : ""}
+                        </p>
+                      </div>
+                      <TonePill
+                        tone={
+                          s.status === "confirmed"
+                            ? "good"
+                            : s.status === "unsubscribed"
+                              ? "neutral"
+                              : "caution"
+                        }
+                      >
+                        {s.status === "unknown"
+                          ? "Unknown"
+                          : s.status[0]!.toUpperCase() + s.status.slice(1)}
+                      </TonePill>
+                    </li>
+                  ))}
               </ul>
             )}
 
-            <nav aria-label="Audience pages" className="flex items-center justify-between gap-3 border-t border-border p-4 text-sm">
+            {search && (
+              <p className="sw-quiet-note">
+                {
+                  result.rows.filter((s) => s.email.toLowerCase().includes(search.toLowerCase()))
+                    .length
+                }{" "}
+                people match on this page. Search does not include other pages.
+              </p>
+            )}
+            <nav
+              aria-label="Audience pages"
+              className="flex items-center justify-between gap-3 border-t border-border p-4 text-sm"
+            >
               <span className="text-muted-foreground">
-                Page {result.page} of {result.pageCount} · {result.matching.toLocaleString("en-US")} {result.matching === 1 ? "person" : "people"} in this view
+                Page {result.page} of {result.pageCount} · {result.matching.toLocaleString("en-US")}{" "}
+                {result.matching === 1 ? "person" : "people"} in this view
               </span>
               <div className="flex gap-2">
-                <TTButton variant="secondary" disabled={result.page <= 1} onClick={() => setPage(result.page - 1)}>
+                <TTButton
+                  variant="secondary"
+                  disabled={result.page <= 1}
+                  onClick={() => setPage(result.page - 1)}
+                >
                   Previous
                 </TTButton>
-                <TTButton variant="secondary" disabled={result.page >= result.pageCount} onClick={() => setPage(result.page + 1)}>
+                <TTButton
+                  variant="secondary"
+                  disabled={result.page >= result.pageCount}
+                  onClick={() => setPage(result.page + 1)}
+                >
                   Next
                 </TTButton>
               </div>
@@ -193,6 +256,6 @@ function Audience({ identity }: { identity: WorkspaceIdentity }) {
           </TTCard>
         </>
       ) : null}
-    </AppShell>
+    </StudioShell>
   );
 }

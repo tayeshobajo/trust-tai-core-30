@@ -74,7 +74,8 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
      and says so. */
   const request = useQuery({
     queryKey: ["studio", "request-for-batch", batchId],
-    queryFn: () => (batchId ? contentCommandService.requestForBatch(organizationId, batchId) : null),
+    queryFn: () =>
+      batchId ? contentCommandService.requestForBatch(organizationId, batchId) : null,
     enabled: Boolean(batchId),
   });
 
@@ -87,7 +88,10 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
     queryKey: ["studio", "approval-for-batch", batchId],
     queryFn: () =>
       batchId
-        ? approvalsService.findForEntity({ organizationId, userId }, { type: "content_batch", id: batchId })
+        ? approvalsService.findForEntity(
+            { organizationId, userId },
+            { type: "content_batch", id: batchId },
+          )
         : null,
     enabled: Boolean(batchId),
   });
@@ -107,7 +111,7 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
   return (
     <AppShell identity={identity}>
       <div className="mb-6 flex flex-wrap items-center gap-4">
-        <Link to="/modules/studio" className="text-sm underline">
+        <Link to="/modules/studio/posts" className="text-sm underline">
           Back to Studio
         </Link>
         {approval.data ? (
@@ -167,7 +171,12 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
             <VoiceSection
               loading={request.isLoading}
               prompt={request.data?.prompt ?? ""}
-              settings={(request.data?.settings ?? {}) as Record<string, { value?: string; origin?: string }>}
+              settings={
+                (request.data?.settings ?? {}) as Record<
+                  string,
+                  { value?: string; origin?: string }
+                >
+              }
               sources={activeSources}
             />
           ) : null}
@@ -193,7 +202,9 @@ function ArticleHeader({ item }: { item: ContentItem }) {
       <div className="mt-4 flex flex-wrap gap-2">
         <MetaPill>{CONTENT_ITEM_STATE_LABEL[item.state]}</MetaPill>
         <MetaPill>{wordCount(item.draftMarkdown)} words</MetaPill>
-        <MetaPill>{item.image.state === "ready" ? "Image ready" : "No featured image yet"}</MetaPill>
+        <MetaPill>
+          {item.image.state === "ready" ? "Image ready" : "No featured image yet"}
+        </MetaPill>
         {unresolved.length > 0 ? <MetaPill>{unresolved.length} links unresolved</MetaPill> : null}
       </div>
       {item.hitRationale ? <p className="mt-4">{item.hitRationale}</p> : null}
@@ -313,7 +324,9 @@ function SeoSection({ item }: { item: ContentItem }) {
         </div>
         <div>
           <dt className="text-muted-foreground">Category and tags</dt>
-          <dd>{[item.taxonomy.category, ...item.taxonomy.tags].filter(Boolean).join(", ") || "None"}</dd>
+          <dd>
+            {[item.taxonomy.category, ...item.taxonomy.tags].filter(Boolean).join(", ") || "None"}
+          </dd>
         </div>
       </dl>
       {item.internalLinks.length > 0 ? (
@@ -345,7 +358,8 @@ function SourcesSection({
   requestedSourceIds: string[];
   sources: ContentSource[];
 }) {
-  if (loading) return <TTCard className="p-6 text-sm text-muted-foreground">Reading the request…</TTCard>;
+  if (loading)
+    return <TTCard className="p-6 text-sm text-muted-foreground">Reading the request…</TTCard>;
 
   if (!hasRequest) {
     return (
@@ -384,8 +398,8 @@ function SourcesSection({
       </div>
       {missing > 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">
-          {missing} source{missing === 1 ? " was" : "s were"} used for this request and has since been
-          removed from the library.
+          {missing} source{missing === 1 ? " was" : "s were"} used for this request and has since
+          been removed from the library.
         </p>
       ) : null}
     </TTCard>
@@ -403,15 +417,16 @@ function VoiceSection({
   settings: Record<string, { value?: string; origin?: string }>;
   sources: ContentSource[];
 }) {
-  if (loading) return <TTCard className="p-6 text-sm text-muted-foreground">Reading the request…</TTCard>;
+  if (loading)
+    return <TTCard className="p-6 text-sm text-muted-foreground">Reading the request…</TTCard>;
 
   if (!prompt) {
     return (
       <TTCard className="p-6">
         <SectionHeading title="Voice" description="What this article was told to sound like." />
         <p className="text-sm text-muted-foreground">
-          This batch predates the request record, so the exact wording behind it was not kept. It was
-          written in the Trust Tai house voice.
+          This batch predates the request record, so the exact wording behind it was not kept. It
+          was written in the Trust Tai house voice.
         </p>
       </TTCard>
     );
@@ -431,7 +446,9 @@ function VoiceSection({
               <dt className="text-muted-foreground">{key}</dt>
               <dd>
                 {setting.value}{" "}
-                <span className="text-xs text-muted-foreground">({setting.origin ?? "default"})</span>
+                <span className="text-xs text-muted-foreground">
+                  ({setting.origin ?? "default"})
+                </span>
               </dd>
             </div>
           ))}

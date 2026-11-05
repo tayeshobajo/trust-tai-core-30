@@ -9,6 +9,7 @@ import {
   Compass,
   HeartHandshake,
   MessagesSquare,
+  Network,
   PenTool,
   Route as RouteIcon,
   Search,
@@ -19,7 +20,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 
 import { usePresence } from "@/hooks/use-presence";
 
@@ -43,6 +44,7 @@ const ICONS: Record<string, LucideIcon> = {
   Compass,
   Search,
   MessagesSquare,
+  Network,
   HeartHandshake,
   Route: RouteIcon,
   SquareStack,
@@ -68,7 +70,9 @@ function isCurrent(pathname: string, route: string) {
 function NavList({
   onNavigate,
   allowed,
+  studioNavigation,
 }: {
+  studioNavigation?: ReactNode;
   onNavigate?: () => void;
   /** App ids this person may see. Undefined means "not yet resolved". */
   allowed?: string[];
@@ -87,41 +91,45 @@ function NavList({
         const active = isCurrent(pathname, app.route);
         const note = statusNote(app);
         return (
-          <AppLink
-            key={app.id}
-            app={app}
-            onClick={onNavigate}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "relative flex min-h-12 items-center gap-3 rounded-lg pl-4 pr-3 py-2.5 text-[15px] transition-colors duration-200",
-              active
-                ? "bg-cloud-strong font-medium text-foreground"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-          >
-            {active ? (
-              <span
-                aria-hidden
-                className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-royal"
-              />
-            ) : null}
-            <Icon
+          <Fragment key={app.id}>
+            <AppLink
+              app={app}
+              onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "size-[18px] shrink-0",
-                active ? "text-royal" : "text-muted-foreground",
+                "relative flex min-h-12 items-center gap-3 rounded-lg pl-4 pr-3 py-2.5 text-[15px] transition-colors duration-200",
+                active
+                  ? "bg-cloud-strong font-medium text-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
-              aria-hidden
-            />
-            <span className="min-w-0 flex-1 truncate">{app.name}</span>
-            {note ? (
-              <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/70">
-                {note}
-              </span>
-            ) : (
-              /* The room's own ambient accent, place recognition, not status. */
-              <AmbientDot appId={app.id} />
-            )}
-          </AppLink>
+            >
+              {active ? (
+                <span
+                  aria-hidden
+                  className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-royal"
+                />
+              ) : null}
+              <Icon
+                className={cn(
+                  "size-[18px] shrink-0",
+                  active ? "text-royal" : "text-muted-foreground",
+                )}
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1 truncate">{app.name}</span>
+              {note ? (
+                <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/70">
+                  {note}
+                </span>
+              ) : (
+                /* The room's own ambient accent, place recognition, not status. */
+                <AmbientDot appId={app.id} />
+              )}
+            </AppLink>
+            {app.id === "studio" && studioNavigation ? (
+              <div onClick={onNavigate}>{studioNavigation}</div>
+            ) : null}
+          </Fragment>
         );
       })}
     </nav>
@@ -134,15 +142,19 @@ export function AppShell({
   sidebar,
   canvas = "default",
   appearance,
+  studioNavigation,
+  headerContent,
 }: {
   children: ReactNode;
   identity?: WorkspaceIdentity;
   /** Room-specific panels rendered below the suite navigation. */
   sidebar?: ReactNode;
   /** Opt-in continuous canvas for dense workrooms; ordinary pages are unchanged. */
-  canvas?: "default" | "workroom" | "roadmap";
+  canvas?: "default" | "workroom" | "roadmap" | "studio";
   /** Independent opt-in appearance; preserves each canvas variant. */
   appearance?: "comms";
+  studioNavigation?: ReactNode;
+  headerContent?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const allowedApps = identity?.apps.map((app) => app.appId) ?? [];
@@ -165,9 +177,12 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-background" data-shell-appearance={appearance}>
+    <div
+      className={cn("min-h-screen bg-background", canvas === "studio" && "sv-shell")}
+      data-shell-appearance={appearance}
+    >
       <header className="tt-shell-header sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur lg:px-8">
-        {canvas !== "default" ? (
+        {canvas === "workroom" || canvas === "roadmap" ? (
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <TTButton
@@ -186,7 +201,11 @@ export function AppShell({
                 <SheetTitle>App navigation</SheetTitle>
                 <SheetDescription>Trust Tai suite</SheetDescription>
               </SheetHeader>
-              <NavList allowed={allowedApps} onNavigate={() => setOpen(false)} />
+              <NavList
+                studioNavigation={studioNavigation}
+                allowed={allowedApps}
+                onNavigate={() => setOpen(false)}
+              />
               {sidebar ? <div className="mt-5 space-y-3">{sidebar}</div> : null}
             </SheetContent>
           </Sheet>
@@ -203,12 +222,24 @@ export function AppShell({
         )}
 
         <Link to="/welcome" className="flex items-center gap-3" aria-label="Trust Tai OS · welcome">
-          <BrandLogo height={26} className="sm:h-[30px] sm:w-auto" />
+          {canvas === "studio" ? (
+            <span className="sv-brand" aria-hidden="true">
+              <span className="sv-brand-mark">
+                <BrandLogo height={26} alt="" />
+              </span>
+              <span className="sv-brand-type">
+                Trust Tai<small>CONSULTANCY + AI AGENCY</small>
+              </span>
+            </span>
+          ) : (
+            <BrandLogo height={26} className="sm:h-[30px] sm:w-auto" />
+          )}
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:inline">
             OS
           </span>
         </Link>
 
+        {headerContent}
         <div className="ml-auto flex items-center gap-3">
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:inline">
             {identity?.organizationName ?? "Trust Tai"}
@@ -273,7 +304,7 @@ export function AppShell({
         >
           <p className="tt-eyebrow mb-2 px-4">Suite</p>
 
-          <NavList allowed={allowedApps} />
+          <NavList studioNavigation={studioNavigation} allowed={allowedApps} />
           {sidebar ? <div className="mt-6 space-y-3">{sidebar}</div> : null}
           <div className="mt-auto pt-6">
             <p className="px-3 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -282,9 +313,13 @@ export function AppShell({
           </div>
         </aside>
 
-        {open && canvas === "default" ? (
+        {open && (canvas === "default" || canvas === "studio") ? (
           <div className="tt-shell-mobile-nav fixed inset-x-0 top-16 z-20 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-border bg-card p-4 lg:hidden">
-            <NavList allowed={allowedApps} onNavigate={() => setOpen(false)} />
+            <NavList
+              studioNavigation={studioNavigation}
+              allowed={allowedApps}
+              onNavigate={() => setOpen(false)}
+            />
             {sidebar ? <div className="mt-5 space-y-3">{sidebar}</div> : null}
           </div>
         ) : null}
