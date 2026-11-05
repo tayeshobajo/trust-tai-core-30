@@ -21,18 +21,19 @@ describe("Comms white-card visual contract", () => {
     );
   });
 
-  it("uses the compact shared header and keeps all five destinations plus New draft", () => {
+  it("uses the shared header, three primary destinations and secondary records", () => {
     expect(tabs).toContain("export function CommsPageHeader");
     for (const label of [
       "Conversations",
-      "Drafts & Reviews",
-      "History",
       "Voice DNA",
-      "Connections",
+      "Accounts & Connections",
+      "Saved writing",
+      "Communication records",
     ]) {
       expect(tabs).toContain(`label: "${label}"`);
     }
-    expect(tabs).toContain("New draft");
+    expect(tabs).toContain("New Message");
+    expect(tabs).not.toContain("Templates");
     expect(tabs).toContain("overflow-x-auto");
   });
 
@@ -47,6 +48,18 @@ describe("Comms white-card visual contract", () => {
     for (const source of [conversations, drafts, voice, connections]) {
       expect(source).toContain("comms-card");
     }
+  });
+
+  it("uses the same shell on settings, records and legacy work routes", () => {
+    for (const route of ["integrations", "voice", "drafts", "history", "plan", "inbox", "to-scout"]) {
+      const source = read(`src/routes/modules.comms.${route}.tsx`);
+      expect(source).toContain("<CommsPageShell identity={identity}>");
+      expect(source).not.toContain("<AppShell");
+    }
+    const shell = read("src/components/tt/comms/comms-page-shell.tsx");
+    expect(shell).toContain('appearance="comms"');
+    expect(shell).toContain('comms-workspace.css');
+    expect(read("src/routes/modules.comms.review.tsx")).toContain('to: "/modules/comms/drafts"');
   });
 
   it("does not create a second main landmark inside the shared shell", () => {

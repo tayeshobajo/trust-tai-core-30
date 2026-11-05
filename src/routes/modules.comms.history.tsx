@@ -8,7 +8,7 @@
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
-import { AppShell } from "@/components/tt/app-shell";
+import { CommsPageShell } from "@/components/tt/comms/comms-page-shell";
 import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { HistoryWorkspace, type HistorySelection } from "@/components/tt/comms/history-workspace";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -53,10 +53,10 @@ function HistoryRoute() {
   return (
     <WorkspaceGate appId="comms">
       {(identity) => (
-        <AppShell identity={identity}>
+        <CommsPageShell identity={identity}>
           <div className="space-y-5">
             <CommsPageHeader
-              title="History"
+              title="Communication records"
               supporting="What has left, what came back, and the drafts whose review ended in a send. Write the next one straight from any of them."
             />
             <CommsTabs active="history" />
@@ -68,7 +68,7 @@ function HistoryRoute() {
               }
             />
           </div>
-        </AppShell>
+        </CommsPageShell>
       )}
     </WorkspaceGate>
   );

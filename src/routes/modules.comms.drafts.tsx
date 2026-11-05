@@ -8,7 +8,7 @@
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
-import { AppShell } from "@/components/tt/app-shell";
+import { CommsPageShell } from "@/components/tt/comms/comms-page-shell";
 import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
 import {
   DraftsWorkspace,
@@ -60,10 +60,10 @@ function DraftsRoute() {
   return (
     <WorkspaceGate appId="comms">
       {(identity) => (
-        <AppShell identity={identity}>
+        <CommsPageShell identity={identity}>
           <div className="space-y-5">
             <CommsPageHeader
-              title="Drafts & Reviews"
+              title="Saved writing"
               supporting="Writing that has not gone anywhere yet, and the one review each piece has to clear."
             />
             <CommsTabs active="drafts" />
@@ -75,7 +75,7 @@ function DraftsRoute() {
               }
             />
           </div>
-        </AppShell>
+        </CommsPageShell>
       )}
     </WorkspaceGate>
   );

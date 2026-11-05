@@ -12,7 +12,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { AppShell } from "@/components/tt/app-shell";
+import { CommsPageShell } from "@/components/tt/comms/comms-page-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { PageHeader, TTButton, TTInput } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -44,9 +44,9 @@ function ToScoutRoute() {
   return (
     <WorkspaceGate appId="comms">
       {(identity) => (
-        <AppShell identity={identity}>
+        <CommsPageShell identity={identity}>
           <ToScout identity={identity} />
-        </AppShell>
+        </CommsPageShell>
       )}
     </WorkspaceGate>
   );

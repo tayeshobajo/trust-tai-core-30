@@ -15,7 +15,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { AppShell } from "@/components/tt/app-shell";
+import { CommsPageShell } from "@/components/tt/comms/comms-page-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { MeetingFromMessage } from "@/components/tt/comms/meeting-from-message";
 import { ScoutConversationLink } from "@/components/tt/comms/scout-link";
@@ -64,9 +64,9 @@ function InboxRoute() {
   return (
     <WorkspaceGate appId="comms">
       {(identity) => (
-        <AppShell identity={identity}>
+        <CommsPageShell identity={identity}>
           <Inbox identity={identity} />
-        </AppShell>
+        </CommsPageShell>
       )}
     </WorkspaceGate>
   );

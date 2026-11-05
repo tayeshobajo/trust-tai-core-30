@@ -14,7 +14,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { AppShell } from "@/components/tt/app-shell";
+import { CommsPageShell } from "@/components/tt/comms/comms-page-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { ScoutConversationLink } from "@/components/tt/comms/scout-link";
 import { PageHeader, TTButton, TTInput } from "@/components/tt/primitives";
@@ -59,9 +59,9 @@ function PlanRoute() {
   return (
     <WorkspaceGate appId="comms">
       {(identity) => (
-        <AppShell identity={identity}>
+        <CommsPageShell identity={identity}>
           <PlanView identity={identity} />
-        </AppShell>
+        </CommsPageShell>
       )}
     </WorkspaceGate>
   );

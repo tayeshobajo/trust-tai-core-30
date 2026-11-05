@@ -1,26 +1,13 @@
-/**
- * Comms navigation.
- *
- * Five destinations, agreed with Tai: what needs action, the conversations
- * themselves, the drafts waiting on a review, the record of what has already
- * left and come back, how we sound, and what we are connected to. Everything
- * else in Comms is reached from inside the work it belongs to.
- *
- * The persistent "New draft" action starts a piece of writing of a stated
- * kind. It never sends anything.
- */
-
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { ChevronDown, MessageSquare, Link2, AudioLines } from "lucide-react";
+
 import {
-  ChevronDown,
-  MessageSquare,
-  Link2,
-  AudioLines,
-  Clock3,
-  FileText,
-  Layers,
-} from "lucide-react";
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 import { TTButton } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
@@ -47,19 +34,16 @@ function tabClass(active: boolean) {
 
 const TABS: { to: string; section: CommsSection; label: string }[] = [
   { to: "/modules/comms/relationships", section: "conversations", label: "Conversations" },
-  { to: "/modules/comms/drafts", section: "drafts", label: "Drafts & Reviews" },
-  { to: "/modules/comms/history", section: "history", label: "History" },
+  { to: "/modules/comms/integrations", section: "integrations", label: "Accounts & Connections" },
   { to: "/modules/comms/voice", section: "voice", label: "Voice DNA" },
-  { to: "/modules/comms/integrations", section: "integrations", label: "Connections" },
 ];
 
-function NewDraftMenu({
-  label = "New draft",
-  workspace = false,
-}: {
-  label?: string;
-  workspace?: boolean;
-}) {
+const RECORDS = [
+  { to: "/modules/comms/drafts", section: "drafts", label: "Saved writing" },
+  { to: "/modules/comms/history", section: "history", label: "Communication records" },
+];
+
+function NewDraftMenu({ label = "New Message" }: { label?: string }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const holder = useRef<HTMLDivElement>(null);
@@ -112,84 +96,65 @@ function NewDraftMenu({
               {NEW_DRAFT_LABEL[kind]}
             </button>
           ))}
-          {workspace ? (
-            <div className="border-t border-border">
-              <Link
-                to="/modules/comms/drafts"
-                role="menuitem"
-                className="block px-3 py-2 text-[13px] hover:bg-secondary"
-              >
-                Drafts & Reviews
-              </Link>
-            </div>
-          ) : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-export function CommsTabs({
-  active,
-  workspace = false,
-}: {
-  active: CommsSection;
-  workspace?: boolean;
-}) {
-  const icons = {
-    conversations: MessageSquare,
-    integrations: Link2,
-    voice: AudioLines,
-    history: Clock3,
-    drafts: FileText,
-  };
-  const entries = workspace ? [TABS[0]!, TABS[4]!, TABS[3]!, TABS[2]!] : TABS;
+/** One navigation contract for every Comms route, including legacy links. */
+export function CommsTabs({ active }: { active: CommsSection; workspace?: boolean }) {
+  const icons = { conversations: MessageSquare, integrations: Link2, voice: AudioLines };
   return (
-    <nav
-      aria-label="Comms sections"
-      className="grid grid-cols-[minmax(0,1fr)_auto] items-end border-b border-border"
-    >
-      <div className="min-w-0 overflow-x-auto">
-        <div className="flex w-max min-w-full items-end gap-1 sm:gap-3">
-          {entries.map((tab) => (
-            <span key={tab.section} className="contents">
-              {workspace && tab.section === "history" ? (
-                <button
-                  type="button"
-                  disabled
-                  title="Templates are not available in this workspace"
-                  aria-label="Templates — not available in this workspace"
-                  className="inline-flex h-11 shrink-0 items-center gap-2 px-3 text-[13px] text-muted-foreground opacity-65"
+    <div className="comms-workspace-navigation comms-shared-navigation">
+      <nav
+        aria-label="Comms sections"
+        className="grid grid-cols-[minmax(0,1fr)_auto] items-end border-b border-border"
+      >
+        <div className="min-w-0 overflow-x-auto">
+          <div className="flex w-max min-w-full items-end gap-1 sm:gap-3">
+            {TABS.map((tab) => {
+              const Icon = icons[tab.section as keyof typeof icons];
+              return (
+                <Link
+                  key={tab.section}
+                  to={tab.to}
+                  activeOptions={{ exact: true }}
+                  aria-current={active === tab.section ? "page" : undefined}
+                  className={tabClass(active === tab.section)}
                 >
-                  <Layers className="h-4 w-4" aria-hidden />
-                  Templates
-                </button>
-              ) : null}
-              <Link
-                key={tab.section}
-                to={tab.to}
-                activeOptions={{ exact: true }}
-                aria-current={active === tab.section ? "page" : undefined}
-                className={tabClass(active === tab.section)}
-              >
-                {workspace
-                  ? (() => {
-                      const Icon = icons[tab.section];
-                      return <Icon className="mr-2 h-4 w-4" aria-hidden />;
-                    })()
-                  : null}
-                {workspace && tab.section === "integrations"
-                  ? "Accounts & Connections"
-                  : workspace && tab.section === "history"
-                    ? "Activity"
-                    : tab.label}
-              </Link>
-            </span>
-          ))}
+                  <Icon className="mr-2 h-4 w-4" aria-hidden />
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
-      </div>
-      <NewDraftMenu label={workspace ? "New Message" : "New draft"} workspace={workspace} />
-    </nav>
+        <div className="flex items-center gap-2 py-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <TTButton variant="quiet" size="sm" aria-label="More Comms options">
+                More
+                <ChevronDown className="ml-1 h-4 w-4" aria-hidden />
+              </TTButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {RECORDS.map((record) => (
+                <DropdownMenuItem key={record.section} asChild>
+                  <Link
+                    to={record.to}
+                    aria-current={active === record.section ? "page" : undefined}
+                  >
+                    {record.label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <NewDraftMenu />
+        </div>
+      </nav>
+    </div>
   );
 }
 
@@ -203,7 +168,7 @@ export function CommsPageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <header className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 border-b border-border pb-4">
+    <header className="comms-workspace-hero grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
       <div className="min-w-0">
         <p className="tt-eyebrow">Comms</p>
         <h1 className="tt-title-page mt-2 text-[28px] sm:text-[32px]">{title}</h1>

@@ -8,7 +8,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
-import { AppShell } from "@/components/tt/app-shell";
+import { CommsPageShell } from "@/components/tt/comms/comms-page-shell";
 import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { IntegrationsPanel } from "@/components/tt/comms/integrations-panel";
 import { TTButton } from "@/components/tt/primitives";
@@ -39,9 +39,9 @@ function IntegrationsRoute() {
   return (
     <WorkspaceGate appId="comms">
       {(identity) => (
-        <AppShell identity={identity}>
+        <CommsPageShell identity={identity}>
           <Connections identity={identity} />
-        </AppShell>
+        </CommsPageShell>
       )}
     </WorkspaceGate>
   );
@@ -56,8 +56,8 @@ function Connections({ identity }: { identity: WorkspaceIdentity }) {
   return (
     <div className="space-y-6">
       <CommsPageHeader
-        title="Connections"
-        supporting="Comms reads only approved sources, only under your own access, and never sends anything."
+        title="Accounts & Connections"
+        supporting="Manage approved sources and check their coverage. Connecting a mailbox does not mean every message is included."
       />
       <CommsTabs active="integrations" />
 

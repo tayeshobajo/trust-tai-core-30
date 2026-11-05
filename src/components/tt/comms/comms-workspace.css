@@ -1,3 +1,4 @@
+@import "../workspace-spacing.css";
 /* Reference tokens and deliberate asset/behavior adaptations: docs/comms-mockup-build.md. */
 .comms-workspace {
   --royal: #174fff;
@@ -653,4 +654,27 @@
 [data-shell-appearance="comms"] .tt-shell-mobile-nav {
   top: 56px;
   max-height: calc(100dvh - 56px);
+}
+
+/* Legacy callers can keep their navigation wrapper without doubling its spacing. */
+.comms-workspace-navigation > .comms-shared-navigation { margin: 0; padding: 0; background: transparent; }
+.comms-secondary-workspace .comms-workspace-hero { margin-bottom: 0; }
+.comms-secondary-workspace .comms-shared-navigation { margin-top: 0; }
+
+[data-shell-appearance="comms"] .comms-workspace {
+  padding-inline: var(--workspace-gutter);
+  padding-bottom: var(--workspace-bottom-space);
+}
+.comms-workspace .comms-workspace-hero,
+.comms-workspace .comms-workspace-navigation {
+  margin-inline: calc(-1 * var(--workspace-gutter));
+  padding-inline: var(--workspace-gutter);
+}
+.comms-workspace-navigation > .comms-shared-navigation { margin-inline: 0; padding-inline: 0; }
+.comms-workspace-tools { right: var(--workspace-gutter); }
+@media (max-width: 639px) {
+  .comms-shared-navigation nav > div:first-child > div {
+    width: 100%;
+    flex-wrap: wrap;
+  }
 }

@@ -10,7 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { AppShell } from "@/components/tt/app-shell";
+import { CommsPageShell } from "@/components/tt/comms/comms-page-shell";
 import { CommsPageHeader, CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { Markdown } from "@/components/tt/markdown";
 import { MetaPill, PageHeader, SectionHeading, TTButton } from "@/components/tt/primitives";
@@ -50,9 +50,9 @@ function VoiceRoute() {
   return (
     <WorkspaceGate appId="comms">
       {(identity) => (
-        <AppShell identity={identity}>
+        <CommsPageShell identity={identity}>
           <VoiceSettings identity={identity} />
-        </AppShell>
+        </CommsPageShell>
       )}
     </WorkspaceGate>
   );
@@ -102,7 +102,8 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
 
   if (voiceQuery.isError) {
     return (
-      <div className="mx-auto max-w-reading px-6 py-10">
+      <div className="space-y-6">
+        <CommsTabs active="voice" />
         <PageHeader
           appId="comms"
           eyebrow="Comms"
@@ -120,7 +121,7 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-canvas px-4 py-8 lg:px-8">
+    <div className="space-y-6">
       <CommsPageHeader
         title="How Tai sounds."
         supporting="Every draft is written under this document and checked against the rules below before a person can approve it."
