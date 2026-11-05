@@ -176,6 +176,14 @@ export function ConversationEvent({
             })}
           </ul>
         ) : null}
+        {event.approvedRoadmapId ? (
+          <a
+            className="mt-2 inline-block text-xs underline"
+            href={`/modules/roadmap?evidence=${encodeURIComponent(`canonical:${event.approvedRoadmapId}`)}`}
+          >
+            Open approved correspondence in Roadmaps
+          </a>
+        ) : null}
         {event.source ? (
           <p className="mt-1.5 text-[11px] text-muted-foreground">{event.source}</p>
         ) : null}

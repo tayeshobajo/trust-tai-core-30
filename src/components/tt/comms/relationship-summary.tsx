@@ -46,6 +46,21 @@ export function RelationshipSummary({
     { icon: CalendarDays, label: "Next follow-up", value: dateLabel(relationship.followUpDueAt) },
     { icon: Tag, label: "Stage", value: STAGE_LABEL[relationship.stage] },
     { icon: Clock3, label: "Last activity", value: dateLabel(health.lastActivityAt) },
+    {
+      icon: Clock3,
+      label: "Latest incoming",
+      value: health.lastReplyAt
+        ? `${health.lastIncomingApproximate ? "Approx. " : ""}${new Date(health.lastReplyAt).toLocaleString()}`
+        : "Not recorded",
+    },
+    {
+      icon: Clock3,
+      label: "Latest outgoing",
+      value: health.lastOutboundAt
+        ? `${health.lastOutgoingApproximate ? "Approx. " : ""}${new Date(health.lastOutboundAt).toLocaleString()}`
+        : "Not recorded",
+    },
+    { icon: CalendarDays, label: "Response due", value: dateLabel(relationship.responseDueAt) },
     { icon: MessageSquare, label: "Email", value: relationship.email || "Not recorded" },
   ];
   return (

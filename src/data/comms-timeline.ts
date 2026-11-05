@@ -1,3 +1,7 @@
+import {
+  distinctApprovedFacts,
+  type ApprovedCorrespondenceFact,
+} from "@/domain/comms-approved-correspondence";
 /**
  * One relationship, in order.
  *
@@ -73,6 +77,7 @@ export interface ConversationEvent {
   attachments?: AttachmentMeta[];
   /** The comms_messages row behind a synced email, the download handle. */
   messageId?: string;
+  approvedRoadmapId?: string;
 }
 
 export function kindOfTouch(touch: Touch): ConversationEventKind {
@@ -102,8 +107,27 @@ export function conversationTimeline(
   touches: Touch[],
   drafts: CommsDraft[] = [],
   messages: StoredMailboxMessage[] = [],
+  approvedFacts: ApprovedCorrespondenceFact[] = [],
 ): ConversationEvent[] {
   const events: ConversationEvent[] = [];
+
+  for (const fact of distinctApprovedFacts(approvedFacts, messages)) {
+    const actual = fact.kind === "sent" || fact.kind === "received";
+    const kind =
+      fact.channel === "email" && actual
+        ? fact.kind === "received"
+          ? "they_emailed"
+          : "we_emailed"
+        : "note";
+    events.push({
+      id: `approved:${fact.eventKey}`,
+      kind,
+      occurredAt: fact.occurredAt,
+      title: `Approved ${fact.channel === "email" ? "email" : "LinkedIn"} ${fact.kind === "received" ? "incoming" : fact.kind === "sent" ? "outgoing" : fact.kind.replaceAll("_", " ")}`,
+      source: `Reviewed Roadmaps record · ${fact.timestampPrecision} timestamp · partial coverage. ${actual ? "Thread linkage is not verified here." : "Not evidence of a delivered message."}`,
+      approvedRoadmapId: fact.roadmapId,
+    });
+  }
 
   for (const touch of touches) {
     const record = readTouchRecord(touch.provenance);

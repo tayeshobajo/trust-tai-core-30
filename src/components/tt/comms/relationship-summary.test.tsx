@@ -24,7 +24,7 @@ describe("relationship summary", () => {
       />,
     );
     expect(screen.getByText("Unassigned")).toBeTruthy();
-    expect(screen.getAllByText("Not recorded")).toHaveLength(3);
+    expect(screen.getAllByText("Not recorded")).toHaveLength(6);
   });
   it("opens existing context, profile and interaction flows without writing data", () => {
     const onContext = vi.fn(),

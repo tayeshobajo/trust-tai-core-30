@@ -51,7 +51,9 @@ export function responseCadence(touches: Touch[], now: Date = new Date()): Respo
   if (list.length === 0) return "unknown";
 
   const last = list[list.length - 1]!;
-  const lastInbound = [...list].reverse().find((touch) => touch.direction === "inbound");
+  const lastInbound = [...list]
+    .reverse()
+    .find((touch) => touch.direction === "inbound" && MEANINGFUL_CHANNELS.has(touch.channel));
   if (last.direction === "outbound") {
     const since = daysBetween(last.occurredAt, now);
     if (since >= UNANSWERED_AFTER_DAYS) return "unanswered";
@@ -149,8 +151,13 @@ export function conversationHealth(
 ): ConversationHealth {
   const list = ordered(touches);
   const meaningful = list.filter((touch) => MEANINGFUL_CHANNELS.has(touch.channel));
+  const lastMeaningfulOutbound = [...meaningful]
+    .reverse()
+    .find((touch) => touch.direction === "outbound");
   const last = list[list.length - 1];
-  const lastInbound = [...list].reverse().find((touch) => touch.direction === "inbound");
+  const lastInbound = [...list]
+    .reverse()
+    .find((touch) => touch.direction === "inbound" && MEANINGFUL_CHANNELS.has(touch.channel));
   const lastOutbound = [...list].reverse().find((touch) => touch.direction === "outbound");
 
   const lastActivityAt = last?.occurredAt ?? relationship.lastTouchAt;
@@ -190,6 +197,7 @@ export function conversationHealth(
       score: 50,
       ...(lastActivityAt ? { lastActivityAt } : {}),
       ...(lastInbound ? { lastReplyAt: lastInbound.occurredAt } : {}),
+      ...(lastMeaningfulOutbound ? { lastOutboundAt: lastMeaningfulOutbound.occurredAt } : {}),
       responseCadence: cadence,
       nextMoveStatus: "not_needed",
       momentum,
@@ -280,6 +288,7 @@ export function conversationHealth(
     score,
     ...(lastActivityAt ? { lastActivityAt } : {}),
     ...(lastInbound ? { lastReplyAt: lastInbound.occurredAt } : {}),
+    ...(lastMeaningfulOutbound ? { lastOutboundAt: lastMeaningfulOutbound.occurredAt } : {}),
     responseCadence: cadence,
     nextMoveStatus: nextMove,
     momentum,

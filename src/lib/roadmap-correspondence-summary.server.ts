@@ -1,3 +1,4 @@
+import { readApprovedCommsFacts } from "./comms-approved-correspondence.server";
 import { z } from "zod";
 import { activityFactSchema } from "@/domain/roadmap-correspondence-summary";
 import {
@@ -8,6 +9,8 @@ import {
 } from "./roadmap-tracker-access.server";
 /** Status facts only. No body, subject, recipient, account or source-link columns. */
 export async function readConversationSummary(request: Request): Promise<Response> {
+  if (new URL(request.url).searchParams.get("mode") === "comms")
+    return readApprovedCommsFacts(request);
   try {
     const params = new URL(request.url).searchParams;
     const parsed = z

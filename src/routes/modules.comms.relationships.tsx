@@ -1,3 +1,5 @@
+import { listApprovedCorrespondenceFacts } from "@/data/comms-approved-correspondence";
+import { withApprovedCorrespondence } from "@/domain/comms-approved-correspondence";
 /**
  * Comms, the relationship room.
  *
@@ -263,6 +265,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     refetchOnWindowFocus: true,
   });
 
+  const approvedCorrespondence = useQuery({
+    queryKey: ["comms", "approved-roadmap-facts", identity.organizationId, identity.userId],
+    queryFn: () => listApprovedCorrespondenceFacts(identity.organizationId, identity.userId),
+    refetchOnWindowFocus: true,
+  });
+
   const relationships = useMemo(() => relationshipsQuery.data ?? [], [relationshipsQuery.data]);
 
   const touchesByRelationship = useMemo(() => {
@@ -279,9 +287,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     () =>
       inboxEntries(relationships, touchesByRelationship).map((entry) => ({
         ...entry,
-        health: withMessageAttention(entry.health, attentionMessages.data ?? []),
+        health: withApprovedCorrespondence(
+          withMessageAttention(entry.health, attentionMessages.data ?? []),
+          approvedCorrespondence.data ?? [],
+          attentionMessages.data ?? [],
+        ),
       })),
-    [relationships, touchesByRelationship, attentionMessages.data],
+    [relationships, touchesByRelationship, attentionMessages.data, approvedCorrespondence.data],
   );
 
   const view = useMemo(
@@ -433,8 +445,16 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     if (draftsQuery.isError) {
       gaps.push({ source: "Drafts", message: (draftsQuery.error as Error).message });
     }
+    if (approvedCorrespondence.isError) {
+      gaps.push({
+        source: "Approved Roadmaps correspondence",
+        message: (approvedCorrespondence.error as Error).message,
+      });
+    }
     return gaps;
   }, [
+    approvedCorrespondence.isError,
+    approvedCorrespondence.error,
     touchesQuery.isError,
     touchesQuery.error,
     messagesQuery.isError,
@@ -448,15 +468,27 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     linkedMessageQuery.data,
   ]);
   const health = selected
-    ? withMessageAttention(deriveConversationHealth(selected, selectedTouches), [
-        ...(attentionMessages.data ?? []),
-        ...selectedMessages,
-      ])
+    ? withApprovedCorrespondence(
+        withMessageAttention(deriveConversationHealth(selected, selectedTouches), [
+          ...(attentionMessages.data ?? []),
+          ...selectedMessages,
+        ]),
+        approvedCorrespondence.data ?? [],
+        [...(attentionMessages.data ?? []), ...selectedMessages],
+      )
     : null;
   const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
   const days = useMemo(
-    () => groupByDay(conversationTimeline(selectedTouches, drafts, selectedMessages)),
-    [selectedTouches, drafts, selectedMessages],
+    () =>
+      groupByDay(
+        conversationTimeline(
+          selectedTouches,
+          drafts,
+          selectedMessages,
+          (approvedCorrespondence.data ?? []).filter((f) => f.relationshipId === selected?.id),
+        ),
+      ),
+    [selectedTouches, drafts, selectedMessages, approvedCorrespondence.data, selected?.id],
   );
 
   /**
@@ -897,6 +929,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               ? " Stored message attention is unavailable; this list may omit messages needing attention."
               : " Attention includes stored messages; it is not proof every mailbox message was captured."}
           {orgTouchesQuery.isError ? " Manual interaction history is unavailable." : null}
+          {approvedCorrespondence.isPending
+            ? " Reading approved Roadmaps activity…"
+            : approvedCorrespondence.isError
+              ? " Approved Roadmaps activity is unavailable; coverage is unknown."
+              : " Includes approved Roadmaps activity where your existing access permits; thread linkage and broader coverage remain partial."}
         </p>
         <details className="comms-card my-3 p-3">
           <summary className="cursor-pointer text-sm">Stored email & coverage</summary>
@@ -964,13 +1001,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 health={health}
                 organizationId={context.organizationId}
                 {...(linkedMessageId ? { focusMessageId: linkedMessageId } : {})}
-                historyLoading={messagesQuery.isPending}
+                historyLoading={messagesQuery.isPending || approvedCorrespondence.isPending}
                 historyGaps={historyGaps}
                 onRetryHistory={() => {
                   void touchesQuery.refetch();
                   void messagesQuery.refetch();
                   if (linkedMessageId) void linkedMessageQuery.refetch();
                   void draftsQuery.refetch();
+                  void approvedCorrespondence.refetch();
                 }}
                 onBack={() => setMobilePane("list")}
                 onViewProfile={() => setProfileOpen((value) => !value)}

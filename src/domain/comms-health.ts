@@ -76,6 +76,9 @@ export interface ConversationHealth {
   score: number;
   lastActivityAt?: ISODateTime;
   lastReplyAt?: ISODateTime;
+  lastOutboundAt?: ISODateTime;
+  lastIncomingApproximate?: boolean;
+  lastOutgoingApproximate?: boolean;
   responseCadence: ResponseCadence;
   nextMoveStatus: NextMoveStatus;
   momentum: Momentum;
