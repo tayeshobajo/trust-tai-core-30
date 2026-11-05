@@ -1,26 +1,9 @@
-/* Shared opt-in page rhythm for workspace canvases. RFP can adopt these tokens
-   without inheriting either workspace's layout or interaction rules. */
+@import "./cmd/tokens.css";
+
+/* Existing workrooms consume the shared CMD frame tokens without receiving
+   a second padded wrapper or changes to their internal panel layout. */
 .comms-workspace,
 .rw-workspace {
-  --workspace-gutter: 16px;
-  --workspace-bottom-space: 24px;
-}
-@media (min-width: 640px) {
-  .comms-workspace,
-  .rw-workspace {
-    --workspace-gutter: 24px;
-  }
-}
-@media (min-width: 1024px) {
-  .comms-workspace,
-  .rw-workspace {
-    --workspace-gutter: 32px;
-    --workspace-bottom-space: 32px;
-  }
-}
-@media (min-width: 1600px) {
-  .comms-workspace,
-  .rw-workspace {
-    --workspace-gutter: 40px;
-  }
+  --workspace-gutter: var(--cmd-page-gutter);
+  --workspace-bottom-space: var(--cmd-page-block-gap);
 }

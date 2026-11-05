@@ -55,3 +55,9 @@ Run local previews: npx vite --config qa/comms-navigation/vite.config.ts
 Separate sync worktree remains clean at a2978b954be4182c2e0a72ea86ff01d2bb2e7a5b. This candidate does not fix or widen ingestion. Coverage warnings and unresolved obligations are unchanged.
 
 Before release, coordinate with the RFP branch, integrate onto its verified current head without overwriting it, rerun checks, and obtain release authorization for this candidate. Then verify authenticated real desktop/mobile routes, legacy links, coverage warning and settings states. No production data reconciliation belongs in this release.
+
+## Authorized release integration
+
+Integrated completed RFP design-system release 11df8656f7485893a71fb01e9b9a96c9904e02d2 by merge, preserving both histories. No RFP source changes. The earlier proposed stepped spacing scale is superseded: workspace-spacing.css now imports CMD tokens and aliases --workspace-gutter to --cmd-page-gutter (clamp(16px, 2.2vw, 32px)), and --workspace-bottom-space to --cmd-page-block-gap (clamp(20px, 2.4vw, 32px)). This uses the same spacing foundation as RFP without double padding or modifying the shared token values. Parent authorized deploying this styling/navigation candidate; sync reliability remains excluded.
+
+Integrated release checks: frozen Bun install succeeded with unchanged dependency files (the npm-lock mismatch does not block the project's Bun release path); 988 Comms/Roadmaps tests in 94 files and 84 RFP/design-system tests in 10 files passed. Local integrated desktop/mobile pixel inspection confirms shared CMD gutters and no horizontal page overflow. Final clean build and live authenticated verification are recorded in the external release receipt after publication.

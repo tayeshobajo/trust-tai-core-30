@@ -62,6 +62,14 @@ describe("Comms white-card visual contract", () => {
     expect(read("src/routes/modules.comms.review.tsx")).toContain('to: "/modules/comms/drafts"');
   });
 
+  it("consumes the released CMD spacing foundation without redefining its scale", () => {
+    const spacing = read("src/components/tt/workspace-spacing.css");
+    expect(spacing).toContain('@import "./cmd/tokens.css"');
+    expect(spacing).toContain('--workspace-gutter: var(--cmd-page-gutter)');
+    expect(spacing).toContain('--workspace-bottom-space: var(--cmd-page-block-gap)');
+    expect(spacing).not.toContain('@media');
+  });
+
   it("does not create a second main landmark inside the shared shell", () => {
     expect(conversations).not.toMatch(/<main[\s>]/);
   });
