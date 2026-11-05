@@ -8,6 +8,6 @@ Tokens (sampled/visually inferred from raster): paper #fcfaf9; card #fffefe; ink
 
 Tree: VideoStudio > AppShell (opt-in studio canvas) > StudioHeading + StudioSectionNav > VideoWorkspace > VideoFocus, TopicContext, VideoFormat, EditableVideoBrief, VideoPlan, TopicSuggestions; BriefDialog for manual creation/editing and reading notes.
 
-State contract: video drafts and recording plan remain device-local, partitioned by organization and user; explicit storage errors. Reference topics are labeled starter examples, never claimed to be real recommendations. Existing article engine remains mounted when its section is selected. No auth changes, new integrations, publication, database changes, or deployment.
+State contract: video drafts and recording plan remain device-local, partitioned by organization and user; explicit storage errors. Reference topics are labeled starter examples, never claimed to be real recommendations. The existing Studio index is preserved; Video is a separate `/modules/studio/video` route. Intended tabs lacking existing dedicated screens are unavailable, not invented. No auth changes, new integrations, publication, database changes, or deployment.
 
 Assets: clean landscape reconstructed from supplied reference via image generation; original independent photo assets unavailable. This is an acknowledged visual fidelity gap. Never distribute the complete screenshot as a public asset (it contains account identity).

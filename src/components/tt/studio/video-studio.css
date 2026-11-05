@@ -1291,3 +1291,8 @@
     flex: 1.25;
   }
 }
+.sv-tabs button:disabled,
+.sv-rail-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

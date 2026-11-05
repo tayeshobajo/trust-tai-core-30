@@ -1,5 +1,7 @@
 # Studio / Video validation and handoff
 
+Scope correction (verified with a fresh build, responsive browser checks, and accessibility scan): the supplied reference is only the Video tab. The implementation now lives at `/modules/studio/video`; `/modules/studio` is restored byte-for-byte to its existing content screen. Existing Studio navigation gets a Video link.
+
 Implemented against `origin/main` at `4f9ec904` in branch `codex/studio-video-mockup`. No push, merge, deployment, database migration, or production write was performed.
 
 ## Verified
@@ -23,7 +25,7 @@ The isolated browser harness used a fictional account and blocked Supabase reque
 - Font is Arial/Times New Roman, visually matched to the raster; exact original font files were unavailable.
 - Plan uses current dates and does not falsely mark a video recorded. Reference sample content is explicitly labeled. These truthfulness labels slightly change the reference.
 - Video briefs/plans are device-local, scoped by organization and user. No new remote video persistence, automatic curation, publishing, voice-learning pipeline, recording, or AI B-roll generation is claimed. B-roll control opens a clearly labeled planning template.
-- Posts and Overview retain the existing content engine. Sources and Content DNA expose the existing article workspace and its source controls. People links to the existing Audience route. Dedicated expanded screens for these sections are outside the supplied Video reference.
+- Overview and Posts link back to the unchanged existing Studio content engine. People links to the existing Audience route. Ideas, Content DNA and Sources retain their intended names in the Video navigation but are disabled because this checkout contains no dedicated screens for them. No substitute layouts are created; the existing source controls remain accessible in the original Studio workflow. The previously added Ideas placeholder view was removed.
 
 ## Review artifacts
 

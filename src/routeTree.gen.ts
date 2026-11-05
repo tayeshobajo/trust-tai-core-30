@@ -86,6 +86,7 @@ import { Route as ModulesStewardTimelineRouteImport } from './routes/modules.ste
 import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.index'
 import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
 import { Route as ModulesStudioAudienceRouteImport } from './routes/modules.studio.audience'
+import { Route as ModulesStudioVideoRouteImport } from './routes/modules.studio.video'
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/clients.ask'
 import { Route as ApiPublicClientsFilesRouteImport } from './routes/api/public/clients.files'
@@ -533,6 +534,11 @@ const ModulesStudioAudienceRoute = ModulesStudioAudienceRouteImport.update({
   path: '/audience',
   getParentRoute: () => ModulesStudioRoute,
 } as any)
+const ModulesStudioVideoRoute = ModulesStudioVideoRouteImport.update({
+  id: '/video',
+  path: '/video',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
 const ModulesWebsitePageRoute = ModulesWebsitePageRouteImport.update({
   id: '/modules/website_/page',
   path: '/modules/website/page',
@@ -919,6 +925,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
+  '/modules/studio/video': typeof ModulesStudioVideoRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/clients/': typeof ModulesClientsIndexRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
@@ -1046,6 +1053,7 @@ export interface FileRoutesByTo {
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
+  '/modules/studio/video': typeof ModulesStudioVideoRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/clients': typeof ModulesClientsIndexRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
@@ -1183,6 +1191,7 @@ export interface FileRoutesById {
   '/modules/steward/timeline': typeof ModulesStewardTimelineRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/studio/audience': typeof ModulesStudioAudienceRoute
+  '/modules/studio/video': typeof ModulesStudioVideoRoute
   '/modules/website_/page': typeof ModulesWebsitePageRoute
   '/modules/clients/': typeof ModulesClientsIndexRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
@@ -1321,6 +1330,7 @@ export interface FileRouteTypes {
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
+    | '/modules/studio/video'
     | '/modules/website/page'
     | '/modules/clients/'
     | '/modules/comms/'
@@ -1448,6 +1458,7 @@ export interface FileRouteTypes {
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
+    | '/modules/studio/video'
     | '/modules/website/page'
     | '/modules/clients'
     | '/modules/comms'
@@ -1584,6 +1595,7 @@ export interface FileRouteTypes {
     | '/modules/steward/timeline'
     | '/modules/studio/$itemId'
     | '/modules/studio/audience'
+    | '/modules/studio/video'
     | '/modules/website_/page'
     | '/modules/clients/'
     | '/modules/comms/'
@@ -2273,6 +2285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStudioAudienceRouteImport
       parentRoute: typeof ModulesStudioRoute
     }
+    '/modules/studio/video': {
+      id: '/modules/studio/video'
+      path: '/video'
+      fullPath: '/modules/studio/video'
+      preLoaderRoute: typeof ModulesStudioVideoRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
     '/modules/website_/page': {
       id: '/modules/website_/page'
       path: '/modules/website/page'
@@ -2873,12 +2892,14 @@ const ModulesStewardRouteWithChildren = ModulesStewardRoute._addFileChildren(
 interface ModulesStudioRouteChildren {
   ModulesStudioItemIdRoute: typeof ModulesStudioItemIdRoute
   ModulesStudioAudienceRoute: typeof ModulesStudioAudienceRoute
+  ModulesStudioVideoRoute: typeof ModulesStudioVideoRoute
   ModulesStudioIndexRoute: typeof ModulesStudioIndexRoute
 }
 
 const ModulesStudioRouteChildren: ModulesStudioRouteChildren = {
   ModulesStudioItemIdRoute: ModulesStudioItemIdRoute,
   ModulesStudioAudienceRoute: ModulesStudioAudienceRoute,
+  ModulesStudioVideoRoute: ModulesStudioVideoRoute,
   ModulesStudioIndexRoute: ModulesStudioIndexRoute,
 }
 

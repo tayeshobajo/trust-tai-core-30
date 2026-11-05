@@ -7,11 +7,25 @@ export function StudioNav({ current }: { current: "content" | "audience" }) {
       active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
     }`;
   return (
-    <nav aria-label="Studio sections" className="flex gap-1 rounded-full border border-border bg-card p-1 w-fit">
-      <Link to="/modules/studio" className={item(current === "content")} aria-current={current === "content" ? "page" : undefined}>
+    <nav
+      aria-label="Studio sections"
+      className="flex gap-1 rounded-full border border-border bg-card p-1 w-fit"
+    >
+      <Link
+        to="/modules/studio"
+        className={item(current === "content")}
+        aria-current={current === "content" ? "page" : undefined}
+      >
         Content
       </Link>
-      <Link to="/modules/studio/audience" className={item(current === "audience")} aria-current={current === "audience" ? "page" : undefined}>
+      <Link to="/modules/studio/video" className={item(false)}>
+        Video
+      </Link>
+      <Link
+        to="/modules/studio/audience"
+        className={item(current === "audience")}
+        aria-current={current === "audience" ? "page" : undefined}
+      >
         Audience
       </Link>
     </nav>

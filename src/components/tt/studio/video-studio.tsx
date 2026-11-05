@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -95,14 +95,7 @@ function validDraft(value: unknown): value is VideoDraft {
     d.points.every((v) => typeof v === "string")
   );
 }
-export function VideoStudio({
-  identity,
-  children,
-}: {
-  identity?: WorkspaceIdentity;
-  children?: ReactNode;
-}) {
-  const [section, setSection] = useState("Video");
+export function VideoStudio({ identity }: { identity?: WorkspaceIdentity }) {
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState<VideoDraft>(starter);
   const [saved, setSaved] = useState<VideoDraft[]>([]);
@@ -222,32 +215,39 @@ export function VideoStudio({
     }
     persist(saved, [...plan, title]);
   }
-  function navigate(name: string) {
-    setSection(name);
-    setSearch("");
-  }
   const nav = (rail = false) => (
     <nav
       aria-label={rail ? "Studio sidebar sections" : "Studio sections"}
       className={rail ? "sv-rail-nav" : "sv-tabs"}
     >
-      {sections.map(({ name, Icon }) =>
-        name === "People" ? (
-          <Link key={name} to="/modules/studio/audience">
-            <Icon />
-            {name}
-          </Link>
-        ) : (
+      {sections.map(({ name, Icon }) => {
+        if (name === "People" || name === "Overview" || name === "Posts") {
+          return (
+            <Link
+              key={name}
+              to={name === "People" ? "/modules/studio/audience" : "/modules/studio"}
+            >
+              <Icon />
+              {name}
+            </Link>
+          );
+        }
+        return (
           <button
             key={name}
-            aria-current={section === name ? "page" : undefined}
-            onClick={() => navigate(name)}
+            aria-current={name === "Video" ? "page" : undefined}
+            disabled={name !== "Video"}
+            title={
+              name === "Video"
+                ? "Video"
+                : "Separate screen not implemented yet; existing content and source tools remain in Posts."
+            }
           >
             <Icon />
             {name}
           </button>
-        ),
-      )}
+        );
+      })}
     </nav>
   );
   const filteredTopics = topics
@@ -277,7 +277,6 @@ export function VideoStudio({
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setSection("Video");
               }}
             />
             <kbd>/</kbd>
@@ -289,7 +288,7 @@ export function VideoStudio({
             <div>
               <h1>
                 <Video />
-                Studio <span>/</span> {section}
+                Studio <span>/</span> Video
               </h1>
               <p>Turn your ideas, experiences, and perspective into focused, high-impact videos.</p>
             </div>
@@ -299,345 +298,309 @@ export function VideoStudio({
             </button>
           </header>
           {nav()}
-          {section === "Video" ? (
-            <>
-              {search && (
-                <p className="sv-search-summary" role="status">
-                  {filteredTopics.length} starter topics ·{" "}
-                  {saved.filter((d) => d.title.toLowerCase().includes(search.toLowerCase())).length}{" "}
-                  saved drafts matching “{search}”{" "}
-                  <button onClick={() => setSearch("")}>Clear search</button>
-                </p>
-              )}
-              <div className="sv-grid">
-                <section className="sv-focus">
-                  <div>
-                    <p className="sv-eyebrow">TODAY’S VIDEO FOCUS</p>
-                    <h2>{draft.title}</h2>
-                    <p>
-                      A 5-minute video you can record today, based on your recent ideas and
-                      conversations.
-                    </p>
-                    <div className="sv-actions">
-                      <button
-                        className="sv-button sv-orange"
-                        onClick={() => {
-                          briefRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                          briefRef.current?.focus();
-                        }}
-                      >
-                        Open Video Brief <ArrowRight />
-                      </button>
-                      <button className="sv-button sv-outline" onClick={() => setDialog("topics")}>
-                        See 3 more topics
-                      </button>
-                    </div>
-                  </div>
-                </section>
-                <div className="sv-context">
-                  <section className="sv-card sv-why">
-                    <h2>
-                      <Zap />
-                      Why this topic?
-                    </h2>
-                    <p>
-                      {draft.id.startsWith("starter")
-                        ? "It aligns with your recent posts, comments, and speaking themes around belief, agency, and taking action."
-                        : "This is your own idea, shaped into a brief you can review and record. Add a specific experience to make the message yours."}
-                    </p>
-                    <ul>
-                      {(draft.id.startsWith("starter")
-                        ? [
-                            "Matches your Content DNA",
-                            "High audience interest",
-                            "Builds on your recent content",
-                          ]
-                        : [
-                            "Starts with your own idea",
-                            "Talking points you can edit",
-                            "Ready for your review",
-                          ]
-                      ).map((text) => (
-                        <li key={text}>
-                          <Lightbulb />
-                          <span>{text}</span>
-                          <Check />
-                        </li>
-                      ))}
-                    </ul>
-                    <small>
-                      {draft.id.startsWith("starter")
-                        ? "Example rationale · not an audience analysis"
-                        : "Manual brief · no audience analysis"}
-                    </small>
-                  </section>
-                  <section className="sv-card sv-format">
-                    <h2>
-                      <Video />
-                      Format
-                    </h2>
-                    <dl>
-                      <div>
-                        <dt>Length</dt>
-                        <dd>~ 5 minutes</dd>
-                      </div>
-                      <div>
-                        <dt>Style</dt>
-                        <dd>Conversation / Story-led</dd>
-                      </div>
-                      <div>
-                        <dt>Goal</dt>
-                        <dd>Perspective + Action</dd>
-                      </div>
-                      <div>
-                        <dt>Best for</dt>
-                        <dd className="sv-platforms">
-                          <span role="img" aria-label="LinkedIn">
-                            in
-                          </span>
-                          <span role="img" aria-label="YouTube">
-                            <Play fill="currentColor" />
-                          </span>
-                          <span role="img" aria-label="Short video">
-                            ◎
-                          </span>
-                        </dd>
-                      </div>
-                    </dl>
-                  </section>
-                </div>
-                <section
-                  className="sv-card sv-brief"
-                  ref={briefRef}
-                  tabIndex={-1}
-                  aria-label="Video Brief"
-                >
-                  <header>
-                    <h2>
-                      <Clapperboard />
-                      Video Brief
-                    </h2>
-                    <span className="sv-badge">5-Minute Video</span>
-                    <button className="sv-button" onClick={() => edit()}>
-                      <Pencil />
-                      Edit
+          <>
+            {search && (
+              <p className="sv-search-summary" role="status">
+                {filteredTopics.length} starter topics ·{" "}
+                {saved.filter((d) => d.title.toLowerCase().includes(search.toLowerCase())).length}{" "}
+                saved drafts matching “{search}”{" "}
+                <button onClick={() => setSearch("")}>Clear search</button>
+              </p>
+            )}
+            <div className="sv-grid">
+              <section className="sv-focus">
+                <div>
+                  <p className="sv-eyebrow">TODAY’S VIDEO FOCUS</p>
+                  <h2>{draft.title}</h2>
+                  <p>
+                    A 5-minute video you can record today, based on your recent ideas and
+                    conversations.
+                  </p>
+                  <div className="sv-actions">
+                    <button
+                      className="sv-button sv-orange"
+                      onClick={() => {
+                        briefRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        briefRef.current?.focus();
+                      }}
+                    >
+                      Open Video Brief <ArrowRight />
                     </button>
-                  </header>
-                  <div className="sv-goal">
-                    <Target />
-                    <div>
-                      <h3>The Goal</h3>
-                      <p>{draft.goal}</p>
-                    </div>
+                    <button className="sv-button sv-outline" onClick={() => setDialog("topics")}>
+                      See 3 more topics
+                    </button>
                   </div>
-                  <div className="sv-message">
-                    <Layers />
-                    <div>
-                      <h3>The Core Message</h3>
-                      <p>{draft.message}</p>
-                    </div>
-                  </div>
-                  <h3 className="sv-points-title">
-                    <Video />
-                    Your Talking Points (3–5)
-                  </h3>
-                  <ol className="sv-points">
-                    {draft.points.map((point, i) => (
-                      <li key={i}>
-                        <span>{i + 1}</span>
-                        <div>
-                          {point}
-                          <GripVertical aria-hidden />
-                        </div>
+                </div>
+              </section>
+              <div className="sv-context">
+                <section className="sv-card sv-why">
+                  <h2>
+                    <Zap />
+                    Why this topic?
+                  </h2>
+                  <p>
+                    {draft.id.startsWith("starter")
+                      ? "It aligns with your recent posts, comments, and speaking themes around belief, agency, and taking action."
+                      : "This is your own idea, shaped into a brief you can review and record. Add a specific experience to make the message yours."}
+                  </p>
+                  <ul>
+                    {(draft.id.startsWith("starter")
+                      ? [
+                          "Matches your Content DNA",
+                          "High audience interest",
+                          "Builds on your recent content",
+                        ]
+                      : [
+                          "Starts with your own idea",
+                          "Talking points you can edit",
+                          "Ready for your review",
+                        ]
+                    ).map((text) => (
+                      <li key={text}>
+                        <Lightbulb />
+                        <span>{text}</span>
+                        <Check />
                       </li>
                     ))}
-                  </ol>
-                  <footer className="sv-actions">
-                    <button className="sv-button sv-primary" onClick={() => setDialog("notes")}>
-                      <FileText />
-                      Open Speaking Notes
-                    </button>
-                    <button className="sv-button" onClick={() => setDialog("guide")}>
-                      <Video />
-                      Record Guide
-                    </button>
-                    <button className="sv-button" onClick={() => setDialog("broll")}>
-                      <Image />
-                      Generate B-Roll Ideas
-                    </button>
-                    <button
-                      className="sv-button sv-more"
-                      aria-label="Add current brief to your plan"
-                      title="Add to your plan"
-                      onClick={() => addPlan(draft.title)}
-                    >
-                      <MoreHorizontal />
-                    </button>
-                  </footer>
+                  </ul>
+                  <small>
+                    {draft.id.startsWith("starter")
+                      ? "Example rationale · not an audience analysis"
+                      : "Manual brief · no audience analysis"}
+                  </small>
                 </section>
-                <aside className="sv-right">
-                  <section className="sv-card sv-plan">
-                    <header>
-                      <h2>
-                        <CalendarDays />
-                        Your Video Plan
-                      </h2>
-                      <label className="sv-week">
-                        <span className="sr-only">Plan week</span>
-                        <select value={week} onChange={(e) => setWeek(Number(e.target.value))}>
-                          <option value={0}>This week</option>
-                          <option value={1}>Next week</option>
-                        </select>
-                        <ChevronDown />
-                      </label>
-                    </header>
+                <section className="sv-card sv-format">
+                  <h2>
+                    <Video />
+                    Format
+                  </h2>
+                  <dl>
                     <div>
-                      {week === 0 ? (
-                        shownPlan.map((title, i) => (
-                          <div className={`sv-plan-row ${i === 0 ? "sv-today" : ""}`} key={title}>
-                            <div>
-                              {i < 2 && <strong>{i === 0 ? "Today" : "Tomorrow"}</strong>}
-                              <small>{dayLabel(i)}</small>
-                            </div>
-                            <button
-                              className="sv-plan-title"
-                              onClick={() => {
-                                const found = saved.find((d) => d.title === title);
-                                if (found) setDraft(found);
-                                else if (title === starter.title) setDraft(starter);
-                                else {
-                                  const index = topics.findIndex((t) => t.title === title);
-                                  if (index >= 0) chooseTopic(index);
-                                  else {
-                                    setEditing({
-                                      ...starter,
-                                      id: crypto.randomUUID(),
-                                      title,
-                                      goal: "",
-                                      message: "",
-                                      points: ["", "", "", ""],
-                                    });
-                                    setDialog("new");
-                                  }
-                                }
-                              }}
-                            >
-                              {title}
-                            </button>
-                            <button
-                              className={`sv-check ${completed.includes(title) ? "is-complete" : ""}`}
-                              aria-label={`Mark ${title} ${completed.includes(title) ? "not recorded" : "recorded"}`}
-                              aria-pressed={completed.includes(title)}
-                              onClick={() =>
-                                persist(
-                                  saved,
-                                  plan.length ? plan : shownPlan,
-                                  completed.includes(title)
-                                    ? completed.filter((t) => t !== title)
-                                    : [...completed, title],
-                                )
-                              }
-                            >
-                              {completed.includes(title) && <Check />}
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="sv-empty">No videos planned for next week.</p>
-                      )}
+                      <dt>Length</dt>
+                      <dd>~ 5 minutes</dd>
                     </div>
-                    <small>
-                      {plan.length
-                        ? "Your plan · saved on this device"
-                        : "Example plan · choose a topic to make it yours"}
-                    </small>
-                  </section>
-                  <section className="sv-card sv-topics">
-                    <h2>
-                      <Sparkles />
-                      More Video Topics for You
-                    </h2>
-                    {filteredTopics.map((topic) => (
-                      <div className="sv-topic" key={topic.title}>
-                        <button
-                          className={`sv-thumb sv-thumb-${topic.image}`}
-                          aria-label={`Open ${topic.title}`}
-                          onClick={() => chooseTopic(topic.index)}
-                        >
-                          <span>
-                            <Play fill="currentColor" />
-                          </span>
-                        </button>
-                        <button className="sv-topic-copy" onClick={() => chooseTopic(topic.index)}>
-                          <strong>{topic.title}</strong>
-                          <span>{topic.description}</span>
-                        </button>
-                        <button
-                          className="sv-add"
-                          aria-label={`Add ${topic.title} to plan`}
-                          onClick={() => addPlan(topic.title)}
-                        >
-                          <Plus />
-                        </button>
-                      </div>
-                    ))}
-                    {!filteredTopics.length && <p className="sv-empty">No matching topics.</p>}
-                  </section>
-                </aside>
-              </div>
-              <p className="sv-disclosure">
-                Starter examples from your mockup. Video drafts and plans are saved only on this
-                device; curation, publishing, and learning from edits are not connected.
-              </p>
-              {saved.length > 0 && (
-                <section className="sv-card sv-saved">
-                  <h2>Saved video briefs</h2>
-                  {saved
-                    .filter((d) => d.title.toLowerCase().includes(search.toLowerCase()))
-                    .map((d) => (
-                      <button className="sv-button" key={d.id} onClick={() => setDraft(d)}>
-                        {d.title}
-                        <ArrowRight />
-                      </button>
-                    ))}
+                    <div>
+                      <dt>Style</dt>
+                      <dd>Conversation / Story-led</dd>
+                    </div>
+                    <div>
+                      <dt>Goal</dt>
+                      <dd>Perspective + Action</dd>
+                    </div>
+                    <div>
+                      <dt>Best for</dt>
+                      <dd className="sv-platforms">
+                        <span role="img" aria-label="LinkedIn">
+                          in
+                        </span>
+                        <span role="img" aria-label="YouTube">
+                          <Play fill="currentColor" />
+                        </span>
+                        <span role="img" aria-label="Short video">
+                          ◎
+                        </span>
+                      </dd>
+                    </div>
+                  </dl>
                 </section>
-              )}
-            </>
-          ) : section === "Ideas" ? (
-            <section className="sv-card sv-section">
-              <h2>Your ideas</h2>
-              <p>Start with a thought, story, or experience. Shape it into a video brief.</p>
-              <button className="sv-button sv-primary" onClick={() => edit(true)}>
-                <Plus />
-                Add an idea
-              </button>
-              {saved.map((d) => (
-                <button
-                  className="sv-button"
-                  key={d.id}
-                  onClick={() => {
-                    setDraft(d);
-                    setSection("Video");
-                  }}
-                >
-                  {d.title}
-                </button>
-              ))}
-            </section>
-          ) : (
-            <div className="sv-existing">
-              {section === "Content DNA" && (
-                <p>
-                  Use Voice &amp; Sources below to supply your writing references. Automatic
-                  learning from edits is not connected.
-                </p>
-              )}
-              {section === "Sources" && (
-                <p>Your existing source library and article composer are below.</p>
-              )}
-              {children ?? <p>The existing article workspace is available after signing in.</p>}
+              </div>
+              <section
+                className="sv-card sv-brief"
+                ref={briefRef}
+                tabIndex={-1}
+                aria-label="Video Brief"
+              >
+                <header>
+                  <h2>
+                    <Clapperboard />
+                    Video Brief
+                  </h2>
+                  <span className="sv-badge">5-Minute Video</span>
+                  <button className="sv-button" onClick={() => edit()}>
+                    <Pencil />
+                    Edit
+                  </button>
+                </header>
+                <div className="sv-goal">
+                  <Target />
+                  <div>
+                    <h3>The Goal</h3>
+                    <p>{draft.goal}</p>
+                  </div>
+                </div>
+                <div className="sv-message">
+                  <Layers />
+                  <div>
+                    <h3>The Core Message</h3>
+                    <p>{draft.message}</p>
+                  </div>
+                </div>
+                <h3 className="sv-points-title">
+                  <Video />
+                  Your Talking Points (3–5)
+                </h3>
+                <ol className="sv-points">
+                  {draft.points.map((point, i) => (
+                    <li key={i}>
+                      <span>{i + 1}</span>
+                      <div>
+                        {point}
+                        <GripVertical aria-hidden />
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <footer className="sv-actions">
+                  <button className="sv-button sv-primary" onClick={() => setDialog("notes")}>
+                    <FileText />
+                    Open Speaking Notes
+                  </button>
+                  <button className="sv-button" onClick={() => setDialog("guide")}>
+                    <Video />
+                    Record Guide
+                  </button>
+                  <button className="sv-button" onClick={() => setDialog("broll")}>
+                    <Image />
+                    Generate B-Roll Ideas
+                  </button>
+                  <button
+                    className="sv-button sv-more"
+                    aria-label="Add current brief to your plan"
+                    title="Add to your plan"
+                    onClick={() => addPlan(draft.title)}
+                  >
+                    <MoreHorizontal />
+                  </button>
+                </footer>
+              </section>
+              <aside className="sv-right">
+                <section className="sv-card sv-plan">
+                  <header>
+                    <h2>
+                      <CalendarDays />
+                      Your Video Plan
+                    </h2>
+                    <label className="sv-week">
+                      <span className="sr-only">Plan week</span>
+                      <select value={week} onChange={(e) => setWeek(Number(e.target.value))}>
+                        <option value={0}>This week</option>
+                        <option value={1}>Next week</option>
+                      </select>
+                      <ChevronDown />
+                    </label>
+                  </header>
+                  <div>
+                    {week === 0 ? (
+                      shownPlan.map((title, i) => (
+                        <div className={`sv-plan-row ${i === 0 ? "sv-today" : ""}`} key={title}>
+                          <div>
+                            {i < 2 && <strong>{i === 0 ? "Today" : "Tomorrow"}</strong>}
+                            <small>{dayLabel(i)}</small>
+                          </div>
+                          <button
+                            className="sv-plan-title"
+                            onClick={() => {
+                              const found = saved.find((d) => d.title === title);
+                              if (found) setDraft(found);
+                              else if (title === starter.title) setDraft(starter);
+                              else {
+                                const index = topics.findIndex((t) => t.title === title);
+                                if (index >= 0) chooseTopic(index);
+                                else {
+                                  setEditing({
+                                    ...starter,
+                                    id: crypto.randomUUID(),
+                                    title,
+                                    goal: "",
+                                    message: "",
+                                    points: ["", "", "", ""],
+                                  });
+                                  setDialog("new");
+                                }
+                              }
+                            }}
+                          >
+                            {title}
+                          </button>
+                          <button
+                            className={`sv-check ${completed.includes(title) ? "is-complete" : ""}`}
+                            aria-label={`Mark ${title} ${completed.includes(title) ? "not recorded" : "recorded"}`}
+                            aria-pressed={completed.includes(title)}
+                            onClick={() =>
+                              persist(
+                                saved,
+                                plan.length ? plan : shownPlan,
+                                completed.includes(title)
+                                  ? completed.filter((t) => t !== title)
+                                  : [...completed, title],
+                              )
+                            }
+                          >
+                            {completed.includes(title) && <Check />}
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="sv-empty">No videos planned for next week.</p>
+                    )}
+                  </div>
+                  <small>
+                    {plan.length
+                      ? "Your plan · saved on this device"
+                      : "Example plan · choose a topic to make it yours"}
+                  </small>
+                </section>
+                <section className="sv-card sv-topics">
+                  <h2>
+                    <Sparkles />
+                    More Video Topics for You
+                  </h2>
+                  {filteredTopics.map((topic) => (
+                    <div className="sv-topic" key={topic.title}>
+                      <button
+                        className={`sv-thumb sv-thumb-${topic.image}`}
+                        aria-label={`Open ${topic.title}`}
+                        onClick={() => chooseTopic(topic.index)}
+                      >
+                        <span>
+                          <Play fill="currentColor" />
+                        </span>
+                      </button>
+                      <button className="sv-topic-copy" onClick={() => chooseTopic(topic.index)}>
+                        <strong>{topic.title}</strong>
+                        <span>{topic.description}</span>
+                      </button>
+                      <button
+                        className="sv-add"
+                        aria-label={`Add ${topic.title} to plan`}
+                        onClick={() => addPlan(topic.title)}
+                      >
+                        <Plus />
+                      </button>
+                    </div>
+                  ))}
+                  {!filteredTopics.length && <p className="sv-empty">No matching topics.</p>}
+                </section>
+              </aside>
             </div>
-          )}
+            <p className="sv-disclosure">
+              Starter examples from your mockup. Video drafts and plans are saved only on this
+              device; curation, publishing, and learning from edits are not connected.
+            </p>
+            {saved.length > 0 && (
+              <section className="sv-card sv-saved">
+                <h2>Saved video briefs</h2>
+                {saved
+                  .filter((d) => d.title.toLowerCase().includes(search.toLowerCase()))
+                  .map((d) => (
+                    <button className="sv-button" key={d.id} onClick={() => setDraft(d)}>
+                      {d.title}
+                      <ArrowRight />
+                    </button>
+                  ))}
+              </section>
+            )}
+          </>
           {notice && (
             <div className="sv-notice" role="status">
               {notice}
@@ -689,7 +652,7 @@ export function VideoStudio({
                   }
                   if (persist([clean, ...saved.filter((d) => d.id !== clean.id)])) {
                     setDraft(clean);
-                    setSection("Video");
+
                     setDialog(null);
                   }
                 }}
