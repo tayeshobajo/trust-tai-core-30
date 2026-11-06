@@ -1,3 +1,4 @@
+import { ResearchPanel } from "./research-panel";
 import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -110,6 +111,7 @@ export function SourcesWorkspace({ identity }: { identity: WorkspaceIdentity }) 
         </button>
       }
     >
+      <ResearchPanel key={identity.organizationId} organizationId={identity.organizationId} />
       <section className="sw-banner">
         <BookOpen />
         <div>
