@@ -69,3 +69,27 @@ test('reports bounded transport and identity categories without raw responses or
   assert.equal(studioTransportDiagnostic({code:'http_403',message:'private'}),'transport_unknown');
   assert.equal(studioTransportDiagnostic(new Error('private')),'transport_unknown');
 });
+
+test('allowlists bounded causes without revealing error details or relaxing fetch options', async () => {
+  const cases = [
+    [new TypeError('private', {cause:Object.assign(new Error('private'),{code:'ENOTFOUND'})}), 'dns_failure'],
+    [Object.assign(new Error('private'),{code:'ERR_TLS_CERT_ALTNAME_INVALID'}), 'tls_failure'],
+    [Object.assign(new Error('private'),{code:'ECONNREFUSED'}), 'connection_refused'],
+    [Object.assign(new Error('private'),{code:'ECONNRESET'}), 'connection_reset'],
+    [Object.assign(new Error('private'),{code:'ETIMEDOUT'}), 'timeout'],
+    [new TypeError('private',{cause:new Error('unexpected redirect')}), 'redirect_rejected'],
+    [new TypeError('unrecognized private runtime details'), 'network_type_error'],
+    [new DOMException('private','AbortError'), 'request_aborted'],
+    [Object.assign(new Error('private'),{code:'PRIVATE_UNKNOWN_CODE'}), 'network_failure'],
+  ];
+  for(const [failure, expected] of cases) {
+    const client=createStudioTransport(config,async(_url,init)=>{
+      assert.equal(init.redirect,'error'); assert.ok(init.signal); throw failure;
+    });
+    await assert.rejects(client.readAgent(config.agentId),error=>{
+      assert.equal(studioTransportDiagnostic(error),expected);
+      assert.equal(error.message,'Paperclip verification failed.');
+      assert.equal(error.cause,undefined); return true;
+    });
+  }
+});

@@ -6,6 +6,8 @@ const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-
 
 const diagnosticCodes = new Set([
   'transport_configuration', 'network_failure', 'timeout', 'response_read_failed',
+  'dns_failure', 'tls_failure', 'connection_refused', 'connection_reset',
+  'redirect_rejected', 'network_type_error', 'request_aborted', 'runtime_timeout_unavailable',
   'http_401', 'http_403', 'http_404', 'http_429', 'http_client_error', 'http_server_error', 'http_other',
   'response_format', 'response_empty', 'response_too_large', 'response_json',
   'identity_mismatch', 'scope_mismatch', 'identity_shape', 'transport_unknown',
@@ -17,6 +19,28 @@ export function studioTransportDiagnostic(error) {
   return error instanceof TransportDiagnosticError && diagnosticCodes.has(error.code)
     ? error.code : 'transport_unknown';
 }
+// Inspect only bounded, known error codes/names. Never return message, stack,
+// cause, address or headers. Unknown causes stay unknown (including platform blocks).
+function networkDiagnostic(error) {
+  const codes = new Map([
+    ['ENOTFOUND', 'dns_failure'], ['EAI_AGAIN', 'dns_failure'],
+    ['CERT_HAS_EXPIRED', 'tls_failure'], ['DEPTH_ZERO_SELF_SIGNED_CERT', 'tls_failure'],
+    ['SELF_SIGNED_CERT_IN_CHAIN', 'tls_failure'], ['UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'tls_failure'],
+    ['ERR_TLS_CERT_ALTNAME_INVALID', 'tls_failure'], ['UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'tls_failure'],
+    ['ECONNREFUSED', 'connection_refused'], ['ECONNRESET', 'connection_reset'],
+    ['ETIMEDOUT', 'timeout'], ['UND_ERR_CONNECT_TIMEOUT', 'timeout'],
+  ]);
+  let current = error;
+  for (let depth = 0; current && depth < 3; depth++, current = current.cause) {
+    if (codes.has(current.code)) return codes.get(current.code);
+    if (current.name === 'TimeoutError') return 'timeout';
+    // Exact Undici sentinel, not a substring of an arbitrary upstream message.
+    if (current instanceof Error && current.message === 'unexpected redirect') return 'redirect_rejected';
+  }
+  if (error?.name === 'AbortError') return 'request_aborted';
+  if (error instanceof TypeError) return 'network_type_error';
+  return 'network_failure';
+}
 export function createStudioTransport({ origin, key, companyId, projectId, agentId }, fetcher = fetch) {
   if (origin !== ORIGIN || agentId !== AGENT || !uuid(companyId) || !uuid(projectId) ||
       typeof key !== 'string' || !key.trim() || /[\r\n]/.test(key)) {
@@ -24,6 +48,8 @@ export function createStudioTransport({ origin, key, companyId, projectId, agent
   }
   async function request(path, method = 'GET', body) {
     // Single attempt: a failed POST may already have created a task.
+    if (typeof AbortSignal?.timeout !== 'function')
+      throw new TransportDiagnosticError('runtime_timeout_unavailable');
     let response;
     try { response = await fetcher(`${ORIGIN}/api${path}`, {
       method, redirect: 'error', signal: AbortSignal.timeout(15000),
@@ -31,7 +57,7 @@ export function createStudioTransport({ origin, key, companyId, projectId, agent
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     } catch (error) {
-      throw new TransportDiagnosticError(error?.name === 'TimeoutError' ? 'timeout' : 'network_failure');
+      throw new TransportDiagnosticError(networkDiagnostic(error));
     }
     if (!response.ok) {
       const status = response.status;
