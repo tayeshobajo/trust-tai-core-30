@@ -11,8 +11,9 @@ export const checkStudioResearch = createServerFn({ method: "POST" })
     const { getRequest } = await import("@tanstack/react-start/server");
     try {
       return await researchConnection(getRequest(), data.organizationId);
-    } catch {
-      return { status: "unavailable" as const };
+    } catch (error) {
+      const { researchDiagnostic } = await import("@/lib/studio-research-diagnostics.server");
+      return { status: "unavailable" as const, diagnostic: researchDiagnostic(error) };
     }
   });
 export const listStudioResearch = createServerFn({ method: "POST" })

@@ -106,3 +106,24 @@ it("requires explicit exact organization binding", async () => {
   await expect(researchConnection(req, org)).rejects.toThrow();
   expect(f.readAgent).not.toHaveBeenCalled();
 });
+
+it.each([
+  ["", "binding_missing"],
+  ["22222222-2222-4222-8222-222222222222", "binding_mismatch"],
+])("categorizes binding failures without exposing IDs: %s", async (binding, category) => {
+  vi.stubEnv("PAPERCLIP_STUDIO_ORGANIZATION_ID", binding);
+  await expect(researchConnection(req, org)).rejects.toMatchObject({ category });
+  expect(f.readAgent).not.toHaveBeenCalled();
+  expect(f.reserve).not.toHaveBeenCalled();
+});
+it("categorizes workspace and unexpected access failures without upstream details", async () => {
+  f.slug = "other";
+  await expect(researchConnection(req, org)).rejects.toMatchObject({
+    category: "workspace_mismatch",
+  });
+  f.allow = false;
+  await expect(researchConnection(req, org)).rejects.toMatchObject({
+    category: "access_check_failed",
+  });
+  expect(f.readAgent).not.toHaveBeenCalled();
+});

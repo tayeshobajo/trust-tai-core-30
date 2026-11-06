@@ -1,3 +1,4 @@
+import { ResearchDiagnosticError } from "./studio-research-diagnostics.server";
 import { authorizeStudioResearch } from "./studio-research-access.server";
 import { createStudioTransport } from "./studio-research-transport.server.mjs";
 import { createResearchStore } from "./studio-research-store.server";
@@ -16,16 +17,22 @@ export const studioBinding = {
   agentId: "5cbc9418-0ff9-4f1c-a807-c0632e26a538",
 };
 async function context(request: Request, org: string, work = false) {
-  const auth = await authorizeStudioResearch(request, org, work);
+  const auth = await authorizeStudioResearch(request, org, work).catch((error: unknown) => {
+    if (error instanceof ResearchDiagnosticError) throw error;
+    throw new ResearchDiagnosticError("access_check_failed");
+  });
+  if (!process.env["PAPERCLIP_STUDIO_ORGANIZATION_ID"])
+    throw new ResearchDiagnosticError("binding_missing");
   if (process.env["PAPERCLIP_STUDIO_ORGANIZATION_ID"] !== org)
-    throw new Error("Research workspace binding is not configured.");
+    throw new ResearchDiagnosticError("binding_mismatch");
   const organization = await auth.client
     .from("organizations")
     .select("slug")
     .eq("id", org)
     .maybeSingle();
-  if (organization.error || organization.data?.slug !== "trust-tai")
-    throw new Error("Research is not bound to this workspace.");
+  if (organization.error) throw new ResearchDiagnosticError("workspace_lookup_failed");
+  if (organization.data?.slug !== "trust-tai")
+    throw new ResearchDiagnosticError("workspace_mismatch");
   return auth;
 }
 function transport() {
