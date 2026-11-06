@@ -96,7 +96,9 @@ it("rejects all same-origin and cross-origin redirects without reading headers o
         });
       });
       const store = createResearchStore(id, "fixture", fetcher);
-      await expect(store.list(org)).rejects.toThrow("Research storage redirect rejected.");
+      await expect(store.list(org)).rejects.toMatchObject({
+        category: "storage_redirect_rejected",
+      });
       expect(fetcher).toHaveBeenCalledTimes(1);
     }
   }
@@ -105,6 +107,31 @@ it("does not retry a redirected storage write", async () => {
   const fetcher = vi.fn(async () => new Response(null, { status: 307 }));
   await expect(
     createResearchStore(id, "fixture", fetcher).reserve(input, company, agent),
-  ).rejects.toThrow("Research storage redirect rejected.");
+  ).rejects.toMatchObject({ category: "storage_redirect_rejected" });
   expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it("returns only safe storage failure categories", async () => {
+  for (const [status, category] of [
+    [401, "storage_http_401"],
+    [403, "storage_http_403"],
+    [404, "storage_http_404"],
+    [500, "storage_http_other"],
+  ] as const) {
+    await expect(
+      createResearchStore(
+        id,
+        "fixture",
+        async () => new Response("private details", { status }),
+      ).list(org),
+    ).rejects.toMatchObject({ category, message: "Research connection check failed." });
+  }
+  await expect(
+    createResearchStore(id, "fixture", async () => {
+      throw new Error("private details");
+    }).list(org),
+  ).rejects.toMatchObject({ category: "storage_network_failure" });
+  await expect(
+    createResearchStore(id, "fixture", async () => Response.json({ private: "details" })).list(org),
+  ).rejects.toMatchObject({ category: "storage_response_invalid" });
 });

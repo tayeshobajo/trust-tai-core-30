@@ -152,7 +152,8 @@ export function ResearchPanel({ organizationId }: { organizationId: string }) {
       )}
       {history?.status === "unavailable" && (
         <p role="status">
-          Saved research requests could not be read. Storage or access may not be configured.
+          Saved research requests could not be read. Storage or access may not be configured. Check:{" "}
+          {history.diagnostic}.
         </p>
       )}
       {history?.status === "ready" && history.runs.length > 0 && (

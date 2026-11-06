@@ -27,8 +27,9 @@ export const listStudioResearch = createServerFn({ method: "POST" })
         status: "ready" as const,
         runs: await researchHistory(getRequest(), data.organizationId),
       };
-    } catch {
-      return { status: "unavailable" as const, runs: [] };
+    } catch (error) {
+      const { researchDiagnostic } = await import("@/lib/studio-research-diagnostics.server");
+      return { status: "unavailable" as const, diagnostic: researchDiagnostic(error), runs: [] };
     }
   });
 export const runStudioResearch = createServerFn({ method: "POST" })

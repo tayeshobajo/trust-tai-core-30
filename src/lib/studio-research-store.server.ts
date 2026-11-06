@@ -1,3 +1,4 @@
+import { ResearchDiagnosticError } from "./studio-research-diagnostics.server";
 import { z } from "zod";
 import {
   researchRequestSchema,
@@ -36,7 +37,7 @@ function run(row: Row): ResearchRun {
 }
 /** Server service credential only. No browser table grants or client-provided bindings. */
 export function createResearchStore(userId: string, key: string, fetcher: typeof fetch = fetch) {
-  if (!key) throw new Error("Research storage is unavailable.");
+  if (!key) throw new ResearchDiagnosticError("storage_key_missing");
   async function query(method: string, params: URLSearchParams, body?: unknown) {
     const response = await fetcher(
       `${trustTaiSupabaseUrl()}/rest/v1/studio_research_requests?${params}`,
@@ -52,13 +53,28 @@ export function createResearchStore(userId: string, key: string, fetcher: typeof
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       },
-    );
+    ).catch(() => {
+      throw new ResearchDiagnosticError("storage_network_failure");
+    });
     // Cloudflare supports manual mode; never inspect or follow Location.
     if (response.status >= 300 && response.status <= 399)
-      throw new Error("Research storage redirect rejected.");
+      throw new ResearchDiagnosticError("storage_redirect_rejected");
     if (response.status === 409 && method === "POST") return null;
-    if (!response.ok) throw new Error("Research storage is unavailable.");
-    return z.array(rowSchema).parse(await response.json());
+    if (!response.ok)
+      throw new ResearchDiagnosticError(
+        response.status === 401
+          ? "storage_http_401"
+          : response.status === 403
+            ? "storage_http_403"
+            : response.status === 404
+              ? "storage_http_404"
+              : "storage_http_other",
+      );
+    try {
+      return z.array(rowSchema).parse(await response.json());
+    } catch {
+      throw new ResearchDiagnosticError("storage_response_invalid");
+    }
   }
   function where(org: string, requestId?: string) {
     return new URLSearchParams({
