@@ -52,13 +52,17 @@ export function createStudioTransport({ origin, key, companyId, projectId, agent
       throw new TransportDiagnosticError('runtime_timeout_unavailable');
     let response;
     try { response = await fetcher(`${ORIGIN}/api${path}`, {
-      method, redirect: 'error', signal: AbortSignal.timeout(15000),
+      method, redirect: 'manual', signal: AbortSignal.timeout(15000),
       headers: { Authorization: `Bearer ${key}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     } catch (error) {
       throw new TransportDiagnosticError(networkDiagnostic(error));
     }
+    // Workers rejects redirect:error during Request construction. Manual mode
+    // sends only to the bound origin; reject all 3xx without inspecting Location.
+    if (response.status >= 300 && response.status <= 399)
+      throw new TransportDiagnosticError('redirect_rejected');
     if (!response.ok) {
       const status = response.status;
       const code = [401,403,404,429].includes(status) ? `http_${status}`

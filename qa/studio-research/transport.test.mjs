@@ -22,7 +22,7 @@ test('rejects changed credential recipient and incomplete scope before any netwo
 });
 test('submits exactly one bound task and prohibits credential redirects', async () => {
   let calls=0;
-  const client=createStudioTransport(config,async (url, init)=>{ calls++; assert.equal(url,`${config.origin}/api/companies/${config.companyId}/issues`); assert.equal(init.redirect,'error'); const body=JSON.parse(init.body); assert.equal(body.projectId,config.projectId); assert.equal(body.assigneeAgentId,config.agentId); return json(issue); });
+  const client=createStudioTransport(config,async (url, init)=>{ calls++; assert.equal(url,`${config.origin}/api/companies/${config.companyId}/issues`); assert.equal(init.redirect,'manual'); const body=JSON.parse(init.body); assert.equal(body.projectId,config.projectId); assert.equal(body.assigneeAgentId,config.agentId); return json(issue); });
   await client.createIssue(input); assert.equal(calls,1);
 });
 test('never retries ambiguous task submission', async () => {
@@ -84,7 +84,7 @@ test('allowlists bounded causes without revealing error details or relaxing fetc
   ];
   for(const [failure, expected] of cases) {
     const client=createStudioTransport(config,async(_url,init)=>{
-      assert.equal(init.redirect,'error'); assert.ok(init.signal); throw failure;
+      assert.equal(init.redirect,'manual'); assert.ok(init.signal); throw failure;
     });
     await assert.rejects(client.readAgent(config.agentId),error=>{
       assert.equal(studioTransportDiagnostic(error),expected);
@@ -92,4 +92,34 @@ test('allowlists bounded causes without revealing error details or relaxing fetc
       assert.equal(error.cause,undefined); return true;
     });
   }
+});
+
+test('rejects every 3xx without reading Location or contacting any redirect destination', async () => {
+  for (const destination of [`${config.origin}/other`, 'https://example.invalid/other']) {
+    for (let status=300;status<=399;status++) {
+      let calls=0;
+      const client=createStudioTransport(config,async(url,init)=>{
+        calls++;
+        assert.equal(url,`${config.origin}/api/agents/me`);
+        assert.equal(init.redirect,'manual');
+        assert.equal(init.headers.Authorization,`Bearer ${config.key}`);
+        const response=new Response(null,{status,headers:{Location:destination}});
+        return new Proxy(response,{get(target,prop){
+          if(prop==='headers'||prop==='body'||prop==='ok') throw new Error('Redirect metadata/body must not be read');
+          return Reflect.get(target,prop,target);
+        }});
+      });
+      await assert.rejects(client.readAgent(config.agentId),error=>studioTransportDiagnostic(error)==='redirect_rejected');
+      assert.equal(calls,1);
+    }
+  }
+});
+test('never follows or retries a redirected task submission', async () => {
+  let calls=0;
+  const client=createStudioTransport(config,async(_url,init)=>{
+    calls++; assert.equal(init.method,'POST'); assert.equal(init.redirect,'manual');
+    return new Response(null,{status:307,headers:{Location:'https://example.invalid/other'}});
+  });
+  await assert.rejects(client.createIssue(input),error=>studioTransportDiagnostic(error)==='redirect_rejected');
+  assert.equal(calls,1);
 });
