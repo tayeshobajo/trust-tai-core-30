@@ -1,3 +1,4 @@
+import { mailboxSyncLines } from "@/domain/comms-recent-email";
 /**
  * The mailbox track: every connected Gmail account, one compact row each.
  *
@@ -186,8 +187,9 @@ export function GmailConnection({
 
       {sync ? (
         <p className="text-xs text-muted-foreground">
-          {sync.accountEmail ? `${sync.accountEmail}: ` : ""}read {sync.messagesRead} labeled
-          messages, stored {sync.messagesStored} across {sync.relationshipsTouched} relationships
+          {sync.accountEmail ? `${sync.accountEmail}: ` : ""}
+          {sync.partial ? "Partial pass: " : ""}read {sync.messagesRead} approved-scope messages,
+          stored {sync.messagesStored} across {sync.relationshipsTouched} relationships
           {(sync.peopleAdded ?? 0) > 0
             ? `, added ${sync.peopleAdded} newly labeled ${
                 sync.peopleAdded === 1 ? "person" : "people"
@@ -233,6 +235,7 @@ function MailboxRow({
   // The persisted summary of the last pass on this mailbox, visible even
   // when nobody has pressed "Read now" this session.
   const lastRun = readGmailRunSummary(connection.cursor);
+  const syncLine = mailboxSyncLines([connection])[0];
 
   const exceptions = readIntakeExceptions(connection.cursor);
 
@@ -247,11 +250,17 @@ function MailboxRow({
             {connected ? "Watching Trust Tai/Comms" : INTEGRATION_STATUS_LABEL[connection.status]}
             {connected ? (canSend ? " · can send" : " · read-only grant") : ""}
             {connection.lastSyncAt
-              ? ` · last checked ${new Date(connection.lastSyncAt).toLocaleString()}`
+              ? ` · last successful bounded read ${new Date(connection.lastSyncAt).toLocaleString()}`
               : " · not checked yet"}
           </p>
         </div>
       </div>
+
+      {syncLine ? (
+        <p role="status" className="text-xs text-muted-foreground">
+          {syncLine.note}
+        </p>
+      ) : null}
 
       {connected ? (
         <p className="text-xs text-muted-foreground">
@@ -261,8 +270,8 @@ function MailboxRow({
 
       {lastRun ? (
         <p className="text-xs text-muted-foreground">
-          Last pass {new Date(lastRun.at).toLocaleString()}: read {lastRun.messagesRead} labeled,
-          stored {lastRun.messagesStored}
+          Last pass {new Date(lastRun.at).toLocaleString()}: read {lastRun.messagesRead}{" "}
+          approved-scope messages, stored {lastRun.messagesStored}
           {lastRun.peopleAdded > 0
             ? `, added ${lastRun.peopleAdded} ${lastRun.peopleAdded === 1 ? "person" : "people"}`
             : ""}

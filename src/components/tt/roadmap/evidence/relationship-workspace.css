@@ -634,6 +634,7 @@
 }
 .rw-message-tools {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   padding: 9px 16px 4px;
@@ -644,7 +645,7 @@
   align-items: center;
   gap: 6px;
   flex: 1;
-  min-width: 0;
+  min-width: 120px;
   color: var(--rw-muted);
 }
 .rw-message-tools input {
@@ -662,6 +663,21 @@
   border: 0;
   background: transparent;
   color: #536587;
+}
+.rw-message-tools > button {
+  border: 1px solid #dbe2ee;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 10px;
+  background: transparent;
+  color: #365789;
+}
+.rw-message-tools > button:disabled {
+  opacity: 0.55;
+}
+.rw-message-tools > button:focus-visible {
+  outline: 2px solid #365789;
+  outline-offset: 2px;
 }
 .rw-coverage {
   font-size: 9px;
@@ -1469,7 +1485,9 @@
 
 /* Only the outer canvas changes; panel widths, scrolling and actions stay owned
    by the existing responsive workroom. */
-.rw-workspace { padding-inline: var(--workspace-gutter); }
+.rw-workspace {
+  padding-inline: var(--workspace-gutter);
+}
 .rw-workspace .rw-hero {
   margin-inline: calc(-1 * var(--workspace-gutter));
   padding-inline: var(--workspace-gutter);

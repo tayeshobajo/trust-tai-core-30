@@ -52,18 +52,62 @@ export const correspondenceSchema = z
   .strict();
 export type Correspondence = z.infer<typeof correspondenceSchema>;
 
+/** Stored Comms mail is not a reviewed import. Never manufacture review attestations. */
+export const storedMailCorrespondenceSchema = z
+  .object({
+    organizationId: uuid,
+    roadmapId: uuid,
+    relationshipId: uuid,
+    source: z.literal("stored_gmail"),
+    channel: z.literal("email"),
+    kind: z.enum(["sent", "received"]),
+    sourceAccountRef: z.string().email().max(200),
+    sourceEventId: z.string().min(1).max(300),
+    identityKind: z.literal("provider_id"),
+    sourceUrl,
+    occurredAt: timestamp,
+    timestampPrecision: z.literal("exact"),
+    storedAt: timestamp.nullable(),
+    subject: z.string().max(1000),
+    bodyText: z.string().max(100000),
+    bodyRepresentation: z.enum(["stored_plain_text", "stored_snippet", "unavailable"]),
+  })
+  .strict();
+export const conversationEventSchema = z.union([
+  correspondenceSchema,
+  storedMailCorrespondenceSchema,
+]);
+export type ConversationEvent = z.infer<typeof conversationEventSchema>;
+export const conversationIdentity = (
+  e: Pick<ConversationEvent, "channel" | "sourceAccountRef" | "sourceEventId" | "identityKind">,
+) =>
+  JSON.stringify([
+    e.channel,
+    e.channel === "email" && e.sourceAccountRef.includes("@")
+      ? e.sourceAccountRef.trim().toLowerCase()
+      : e.sourceAccountRef,
+    e.identityKind,
+    e.sourceEventId,
+  ]);
+export const conversationSourcesSchema = z
+  .object({
+    storedGmail: z.enum(["included", "not_authorized", "not_linked"]),
+    omittedUnattributed: z.number().int().nonnegative(),
+    providerSync: z.literal("not_checked"),
+  })
+  .strict();
+export const conversationCursorSchema = z.string().regex(/^[a-f0-9]{64}\.[1-9][0-9]{0,4}$/);
+
 export const correspondencePageSchema = z
   .object({
     organizationId: z.string().uuid(),
     roadmapId: z.string().uuid(),
     relationshipId: z.string().uuid().nullable(),
-    events: z.array(correspondenceSchema),
-    nextCursor: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/)
-      .nullable(),
+    events: z.array(conversationEventSchema),
+    nextCursor: conversationCursorSchema.nullable(),
     coverage: z.enum(["unknown", "partial"]),
     readAt: z.string().datetime({ offset: true }),
+    sources: conversationSourcesSchema.optional(),
   })
   .strict();
 export type CorrespondencePage = z.infer<typeof correspondencePageSchema>;

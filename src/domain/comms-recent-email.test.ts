@@ -70,7 +70,12 @@ describe("recentEmailRows", () => {
   it("keeps two simultaneous threads with one person separate", () => {
     const rows = recentEmailRows(
       [
-        message({ id: "a", providerThreadId: "t1", mailbox: "tai@trust-tai.com", subject: "Scope" }),
+        message({
+          id: "a",
+          providerThreadId: "t1",
+          mailbox: "tai@trust-tai.com",
+          subject: "Scope",
+        }),
         message({
           id: "b",
           providerThreadId: "t2",
@@ -141,8 +146,18 @@ describe("recentEmailRows", () => {
   it("reads timestamps as instants, not local strings", () => {
     const rows = recentEmailRows(
       [
-        message({ id: "a", providerThreadId: "t1", mailbox: "m", occurredAt: "2026-09-10T23:30:00.000Z" }),
-        message({ id: "b", providerThreadId: "t2", mailbox: "m", occurredAt: "2026-09-11T00:30:00+02:00" }),
+        message({
+          id: "a",
+          providerThreadId: "t1",
+          mailbox: "m",
+          occurredAt: "2026-09-10T23:30:00.000Z",
+        }),
+        message({
+          id: "b",
+          providerThreadId: "t2",
+          mailbox: "m",
+          occurredAt: "2026-09-11T00:30:00+02:00",
+        }),
       ],
       [person],
     );
@@ -169,9 +184,34 @@ describe("mailboxSyncLines", () => {
     } as IntegrationConnection;
   }
 
+  it("reports partial coverage even with a recent successful marker", () => {
+    const [line] = mailboxSyncLines(
+      [connection({ lastSyncAt: now.toISOString(), cursor: { last_run: { outcome: "partial" } } })],
+      now,
+    );
+    expect(line?.state).toBe("error");
+    expect(line?.note).toContain("partial");
+  });
+  it("names deferred approved threads instead of claiming all were refreshed", () => {
+    const [line] = mailboxSyncLines(
+      [
+        connection({
+          lastSyncAt: now.toISOString(),
+          cursor: { last_run: { outcome: "success", approved_threads_deferred: 13 } },
+        }),
+      ],
+      now,
+    );
+    expect(line?.note).toContain("13 approved threads await later passes");
+  });
+
   it("calls a mailbox stale when the last successful read is old", () => {
     const [line] = mailboxSyncLines(
-      [connection({ lastSyncAt: new Date(now.getTime() - MAILBOX_STALE_AFTER_MS - 1000).toISOString() })],
+      [
+        connection({
+          lastSyncAt: new Date(now.getTime() - MAILBOX_STALE_AFTER_MS - 1000).toISOString(),
+        }),
+      ],
       now,
     );
 

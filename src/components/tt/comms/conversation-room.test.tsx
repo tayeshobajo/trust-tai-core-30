@@ -211,3 +211,22 @@ it("focuses a separately loaded link while history is pending, then retains it t
     HTMLElement.prototype.scrollIntoView = original;
   }
 });
+
+it("offers older email explicitly and disables duplicate page loads while pending", () => {
+  const load = vi.fn();
+  const props = {
+    relationship,
+    health,
+    days: [day("2026-11-05", 1)],
+    onViewProfile: vi.fn(),
+    hasOlderMessages: true,
+    onLoadOlderMessages: load,
+  };
+  const rendered = render(<ConversationRoom {...props} />);
+  fireEvent.click(screen.getByRole("button", { name: "Load older email" }));
+  expect(load).toHaveBeenCalledTimes(1);
+  rendered.rerender(<ConversationRoom {...props} olderMessagesLoading />);
+  expect(
+    (screen.getByRole("button", { name: "Loading older email…" }) as HTMLButtonElement).disabled,
+  ).toBe(true);
+});

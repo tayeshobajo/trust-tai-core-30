@@ -16,7 +16,7 @@ import { withApprovedCorrespondence } from "@/domain/comms-approved-corresponden
 import { listMessageAttention } from "@/data/comms-message-attention";
 import { withMessageAttention } from "@/domain/comms-message-attention";
 import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { RecentEmail } from "@/components/tt/comms/recent-email";
@@ -50,7 +50,11 @@ import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
 import { gmailDownloadAttachment, gmailSync } from "@/data/supabase/comms-gmail";
-import { getRelationshipMessage, listRelationshipMessages } from "@/data/supabase/comms-messages";
+import {
+  getRelationshipMessage,
+  listRelationshipMessagePage,
+  type MessageHistoryCursor,
+} from "@/data/supabase/comms-messages";
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
 import {
@@ -402,16 +406,26 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   // Mail the sync already stored for this person. Folds into the same thread
   // as manual touches; it is never re-written as touches.
-  const messagesQuery = useQuery({
-    queryKey: ["comms", "messages", identity.organizationId, selected?.id],
+  const messagesQuery = useInfiniteQuery({
+    queryKey: ["comms", "message-pages", identity.organizationId, selected?.id],
     enabled: Boolean(selected),
-    queryFn: () => listRelationshipMessages(identity.organizationId, selected!.id),
+    initialPageParam: undefined as MessageHistoryCursor | undefined,
+    queryFn: ({ pageParam }) =>
+      listRelationshipMessagePage(identity.organizationId, selected!.id, pageParam),
+    getNextPageParam: (last) => last.next ?? undefined,
   });
 
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
   const selectedMessages = useMemo(() => {
-    const messages = messagesQuery.data ?? [];
+    const messages = [
+      ...new Map(
+        (messagesQuery.data?.pages.flatMap((page) => page.messages) ?? []).map((message) => [
+          message.id,
+          message,
+        ]),
+      ).values(),
+    ];
     const linked = linkedMessageQuery.data;
     return linked && !messages.some((message) => message.id === linked.id)
       ? [...messages, linked]
@@ -1002,6 +1016,9 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 organizationId={context.organizationId}
                 {...(linkedMessageId ? { focusMessageId: linkedMessageId } : {})}
                 historyLoading={messagesQuery.isPending || approvedCorrespondence.isPending}
+                hasOlderMessages={messagesQuery.hasNextPage}
+                olderMessagesLoading={messagesQuery.isFetchingNextPage}
+                onLoadOlderMessages={() => void messagesQuery.fetchNextPage()}
                 historyGaps={historyGaps}
                 onRetryHistory={() => {
                   void touchesQuery.refetch();

@@ -224,6 +224,18 @@ export function mailboxSyncLines(
       };
     }
 
+    const run = connection.cursor["last_run"] as
+      { outcome?: string; approved_threads_deferred?: number } | undefined;
+    if (run?.outcome === "partial") {
+      return {
+        integrationId: connection.id,
+        mailbox,
+        state: "error",
+        lastSyncAt,
+        note: "The last pass was partial; some labelled messages or approved threads were not read. Coverage is incomplete.",
+      };
+    }
+
     if (!at) {
       return {
         integrationId: connection.id,
@@ -242,7 +254,7 @@ export function mailboxSyncLines(
       lastSyncAt,
       note: stale
         ? `Last successful read ${when}. Newer mail may not be here yet.`
-        : `Last successful read ${when}.`,
+        : `Last successful bounded read ${when}.${run?.approved_threads_deferred ? ` ${run.approved_threads_deferred} approved threads await later passes.` : ""}`,
     };
   });
 }

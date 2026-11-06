@@ -55,7 +55,9 @@ export const Route = createFileRoute("/api/public/comms/gmail/scheduled-sync")({
           const report = await syncAllConnectedMailboxes(
             backfillDays !== undefined ? { backfillDays } : undefined,
           );
-          return Response.json(report);
+          return Response.json(report, {
+            status: report.failed || report.partial || report.deferred ? 503 : 200,
+          });
         } catch (error) {
           const message = error instanceof Error ? error.message : "That sweep failed.";
           return Response.json({ error: message }, { status: 500 });

@@ -1,5 +1,23 @@
 import { z } from "zod";
-import { correspondenceSchema } from "@/domain/roadmap-correspondence";
+import { createHash } from "node:crypto";
+import {
+  correspondenceSchema,
+  conversationCursorSchema,
+  type ConversationEvent,
+} from "@/domain/roadmap-correspondence";
+import {
+  canReadStoredMail,
+  mergeConversationEvents,
+  STORED_MAIL_FACT_COLUMNS,
+  storedMailRowSchema,
+  storedMailEvent,
+  storedMailFact,
+  storedMailFactSchema,
+  readBoundedRows,
+  REVIEWED_MAIL_FACT_COLUMNS,
+  reviewedMailFact,
+  reviewedMailFactSchema,
+} from "./roadmap-stored-mail.server";
 import {
   authorizeTracker,
   TrackerRequestError,
@@ -10,14 +28,11 @@ const querySchema = z
   .object({
     organizationId: z.string().uuid(),
     roadmapId: z.string().uuid(),
-    after: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/)
-      .optional(),
+    after: conversationCursorSchema.optional(),
   })
   .strict();
 const PAGE_SIZE = 25;
-/** Reads only previously approved imported events under the existing caller's JWT and RLS. */
+/** Caller JWT/RLS only. Stored Gmail requires Comms access as well as Roadmaps. */
 export async function readRoadmapCorrespondence(request: Request): Promise<Response> {
   try {
     const params = new URL(request.url).searchParams;
@@ -40,46 +55,170 @@ export async function readRoadmapCorrespondence(request: Request): Promise<Respo
     if (mapping.id !== roadmapId || mapping.organization_id !== organizationId)
       throw new TrackerRequestError("Conversation identity is unavailable.", 503);
     const relationshipId: string | null = mapping.relationship_id ?? null;
-    let events: z.infer<typeof correspondenceSchema>[] = [];
-    let nextCursor: string | null = null;
+    let omittedUnattributed = 0;
+    const commsAllowed = relationshipId
+      ? await canReadStoredMail(client, user.id, organizationId)
+      : false;
+    type Fact = (
+      ReturnType<typeof reviewedMailFact> | NonNullable<ReturnType<typeof storedMailFact>>
+    ) & { storageKey: string; observation: string | null };
+    let facts: Fact[] = [];
+    let reviewed: z.infer<typeof reviewedMailFactSchema>[] = [];
+    let mail: z.infer<typeof storedMailFactSchema>[] = [];
     if (relationshipId) {
-      let q = client
+      const rows = await readBoundedRows((from, to) =>
+        client
+          .from("roadmap_correspondence_events")
+          .select(REVIEWED_MAIL_FACT_COLUMNS, { count: "exact" })
+          .eq("organization_id", organizationId)
+          .eq("roadmap_id", roadmapId)
+          .eq("relationship_id", relationshipId)
+          .order("event_key")
+          .range(from, to),
+      );
+      reviewed = z.array(reviewedMailFactSchema).parse(rows);
+      if (
+        new Set(reviewed.map((r) => r.event_key)).size !== reviewed.length ||
+        reviewed.some(
+          (r) =>
+            r.organizationId !== organizationId ||
+            r.roadmapId !== roadmapId ||
+            r.relationshipId !== relationshipId,
+        )
+      )
+        throw new TrackerRequestError("Conversation scope could not be verified.", 503);
+      const storedFacts: Fact[] = [];
+      if (commsAllowed) {
+        const raw = await readBoundedRows((from, to) =>
+          client
+            .from("comms_messages")
+            .select(STORED_MAIL_FACT_COLUMNS, { count: "exact" })
+            .eq("organization_id", organizationId)
+            .eq("relationship_id", relationshipId)
+            .eq("provider", "gmail")
+            .order("id")
+            .range(from, to),
+        );
+        mail = z.array(storedMailFactSchema).parse(raw);
+        if (
+          new Set(mail.map((r) => r.id)).size !== mail.length ||
+          mail.some(
+            (r) => r.organization_id !== organizationId || r.relationship_id !== relationshipId,
+          )
+        )
+          throw new TrackerRequestError("Stored conversation scope could not be verified.", 503);
+        for (const row of mail) {
+          const fact = storedMailFact(row, roadmapId);
+          if (fact)
+            storedFacts.push({
+              ...fact,
+              storageKey: row.id,
+              observation: row.fetched_at ?? row.sent_at,
+            });
+          else omittedUnattributed++;
+        }
+      }
+      facts = mergeConversationEvents<Fact>(
+        reviewed.map((row) => ({
+          ...reviewedMailFact(row),
+          storageKey: row.event_key,
+          observation: row.review.reviewedAt,
+        })),
+        storedFacts,
+      );
+    }
+    // Metadata snapshot binds both sources and exact scope. Only this page's
+    // bodies are fetched; no whole-history body scan or provider call.
+    const snapshot = createHash("sha256")
+      .update(
+        JSON.stringify([organizationId, roadmapId, relationshipId, commsAllowed, reviewed, mail]),
+      )
+      .digest("hex");
+    const offset = after ? Number(after.split(".")[1]) : 0;
+    if (
+      after &&
+      (after.split(".")[0] !== snapshot || offset >= facts.length || offset % PAGE_SIZE !== 0)
+    )
+      throw new TrackerRequestError("Conversation changed. Refresh stored messages.", 409);
+    const nextCursor =
+      offset + PAGE_SIZE < facts.length ? `${snapshot}.${offset + PAGE_SIZE}` : null;
+    const page = facts.slice(offset, offset + PAGE_SIZE);
+    const bodies = new Map<string, ConversationEvent>();
+    const reviewedKeys = page
+      .filter((f) => f.source === "reviewed_import")
+      .map((f) => f.storageKey);
+    if (reviewedKeys.length) {
+      const read = await client
         .from("roadmap_correspondence_events")
-        .select("event_key, event_payload")
+        .select("event_key, event_payload", { count: "exact" })
         .eq("organization_id", organizationId)
         .eq("roadmap_id", roadmapId)
         .eq("relationship_id", relationshipId)
-        .order("event_key", { ascending: true })
-        .limit(PAGE_SIZE + 1);
-      if (after) q = q.gt("event_key", after);
-      const read = await q;
-      if (read.error) throw new TrackerRequestError("Reviewed conversations are unavailable.", 503);
+        .in("event_key", reviewedKeys)
+        .limit(PAGE_SIZE);
+      if (
+        read.error ||
+        read.count !== reviewedKeys.length ||
+        read.data?.length !== reviewedKeys.length
+      )
+        throw new TrackerRequestError(
+          "Reviewed messages changed or are unavailable. Refresh stored messages.",
+          409,
+        );
       const rows = z
-        .array(
-          z.object({
-            event_key: z.string().regex(/^[a-f0-9]{64}$/),
-            event_payload: correspondenceSchema,
-          }),
-        )
-        .safeParse(read.data);
-      if (!rows.success)
-        throw new TrackerRequestError("Reviewed conversation data needs verification.", 503);
-      const keys = new Set<string>();
-      for (const row of rows.data) {
-        const e = row.event_payload;
+        .array(z.object({ event_key: z.string(), event_payload: correspondenceSchema }))
+        .parse(read.data);
+      for (const row of rows) {
+        const expected = reviewed.find((r) => r.event_key === row.event_key);
+        const { event_payload: e } = row;
+        const actual = reviewedMailFactSchema.strip().parse({
+          ...e,
+          event_key: row.event_key,
+          rowOrganizationId: e.organizationId,
+          rowRoadmapId: e.roadmapId,
+          rowRelationshipId: e.relationshipId,
+        });
         if (
-          e.organizationId !== organizationId ||
-          e.roadmapId !== roadmapId ||
-          e.relationshipId !== relationshipId ||
-          keys.has(row.event_key) ||
-          (after && row.event_key <= after)
+          !reviewedKeys.includes(row.event_key) ||
+          !expected ||
+          JSON.stringify(actual) !== JSON.stringify(expected) ||
+          bodies.has(row.event_key)
         )
-          throw new TrackerRequestError("Conversation scope could not be verified.", 503);
-        keys.add(row.event_key);
+          throw new TrackerRequestError("Reviewed messages changed. Refresh stored messages.", 409);
+        bodies.set(row.event_key, e);
       }
-      events = rows.data.slice(0, PAGE_SIZE).map((row) => row.event_payload);
-      nextCursor = rows.data.length > PAGE_SIZE ? rows.data[PAGE_SIZE - 1]!.event_key : null;
     }
+    const mailKeys = page.filter((f) => f.source === "stored_gmail").map((f) => f.storageKey);
+    if (mailKeys.length) {
+      const read = await client
+        .from("comms_messages")
+        .select(`${STORED_MAIL_FACT_COLUMNS}, subject, body_text, snippet`, { count: "exact" })
+        .eq("organization_id", organizationId)
+        .eq("relationship_id", relationshipId)
+        .eq("provider", "gmail")
+        .in("id", mailKeys)
+        .limit(PAGE_SIZE);
+      if (read.error || read.count !== mailKeys.length || read.data?.length !== mailKeys.length)
+        throw new TrackerRequestError(
+          "Stored messages changed or are unavailable. Refresh stored messages.",
+          409,
+        );
+      const rows = z.array(storedMailRowSchema).parse(read.data);
+      for (const row of rows) {
+        const expected = mail.find((r) => r.id === row.id);
+        const event = storedMailEvent(row, roadmapId);
+        if (
+          !mailKeys.includes(row.id) ||
+          !event ||
+          !expected ||
+          JSON.stringify(storedMailFactSchema.parse(row)) !== JSON.stringify(expected) ||
+          bodies.has(row.id)
+        )
+          throw new TrackerRequestError("Stored messages changed. Refresh stored messages.", 409);
+        bodies.set(row.id, event);
+      }
+    }
+    const pageEvents = page.map((f) => bodies.get(f.storageKey)!);
     // Recheck both permission and association before releasing any private body.
     const afterAuth = await authorizeTracker(request, organizationId);
     if (afterAuth.user.id !== user.id) throw new TrackerRequestError("Session changed.", 401);
@@ -96,15 +235,26 @@ export async function readRoadmapCorrespondence(request: Request): Promise<Respo
       (recheck.data.relationship_id ?? null) !== relationshipId
     )
       throw new TrackerRequestError("Conversation identity changed. Reopen the roadmap.", 409);
+    if (commsAllowed && !(await canReadStoredMail(afterAuth.client, user.id, organizationId)))
+      throw new TrackerRequestError("Comms access changed. Reopen the roadmap.", 403);
     return Response.json(
       {
         organizationId,
         roadmapId,
         relationshipId,
-        events,
+        events: pageEvents,
         nextCursor,
-        coverage: events.length || after ? "partial" : "unknown",
+        coverage: facts.length || after ? "partial" : "unknown",
         readAt: new Date().toISOString(),
+        sources: {
+          storedGmail: !relationshipId
+            ? "not_linked"
+            : commsAllowed
+              ? "included"
+              : "not_authorized",
+          omittedUnattributed,
+          providerSync: "not_checked",
+        },
       },
       { headers: trackerHeaders },
     );

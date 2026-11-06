@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Correspondence, CorrespondenceReader } from "@/domain/roadmap-correspondence";
+import {
+  conversationIdentity,
+  type ConversationEvent,
+  type CorrespondenceReader,
+} from "@/domain/roadmap-correspondence";
 const channels = {
   email: "Email",
   linkedin: "LinkedIn",
@@ -12,8 +16,7 @@ const kinds = {
   bounce: "Bounced · delivery failed",
   team_outbound_copy: "Team outbound copy · account SENT unverified",
 };
-const identity = (e: Correspondence) =>
-  JSON.stringify([e.channel, e.sourceAccountRef, e.sourceEventId]);
+const identity = conversationIdentity;
 const date = (s: string) => new Date(s).toLocaleString("en-US", { timeZone: "UTC" }) + " UTC";
 export function CanonicalConversation({
   organizationId,
@@ -27,7 +30,7 @@ export function CanonicalConversation({
   const scope = `${organizationId}:${roadmapId}`;
   const [state, setState] = useState<{
     scope: string;
-    events: Correspondence[];
+    events: ConversationEvent[];
     cursor: string | null;
     loading: boolean;
     error: boolean;
@@ -119,11 +122,12 @@ export function CanonicalConversation({
     >
       <header>
         <h2>The conversation</h2>
-        <p>Reviewed roadmap correspondence · partial source coverage</p>
+        <p>Saved roadmap correspondence · partial source coverage</p>
       </header>
       <p className="rm-small">
-        Only approved imports appear here. Missing evidence does not mean no conversation happened.
-        Drafts are unsent; a sent message does not establish delivery or a sale.
+        Reviewed imports and authorized stored Comms email appear here. Missing evidence does not
+        mean no conversation happened. Gmail sync is not checked. Drafts are unsent; a sent message
+        does not establish delivery or a sale.
       </p>
       {state.error ? (
         <div className="rm-empty" role="alert">
@@ -167,7 +171,7 @@ export function CanonicalConversation({
               {date(latest.occurredAt)}
               {latest.timestampPrecision === "approximate" ? " (approximate)" : ""}.{" "}
               {state.cursor
-                ? "More imported messages remain to load."
+                ? "Older saved messages remain to load."
                 : "Broader source history may be incomplete."}
             </p>
           )}
@@ -186,12 +190,20 @@ export function CanonicalConversation({
                 <div className="rm-event-body">
                   <h3>{e.subject || "No subject"}</h3>
                   <p className="rm-small">
-                    {e.bodyRepresentation === "reviewed_redacted_excerpt"
-                      ? "Reviewed excerpt · redactions or quoted-history removal; not the complete original"
-                      : "Reviewed full message text"}
+                    {"source" in e
+                      ? e.bodyRepresentation === "stored_plain_text"
+                        ? "Stored Comms plain text; not a reviewed import"
+                        : "Stored snippet or unavailable body; not a complete reviewed message"
+                      : e.bodyRepresentation === "reviewed_redacted_excerpt"
+                        ? "Reviewed excerpt · redactions or quoted-history removal; not the complete original"
+                        : "Reviewed full message text"}
                   </p>
                   <details>
-                    <summary>Expand full reviewed message</summary>
+                    <summary>
+                      {"source" in e
+                        ? "Expand stored message text"
+                        : "Expand full reviewed message"}
+                    </summary>
                     <pre>{e.bodyText}</pre>
                   </details>
                   <p className="rm-small">
@@ -201,7 +213,9 @@ export function CanonicalConversation({
                     : {e.sourceEventId}
                   </p>
                   <p className="rm-small">
-                    Source verified {date(e.verifiedAt)} · reviewed {date(e.review.reviewedAt)}
+                    {"source" in e
+                      ? `Stored mailbox: ${e.sourceAccountRef}. Provider sync not checked.`
+                      : `Source verified ${date(e.verifiedAt)} · reviewed ${date(e.review.reviewedAt)}`}
                   </p>
                   <a
                     className="rm-source"
@@ -218,14 +232,12 @@ export function CanonicalConversation({
             {!visible.length && !state.loading && (
               <div className="rm-empty">
                 <h3>
-                  {events.length
-                    ? "No matching loaded messages"
-                    : "No approved messages imported yet"}
+                  {events.length ? "No matching loaded messages" : "No saved messages available"}
                 </h3>
                 <p>
                   {events.length
                     ? "Change the filter, search phrase or load more messages."
-                    : "Source history remains unknown. Existing emails and LinkedIn conversations have not been imported into this view."}
+                    : "Source history remains unknown. Only authorized saved correspondence appears in this view."}
                 </p>
               </div>
             )}

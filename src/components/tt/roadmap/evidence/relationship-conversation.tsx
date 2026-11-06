@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink, Search } from "lucide-react";
 import {
   correspondencePageSchema,
-  type Correspondence,
+  conversationIdentity,
+  type ConversationEvent,
+  type CorrespondencePage,
   type CorrespondenceReader,
 } from "@/domain/roadmap-correspondence";
 import { channelLabels } from "@/domain/roadmap-relationship-workspace";
@@ -14,7 +16,7 @@ export interface LoadedConversationPreview {
   text: string;
   at: string;
 }
-const key = (e: Correspondence) => JSON.stringify([e.channel, e.sourceAccountRef, e.sourceEventId]);
+const key = conversationIdentity;
 const day = (s: string) =>
   new Date(s).toLocaleDateString("en-US", {
     month: "short",
@@ -51,10 +53,11 @@ export function RelationshipConversation({
   const requestEpoch = useRef(0);
   const [state, setState] = useState<{
     scope: string;
-    events: Correspondence[];
+    events: ConversationEvent[];
     cursor: string | null;
     loading: boolean;
     error: boolean;
+    page?: Pick<CorrespondencePage, "readAt" | "sources">;
   }>({ scope, events: [], cursor: null, loading: true, error: false });
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState("");
@@ -71,24 +74,51 @@ export function RelationshipConversation({
         (e) =>
           e.organizationId !== organizationId ||
           e.roadmapId !== roadmapId ||
-          (relationshipId && e.relationshipId !== relationshipId),
+          e.relationshipId !== p.relationshipId,
       )
     )
       throw new Error("Conversation scope changed");
     return p;
   }
+  function publishPreview(rows: ConversationEvent[]) {
+    const latest = [...rows]
+      .filter((e) => e.kind !== "draft")
+      .sort(
+        (a, b) =>
+          Date.parse(b.occurredAt) - Date.parse(a.occurredAt) || key(a).localeCompare(key(b)),
+      )[0];
+    notify.current?.(
+      latest
+        ? {
+            organizationId,
+            roadmapId,
+            subject: latest.subject,
+            text: latest.bodyText.replace(/\s+/g, " ").slice(0, 180),
+            at: latest.occurredAt,
+          }
+        : null,
+      roadmapId,
+    );
+  }
+  function refresh() {
+    // Invalidate in-flight pagination synchronously, before the next effect runs.
+    requestEpoch.current++;
+    setState({ scope, events: [], cursor: null, loading: true, error: false });
+    notify.current?.(null, roadmapId);
+    setAttempt((n) => n + 1);
+  }
   useEffect(() => {
     let active = true;
-    requestEpoch.current += 1;
+    const epoch = ++requestEpoch.current;
     setState({ scope, events: [], cursor: null, loading: true, error: false });
     setQuery("");
     setChannel("all");
     notify.current?.(null, roadmapId);
     read(organizationId, roadmapId)
       .then((input) => {
-        if (!active || currentScope.current !== scope) return;
+        if (!active || currentScope.current !== scope || epoch !== requestEpoch.current) return;
         const p = validate(input);
-        const seen = new Map<string, Correspondence>();
+        const seen = new Map<string, ConversationEvent>();
         for (const e of p.events) {
           const old = seen.get(key(e));
           if (old && JSON.stringify(old) !== JSON.stringify(e))
@@ -96,24 +126,18 @@ export function RelationshipConversation({
           seen.set(key(e), e);
         }
         const rows = [...seen.values()];
-        setState({ scope, events: rows, cursor: p.nextCursor, loading: false, error: false });
-        const latest = [...rows]
-          .filter((e) => e.kind !== "draft")
-          .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))[0];
-        if (latest)
-          notify.current?.(
-            {
-              organizationId,
-              roadmapId,
-              subject: latest.subject,
-              text: latest.bodyText.replace(/\s+/g, " ").slice(0, 180),
-              at: latest.occurredAt,
-            },
-            roadmapId,
-          );
+        setState({
+          scope,
+          events: rows,
+          cursor: p.nextCursor,
+          loading: false,
+          error: false,
+          page: p,
+        });
+        publishPreview(rows);
       })
       .catch(() => {
-        if (active && currentScope.current === scope) {
+        if (active && currentScope.current === scope && epoch === requestEpoch.current) {
           setState({ scope, events: [], cursor: null, loading: false, error: true });
           notify.current?.(null, roadmapId);
         }
@@ -146,7 +170,9 @@ export function RelationshipConversation({
         cursor: p.nextCursor,
         loading: false,
         error: false,
+        page: p,
       });
+      publishPreview([...rows.values()]);
     } catch {
       if (currentScope.current === scope && epoch === requestEpoch.current) {
         setState({ scope, events: [], cursor: null, loading: false, error: true });
@@ -169,7 +195,7 @@ export function RelationshipConversation({
     drafts = visible.filter((e) => e.kind === "draft");
   let previousDay = "";
   return (
-    <section className="rw-conversation" aria-label="Reviewed team conversation">
+    <section className="rw-conversation" aria-label="Relationship conversation">
       <div className="rw-message-tools">
         <label>
           <Search size={14} />
@@ -193,24 +219,44 @@ export function RelationshipConversation({
           ))}
           <option value="draft">Unsent prepared copy</option>
         </select>
+        <button
+          type="button"
+          disabled={scoped && state.loading && !events.length}
+          onClick={refresh}
+        >
+          Refresh stored messages
+        </button>
       </div>
       <p className="rw-coverage">
-        Approved imported history · search covers loaded messages only.{" "}
-        {state.cursor
-          ? "More imported messages remain to load."
-          : "Broader source history may be incomplete."}
+        Reviewed imports and authorized stored Comms email · search covers loaded messages only.{" "}
+        {scoped && state.cursor
+          ? "Older stored messages remain to load."
+          : "Broader source history may be incomplete."}{" "}
+        Refreshing reads saved records only; Gmail sync is not checked.
+        {scoped && state.page
+          ? ` Stored records read ${day(state.page.readAt)} at ${time(state.page.readAt)}.`
+          : ""}
+        {scoped && state.page?.sources?.storedGmail === "not_authorized"
+          ? " Stored Comms email is not included with your current access."
+          : ""}
+        {scoped && state.page?.sources?.storedGmail === "not_linked"
+          ? " No canonical relationship is linked."
+          : ""}
+        {scoped && !!state.page?.sources?.omittedUnattributed
+          ? " Some legacy stored mail has no verified mailbox/source attribution and is omitted."
+          : ""}
       </p>
       <div className="rw-message-scroll" aria-live="polite">
         {!scoped || (state.loading && !events.length) ? (
           <p role="status" className="rw-empty">
-            Reading reviewed conversations…
+            Reading saved conversations…
           </p>
         ) : null}
         {scoped && state.error ? (
           <div className="rw-empty" role="alert">
             <h3>Conversation unavailable</h3>
             <p>Previous text has been cleared. Check your current access and try again.</p>
-            <button onClick={() => setAttempt((n) => n + 1)}>Retry conversations</button>
+            <button onClick={refresh}>Retry conversations</button>
           </div>
         ) : null}
         {!state.error &&
@@ -240,26 +286,24 @@ export function RelationshipConversation({
         ) : null}
         {scoped && !state.error && !state.loading && !visible.length ? (
           <div className="rw-empty">
-            <h3>
-              {events.length ? "No matching loaded messages" : "No approved messages imported yet"}
-            </h3>
+            <h3>{events.length ? "No matching loaded messages" : "No saved messages available"}</h3>
             <p>
               {events.length
-                ? "Change the search, channel or load more imported messages."
+                ? "Change the search, channel or load older saved messages."
                 : "Source history remains unknown. Missing evidence does not establish that no outreach happened."}
             </p>
           </div>
         ) : null}
         {scoped && state.cursor && !state.error ? (
           <button className="rw-load-more" disabled={state.loading} onClick={() => void loadMore()}>
-            {state.loading ? "Reading…" : "Load more imported messages"}
+            {state.loading ? "Reading…" : "Load older saved messages"}
           </button>
         ) : null}
       </div>
     </section>
   );
 }
-function MessageBubble({ event: e }: { event: Correspondence }) {
+function MessageBubble({ event: e }: { event: ConversationEvent }) {
   const outgoing = e.kind === "sent";
   return (
     <article
@@ -278,7 +322,7 @@ function MessageBubble({ event: e }: { event: Correspondence }) {
           · {channelLabels[e.channel]} · {labels[e.kind]}
         </p>
         <h3>{e.subject || "No subject"}</h3>
-        <pre>{e.bodyText}</pre>
+        <pre>{e.bodyText || "Message text is not stored. Open the original source."}</pre>
         <footer>
           <time dateTime={e.occurredAt}>
             {e.timestampPrecision === "approximate" ? "Approximately " : ""}
@@ -298,16 +342,24 @@ function MessageBubble({ event: e }: { event: Correspondence }) {
         <details>
           <summary>Message evidence</summary>
           <p>
-            {e.bodyRepresentation === "reviewed_redacted_excerpt"
-              ? "Reviewed excerpt; redactions or quoted-history removal. Not the complete original."
-              : "Reviewed full text; provider-original formatting may differ."}
+            {"source" in e
+              ? e.bodyRepresentation === "stored_plain_text"
+                ? "Stored Comms plain text; not a reviewed import. Formatting, attachments and remote content are not loaded."
+                : e.bodyRepresentation === "stored_snippet"
+                  ? "Stored snippet only; not the complete message or a reviewed import."
+                  : "Message text is unavailable in stored records."
+              : e.bodyRepresentation === "reviewed_redacted_excerpt"
+                ? "Reviewed excerpt; redactions or quoted-history removal. Not the complete original."
+                : "Reviewed full text; provider-original formatting may differ."}
           </p>
           <p>
             {e.identityKind === "provider_id" ? "Provider event" : "Reviewed source receipt"}:{" "}
             {e.sourceEventId}
           </p>
           <p>
-            Verified {day(e.verifiedAt)} · reviewed {day(e.review.reviewedAt)}
+            {"source" in e
+              ? `Stored mailbox: ${e.sourceAccountRef}. ${e.storedAt ? `Observed ${day(e.storedAt)} at ${time(e.storedAt)}.` : "Observation time unknown."}`
+              : `Verified ${day(e.verifiedAt)} · reviewed ${day(e.review.reviewedAt)}`}
           </p>
         </details>
       </div>

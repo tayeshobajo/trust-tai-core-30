@@ -158,7 +158,10 @@ function communication(record: EvidenceRecord) {
                 ? "Draft · unsent"
                 : "History on file",
       tone: imported.latest.kind === "bounce" ? "red" : "neutral",
-      note: "Reviewed imported evidence · broader history incomplete",
+      note:
+        imported.latest.source === "stored_gmail"
+          ? "Stored Comms email · broader history incomplete"
+          : "Reviewed imported evidence · broader history incomplete",
     };
   }
   if (deliveryFailures(record).length)

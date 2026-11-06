@@ -22,7 +22,7 @@ it("shows honest empty state without claiming no outreach", async () => {
       read={vi.fn().mockResolvedValue(page([]))}
     />,
   );
-  expect(await screen.findByText("No approved messages imported yet")).toBeTruthy();
+  expect(await screen.findByText("No saved messages available")).toBeTruthy();
   expect(screen.queryByText("0 sent")).toBeNull();
 });
 it("escapes full message text and distinguishes email, Sales Navigator, draft and bounce", async () => {

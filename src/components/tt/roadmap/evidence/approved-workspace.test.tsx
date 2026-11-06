@@ -57,7 +57,7 @@ it("opens the newly bound SASE card with its canonical readers while retaining u
   expect(readConversations).not.toHaveBeenCalled();
   expect(screen.getAllByRole("button", { name: "View SASE details" })).toHaveLength(1);
   fireEvent.click(screen.getByRole("button", { name: "View SASE details" }));
-  expect(await screen.findByText("No approved messages imported yet")).toBeTruthy();
+  expect(await screen.findByText("No saved messages available")).toBeTruthy();
   expect(readConversations).toHaveBeenCalledWith(org, roadmap.id);
   expect(new URL(window.location.href).searchParams.get("evidence")).toBe("sase");
   expect(screen.getByRole("link", { name: "Open roadmap" }).getAttribute("href")).toBe(

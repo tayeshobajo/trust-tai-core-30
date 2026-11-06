@@ -237,6 +237,9 @@ export function ConversationRoom({
   organizationId,
   focusMessageId,
   historyLoading,
+  hasOlderMessages,
+  olderMessagesLoading,
+  onLoadOlderMessages,
   historyGaps,
   onRetryHistory,
   onBack,
@@ -258,6 +261,9 @@ export function ConversationRoom({
   /** The stored message a deep link named. Opened on, never marked read. */
   focusMessageId?: string;
   historyLoading?: boolean;
+  hasOlderMessages?: boolean;
+  olderMessagesLoading?: boolean;
+  onLoadOlderMessages?: () => void;
   /** Reads that failed. The thread says so rather than looking quiet. */
   historyGaps?: HistoryGap[];
   onRetryHistory?: () => void;
@@ -506,6 +512,19 @@ export function ConversationRoom({
                 </button>
               ) : null}
             </div>
+          ) : null}
+          {hasOlderMessages && onLoadOlderMessages ? (
+            <button
+              type="button"
+              disabled={olderMessagesLoading}
+              onClick={() => {
+                setShowEarlier(true);
+                onLoadOlderMessages();
+              }}
+              className="rounded-md border border-border px-3 py-2 text-[13px]"
+            >
+              {olderMessagesLoading ? "Loading older email…" : "Load older email"}
+            </button>
           ) : null}
           {earlier.length && view === "conversation" ? (
             <button

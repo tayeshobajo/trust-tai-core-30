@@ -124,13 +124,13 @@ function missingColumn(message: string): string | null {
   return null;
 }
 
-/** Every synced message for one relationship, oldest first. */
+/** Most recent bounded slice, rendered oldest first. Use pages for older history. */
 export async function listRelationshipMessages(
   organizationId: ID,
   relationshipId: ID,
   limit = 200,
 ): Promise<StoredMailboxMessage[]> {
-  return readRelationshipMessages(organizationId, relationshipId, limit);
+  return (await readRelationshipMessages(organizationId, relationshipId, limit)).reverse();
 }
 
 /** Read only the explicitly linked stored message, under the same member/RLS scope. */
@@ -148,6 +148,7 @@ async function readRelationshipMessages(
   relationshipId: ID,
   limit: number,
   messageId?: ID,
+  before?: MessageHistoryCursor,
 ): Promise<StoredMailboxMessage[]> {
   let data: MessageRow[] | null = null;
   let index = 0;
@@ -158,22 +159,63 @@ async function readRelationshipMessages(
       .select(COLUMN_VARIANTS[index]!)
       .eq("organization_id", organizationId)
       .eq("relationship_id", relationshipId)
-      .order("occurred_at", { ascending: true })
+      .order("occurred_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(limit);
     if (messageId) request = request.eq("id", messageId);
+    if (before) {
+      if (
+        !/^[0-9a-f-]{36}$/i.test(before.id) ||
+        !/^[0-9T:.+Z-]+$/.test(before.occurredAt) ||
+        !Number.isFinite(Date.parse(before.occurredAt))
+      )
+        throw new Error("Invalid history cursor.");
+      const at = before.occurredAt;
+      request = request.or(`occurred_at.lt.${at},and(occurred_at.eq.${at},id.lt.${before.id})`);
+    }
     const result = await request;
 
     if (!result.error) {
       data = result.data as unknown as MessageRow[];
       break;
     }
-    if (notProvisioned(result.error.message)) return [];
     // A schema error naming a newer column sheds exactly that column and
     // retries; anything else is a real failure.
     const missing = missingColumn(result.error.message);
     if (missing && COLUMN_VARIANTS[index]!.includes(missing)) continue;
+    if (notProvisioned(result.error.message))
+      throw new Error("Stored email history is unavailable.");
     throw new Error(result.error.message);
   }
 
   return ((data ?? []) as MessageRow[]).map(toMessage);
+}
+
+export interface MessageHistoryCursor {
+  occurredAt: string;
+  id: string;
+}
+export interface MessageHistoryPage {
+  messages: StoredMailboxMessage[];
+  next: MessageHistoryCursor | null;
+}
+/** Exact timestamp/id keyset keeps concurrent new arrivals from shifting older pages. */
+export async function listRelationshipMessagePage(
+  organizationId: ID,
+  relationshipId: ID,
+  before?: MessageHistoryCursor,
+): Promise<MessageHistoryPage> {
+  const page = await readRelationshipMessages(
+    organizationId,
+    relationshipId,
+    51,
+    undefined,
+    before,
+  );
+  const visible = page.slice(0, 50);
+  const last = visible.at(-1);
+  return {
+    messages: visible.reverse(),
+    next: page.length > 50 && last ? { occurredAt: last.occurredAt, id: last.id } : null,
+  };
 }

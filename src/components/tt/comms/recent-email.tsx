@@ -64,8 +64,8 @@ export function RecentEmail({
           const result = await gmailSync(identity.organizationId, undefined, connection.id);
           results.push({
             mailbox: result.accountEmail ?? connection.accountEmail ?? "mailbox",
-            ok: true,
-            note: `read ${result.messagesRead} labelled messages, stored ${result.messagesStored}`,
+            ok: !result.partial,
+            note: `${result.partial ? "Partial pass: " : ""}read ${result.messagesRead} messages in approved scope, stored ${result.messagesStored}`,
           });
         } catch (error) {
           results.push({

@@ -1,47 +1,29 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { org, roadmapId, relationshipId } from "@/domain/roadmap-correspondence.fixtures";
-const state = vi.hoisted(() => ({
-  rows: [] as unknown[],
-  count: 0,
-  denied: false,
-  columns: [] as string[],
-}));
+import {
+  event,
+  org,
+  roadmapId,
+  relationshipId,
+  userId,
+  testState,
+  mailRow,
+  reviewedRow,
+  type TestState,
+} from "./roadmap-stored-mail.test-fixtures";
+const state = vi.hoisted(() => ({ current: {} as TestState }));
 vi.mock("./roadmap-tracker-access.server", async (original) => {
-  const m = await original<typeof import("./roadmap-tracker-access.server")>();
+  const source = await original<typeof import("./roadmap-tracker-access.server")>();
+  const { fakeClient } = await import("./roadmap-stored-mail.test-fixtures");
   return {
-    ...m,
+    ...source,
     authorizeTracker: async () => {
-      if (state.denied) throw new m.TrackerRequestError("Denied", 403);
+      const s = state.current;
+      s.authCalls++;
+      if (s.denied || (s.loseAccess && s.authCalls > 1))
+        throw new source.TrackerRequestError("Denied", 403);
       return {
-        user: { id: "caller" },
-        client: {
-          from: (table: string) => {
-            const q = {
-              select: (c: string) => {
-                state.columns.push(c);
-                return q;
-              },
-              eq: () => q,
-              limit: () => q,
-              then: (resolve: (v: unknown) => unknown) =>
-                Promise.resolve(
-                  table === "roadmaps"
-                    ? {
-                        data: [
-                          {
-                            id: "00000000-0000-4000-8000-000000000002",
-                            relationship_id: "00000000-0000-4000-8000-000000000003",
-                          },
-                        ],
-                        count: 1,
-                        error: null,
-                      }
-                    : { data: state.rows, count: state.count, error: null },
-                ).then(resolve),
-            };
-            return q;
-          },
-        },
+        user: { id: s.changeUser && s.authCalls > 1 ? org : userId },
+        client: fakeClient(s),
       };
     },
   };
@@ -49,56 +31,125 @@ vi.mock("./roadmap-tracker-access.server", async (original) => {
 import { readConversationSummary } from "./roadmap-correspondence-summary.server";
 const req = () =>
   new Request(`https://cmd.test/api/public/roadmap/conversation-summary?organizationId=${org}`);
-beforeEach(() => Object.assign(state, { rows: [], count: 0, denied: false, columns: [] }));
-it("empty imports do not become zero sent assertions", async () => {
-  const b = await (await readConversationSummary(req())).json();
-  expect(b.records).toEqual([]);
-  expect(JSON.stringify(b)).not.toContain("sentCount");
-  expect(state.columns.join()).not.toMatch(/body|subject|sourceAccount/);
+const get = async () => {
+  const response = await readConversationSummary(req());
+  return { response, body: await response.json() };
+};
+beforeEach(() => {
+  state.current = testState();
 });
-it("summarizes channel and observed latest activity without reading bodies", async () => {
-  state.rows = [
-    {
-      roadmap_id: roadmapId,
-      relationship_id: relationshipId,
-      channel: "email",
-      kind: "sent",
-      at: "2026-11-01T12:00:00Z",
-    },
-    {
-      roadmap_id: roadmapId,
-      relationship_id: relationshipId,
-      channel: "linkedin_sales_navigator",
-      kind: "received",
-      at: "2026-11-02T12:00:00Z",
-    },
-  ];
-  state.count = 2;
-  const b = await (await readConversationSummary(req())).json();
-  expect(b.records[0]).toMatchObject({
+it("empty history remains unknown, not zero sent", async () => {
+  const { response, body } = await get();
+  expect(response.status).toBe(200);
+  expect(body.records).toEqual([]);
+  expect(JSON.stringify(body)).not.toContain("sentCount");
+});
+it("reports newer stored mail as latest activity without reading or returning content", async () => {
+  state.current.reviewed = [reviewedRow()];
+  state.current.mail = [mailRow()];
+  const { response, body } = await get();
+  expect(response.status).toBe(200);
+  expect(body.records[0]).toMatchObject({
+    roadmapId,
     hasSent: true,
     hasReceived: true,
-    latest: { channel: "linkedin_sales_navigator", kind: "received" },
+    latest: {
+      channel: "email",
+      kind: "received",
+      at: "2026-11-05T12:00:00Z",
+      source: "stored_gmail",
+    },
     coverage: "partial",
   });
+  expect(state.current.reads.map((r) => r.columns).join()).not.toMatch(
+    /body|subject|snippet|headers|attachments|sourceUrl/,
+  );
+  expect(JSON.stringify(body)).not.toMatch(/PRIVATE|team@example|synthetic-1|reviewerId/);
 });
-it("rejects truncated reads and wrong canonical associations", async () => {
-  state.count = 501;
-  expect((await readConversationSummary(req())).status).toBe(503);
-  state.count = 1;
-  state.rows = [
-    {
-      roadmap_id: roadmapId,
-      relationship_id: org,
-      channel: "email",
-      kind: "sent",
-      at: "2026-11-01T12:00:00Z",
-    },
+it("paginates 728 facts so the latest can come from a later metadata page", async () => {
+  state.current.mail = Array.from({ length: 728 }, (_, i) => ({
+    ...mailRow(i + 1),
+    occurred_at: i === 727 ? "2026-11-06T15:00:00Z" : "2026-11-05T12:00:00Z",
+  }));
+  const { response, body } = await get();
+  expect(response.status).toBe(200);
+  expect(body.records[0].latest.at).toBe("2026-11-06T15:00:00Z");
+  expect(
+    state.current.reads.filter((r) => r.table === "comms_messages").map((r) => r.range),
+  ).toEqual([
+    [0, 499],
+    [500, 999],
+  ]);
+});
+it("keeps actual correspondence ahead of a newer unsent draft", async () => {
+  state.current.reviewed = [
+    reviewedRow({ ...event, kind: "draft", occurredAt: "2026-11-06T16:00:00Z" }),
   ];
-  expect((await readConversationSummary(req())).status).toBe(409);
+  state.current.mail = [mailRow()];
+  const { body } = await get();
+  expect(body.records[0].latest.kind).toBe("received");
+  expect(body.records[0].hasSent).toBe(false);
+});
+it("does not expose any stored-mail metadata to Roadmaps-only members", async () => {
+  state.current.memberOverride = "hidden";
+  state.current.reviewed = [reviewedRow()];
+  state.current.mail = [mailRow()];
+  const { body } = await get();
+  expect(body.records[0].latest.source).toBe("reviewed_import");
+  expect(body.sources.storedGmail).toBe("not_authorized");
+  expect(state.current.reads.some((r) => r.table === "comms_messages")).toBe(false);
+});
+it.each(["loseAccess", "loseCommsAccess", "changeMapping", "changeUser"] as const)(
+  "rechecks %s before returning facts",
+  async (key) => {
+    state.current[key] = true;
+    state.current.mail = [mailRow()];
+    const { response, body } = await get();
+    expect([401, 403, 409]).toContain(response.status);
+    expect(body).not.toHaveProperty("records");
+  },
+);
+it("rejects wrong canonical associations", async () => {
+  state.current.reviewed = [reviewedRow({ ...event, relationshipId: org })];
+  expect((await get()).response.status).toBe(409);
+  state.current.reviewed = [];
+  state.current.mail = [{ ...mailRow(), relationship_id: org }];
+  expect((await get()).response.status).toBe(503);
+});
+it("fails visibly when a count changes, a page is truncated, or the metadata budget is exceeded", async () => {
+  state.current.mail = Array.from({ length: 728 }, (_, i) => mailRow(i + 1));
+  state.current.countChanges = true;
+  expect((await get()).response.status).toBe(503);
+  state.current.countChanges = false;
+  state.current.truncateTable = "comms_messages";
+  expect((await get()).response.status).toBe(503);
+  state.current.truncateTable = "";
+  state.current.countOverride = 10001;
+  expect((await get()).response.status).toBe(503);
 });
 it("denied callers cannot read summaries", async () => {
-  state.denied = true;
-  expect((await readConversationSummary(req())).status).toBe(403);
-  expect(state.columns).toEqual([]);
+  state.current.denied = true;
+  expect((await get()).response.status).toBe(403);
+  expect(state.current.reads).toEqual([]);
+});
+it("rejects conflicting copies and retains reviewed-source precedence for exact duplicates", async () => {
+  state.current.mail = [mailRow()];
+  state.current.reviewed = [
+    reviewedRow({
+      ...event,
+      sourceAccountRef: "team@example.test",
+      sourceEventId: "synthetic-1",
+      kind: "received",
+      occurredAt: mailRow().occurred_at,
+    }),
+  ];
+  expect((await get()).body.records[0].latest.source).toBe("reviewed_import");
+  state.current.reviewed[0]!.event_payload.kind = "sent";
+  expect((await get()).response.status).toBe(503);
+});
+it("uses exact canonical relationships only and leaves null mappings unlinked", async () => {
+  state.current.mappings[0]!.relationship_id = null;
+  const { body } = await get();
+  expect(body.records).toEqual([]);
+  expect(state.current.reads.some((r) => r.table === "comms_messages")).toBe(false);
 });

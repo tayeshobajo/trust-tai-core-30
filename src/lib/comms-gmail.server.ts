@@ -1,3 +1,12 @@
+import {
+  fairThreadBatch,
+  readAllSyncMetadata,
+  GoogleReadError,
+  revokedCredential,
+  retryAt,
+  retryAfterAt,
+  retryDue,
+} from "./comms-sync-reliability.server";
 /**
  * Gmail, label-gated read plus human-approved send (server only).
  *
@@ -20,14 +29,11 @@
  * Labeled mail with someone Comms does not track is counted and left
  * unstored; it is surfaced for review through the mailbox import instead.
  *
- * Approved-thread continuity: applying the exact label to a conversation is
- * approval to keep following THAT conversation. Once a thread has been seen
- * through the label gate and stored in `comms_threads`, later replies inside
- * that same `provider_thread_id` are read through Gmail's thread endpoint
- * even when the individual reply does not itself carry the label. Tai never
- * re-labels every future reply. Scope widens to previously approved thread
- * ids only: never by sender, never to a new unlabeled conversation, never to
- * the whole mailbox, and only a labeled message may introduce a new person.
+ * Approved-thread refresh is a bounded discovery path, not authorization to
+ * store every later reply. Each message must still carry the verified
+ * mailbox-specific Trust Tai/Comms label. An older approved thread or a
+ * known sender cannot authorize unrelated or private later messages.
+ * Reviewed historical excerpts use a separate exact-message import path.
  *
  * How it sends: it doesn't, from this module. Consent asks for
  * `gmail.readonly` plus `gmail.send`, and the granted set is persisted
@@ -200,7 +206,11 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
     if (payload.error === "redirect_uri_mismatch") {
       throw new Error(REDIRECT_URI_MISMATCH_MESSAGE);
     }
-    throw new Error(payload.error_description || payload.error || "Google refused that request.");
+    throw new GoogleReadError(
+      payload.error_description || payload.error || "Google refused that request.",
+      response.status,
+      payload.error,
+    );
   }
   return payload;
 }
@@ -269,11 +279,20 @@ export interface GmailPart {
 }
 
 interface GmailMessage {
+  labelIds?: string[];
   id?: string;
   threadId?: string;
   snippet?: string;
   internalDate?: string;
   payload?: GmailPart & { headers?: GmailHeader[] };
+}
+
+/** Fail closed when full message approval metadata is absent or changed. */
+export function messageHasCommsApproval(
+  message: { labelIds?: string[] },
+  labelId: string,
+): boolean {
+  return Boolean(labelId && message.labelIds?.includes(labelId));
 }
 
 export async function gmailGet<T>(path: string, accessToken: string): Promise<T> {
@@ -282,7 +301,12 @@ export async function gmailGet<T>(path: string, accessToken: string): Promise<T>
   });
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`Gmail returned ${response.status}. ${detail.slice(0, 200)}`);
+    throw new GoogleReadError(
+      `Gmail returned ${response.status}. ${detail.slice(0, 200)}`,
+      response.status,
+      undefined,
+      retryAfterAt(response.headers.get("Retry-After")),
+    );
   }
   return (await response.json()) as T;
 }
@@ -647,6 +671,8 @@ export interface SyncResult {
   /** Open drafts closed this pass because the person replied from Gmail. */
   externalSendsReconciled: number;
   lastSyncAt: string;
+  partial?: boolean;
+  completedAt?: string;
 }
 
 export interface RelationshipRow {
@@ -857,70 +883,28 @@ async function loadApprovedThreadIds(input: {
 }): Promise<string[]> {
   const { client, organizationId } = input;
 
-  const { data: threadRows, error: threadError } = await client
-    .from("comms_threads")
-    .select("provider_thread_id, last_message_at")
-    .eq("organization_id", organizationId)
-    .eq("provider", "gmail")
-    .not("provider_thread_id", "is", null)
-    .order("last_message_at", { ascending: false })
-    .limit(APPROVED_THREAD_LOOKBACK_MESSAGES);
-  if (threadError) {
-    console.warn(`[comms-gmail] approved thread read failed: ${threadError.message}`);
-    return [];
-  }
-  const approved = new Set(
-    ((threadRows ?? []) as { provider_thread_id: string | null }[])
-      .map((row) => row.provider_thread_id)
-      .filter((value): value is string => Boolean(value)),
-  );
-  if (approved.size === 0) return [];
-
-  const { data: messageRows, error: messageError } = await client
-    .from("comms_messages")
-    .select("provider_thread_id, occurred_at, provenance")
-    .eq("organization_id", organizationId)
-    .eq("provider", "gmail")
-    .order("occurred_at", { ascending: false })
-    .limit(APPROVED_THREAD_LOOKBACK_MESSAGES);
-  if (messageError) {
-    console.warn(`[comms-gmail] approved thread provenance read failed: ${messageError.message}`);
-    return [];
-  }
-
-  const observed: ObservedThreadRef[] = (
-    (messageRows ?? []) as {
-      provider_thread_id: string | null;
-      occurred_at: string | null;
-      provenance: unknown;
-    }[]
-  )
-    .filter((row) => Boolean(row.provider_thread_id))
-    .map((row) => {
-      const provenance =
-        row.provenance && typeof row.provenance === "object"
-          ? (row.provenance as Record<string, unknown>)
-          : {};
-      const observedBy = typeof provenance["mailbox"] === "string" ? provenance["mailbox"] : null;
-      return {
-        providerThreadId: row.provider_thread_id!,
-        mailbox: observedBy,
-        occurredAt: row.occurred_at ?? "",
-      };
-    });
-
-  return selectApprovedThreadIds({
-    observed,
-    mailbox: input.mailbox,
-    approved,
-    soleMailbox: input.soleMailbox,
-  });
+  const threadRows = await readAllSyncMetadata(client, "comms_threads", organizationId);
+  const messageRows = await readAllSyncMetadata(client, "comms_messages", organizationId);
+  const approved = new Set(threadRows.map((row) => row.provider_thread_id).filter(Boolean));
+  return [
+    ...new Set(
+      messageRows
+        .filter((row) => {
+          if (!row.provider_thread_id || !approved.has(row.provider_thread_id)) return false;
+          const provenance = row.provenance as { mailbox?: unknown } | null;
+          const owner =
+            typeof provenance?.mailbox === "string" ? provenance.mailbox.toLowerCase() : null;
+          return owner ? owner === input.mailbox.toLowerCase() : input.soleMailbox;
+        })
+        .map((row) => row.provider_thread_id!),
+    ),
+  ];
 }
 
 /**
  * Read the approved conversations, one narrow thread call each. A thread
- * Gmail no longer has (404) or refuses is skipped, counted, and never
- * poisons the rest of the mailbox pass.
+ * Gmail no longer has (404) is counted as missing. Authentication, permission
+ * and quota failures stop this pass instead of hammering the remaining threads.
  */
 async function fetchApprovedThreads(input: {
   threadIds: string[];
@@ -938,6 +922,7 @@ async function fetchApprovedThreads(input: {
       refreshed += 1;
       for (const message of thread.messages ?? []) messages.push(message);
     } catch (error) {
+      if (error instanceof GoogleReadError && [401, 403, 429].includes(error.status)) throw error;
       missing += 1;
       const detail = error instanceof Error ? error.message : "unknown";
       console.warn(`[comms-gmail] approved thread ${threadId} could not be refreshed: ${detail}`);
@@ -1336,14 +1321,11 @@ export async function reconcileExternalSends(
 
 /**
  * One incremental pass, shared by the member-invoked read and the scheduled
- * service pass. Label-gated for discovery: only conversations carrying the
- * `Trust Tai/Comms` label are listed, so unlabeled mail, noise or otherwise
- *, never enters the candidate set or consumes the bounded per-pass cap.
- * Already-approved conversations are then refreshed by thread id, so a later
- * reply Gmail did not stamp with the label still arrives. Identity is then
-
- * decided against the tracked relationships: only messages with people
- * already in Comms are stored, idempotently on
+ * service pass. Discovery is label-gated and stored-thread refresh rotates
+ * fairly. Every fetched message is independently checked for the exact
+ * mailbox label before storage; a known thread never grants sharing consent.
+ * Identity is resolved against tracked relationships and the existing
+ * explicitly labelled intake path. Storage remains idempotent on
  * `(organization, provider, provider_message_id)`. Labeled mail with unknown
  * people is counted and left unstored; the mailbox import surfaces those
  * people for a human Add-to-Comms decision. New inbound mail enters the
@@ -1351,7 +1333,7 @@ export async function reconcileExternalSends(
  * Every Supabase call goes through the caller-supplied client, so the
  * member path keeps RLS and the scheduled path stays service-role.
  */
-async function runSyncPass(input: {
+export async function runSyncPass(input: {
   client: SupabaseClient;
   organizationId: string;
   connection: ConnectionRef;
@@ -1361,6 +1343,17 @@ async function runSyncPass(input: {
   const { client, organizationId, connection, accessToken } = input;
   const mailbox = (connection.accountEmail ?? "").toLowerCase();
   const days = clampDays(input.backfillDays);
+  const snapshot = await client
+    .from("comms_integrations")
+    .select("cursor,updated_at,last_sync_at")
+    .eq("id", connection.id)
+    .eq("organization_id", organizationId)
+    .single();
+  if (snapshot.error || !snapshot.data)
+    throw new Error(snapshot.error?.message ?? "Mailbox state unavailable.");
+  const initialCursor = (snapshot.data.cursor ?? {}) as Record<string, unknown>;
+  const initialRevision = snapshot.data.updated_at as string;
+  let labelHasMore = false;
 
   // Relationships first: they are the identity layer that decides what may
   // be stored, and an empty tracked set stays a clean no-op.
@@ -1379,10 +1372,9 @@ async function runSyncPass(input: {
   // exactly how Comms starts. If the label is absent, fail safe with a clear
   // status, never fall back to whole-mailbox reading.
   const ids: string[] = [];
+  const labelId = await resolveCommsLabelId(accessToken);
+  if (!labelId) throw new Error(COMMS_LABEL_MISSING_MESSAGE);
   {
-    const labelId = await resolveCommsLabelId(accessToken);
-    if (!labelId) throw new Error(COMMS_LABEL_MISSING_MESSAGE);
-
     // Labeled mail only, bounded per pass. Pagination continues only while
     // the cap has room; the label keeps noise out, so the cap goes to the
     // threads Tai actually marked for Comms.
@@ -1408,6 +1400,7 @@ async function runSyncPass(input: {
       }
       pageToken = list.nextPageToken || undefined;
     } while (pageToken && ids.length < MAX_MESSAGES_PER_PASS);
+    labelHasMore = Boolean(pageToken);
   }
 
   let messagesRead = 0;
@@ -1431,16 +1424,16 @@ async function runSyncPass(input: {
     labelMessages.push(await gmailGet<GmailMessage>(`/messages/${id}?format=full`, accessToken));
   }
 
-  // Continuity: conversations already approved through the label gate stay
-  // in scope, so a later reply that Gmail did not stamp with the custom
-  // label is still read, through the thread endpoint, for approved thread
-  // ids only, capped and ordered by recency.
-  const { count: mailboxCount } = await client
+  // Refresh previously observed threads fairly, then apply the individual
+  // message label gate again. Thread membership alone is not sharing consent.
+  const { count: mailboxCount, error: mailboxCountError } = await client
     .from("comms_integrations")
     .select("id", { count: "exact", head: true })
     .eq("organization_id", organizationId)
     .eq("provider", "gmail");
-  const approvedThreadIds = mailbox
+  if (mailboxCountError || mailboxCount === null)
+    throw new Error("Mailbox ownership count unavailable.");
+  const allApprovedThreadIds = mailbox
     ? await loadApprovedThreadIds({
         client,
         organizationId,
@@ -1448,6 +1441,9 @@ async function runSyncPass(input: {
         soleMailbox: (mailboxCount ?? 1) <= 1,
       })
     : [];
+  const rotation = initialCursor["approved_rotation"] as { after?: string } | undefined;
+  const batch = fairThreadBatch(allApprovedThreadIds, rotation?.after ?? null);
+  const approvedThreadIds = batch.ids;
   const refresh = await fetchApprovedThreads({ threadIds: approvedThreadIds, accessToken });
 
   // Only a message that itself carried the label may bring a NEW person
@@ -1458,6 +1454,9 @@ async function runSyncPass(input: {
   );
 
   for (const raw of mergeFetchedMessages(labelMessages, refresh.messages)) {
+    // Gmail list results are candidates, not durable approval: the full
+    // message must still carry this mailbox's exact label at read time.
+    if (!messageHasCommsApproval(raw, labelId)) continue;
     messagesRead += 1;
     const message = normalize(raw, mailbox);
     if (!message) continue;
@@ -1691,11 +1690,12 @@ async function runSyncPass(input: {
   // Exceptions carry across passes: an unresolved ambiguity stays visible,
   // a person who came in this pass leaves the queue, and a repeated sync of
   // the same message replaces rather than duplicates its entry.
-  const { data: cursorRow } = await client
+  const { data: cursorRow, error: cursorReadError } = await client
     .from("comms_integrations")
     .select("cursor")
     .eq("id", connection.id)
     .maybeSingle();
+  if (cursorReadError) throw new Error(cursorReadError.message);
   const priorCursor =
     (cursorRow as { cursor?: unknown } | null)?.cursor &&
     typeof (cursorRow as { cursor?: unknown }).cursor === "object"
@@ -1710,11 +1710,20 @@ async function runSyncPass(input: {
   // The persisted ingestion summary the status surface reads back. Counts
   // only, never content, so the card can report the last pass truthfully
   // without touching the mailbox again.
+  const partial = refresh.missing > 0 || labelHasMore || batch.total > batch.ids.length;
+  const finishedAt = new Date().toISOString();
   const cursor = {
-    last_pass_at: nowIso,
+    ...priorCursor,
+    retry: null,
+    approved_rotation: { after: batch.next },
+    last_pass_at: finishedAt,
     backfill_days: days,
     last_run: {
-      at: nowIso,
+      at: finishedAt,
+      outcome: partial ? "partial" : "success",
+      label_has_more: labelHasMore,
+      approved_threads_total: batch.total,
+      approved_threads_deferred: Math.max(0, batch.total - batch.ids.length),
       messages_read: messagesRead,
       messages_stored: messagesStored,
       outcome_events_recorded: outcomeEventsRecorded,
@@ -1731,16 +1740,23 @@ async function runSyncPass(input: {
     },
     intake_exceptions: exceptions.map(intakeExceptionToJson),
   };
-  const { error: cursorError } = await client
+  const { data: savedCursor, error: cursorError } = await client
     .from("comms_integrations")
     .update({
       cursor,
       status: "connected",
-      last_error: null,
-      last_sync_at: nowIso,
-      updated_at: nowIso,
+      last_error: partial
+        ? "Partial read: some labelled messages or approved threads remain unread."
+        : null,
+      ...(partial ? {} : { last_sync_at: finishedAt }),
+      updated_at: finishedAt,
     })
-    .eq("id", connection.id);
+    .eq("id", connection.id)
+    .eq("organization_id", organizationId)
+    .eq("updated_at", initialRevision)
+    .select("id");
+  if (!cursorError && !savedCursor?.length)
+    throw new Error("Mailbox changed during sync; progress not advanced. Retry required.");
   if (cursorError) throw new Error(cursorError.message);
 
   return {
@@ -1754,7 +1770,9 @@ async function runSyncPass(input: {
     eventsEmitted,
     draftsVerified,
     externalSendsReconciled,
-    lastSyncAt: nowIso,
+    lastSyncAt: partial ? (snapshot.data.last_sync_at ?? "") : finishedAt,
+    partial,
+    completedAt: finishedAt,
   };
 }
 
@@ -1793,7 +1811,11 @@ export async function syncGmail(input: {
     const message = error instanceof Error ? error.message : "Google refused the stored access.";
     await client
       .from("comms_integrations")
-      .update({ status: "revoked", last_error: message, updated_at: new Date().toISOString() })
+      .update({
+        status: revokedCredential(error) ? "revoked" : "error",
+        last_error: message,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", connection.id);
     throw new Error(message);
   }
@@ -1852,6 +1874,8 @@ export interface ScheduledSyncReport {
   mailboxes: number;
   synced: number;
   failed: number;
+  partial: number;
+  deferred: number;
   results: ScheduledMailboxResult[];
 }
 
@@ -1869,19 +1893,27 @@ export async function syncAllConnectedMailboxes(input?: {
 
   const { data: rows, error } = await client
     .from("comms_integrations")
-    .select("id, organization_id, account_email")
+    .select("id, organization_id, account_email, status, cursor, updated_at")
     .eq("provider", "gmail")
-    .eq("status", "connected");
+    .in("status", ["connected", "error"]);
   if (error) throw new Error(error.message);
 
   const days = clampDays(input?.backfillDays ?? SCHEDULED_BACKFILL_DAYS);
   const results: ScheduledMailboxResult[] = [];
+  let deferred = 0;
 
   for (const row of (rows ?? []) as {
     id: string;
     organization_id: string;
     account_email: string | null;
+    status: string;
+    cursor: Record<string, unknown>;
+    updated_at: string;
   }[]) {
+    if (!retryDue(row.status, row.cursor ?? {})) {
+      deferred += 1;
+      continue;
+    }
     const base: ScheduledMailboxResult = {
       organizationId: row.organization_id,
       ...(row.account_email ? { accountEmail: row.account_email } : {}),
@@ -1905,11 +1937,18 @@ export async function syncAllConnectedMailboxes(input?: {
           refreshError instanceof Error
             ? refreshError.message
             : "Google refused the stored access.";
-        await client
-          .from("comms_integrations")
-          .update({ status: "revoked", last_error: message, updated_at: new Date().toISOString() })
-          .eq("id", row.id);
-        throw new Error(message);
+        if (revokedCredential(refreshError)) {
+          await client
+            .from("comms_integrations")
+            .update({
+              status: "revoked",
+              last_error: message,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", row.id)
+            .eq("updated_at", row.updated_at);
+        }
+        throw refreshError;
       }
 
       const result = await runSyncPass({
@@ -1919,20 +1958,42 @@ export async function syncAllConnectedMailboxes(input?: {
         accessToken,
         backfillDays: days,
       });
-      results.push({ ...base, ok: true, result });
+      results.push({ ...base, ok: !result.partial, result });
     } catch (mailboxError) {
       const message = mailboxError instanceof Error ? mailboxError.message : "That read failed.";
       // Revoked is already recorded above; every other failure lands here.
       const { data: current } = await client
         .from("comms_integrations")
-        .select("status")
+        .select("status,cursor,updated_at")
         .eq("id", row.id)
         .maybeSingle();
       if ((current as { status?: string } | null)?.status !== "revoked") {
-        await client
-          .from("comms_integrations")
-          .update({ status: "error", last_error: message, updated_at: new Date().toISOString() })
-          .eq("id", row.id);
+        const state = current as { cursor?: Record<string, unknown>; updated_at?: string } | null;
+        const previous = (state?.cursor?.["retry"] ?? {}) as { failures?: number };
+        const failures = (previous.failures ?? 0) + 1;
+        if (state?.updated_at === row.updated_at) {
+          await client
+            .from("comms_integrations")
+            .update({
+              status: "error",
+              last_error: message,
+              cursor: {
+                ...(state.cursor ?? {}),
+                retry: {
+                  failures,
+                  next_at: retryAt(
+                    failures,
+                    Date.now(),
+                    mailboxError instanceof GoogleReadError ? mailboxError.retryAfterAt : undefined,
+                  ),
+                },
+                last_run: { at: new Date().toISOString(), outcome: "failed" },
+              },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", row.id)
+            .eq("updated_at", row.updated_at);
+        }
       }
       results.push({ ...base, error: message });
     }
@@ -1957,9 +2018,11 @@ export async function syncAllConnectedMailboxes(input?: {
   }
 
   return {
-    mailboxes: results.length,
+    mailboxes: (rows ?? []).length,
+    deferred,
     synced: results.filter((entry) => entry.ok).length,
-    failed: results.filter((entry) => !entry.ok).length,
+    failed: results.filter((entry) => !entry.ok && !entry.result?.partial).length,
+    partial: results.filter((entry) => entry.result?.partial).length,
     results,
   };
 }

@@ -15,7 +15,9 @@ export function correspondenceReader(userId: string): CorrespondenceReader {
       cache: "no-store",
     });
     if (!response.ok)
-      throw new Error("Reviewed conversations are unavailable. Coverage remains unknown.");
+      throw new Error(
+        "Saved conversations are unavailable or changed. Refresh to recheck access and stored history.",
+      );
     const page = correspondencePageSchema.parse(await response.json());
     const current = await supabase.auth.getSession();
     if (

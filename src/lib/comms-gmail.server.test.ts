@@ -649,7 +649,7 @@ function observed(
   return { providerThreadId, mailbox, occurredAt };
 }
 
-describe("approved-thread continuity, the label approves the conversation", () => {
+describe("approved-thread discovery, each message still requires approval", () => {
   it("A: a thread discovered through the label becomes an approved watched conversation", () => {
     // The discovery pass stored thread-1; it is now approved for refresh.
     const ids = selectApprovedThreadIds({
@@ -765,5 +765,23 @@ describe("approved-thread continuity, the label approves the conversation", () =
     });
     expect(ids).toHaveLength(MAX_APPROVED_THREADS_PER_PASS);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+import { messageHasCommsApproval } from "./comms-gmail.server";
+describe("individual message sharing approval", () => {
+  it("requires the exact label on each incoming or outgoing message", () => {
+    expect(
+      messageHasCommsApproval({ labelIds: ["INBOX", "Label_account_1"] }, "Label_account_1"),
+    ).toBe(true);
+    expect(
+      messageHasCommsApproval({ labelIds: ["SENT", "Label_account_1"] }, "Label_account_1"),
+    ).toBe(true);
+    expect(messageHasCommsApproval({ labelIds: ["INBOX"] }, "Label_account_1")).toBe(false);
+    expect(messageHasCommsApproval({}, "Label_account_1")).toBe(false);
+    expect(messageHasCommsApproval({ labelIds: ["Label_account_2"] }, "Label_account_1")).toBe(
+      false,
+    );
+    expect(messageHasCommsApproval({ labelIds: [""] }, "")).toBe(false);
   });
 });

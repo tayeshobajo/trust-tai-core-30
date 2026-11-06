@@ -31,7 +31,8 @@ export function latestRelationshipActivity(r: EvidenceRecord) {
       at: imported.at,
       channel: imported.channel,
       kind: imported.kind,
-      scope: "approved imported history",
+      scope:
+        imported.source === "stored_gmail" ? "stored Comms email" : "approved imported history",
     };
   if (supplied)
     return {

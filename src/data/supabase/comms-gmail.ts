@@ -98,6 +98,8 @@ export interface GmailSyncResult {
   /** Sent drafts the mailbox proved this pass. */
   draftsVerified?: number;
   lastSyncAt: string;
+  partial?: boolean;
+  completedAt?: string;
 }
 
 /**
@@ -199,7 +201,6 @@ export interface GmailSendOutcome {
   requiredScope?: string;
   note?: string;
 }
-
 
 /**
  * Send one draft through Gmail. Human-triggered only; idempotent per draft, * a double click or a retry replays the recorded outcome instead of sending
