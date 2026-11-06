@@ -1,6 +1,9 @@
 import { ResearchDiagnosticError } from "./studio-research-diagnostics.server";
 import { authorizeStudioResearch } from "./studio-research-access.server";
-import { createStudioTransport } from "./studio-research-transport.server.mjs";
+import {
+  createStudioTransport,
+  studioTransportDiagnostic,
+} from "./studio-research-transport.server.mjs";
 import { createResearchStore } from "./studio-research-store.server";
 import {
   startStudioResearch,
@@ -57,8 +60,8 @@ export async function researchConnection(request: Request, org: string) {
       agentStatus: agent.status,
       dispatchEnabled: process.env["PAPERCLIP_STUDIO_RESEARCH_ENABLED"] === "true",
     };
-  } catch {
-    return { status: "identity_unverified" as const };
+  } catch (error) {
+    return { status: "identity_unverified" as const, diagnostic: studioTransportDiagnostic(error) };
   }
 }
 export async function researchHistory(request: Request, org: string) {

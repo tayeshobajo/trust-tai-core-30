@@ -4,36 +4,62 @@ const ORIGIN = 'https://agents.trusttai.com';
 const AGENT = '5cbc9418-0ff9-4f1c-a807-c0632e26a538';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
+const diagnosticCodes = new Set([
+  'transport_configuration', 'network_failure', 'timeout', 'response_read_failed',
+  'http_401', 'http_403', 'http_404', 'http_429', 'http_client_error', 'http_server_error', 'http_other',
+  'response_format', 'response_empty', 'response_too_large', 'response_json',
+  'identity_mismatch', 'scope_mismatch', 'identity_shape', 'transport_unknown',
+]);
+class TransportDiagnosticError extends Error {
+  constructor(code) { super('Paperclip verification failed.'); this.code = code; }
+}
+export function studioTransportDiagnostic(error) {
+  return error instanceof TransportDiagnosticError && diagnosticCodes.has(error.code)
+    ? error.code : 'transport_unknown';
+}
 export function createStudioTransport({ origin, key, companyId, projectId, agentId }, fetcher = fetch) {
   if (origin !== ORIGIN || agentId !== AGENT || !uuid(companyId) || !uuid(projectId) ||
       typeof key !== 'string' || !key.trim() || /[\r\n]/.test(key)) {
-    throw new Error('Studio Paperclip binding is incomplete or invalid.');
+    throw new TransportDiagnosticError('transport_configuration');
   }
   async function request(path, method = 'GET', body) {
     // Single attempt: a failed POST may already have created a task.
-    const response = await fetcher(`${ORIGIN}/api${path}`, {
+    let response;
+    try { response = await fetcher(`${ORIGIN}/api${path}`, {
       method, redirect: 'error', signal: AbortSignal.timeout(15000),
       headers: { Authorization: `Bearer ${key}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    if (!response.ok) throw new Error(`Paperclip request failed (${response.status}).`);
-    if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Paperclip returned an unexpected response.');
+    } catch (error) {
+      throw new TransportDiagnosticError(error?.name === 'TimeoutError' ? 'timeout' : 'network_failure');
+    }
+    if (!response.ok) {
+      const status = response.status;
+      const code = [401,403,404,429].includes(status) ? `http_${status}`
+        : status >= 500 && status <= 599 ? 'http_server_error'
+        : status >= 400 && status <= 499 ? 'http_client_error' : 'http_other';
+      throw new TransportDiagnosticError(code);
+    }
+    if (!response.headers.get('content-type')?.includes('application/json')) throw new TransportDiagnosticError('response_format');
     const reader = response.body?.getReader();
-    if (!reader) throw new Error('Paperclip returned an empty response.');
+    if (!reader) throw new TransportDiagnosticError('response_empty');
     const chunks = []; let size = 0;
     try {
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         size += value.byteLength;
-        if (size > 1000000) { await reader.cancel(); throw new Error('Paperclip response exceeds limit.'); }
+        if (size > 1000000) { await reader.cancel(); throw new TransportDiagnosticError('response_too_large'); }
         chunks.push(value);
       }
+    } catch (error) {
+      if (error instanceof TransportDiagnosticError) throw error;
+      throw new TransportDiagnosticError('response_read_failed');
     } finally { reader.releaseLock(); }
     const bytes = new Uint8Array(size); let offset = 0;
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
     try { return JSON.parse(new TextDecoder().decode(bytes)); }
-    catch { throw new Error('Paperclip returned invalid JSON.'); }
+    catch { throw new TransportDiagnosticError('response_json'); }
   }
   function verifyIssue(issue, expectedId) {
     if (!issue || !uuid(issue.id) || (expectedId && issue.id !== expectedId) ||
@@ -49,13 +75,13 @@ export function createStudioTransport({ origin, key, companyId, projectId, agent
       // Do not use the broader /agents/:id runtime/configuration endpoint.
       const agent = await request('/agents/me');
       const scope = agent?.keyScope;
-      if (agent?.id !== agentId || agent.companyId !== companyId ||
-          scope?.kind !== 'task_bridge' || scope.projectId !== projectId ||
+      if (agent?.id !== agentId || agent.companyId !== companyId)
+        throw new TransportDiagnosticError('identity_mismatch');
+      if (scope?.kind !== 'task_bridge' || scope.projectId !== projectId ||
           scope.parentIssueId || scope.parentIssueIds?.length || scope.projectIds?.length ||
-          scope.allowedAssigneeAgentIds?.length !== 1 || scope.allowedAssigneeAgentIds[0] !== agentId ||
-          typeof agent.status !== 'string') {
-        throw new Error('Paperclip credential scope or identity mismatch.');
-      }
+          scope.allowedAssigneeAgentIds?.length !== 1 || scope.allowedAssigneeAgentIds[0] !== agentId)
+        throw new TransportDiagnosticError('scope_mismatch');
+      if (typeof agent.status !== 'string') throw new TransportDiagnosticError('identity_shape');
       return { id: agent.id, companyId: agent.companyId, status: agent.status };
     },
     async createIssue(input) {

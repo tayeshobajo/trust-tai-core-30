@@ -18,7 +18,8 @@ vi.mock("./studio-research-access.server", () => ({
     return { user: { id: "user" }, client: { from: () => q } };
   },
 }));
-vi.mock("./studio-research-transport.server.mjs", () => ({
+vi.mock("./studio-research-transport.server.mjs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./studio-research-transport.server.mjs")>()),
   createStudioTransport: () => ({
     readAgent: f.readAgent,
     createIssue: f.createIssue,
@@ -75,7 +76,10 @@ it("fails closed when key is missing", async () => {
 });
 it("never returns transport error details", async () => {
   f.readAgent.mockRejectedValue(Error("sensitive upstream response"));
-  expect(await researchConnection(req, org)).toEqual({ status: "identity_unverified" });
+  expect(await researchConnection(req, org)).toEqual({
+    status: "identity_unverified",
+    diagnostic: "transport_unknown",
+  });
 });
 it("disabled dispatch performs no agent request or durable claim", async () => {
   expect(

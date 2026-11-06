@@ -71,7 +71,7 @@ export function ResearchPanel({ organizationId }: { organizationId: string }) {
         <p role="status">
           {connection.status === "verified"
             ? `Scoped connection verified. Agent: ${connection.agentStatus}. ${connection.dispatchEnabled ? "Manual dispatch enabled." : "Manual dispatch is not enabled."}`
-            : `Research connection is unavailable. No task was started. Check: ${connection.status === "unavailable" ? connection.diagnostic : connection.status}.`}
+            : `Research connection is unavailable. No task was started. Check: ${"diagnostic" in connection ? connection.diagnostic : connection.status}.`}
         </p>
       )}
       <label htmlFor="research-topic">Public research topic</label>

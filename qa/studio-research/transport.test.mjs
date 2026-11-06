@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStudioTransport } from '../../src/lib/studio-research-transport.server.mjs';
+import { createStudioTransport, studioTransportDiagnostic } from '../../src/lib/studio-research-transport.server.mjs';
 const config = { origin:'https://agents.trusttai.com', key:'fixture-only', companyId:'11111111-1111-4111-8111-111111111111', projectId:'22222222-2222-4222-8222-222222222222', agentId:'5cbc9418-0ff9-4f1c-a807-c0632e26a538' };
 const issue = {id:'33333333-3333-4333-8333-333333333333',companyId:config.companyId,projectId:config.projectId,assigneeAgentId:config.agentId,status:'done'};
 const input = {companyId:config.companyId,assigneeAgentId:config.agentId,title:'Research public sources',description:'Fixture only',correlationId:'fixture-request'};
@@ -40,4 +40,32 @@ test('retrieves only bound issue/comments and rejects foreign comment provenance
 test('rejects an oversized comment collection instead of accepting partial results', async () => {
   let calls=0; const client=createStudioTransport(config,async ()=>++calls===1?json(issue):json(Array(101).fill({})));
   await assert.rejects(client.readIssue(config.companyId,issue.id));
+});
+
+test('reports bounded transport and identity categories without raw responses or secrets', async () => {
+  const cases = [
+    [async()=>{throw new Error('private response')}, 'network_failure'],
+    [async()=>{throw new DOMException('private', 'TimeoutError')}, 'timeout'],
+    ...[401,403,404,429].map(status=>[async()=>new Response('private body',{status}),`http_${status}`]),
+    [async()=>new Response('private body',{status:503}),'http_server_error'],
+    [async()=>new Response('private body',{status:418}),'http_client_error'],
+    [async()=>new Response('private body'),'response_format'],
+    [async()=>new Response('private body',{headers:{'content-type':'application/json'}}),'response_json'],
+    [async()=>json({...identity,id:issue.id}),'identity_mismatch'],
+    [async()=>json({...identity,keyScope:{kind:'standard'}}),'scope_mismatch'],
+    [async()=>json({...identity,status:null}),'identity_shape'],
+  ];
+  for(const [fetcher, code] of cases) {
+    let calls=0;
+    const client=createStudioTransport(config,async(...args)=>{calls++;return fetcher(...args)});
+    await assert.rejects(client.readAgent(config.agentId),error=>{
+      assert.equal(studioTransportDiagnostic(error),code);
+      assert.equal(error.message,'Paperclip verification failed.');
+      assert.equal(error.cause,undefined);
+      return true;
+    });
+    assert.equal(calls,1);
+  }
+  assert.equal(studioTransportDiagnostic({code:'http_403',message:'private'}),'transport_unknown');
+  assert.equal(studioTransportDiagnostic(new Error('private')),'transport_unknown');
 });
