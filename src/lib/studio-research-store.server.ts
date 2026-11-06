@@ -42,7 +42,7 @@ export function createResearchStore(userId: string, key: string, fetcher: typeof
       `${trustTaiSupabaseUrl()}/rest/v1/studio_research_requests?${params}`,
       {
         method,
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(10000),
         headers: {
           apikey: key,
@@ -53,6 +53,9 @@ export function createResearchStore(userId: string, key: string, fetcher: typeof
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       },
     );
+    // Cloudflare supports manual mode; never inspect or follow Location.
+    if (response.status >= 300 && response.status <= 399)
+      throw new Error("Research storage redirect rejected.");
     if (response.status === 409 && method === "POST") return null;
     if (!response.ok) throw new Error("Research storage is unavailable.");
     return z.array(rowSchema).parse(await response.json());

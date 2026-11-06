@@ -75,5 +75,36 @@ it("opaque service key is sent only as apikey to the fixed backend", async () =>
     /^https:\/\/okydosoacqdnursmmenf.supabase.co\/rest\/v1\/studio_research_requests/,
   );
   expect(f.calls[0].init.headers.Authorization).toBeUndefined();
-  expect(f.calls[0].init.redirect).toBe("error");
+  expect(f.calls[0].init.redirect).toBe("manual");
+});
+
+it("rejects all same-origin and cross-origin redirects without reading headers or retrying", async () => {
+  for (const target of [
+    "https://okydosoacqdnursmmenf.supabase.co/other",
+    "https://example.invalid/other",
+  ]) {
+    for (let status = 300; status <= 399; status++) {
+      const fetcher = vi.fn(async (_url: any, init: any) => {
+        expect(init.redirect).toBe("manual");
+        const response = new Response(null, { status, headers: { Location: target } });
+        return new Proxy(response, {
+          get(value, prop) {
+            if (prop === "headers" || prop === "body" || prop === "ok")
+              throw Error("Must not inspect redirect");
+            return Reflect.get(value, prop, value);
+          },
+        });
+      });
+      const store = createResearchStore(id, "fixture", fetcher);
+      await expect(store.list(org)).rejects.toThrow("Research storage redirect rejected.");
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    }
+  }
+});
+it("does not retry a redirected storage write", async () => {
+  const fetcher = vi.fn(async () => new Response(null, { status: 307 }));
+  await expect(
+    createResearchStore(id, "fixture", fetcher).reserve(input, company, agent),
+  ).rejects.toThrow("Research storage redirect rejected.");
+  expect(fetcher).toHaveBeenCalledTimes(1);
 });
