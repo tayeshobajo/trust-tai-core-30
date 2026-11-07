@@ -8,6 +8,7 @@ const harness = vi.hoisted(() => ({
 }));
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({
+    handler: (handler: () => unknown) => handler,
     inputValidator: (parse: (v: unknown) => unknown) => ({
       handler:
         (handler: (x: { data: unknown }) => unknown) =>

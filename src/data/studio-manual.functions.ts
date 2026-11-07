@@ -11,3 +11,11 @@ export const studioManualAction = createServerFn({ method: "POST" })
       return { status: "unavailable", reason: "request_unconfirmed" };
     }
   });
+
+/** Temporary read-only probe through the same registered server-function request context. */
+export const studioManualOriginDiagnostic = createServerFn({ method: "GET" }).handler(async () => {
+  const { getRequest, setResponseHeader } = await import("@tanstack/react-start/server");
+  const { studioPreviewOriginDiagnostic } = await import("@/lib/studio-research-preview-origin.server");
+  setResponseHeader("Cache-Control", "no-store");
+  return studioPreviewOriginDiagnostic(getRequest());
+});

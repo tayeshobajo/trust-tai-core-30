@@ -7,6 +7,7 @@ import { makeStudioRemoteActions } from "./studio-research-remote-actions.server
 import type { createStudioCoordinatorHandlers } from "./studio-research-coordinator-studio.server";
 import type { prepareManualResearchRequest } from "./studio-research-manual-intake.server";
 import { COORDINATOR } from "./studio-research-coordinator-contracts";
+import { classifyStudioPreviewOrigin } from "./studio-research-preview-origin.server";
 
 type Application = {
   issuer: ReturnType<typeof createStudioCoordinatorHandlers>;
@@ -114,15 +115,28 @@ export function makeStudioApplication(
     return { status: "ok", view: parsed };
   };
 }
-// Registered endpoints load the explicit server-only preview assembly; absent/invalid config stays closed.
-export async function studioManualApplication(request: Request, raw: unknown): Promise<ManualReply> {
+// Reject other deployments before importing startup or reading any runtime secrets.
+export async function studioManualApplication(
+  request: Request,
+  raw: unknown,
+): Promise<ManualReply> {
+  if (classifyStudioPreviewOrigin(request) !== "preview")
+    return { status: "unavailable", reason: "runtime_not_configured" };
   const { loadStudioPreviewAssembly } = await import("./studio-research-preview-startup.server");
   const configured = loadStudioPreviewAssembly();
   return (configured?.application ?? makeStudioApplication())(request, raw);
 }
 export async function studioReceiptApplication(request: Request): Promise<Response> {
+  if (classifyStudioPreviewOrigin(request) !== "preview")
+    return Response.json(
+      { error: "runtime_unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   const { loadStudioPreviewAssembly } = await import("./studio-research-preview-startup.server");
   const configured = loadStudioPreviewAssembly();
   if (configured) return configured.receiptHandler(request);
-  return Response.json({error:"runtime_unavailable"},{status:503,headers:{"Cache-Control":"no-store"}});
+  return Response.json(
+    { error: "runtime_unavailable" },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
+  );
 }
