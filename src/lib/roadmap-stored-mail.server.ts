@@ -4,6 +4,7 @@ import { WORKSPACE_ROLES } from "@/domain/access";
 import {
   conversationIdentity,
   correspondenceSchema,
+  MAX_STORED_MESSAGE_TEXT_LENGTH,
   storedMailCorrespondenceSchema,
   type ConversationEvent,
 } from "@/domain/roadmap-correspondence";
@@ -140,8 +141,10 @@ export const storedMailFactSchema = z.object({
 });
 export const storedMailRowSchema = storedMailFactSchema.extend({
   subject: z.string().max(1000).nullable(),
-  body_text: z.string().max(100000).nullable(),
-  snippet: z.string().max(100000).nullable(),
+  // Stored mail can contain long quoted history. Bound the displayed excerpt
+  // below instead of rejecting every message on this page for one long body.
+  body_text: z.string().nullable(),
+  snippet: z.string().nullable(),
 });
 /** No headers, HTML, attachments, credentials or unrelated provenance fields. */
 export const STORED_MAIL_FACT_COLUMNS =
@@ -171,17 +174,24 @@ export function storedMailFact(row: z.infer<typeof storedMailFactSchema>, roadma
 export function storedMailEvent(row: z.infer<typeof storedMailRowSchema>, roadmapId: string) {
   const fact = storedMailFact(row, roadmapId);
   if (!fact) return null;
+  const text = row.body_text || row.snippet || "";
+  const truncated = text.length > MAX_STORED_MESSAGE_TEXT_LENGTH;
+  let bodyText = text.slice(0, MAX_STORED_MESSAGE_TEXT_LENGTH);
+  // JavaScript limits are UTF-16 code units; do not cut a surrogate pair in half.
+  if (truncated && /[\uD800-\uDBFF]$/.test(bodyText)) bodyText = bodyText.slice(0, -1);
   return storedMailCorrespondenceSchema.parse({
     ...fact,
     sourceUrl: `https://mail.google.com/mail/?authuser=${encodeURIComponent(fact.sourceAccountRef)}#all/${encodeURIComponent(fact.sourceEventId)}`,
     storedAt: row.fetched_at ?? row.sent_at,
     subject: row.subject ?? "",
-    bodyText: row.body_text || row.snippet || "",
-    bodyRepresentation: row.body_text
-      ? "stored_plain_text"
-      : row.snippet
-        ? "stored_snippet"
-        : "unavailable",
+    bodyText,
+    bodyRepresentation: truncated
+      ? "stored_truncated_excerpt"
+      : row.body_text
+        ? "stored_plain_text"
+        : row.snippet
+          ? "stored_snippet"
+          : "unavailable",
   });
 }
 type MergeFact = Pick<

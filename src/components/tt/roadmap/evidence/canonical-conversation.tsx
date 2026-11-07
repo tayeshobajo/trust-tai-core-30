@@ -193,7 +193,9 @@ export function CanonicalConversation({
                     {"source" in e
                       ? e.bodyRepresentation === "stored_plain_text"
                         ? "Stored Comms plain text; not a reviewed import"
-                        : "Stored snippet or unavailable body; not a complete reviewed message"
+                        : e.bodyRepresentation === "stored_truncated_excerpt"
+                          ? "Stored text excerpt, truncated for this view. Open the original source for the complete message."
+                          : "Stored snippet or unavailable body; not a complete reviewed message"
                       : e.bodyRepresentation === "reviewed_redacted_excerpt"
                         ? "Reviewed excerpt · redactions or quoted-history removal; not the complete original"
                         : "Reviewed full message text"}

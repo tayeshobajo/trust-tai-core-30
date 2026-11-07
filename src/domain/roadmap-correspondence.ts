@@ -53,6 +53,7 @@ export const correspondenceSchema = z
 export type Correspondence = z.infer<typeof correspondenceSchema>;
 
 /** Stored Comms mail is not a reviewed import. Never manufacture review attestations. */
+export const MAX_STORED_MESSAGE_TEXT_LENGTH = 100000;
 export const storedMailCorrespondenceSchema = z
   .object({
     organizationId: uuid,
@@ -69,8 +70,13 @@ export const storedMailCorrespondenceSchema = z
     timestampPrecision: z.literal("exact"),
     storedAt: timestamp.nullable(),
     subject: z.string().max(1000),
-    bodyText: z.string().max(100000),
-    bodyRepresentation: z.enum(["stored_plain_text", "stored_snippet", "unavailable"]),
+    bodyText: z.string().max(MAX_STORED_MESSAGE_TEXT_LENGTH),
+    bodyRepresentation: z.enum([
+      "stored_plain_text",
+      "stored_snippet",
+      "stored_truncated_excerpt",
+      "unavailable",
+    ]),
   })
   .strict();
 export const conversationEventSchema = z.union([

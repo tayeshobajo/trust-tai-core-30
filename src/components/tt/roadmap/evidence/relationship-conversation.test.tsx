@@ -324,3 +324,27 @@ it("publishes the newest loaded preview after pagination as well as initial read
     roadmapId,
   );
 });
+
+it("visibly labels truncated stored excerpts and keeps their original-source link", async () => {
+  const e = {
+    ...stored(),
+    bodyText: "SYNTHETIC EXCERPT",
+    bodyRepresentation: "stored_truncated_excerpt" as const,
+  };
+  render(
+    <RelationshipConversation
+      organizationId={org}
+      roadmapId={roadmapId}
+      read={vi.fn().mockResolvedValue(page([e]))}
+    />,
+  );
+  const label = await screen.findByText(/Stored text excerpt, truncated for this view/);
+  expect(label.closest("details")).toBeNull();
+  expect(screen.getByText("SYNTHETIC EXCERPT")).toBeTruthy();
+  expect(
+    screen
+      .getByRole("link", { name: "Open original source for Synthetic stored reply" })
+      .getAttribute("href"),
+  ).toBe(e.sourceUrl);
+  expect(screen.queryByText("Message text is unavailable in stored records.")).toBeNull();
+});

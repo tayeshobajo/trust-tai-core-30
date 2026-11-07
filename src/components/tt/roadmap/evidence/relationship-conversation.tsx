@@ -322,6 +322,12 @@ function MessageBubble({ event: e }: { event: ConversationEvent }) {
           · {channelLabels[e.channel]} · {labels[e.kind]}
         </p>
         <h3>{e.subject || "No subject"}</h3>
+        {e.bodyRepresentation === "stored_truncated_excerpt" ? (
+          <p className="rw-message-meta">
+            Stored text excerpt, truncated for this view. Open the original source for the complete
+            message.
+          </p>
+        ) : null}
         <pre>{e.bodyText || "Message text is not stored. Open the original source."}</pre>
         <footer>
           <time dateTime={e.occurredAt}>
@@ -347,7 +353,9 @@ function MessageBubble({ event: e }: { event: ConversationEvent }) {
                 ? "Stored Comms plain text; not a reviewed import. Formatting, attachments and remote content are not loaded."
                 : e.bodyRepresentation === "stored_snippet"
                   ? "Stored snippet only; not the complete message or a reviewed import."
-                  : "Message text is unavailable in stored records."
+                  : e.bodyRepresentation === "stored_truncated_excerpt"
+                    ? "Truncated stored excerpt; not the complete message or a reviewed import."
+                    : "Message text is unavailable in stored records."
               : e.bodyRepresentation === "reviewed_redacted_excerpt"
                 ? "Reviewed excerpt; redactions or quoted-history removal. Not the complete original."
                 : "Reviewed full text; provider-original formatting may differ."}

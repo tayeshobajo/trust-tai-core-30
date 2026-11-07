@@ -3,8 +3,11 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CanonicalConversation } from "./canonical-conversation";
 import { event, org, roadmapId, relationshipId } from "@/domain/roadmap-correspondence.fixtures";
-import type { CorrespondencePage } from "@/domain/roadmap-correspondence";
-const page = (events = [event], nextCursor: string | null = null): CorrespondencePage => ({
+import type { ConversationEvent, CorrespondencePage } from "@/domain/roadmap-correspondence";
+const page = (
+  events: ConversationEvent[] = [event],
+  nextCursor: string | null = null,
+): CorrespondencePage => ({
   organizationId: org,
   roadmapId,
   relationshipId,
@@ -72,4 +75,39 @@ it("paginates without duplicate messages then clears text on a failed page read"
   fireEvent.click(screen.getByText("Load more reviewed messages"));
   expect(await screen.findByRole("alert")).toBeTruthy();
   expect(screen.queryByText(event.bodyText)).toBeNull();
+});
+
+it("labels truncated stored excerpts before expansion and links the complete original", async () => {
+  const e: ConversationEvent = {
+    organizationId: org,
+    roadmapId,
+    relationshipId,
+    source: "stored_gmail",
+    channel: "email",
+    kind: "received",
+    sourceAccountRef: "team@example.test",
+    sourceEventId: "synthetic-long",
+    identityKind: "provider_id",
+    sourceUrl: "https://mail.google.com/mail/?authuser=team%40example.test#all/synthetic-long",
+    occurredAt: "2026-11-05T12:00:00Z",
+    timestampPrecision: "exact",
+    storedAt: "2026-11-06T12:00:00Z",
+    subject: "Synthetic long reply",
+    bodyText: "SYNTHETIC EXCERPT",
+    bodyRepresentation: "stored_truncated_excerpt",
+  };
+  render(
+    <CanonicalConversation
+      organizationId={org}
+      roadmapId={roadmapId}
+      read={vi.fn().mockResolvedValue(page([e]))}
+    />,
+  );
+  const label = await screen.findByText(/Stored text excerpt, truncated for this view/);
+  expect(label.closest("details")).toBeNull();
+  expect(screen.getByRole("link", { name: "Open original source" }).getAttribute("href")).toBe(
+    e.sourceUrl,
+  );
+  fireEvent.click(screen.getByText("Expand stored message text"));
+  expect(screen.getByText("SYNTHETIC EXCERPT")).toBeTruthy();
 });

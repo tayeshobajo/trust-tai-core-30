@@ -211,3 +211,96 @@ it("a roadmap without a canonical relationship never guesses or reads messages",
   expect(body.sources.storedGmail).toBe("not_linked");
   expect(state.current.reads.map((r) => r.table)).toEqual(["roadmaps", "roadmaps"]);
 });
+
+it("keeps a long quoted-history message and its neighbor available as an explicit bounded excerpt", async () => {
+  state.current.mail = [
+    { ...mailRow(), body_text: "S".repeat(213978) },
+    { ...mailRow(2), body_text: "SYNTHETIC NEIGHBOR" },
+  ];
+  const { response, body } = await get();
+  expect(response.status).toBe(200);
+  expect(body.events).toHaveLength(2);
+  const long = body.events.find(
+    (row: { sourceEventId: string }) => row.sourceEventId === "synthetic-1",
+  );
+  expect(long.bodyText).toHaveLength(100000);
+  expect(long.bodyRepresentation).toBe("stored_truncated_excerpt");
+  expect(long.sourceUrl).toBe(
+    "https://mail.google.com/mail/?authuser=team%40example.test#all/synthetic-1",
+  );
+  expect(
+    body.events.some((row: { bodyText: string }) => row.bodyText === "SYNTHETIC NEIGHBOR"),
+  ).toBe(true);
+});
+
+it.each([99999, 100000, 100001])(
+  "preserves the stored-text output bound at %i characters",
+  async (length) => {
+    state.current.mail = [{ ...mailRow(), body_text: "B".repeat(length) }];
+    const { response, body } = await get();
+    expect(response.status).toBe(200);
+    expect(body.events[0].bodyText).toHaveLength(Math.min(length, 100000));
+    expect(body.events[0].bodyRepresentation).toBe(
+      length > 100000 ? "stored_truncated_excerpt" : "stored_plain_text",
+    );
+    expect(state.current.mail[0]!.body_text).toHaveLength(length);
+  },
+);
+it("clips an oversized fallback snippet without misrepresenting it as a full body", async () => {
+  state.current.mail = [{ ...mailRow(), body_text: "", snippet: "S".repeat(213978) }];
+  const { response, body } = await get();
+  expect(response.status).toBe(200);
+  expect(body.events[0].bodyText).toHaveLength(100000);
+  expect(body.events[0].bodyRepresentation).toBe("stored_truncated_excerpt");
+});
+it("does not split a Unicode surrogate pair at the output boundary", async () => {
+  state.current.mail = [{ ...mailRow(), body_text: "S".repeat(99999) + "😀END" }];
+  const { response, body } = await get();
+  expect(response.status).toBe(200);
+  expect(body.events[0].bodyText).toBe("S".repeat(99999));
+  expect(body.events[0].bodyRepresentation).toBe("stored_truncated_excerpt");
+});
+it("returns a full page of oversized stored bodies and keeps pagination usable", async () => {
+  state.current.mail = Array.from({ length: 26 }, (_, i) => ({
+    ...mailRow(i + 1),
+    body_text: "S".repeat(213978),
+  }));
+  const first = await get();
+  expect(first.response.status).toBe(200);
+  expect(first.body.events).toHaveLength(25);
+  expect(
+    first.body.events.every(
+      (e: { bodyText: string; bodyRepresentation: string }) =>
+        e.bodyText.length === 100000 && e.bodyRepresentation === "stored_truncated_excerpt",
+    ),
+  ).toBe(true);
+  const next = await get(`&after=${first.body.nextCursor}`);
+  expect(next.response.status).toBe(200);
+  expect(next.body.events).toHaveLength(1);
+  expect(next.body.nextCursor).toBeNull();
+  expect(state.current.mail.every((row) => row.body_text.length === 213978)).toBe(true);
+});
+it("leaves reviewed-import size validation unchanged", async () => {
+  state.current.reviewed = [reviewedRow({ ...event, bodyText: "R".repeat(100001) })];
+  const { response, body } = await get();
+  expect(response.status).toBe(503);
+  expect(body).not.toHaveProperty("events");
+});
+it("continues to prefer approved redactions over an oversized stored copy", async () => {
+  state.current.reviewed = [
+    reviewedRow({
+      ...event,
+      sourceAccountRef: "team@example.test",
+      sourceEventId: "synthetic-1",
+      kind: "received",
+      occurredAt: mailRow().occurred_at,
+    }),
+  ];
+  state.current.mail = [{ ...mailRow(), body_text: "S".repeat(213978) }];
+  const { response, body } = await get();
+  expect(response.status).toBe(200);
+  expect(body.events).toHaveLength(1);
+  expect(body.events[0].bodyText).toBe(event.bodyText);
+  expect(body.events[0].bodyRepresentation).toBe("reviewed_redacted_excerpt");
+  expect(state.current.reads.some((read) => read.columns.includes("body_text"))).toBe(false);
+});
