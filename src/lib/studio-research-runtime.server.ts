@@ -10,6 +10,8 @@ import {
   readStudioResearch,
   type ResearchDeps,
 } from "./studio-research.server";
+import { createCoordinatorRequestStore } from "./studio-research-coordinator-request-store.server";
+import { createStudioCoordinatorHandlers } from "./studio-research-coordinator-studio.server";
 import { researchRequestSchema } from "@/domain/studio-research";
 
 // These non-secret IDs are verified in the approved Paperclip handoff. Never browser inputs.
@@ -75,6 +77,21 @@ export async function researchAction(
 ) {
   const parsed = researchRequestSchema.parse(input);
   const auth = await context(request, parsed.organizationId, operation === "start");
+  // Local preparation only: never enabled/configured by startup. Read path cannot issue authority or execute.
+  if (operation === "read" && process.env["PAPERCLIP_STUDIO_COORDINATOR_READ_ENABLED"] === "true") {
+    const receipts = createCoordinatorRequestStore(
+      process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"] ||
+        process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+        "",
+    );
+    const row = await receipts.read(parsed.organizationId, parsed.requestId);
+    if (row?.coordinator_state)
+      return createStudioCoordinatorHandlers({
+        store: receipts,
+        enabled: false,
+        now: Date.now,
+      }).read(request, { organizationId: parsed.organizationId, requestId: parsed.requestId });
+  }
   const store = storage(auth.user.id);
   const remote = transport();
   const deps: ResearchDeps = {

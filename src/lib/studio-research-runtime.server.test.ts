@@ -6,6 +6,8 @@ const f = vi.hoisted(() => ({
   readAgent: vi.fn(),
   createIssue: vi.fn(),
   reserve: vi.fn(),
+  receiptRead: vi.fn(),
+  coordinatorRead: vi.fn(),
 }));
 vi.mock("./studio-research-access.server", () => ({
   authorizeStudioResearch: async () => {
@@ -29,6 +31,12 @@ vi.mock("./studio-research-transport.server.mjs", async (importOriginal) => ({
 vi.mock("./studio-research-store.server", () => ({
   createResearchStore: () => ({ reserve: f.reserve }),
 }));
+vi.mock("./studio-research-coordinator-request-store.server", () => ({
+  createCoordinatorRequestStore: () => ({ read: f.receiptRead }),
+}));
+vi.mock("./studio-research-coordinator-studio.server", () => ({
+  createStudioCoordinatorHandlers: () => ({ read: f.coordinatorRead }),
+}));
 import {
   researchConnection,
   researchAction,
@@ -39,6 +47,7 @@ const org = "11111111-1111-4111-8111-111111111111";
 beforeEach(() => {
   vi.clearAllMocks();
   f.allow = true;
+  vi.stubEnv("PAPERCLIP_STUDIO_COORDINATOR_READ_ENABLED", "false");
   f.slug = "trust-tai";
   f.status = "paused";
   vi.stubEnv("PAPERCLIP_STUDIO_BRIDGE_KEY", "fixture");
@@ -130,4 +139,34 @@ it("categorizes workspace and unexpected access failures without upstream detail
     category: "access_check_failed",
   });
   expect(f.readAgent).not.toHaveBeenCalled();
+});
+
+it("gated coordinator read returns its explicit origin without Paperclip or native comment persistence", async () => {
+  vi.stubEnv("PAPERCLIP_STUDIO_COORDINATOR_READ_ENABLED", "true");
+  f.receiptRead.mockResolvedValue({ coordinator_state: "ready" });
+  const result = {
+    origin: "coordinator",
+    status: "review_ready",
+    result: { version: 1, requestId: org, topics: [], limitations: [] },
+    people: [],
+    draft: null,
+  };
+  f.coordinatorRead.mockResolvedValue(result);
+  expect(
+    await researchAction(
+      req,
+      { organizationId: org, requestId: org, topic: "Public topic" },
+      "read",
+    ),
+  ).toEqual(result);
+  expect(f.readAgent).not.toHaveBeenCalled();
+  expect(f.createIssue).not.toHaveBeenCalled();
+});
+it("coordinator read never reaches service storage before current Studio authorization", async () => {
+  vi.stubEnv("PAPERCLIP_STUDIO_COORDINATOR_READ_ENABLED", "true");
+  f.allow = false;
+  await expect(
+    researchAction(req, { organizationId: org, requestId: org, topic: "Public topic" }, "read"),
+  ).rejects.toThrow();
+  expect(f.receiptRead).not.toHaveBeenCalled();
 });

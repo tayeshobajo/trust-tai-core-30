@@ -1,0 +1,1 @@
+{"extends":"../../tsconfig.json","compilerOptions":{"types":["node"],"paths":{"@/*":["../../src/*"]}},"include":["src/**/*.ts"]}

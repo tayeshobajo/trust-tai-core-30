@@ -156,6 +156,7 @@ import { Route as ApiPublicCommsGmailScheduledSyncRouteImport } from './routes/a
 import { Route as ApiPublicCommsGmailSendRouteImport } from './routes/api/public/comms.gmail.send'
 import { Route as ApiPublicCommsGmailSyncRouteImport } from './routes/api/public/comms.gmail.sync'
 import { Route as ApiPublicCommsLinkedinMarkSentRouteImport } from './routes/api/public/comms.linkedin.mark-sent'
+import { Route as ApiStudioResearchCoordinatorRequestIdOperationRouteImport } from './routes/api.studio.research.coordinator.$requestId.$operation'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -929,6 +930,12 @@ const ApiPublicCommsLinkedinMarkSentRoute =
     path: '/api/public/comms/linkedin/mark-sent',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiStudioResearchCoordinatorRequestIdOperationRoute =
+  ApiStudioResearchCoordinatorRequestIdOperationRouteImport.update({
+    id: '/api/studio/research/coordinator/$requestId/$operation',
+    path: '/api/studio/research/coordinator/$requestId/$operation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -1078,6 +1085,7 @@ export interface FileRoutesByFullPath {
   '/api/public/comms/gmail/send': typeof ApiPublicCommsGmailSendRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
   '/api/public/comms/linkedin/mark-sent': typeof ApiPublicCommsLinkedinMarkSentRoute
+  '/api/studio/research/coordinator/$requestId/$operation': typeof ApiStudioResearchCoordinatorRequestIdOperationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -1218,6 +1226,7 @@ export interface FileRoutesByTo {
   '/api/public/comms/gmail/send': typeof ApiPublicCommsGmailSendRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
   '/api/public/comms/linkedin/mark-sent': typeof ApiPublicCommsLinkedinMarkSentRoute
+  '/api/studio/research/coordinator/$requestId/$operation': typeof ApiStudioResearchCoordinatorRequestIdOperationRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1368,6 +1377,7 @@ export interface FileRoutesById {
   '/api/public/comms/gmail/send': typeof ApiPublicCommsGmailSendRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
   '/api/public/comms/linkedin/mark-sent': typeof ApiPublicCommsLinkedinMarkSentRoute
+  '/api/studio/research/coordinator/$requestId/$operation': typeof ApiStudioResearchCoordinatorRequestIdOperationRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1519,6 +1529,7 @@ export interface FileRouteTypes {
     | '/api/public/comms/gmail/send'
     | '/api/public/comms/gmail/sync'
     | '/api/public/comms/linkedin/mark-sent'
+    | '/api/studio/research/coordinator/$requestId/$operation'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1659,6 +1670,7 @@ export interface FileRouteTypes {
     | '/api/public/comms/gmail/send'
     | '/api/public/comms/gmail/sync'
     | '/api/public/comms/linkedin/mark-sent'
+    | '/api/studio/research/coordinator/$requestId/$operation'
   id:
     | '__root__'
     | '/'
@@ -1808,6 +1820,7 @@ export interface FileRouteTypes {
     | '/api/public/comms/gmail/send'
     | '/api/public/comms/gmail/sync'
     | '/api/public/comms/linkedin/mark-sent'
+    | '/api/studio/research/coordinator/$requestId/$operation'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1896,6 +1909,7 @@ export interface RootRouteChildren {
   ApiPublicCommsGmailSendRoute: typeof ApiPublicCommsGmailSendRoute
   ApiPublicCommsGmailSyncRoute: typeof ApiPublicCommsGmailSyncRoute
   ApiPublicCommsLinkedinMarkSentRoute: typeof ApiPublicCommsLinkedinMarkSentRoute
+  ApiStudioResearchCoordinatorRequestIdOperationRoute: typeof ApiStudioResearchCoordinatorRequestIdOperationRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2929,6 +2943,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCommsLinkedinMarkSentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/studio/research/coordinator/$requestId/$operation': {
+      id: '/api/studio/research/coordinator/$requestId/$operation'
+      path: '/api/studio/research/coordinator/$requestId/$operation'
+      fullPath: '/api/studio/research/coordinator/$requestId/$operation'
+      preLoaderRoute: typeof ApiStudioResearchCoordinatorRequestIdOperationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -3249,6 +3270,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCommsGmailSendRoute: ApiPublicCommsGmailSendRoute,
   ApiPublicCommsGmailSyncRoute: ApiPublicCommsGmailSyncRoute,
   ApiPublicCommsLinkedinMarkSentRoute: ApiPublicCommsLinkedinMarkSentRoute,
+  ApiStudioResearchCoordinatorRequestIdOperationRoute:
+    ApiStudioResearchCoordinatorRequestIdOperationRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

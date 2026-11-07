@@ -1,0 +1,123 @@
+import { createSupabaseRouteLedger } from "./studio-research-route-ledger-supabase.server";
+/** Local Studio-side assembly; deliberately not installed in application startup. */
+import type { KeyObject } from "node:crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { authorizeStudioResearch } from "./studio-research-access.server";
+import { createCoordinatorRequestStore } from "./studio-research-coordinator-request-store.server";
+import { createStudioCoordinatorHandlers } from "./studio-research-coordinator-studio.server";
+import { makeRouteClient, makeRouteHandler } from "./studio-research-route-transport.server";
+import { makeStudioRemoteActions } from "./studio-research-remote-actions.server";
+import { makeStudioReceiptOperations } from "./studio-research-route-operations.server";
+import { makeStudioCurrentMember } from "./studio-research-current-member.server";
+import { makeStudioApplication } from "./studio-research-app.server";
+import { prepareManualResearchRequest } from "./studio-research-manual-intake.server";
+import { createResearchStore } from "./studio-research-store.server";
+import { createStudioTransport } from "./studio-research-transport.server.mjs";
+import { COORDINATOR } from "./studio-research-coordinator-contracts";
+function assembleStudio(
+  d: {
+    mode: "offline-synthetic" | "linux-public-preview";
+    studioPrivateKey: KeyObject;
+    coordinatorPublicKey: KeyObject;
+    serviceKey: string;
+    bridgeKey: string;
+    client: Pick<SupabaseClient, "from">;
+    fetcher: typeof fetch;
+    now(): number;
+  },
+  authorize = authorizeStudioResearch,
+) {
+  if (!["offline-synthetic", "linux-public-preview"].includes(d.mode))
+    throw Error("studio_assembly_unavailable");
+  for (const [key, type] of [
+    [d.studioPrivateKey, "private"],
+    [d.coordinatorPublicKey, "public"],
+  ] as const)
+    if (key.type !== type || key.asymmetricKeyType !== "ed25519") throw Error("signer_invalid");
+  const store = createCoordinatorRequestStore(d.serviceKey, d.fetcher);
+  const issuer = createStudioCoordinatorHandlers(
+    {
+      store,
+      enabled: true,
+      executionMode: d.mode,
+      approvalPrivateKey: d.studioPrivateKey,
+      receiptPublicKey: d.coordinatorPublicKey,
+      now: d.now,
+    },
+    authorize,
+  );
+  const send = makeRouteClient({
+    sender: "studio",
+    privateKey: d.studioPrivateKey,
+    peerKey: d.coordinatorPublicKey,
+    bridgeKey: d.bridgeKey,
+    fetcher: d.fetcher,
+    now: d.now,
+  });
+  const remote = makeStudioRemoteActions({ store, issuer, send }, authorize);
+  const bridge = createStudioTransport(
+    {
+      origin: "https://agents.trusttai.com",
+      companyId: COORDINATOR.companyId,
+      projectId: COORDINATOR.projectId,
+      agentId: COORDINATOR.agentId,
+      key: d.bridgeKey,
+    },
+    d.fetcher,
+  );
+  const prepare = async (request: Request, input: unknown) => {
+    // Intake performs its own actual-user/organization authorization before each write.
+    const raw = input as { organizationId: string };
+    const auth = await authorize(request, raw.organizationId, true);
+    const storage = createResearchStore(auth.user.id, d.serviceKey, d.fetcher);
+    return prepareManualResearchRequest(request, input, {
+      mode: d.mode,
+      ...storage,
+      agent: bridge.readAgent,
+      createIssue: bridge.createIssue,
+      owner: async (org, id) => (await store.read(org, id))?.created_by ?? null,
+      authorize: async (r, org) => ({ userId: (await authorize(r, org, true)).user.id }),
+    });
+  };
+  const receiptOperations = makeStudioReceiptOperations({
+    handlers: issuer,
+    store,
+    hostKey: d.coordinatorPublicKey,
+    studioKey: d.studioPrivateKey,
+    now: d.now,
+    currentMember: makeStudioCurrentMember(d.client),
+  });
+  const receiptHandler = makeRouteHandler({
+    receiver: "studio",
+    peerKey: d.coordinatorPublicKey,
+    privateKey: d.studioPrivateKey,
+    now: d.now,
+    ledger: createSupabaseRouteLedger(d.serviceKey, d.fetcher),
+    authenticate: async (_request, e) => {
+      if (e.sender !== "coordinator") throw Error("sender_invalid");
+    },
+    authorizeCurrent: async (e) => {
+      await receiptOperations({ ...e, operation: "authority" });
+    },
+    dispatch: receiptOperations,
+  });
+  return {
+    receiptHandler,
+    application: makeStudioApplication({ issuer, remote, prepare }, authorize),
+    receiptOperations,
+  };
+}
+
+/** Explicit server composition only; application startup still supplies no configuration. */
+export function assembleOfflineStudio(
+  d: Omit<Parameters<typeof assembleStudio>[0], "mode"> & { mode: "offline-synthetic" },
+  authorize = authorizeStudioResearch,
+) {
+  return assembleStudio(d, authorize);
+}
+export function assembleLinuxPreviewStudio(
+  d: Omit<Parameters<typeof assembleStudio>[0], "mode"> & { mode: "linux-public-preview" },
+  authorize = authorizeStudioResearch,
+) {
+  return assembleStudio(d, authorize);
+}
