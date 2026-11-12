@@ -52,6 +52,14 @@ const button = (name: string) => screen.getByRole("button", { name });
 const value = (label: string) => (screen.getByLabelText(label) as HTMLInputElement).value;
 
 describe("Approved role editor", () => {
+  it("lets keyboard users focus the named scrollable preview without saving", () => {
+    const s = setup(full);
+    const aside = screen.getByRole("complementary", { name: "Job preview and role tips" });
+    expect(aside.tabIndex).toBe(0);
+    aside.focus();
+    expect(document.activeElement).toBe(aside);
+    expect(s.save).not.toHaveBeenCalled();
+  });
   it("roundtrips every canonical field through save and reopen in an isolated store", async () => {
     let rows: Job[] = [];
     const saves = vi.fn(async (input, existing?: Job) => {

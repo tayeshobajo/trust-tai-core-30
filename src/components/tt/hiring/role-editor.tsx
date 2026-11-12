@@ -656,7 +656,7 @@ export function RoleEditor({
               </Button>
             </footer>
           </div>
-          <aside className="hr-aside">
+          <aside className="hr-aside" tabIndex={0} aria-label="Job preview and role tips">
             <section className="h-card hr-preview">
               <header>
                 <span className="h-icon">

@@ -141,6 +141,10 @@
   max-height: calc(100dvh - 48px);
   overflow: auto;
 }
+.hr-aside:focus-visible {
+  outline: 2px solid var(--royal);
+  outline-offset: 4px;
+}
 .hr-preview-content {
   overflow-wrap: anywhere;
   font-size: 13px;
