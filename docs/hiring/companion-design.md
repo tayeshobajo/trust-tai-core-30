@@ -73,6 +73,17 @@ Roles: all/open/draft/closed counts from supplied canonical rows, no-match/empty
 - Existing `/modules/hiring` metadata was inspected and already supplies app-specific title, description, Open Graph type/title/description and Twitter card; no route edits needed.
 - Known review boundary: synthetic QA imports real Hiring components/styles but does not reconstruct the shared shell or download externally hosted font files. Shared shell/fonts remain unchanged. No real applicant/job records read or changed, email sent, SQL/access/configuration modified, or publication performed.
 
+## Final truthfulness correction and focused verification (2026-11-12)
+
+Verified source HEAD: `05042c992b87a3af8522bba167c2b0710139b1b9`; working tree was clean before verification. This follow-up changes only this document, preserving all source.
+
+- Truthfulness fix: any recorded receipt or failed/bounced/sending/queued/unknown/uncertain status identifies a delivery attempt and uses neutral “Recorded delivery attempts” instead of inferring “No messages sent yet” from the current status. Disabled acknowledgments use “Delivery disabled”; test-only wording requires an explicitly test-only receipt. Focused regressions cover failed-with-receipt and disabled acknowledgment states.
+- `bunx vitest run --config /tmp/hiring-companion-checks/vitest.config.ts`: **exit 0; 82 tests passed across all seven files** — domain 3, provider 7, intake 5, presentation 4, workspace 15, editor 23, companions 25. Duration 14.72s. Isolated/mock fixtures only; no production mutations or sends.
+- `bunx eslint src/components/tt/hiring src/domain/hiring.ts src/domain/hiring.test.ts src/lib/hiring-provider.server.ts src/lib/hiring-provider.test.ts src/lib/hiring-intake.server.ts src/lib/hiring-intake.test.ts`: **exit 0**. An initial expanded lint invocation used nonexistent `hiring-provider.ts`/`hiring-intake.ts` paths and exited 2 before linting; the corrected existing-file invocation above passed without source changes.
+- `git diff --check`: **exit 0** against verified source, and repeated after this documentation update.
+- Test log: `/tmp/hiring-companion-checks/final-05042c-tests.log`; successful scoped lint log: `/tmp/hiring-companion-checks/final-05042c-lint.log`.
+- **App TypeScript and production build: pending independent execution after the independent local executor reconnects; not green or verified by this follow-up.** Neither was run. No builds, Studio repairs/installations, dependencies, production changes or publication. Earlier browser evidence above is historical, not a new browser run.
+
 ## Exact changed files
 
 - `src/components/tt/hiring/companions.tsx`
