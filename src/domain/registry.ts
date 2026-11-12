@@ -150,7 +150,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     name: "Hiring",
     slug: "hiring",
     description: "Private candidate review and thoughtful next steps.",
-    status: "in_build",
+    status: "live",
     route: "/modules/hiring",
     icon: "Users",
     capabilities: ["decisions"],

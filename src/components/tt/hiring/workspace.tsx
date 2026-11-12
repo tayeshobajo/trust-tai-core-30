@@ -704,7 +704,7 @@ function JobEditor({
           </select>
         </label>
         <p>
-          Opening enables intake after release. Closing stops new applications and keeps all
+          Opening allows applications. Closing stops new applications and keeps all
           records.
         </p>
         <div className="h-actions">
