@@ -29,6 +29,7 @@ import { Route as ModulesApprovalsRouteImport } from './routes/modules.approvals
 import { Route as ModulesClientsRouteImport } from './routes/modules.clients'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
 import { Route as ModulesConductorRouteImport } from './routes/modules.conductor'
+import { Route as ModulesHiringRouteImport } from './routes/modules.hiring'
 import { Route as ModulesOpsRouteImport } from './routes/modules.ops'
 import { Route as ModulesProjectsRouteImport } from './routes/modules.projects'
 import { Route as ModulesPulseRouteImport } from './routes/modules.pulse'
@@ -106,6 +107,7 @@ import { Route as ApiPublicContentBriefRouteImport } from './routes/api/public/c
 import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/public/content.generate'
 import { Route as ApiPublicContentImageRouteImport } from './routes/api/public/content.image'
 import { Route as ApiPublicContentPublishRouteImport } from './routes/api/public/content.publish'
+import { Route as ApiPublicHiringDeliveryRouteImport } from './routes/api/public/hiring.delivery'
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
 import { Route as ApiPublicIntelligenceReconcileRouteImport } from './routes/api/public/intelligence.reconcile'
 import { Route as ApiPublicIntelligenceStatusRouteImport } from './routes/api/public/intelligence.status'
@@ -256,6 +258,11 @@ const ModulesCommsRoute = ModulesCommsRouteImport.update({
 const ModulesConductorRoute = ModulesConductorRouteImport.update({
   id: '/modules/conductor',
   path: '/modules/conductor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesHiringRoute = ModulesHiringRouteImport.update({
+  id: '/modules/hiring',
+  path: '/modules/hiring',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesOpsRoute = ModulesOpsRouteImport.update({
@@ -649,6 +656,11 @@ const ApiPublicContentPublishRoute = ApiPublicContentPublishRouteImport.update({
   path: '/api/public/content/publish',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHiringDeliveryRoute = ApiPublicHiringDeliveryRouteImport.update({
+  id: '/api/public/hiring/delivery',
+  path: '/api/public/hiring/delivery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicIntelligenceReasonRoute =
   ApiPublicIntelligenceReasonRouteImport.update({
     id: '/api/public/intelligence/reason',
@@ -958,6 +970,7 @@ export interface FileRoutesByFullPath {
   '/modules/clients': typeof ModulesClientsRouteWithChildren
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
+  '/modules/hiring': typeof ModulesHiringRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/projects': typeof ModulesProjectsRouteWithChildren
   '/modules/pulse': typeof ModulesPulseRoute
@@ -1035,6 +1048,7 @@ export interface FileRoutesByFullPath {
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
+  '/api/public/hiring/delivery': typeof ApiPublicHiringDeliveryRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
@@ -1105,6 +1119,7 @@ export interface FileRoutesByTo {
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/approvals': typeof ModulesApprovalsRoute
   '/modules/conductor': typeof ModulesConductorRoute
+  '/modules/hiring': typeof ModulesHiringRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
   '/modules/rfps': typeof ModulesRfpsRoute
@@ -1176,6 +1191,7 @@ export interface FileRoutesByTo {
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
+  '/api/public/hiring/delivery': typeof ApiPublicHiringDeliveryRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
@@ -1250,6 +1266,7 @@ export interface FileRoutesById {
   '/modules/clients': typeof ModulesClientsRouteWithChildren
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
+  '/modules/hiring': typeof ModulesHiringRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/projects': typeof ModulesProjectsRouteWithChildren
   '/modules/pulse': typeof ModulesPulseRoute
@@ -1327,6 +1344,7 @@ export interface FileRoutesById {
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
+  '/api/public/hiring/delivery': typeof ApiPublicHiringDeliveryRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
@@ -1402,6 +1420,7 @@ export interface FileRouteTypes {
     | '/modules/clients'
     | '/modules/comms'
     | '/modules/conductor'
+    | '/modules/hiring'
     | '/modules/ops'
     | '/modules/projects'
     | '/modules/pulse'
@@ -1479,6 +1498,7 @@ export interface FileRouteTypes {
     | '/api/public/content/generate'
     | '/api/public/content/image'
     | '/api/public/content/publish'
+    | '/api/public/hiring/delivery'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
@@ -1549,6 +1569,7 @@ export interface FileRouteTypes {
     | '/modules/activity'
     | '/modules/approvals'
     | '/modules/conductor'
+    | '/modules/hiring'
     | '/modules/ops'
     | '/modules/pulse'
     | '/modules/rfps'
@@ -1620,6 +1641,7 @@ export interface FileRouteTypes {
     | '/api/public/content/generate'
     | '/api/public/content/image'
     | '/api/public/content/publish'
+    | '/api/public/hiring/delivery'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
@@ -1693,6 +1715,7 @@ export interface FileRouteTypes {
     | '/modules/clients'
     | '/modules/comms'
     | '/modules/conductor'
+    | '/modules/hiring'
     | '/modules/ops'
     | '/modules/projects'
     | '/modules/pulse'
@@ -1770,6 +1793,7 @@ export interface FileRouteTypes {
     | '/api/public/content/generate'
     | '/api/public/content/image'
     | '/api/public/content/publish'
+    | '/api/public/hiring/delivery'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
@@ -1843,6 +1867,7 @@ export interface RootRouteChildren {
   ModulesClientsRoute: typeof ModulesClientsRouteWithChildren
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
   ModulesConductorRoute: typeof ModulesConductorRoute
+  ModulesHiringRoute: typeof ModulesHiringRoute
   ModulesOpsRoute: typeof ModulesOpsRoute
   ModulesProjectsRoute: typeof ModulesProjectsRouteWithChildren
   ModulesPulseRoute: typeof ModulesPulseRoute
@@ -1865,6 +1890,7 @@ export interface RootRouteChildren {
   ApiPublicContentGenerateRoute: typeof ApiPublicContentGenerateRoute
   ApiPublicContentImageRoute: typeof ApiPublicContentImageRoute
   ApiPublicContentPublishRoute: typeof ApiPublicContentPublishRoute
+  ApiPublicHiringDeliveryRoute: typeof ApiPublicHiringDeliveryRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
   ApiPublicIntelligenceReconcileRoute: typeof ApiPublicIntelligenceReconcileRoute
   ApiPublicIntelligenceStatusRoute: typeof ApiPublicIntelligenceStatusRoute
@@ -2052,6 +2078,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/conductor'
       fullPath: '/modules/conductor'
       preLoaderRoute: typeof ModulesConductorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/hiring': {
+      id: '/modules/hiring'
+      path: '/modules/hiring'
+      fullPath: '/modules/hiring'
+      preLoaderRoute: typeof ModulesHiringRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/ops': {
@@ -2591,6 +2624,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/content/publish'
       fullPath: '/api/public/content/publish'
       preLoaderRoute: typeof ApiPublicContentPublishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hiring/delivery': {
+      id: '/api/public/hiring/delivery'
+      path: '/api/public/hiring/delivery'
+      fullPath: '/api/public/hiring/delivery'
+      preLoaderRoute: typeof ApiPublicHiringDeliveryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/intelligence/reason': {
@@ -3198,6 +3238,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesClientsRoute: ModulesClientsRouteWithChildren,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
   ModulesConductorRoute: ModulesConductorRoute,
+  ModulesHiringRoute: ModulesHiringRoute,
   ModulesOpsRoute: ModulesOpsRoute,
   ModulesProjectsRoute: ModulesProjectsRouteWithChildren,
   ModulesPulseRoute: ModulesPulseRoute,
@@ -3220,6 +3261,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicContentGenerateRoute: ApiPublicContentGenerateRoute,
   ApiPublicContentImageRoute: ApiPublicContentImageRoute,
   ApiPublicContentPublishRoute: ApiPublicContentPublishRoute,
+  ApiPublicHiringDeliveryRoute: ApiPublicHiringDeliveryRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
   ApiPublicIntelligenceReconcileRoute: ApiPublicIntelligenceReconcileRoute,
   ApiPublicIntelligenceStatusRoute: ApiPublicIntelligenceStatusRoute,

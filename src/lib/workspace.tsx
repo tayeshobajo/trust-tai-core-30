@@ -168,6 +168,10 @@ export function useWorkspace(): WorkspaceState {
         readRoleAppAccess(organization.id).catch(() => ({ provisioned: false, value: {} })),
       ]);
 
+      const hiringAllowed = await supabase.rpc("hiring_allowed", { org: organization.id }).then(
+        (r) => !r.error && r.data === true,
+        () => false,
+      );
       const apps = visibleApps({
         role,
         membershipActive,
@@ -181,6 +185,9 @@ export function useWorkspace(): WorkspaceState {
           ],
         }),
       });
+
+      const hiringIndex = apps.findIndex((a) => a.appId === "hiring");
+      if (hiringIndex >= 0 && !hiringAllowed) apps.splice(hiringIndex, 1);
 
       /* Publish authority once, so room services can refuse a write that this
          person's access does not carry. Visibility alone is not authority. */
