@@ -10,7 +10,25 @@ export const Route = createFileRoute("/modules/hiring")({
   validateSearch: (search: Record<string, unknown>) => ({
     application: typeof search["application"] === "string" ? search["application"] : undefined,
   }),
-  head: () => ({ meta: [{ title: "Hiring · Trust Tai" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [
+      { title: "Hiring · Trust Tai CMD" },
+      {
+        name: "description",
+        content:
+          "Private application review, role management and clear next steps in Trust Tai CMD Hiring.",
+      },
+      { property: "og:title", content: "Hiring · Trust Tai CMD" },
+      {
+        property: "og:description",
+        content:
+          "Private application review, role management and clear next steps in Trust Tai CMD Hiring.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
   component: HiringRoute,
 });
 function HiringRoute() {

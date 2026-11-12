@@ -12,6 +12,10 @@ import {
   type Snapshot,
 } from "@/domain/hiring";
 import type { HiringService } from "@/data/supabase/hiring";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, FileText, Mail, MapPin, Plus, RefreshCw, UserRound, Zap } from "lucide-react";
+import { CandidateList, EventFeed, HiringOverview } from "./views";
+import { appliedDate, initials } from "./presentation";
 import "./workspace.css";
 const name = (id: string | null) => HIRING_PEOPLE.find((p) => p.id === id)?.name ?? "Unassigned";
 const activityLabels: Record<string, string> = {
@@ -54,12 +58,8 @@ export function HiringWorkspace({
   error?: string | undefined;
   initialId?: string | undefined;
 }) {
-  const [tab, setTab] = useState("queue"),
-    [selected, setSelected] = useState(initialId ?? ""),
-    [filter, setFilter] = useState(""),
-    [role, setRole] = useState(""),
-    [stage, setStage] = useState(""),
-    [attention, setAttention] = useState(false);
+  const [tab, setTab] = useState(initialId ? "queue" : "overview"),
+    [selected, setSelected] = useState(initialId ?? "");
   const [edit, setEdit] = useState<Job | "new" | null>(null),
     [duplicate, setDuplicate] = useState<Job | null>(null),
     [busy, setBusy] = useState(false),
@@ -87,126 +87,93 @@ export function HiringWorkspace({
     }
   }
   const current = data?.applications.find((a) => a.id === selected);
-  const today = new Date().toISOString().slice(0, 10);
-  const filtered = (data?.applications ?? []).filter(
-    (a) =>
-      (!role || a.job_id === role) &&
-      (!stage || a.stage === stage) &&
-      (!attention || needsAttention(a, today)) &&
-      `${a.full_name} ${a.email}`.toLowerCase().includes(filter.toLowerCase()),
-  );
   return (
     <section className="hiring">
-      <header>
-        <p className="h-eyebrow">PEOPLE / PRIVATE WORKSPACE</p>
-        <h1>Hiring</h1>
-        <p>Thoughtful decisions. Clear next steps. A person behind every application.</p>
-        <p className="h-notice">
-          Live applicant emails await separate approval. Provider QA uses test inboxes only. Cleanup
-          review: Ayobami.
-        </p>
+      <header className="h-page-heading">
+        <div>
+          <p className="h-eyebrow">PEOPLE / PRIVATE WORKSPACE</p>
+          <h1>Hiring</h1>
+          <p>Thoughtful decisions. Clear next steps. A person behind every application.</p>
+        </div>
+        {data && !current && (
+          <Button
+            className="h-primary"
+            onClick={() => {
+              setDuplicate(null);
+              setEdit("new");
+            }}
+          >
+            <Plus />
+            Create job
+          </Button>
+        )}
       </header>
-      <nav aria-label="Hiring views">
-        <button
-          aria-pressed={tab === "queue"}
-          onClick={() => {
-            setTab("queue");
-            setSelected("");
-          }}
-        >
-          Applications {data ? `(${data.applications.length})` : ""}
-        </button>
-        <button aria-pressed={tab === "jobs"} onClick={() => setTab("jobs")}>
-          Jobs
-        </button>
-        <button disabled={busy} onClick={() => run(refresh, "Queue refreshed.")}>
+      <nav className="h-nav" aria-label="Hiring views">
+        {(
+          [
+            ["overview", "Overview"],
+            ["queue", "Candidates"],
+            ["jobs", "Roles"],
+          ] as const
+        ).map(([value, label]) => (
+          <Button
+            variant="ghost"
+            key={value}
+            aria-pressed={tab === value}
+            onClick={() => {
+              setTab(value);
+              setSelected("");
+            }}
+          >
+            {label}
+          </Button>
+        ))}
+        <Button variant="ghost" disabled={busy} onClick={() => run(refresh, "Queue refreshed.")}>
+          <RefreshCw />
           Reload
-        </button>
+        </Button>
       </nav>
+      <p className="h-notice">
+        Live applicant emails await separate approval. Provider QA uses test inboxes only. Cleanup
+        review: Ayobami.
+      </p>
       {loading && <p role="status">Opening your private hiring queue…</p>}
       {error && <p role="alert">{error}</p>}
       {failure && <p role="alert">{failure}</p>}
       {notice && <p role="status">{notice}</p>}
+      {data && tab === "overview" && (
+        <HiringOverview
+          data={data}
+          roles={() => setTab("jobs")}
+          candidates={() => setTab("queue")}
+          choose={(id) => {
+            setSelected(id);
+            setTab("queue");
+          }}
+          describe={(e) => `${activityLabels[e.kind] || "Activity"}: ${activityText(e)}`}
+        />
+      )}
       {data && tab === "queue" && !current && (
         <>
-          <div className="h-filters">
-            <label>
-              Search
-              <input
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="Name or email"
-              />
-            </label>
-            <label>
-              Role
-              <select value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="">All roles</option>
-                {data.jobs.map((j) => (
-                  <option key={j.id} value={j.id}>
-                    {j.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Stage
-              <select aria-label="Stage" value={stage} onChange={(e) => setStage(e.target.value)}>
-                <option value="">All stages</option>
-                {STAGES.map((s) => (
-                  <option key={s} value={s}>
-                    {stageLabel(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="h-check">
-              <input
-                type="checkbox"
-                checked={attention}
-                onChange={(e) => setAttention(e.target.checked)}
-              />
-              Overdue or unassigned
-            </label>
-          </div>
-          <div className="h-queue">
-            {filtered.map((a) => (
-              <button className="h-row" key={a.id} onClick={() => setSelected(a.id)}>
-                <span>
-                  <strong>{a.full_name}</strong>
-                  <small>{a.job_title}</small>
-                </span>
-                <span>
-                  {stageLabel(a.stage)}
-                  <small>{name(a.owner_id)}</small>
-                </span>
-                <span>
-                  {a.next_action || "Set a next action"}
-                  <small>
-                    {a.review_date ? `Review ${a.review_date}` : "No review date"}
-                    {needsAttention(a, today) ? " · Needs attention" : ""}
-                  </small>
-                </span>
-              </button>
-            ))}
-          </div>
-          {data.applications.length > 0 && filtered.length === 0 && (
-            <p role="status">
-              No applications match these filters. Clear the search or choose all roles and stages.
+          {selected && (
+            <p role="alert">
+              This application is unavailable. Reload to check your current access.
             </p>
           )}
-          {data.applications.length === 0 && (
-            <div className="h-empty">
-              <h2>Room for the right people.</h2>
-              <p>Open a role in Jobs. Applications will arrive here for personal review.</p>
-              <button onClick={() => setTab("jobs")}>Manage jobs</button>
-            </div>
+          <CandidateList data={data} choose={setSelected} />
+          {!data.applications.length && (
+            <Button variant="outline" onClick={() => setTab("jobs")}>
+              Manage jobs
+            </Button>
           )}
         </>
       )}
       {data && current && tab === "queue" && (
         <>
-          <button onClick={() => setSelected("")}>← All applications</button>
+          <Button variant="outline" onClick={() => setSelected("")}>
+            <ArrowLeft />
+            All applications
+          </Button>
           <Candidate
             key={current.id + ":" + current.revision}
             app={current}
@@ -221,17 +188,9 @@ export function HiringWorkspace({
         <>
           <div className="h-heading">
             <h2>Roles worth doing</h2>
-            <button
-              onClick={() => {
-                setDuplicate(null);
-                setEdit("new");
-              }}
-            >
-              Create job
-            </button>
           </div>
           {data.jobs.map((j) => (
-            <article className="h-row" key={j.id}>
+            <article className="h-row h-card" key={j.id}>
               <span>
                 <strong>{j.title}</strong>
                 <small>
@@ -242,22 +201,24 @@ export function HiringWorkspace({
                 </a>
               </span>
               <div>
-                <button
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setDuplicate(null);
                     setEdit(j);
                   }}
                 >
                   Edit
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setDuplicate(j);
                     setEdit("new");
                   }}
                 >
                   Duplicate as draft
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -302,6 +263,9 @@ function Candidate({
     [next, setNext] = useState(a.next_action),
     [date, setDate] = useState(a.review_date ?? ""),
     [note, setNote] = useState("");
+  const [detailTab, setDetailTab] = useState("overview");
+  const noteInput = useRef<HTMLTextAreaElement>(null);
+  const nextInput = useRef<HTMLTextAreaElement>(null);
   const noteId = useRef(crypto.randomUUID());
   const [message, setMessage] = useState<Message | null>(null),
     [subject, setSubject] = useState(`Your application for ${a.job_title}`),
@@ -313,246 +277,370 @@ function Candidate({
   const [resumeLink, setResumeLink] = useState<string | null>(null);
   const currentPreview = preview && (data.messages.find((m) => m.id === preview.id) ?? preview);
   return (
-    <div className="h-detail">
-      <main>
-        <h2>{a.full_name}</h2>
-        <p>
-          {a.job_title} · {a.location} · {a.timezone}
-        </p>
-        <p>{a.email}</p>
-        <p>
-          Received {new Date(a.created_at).toLocaleString()} · Future roles:{" "}
-          {a.talent_pool_consent ? "Opted in" : "Not opted in"}
-        </p>
-        <div className="h-actions">
-          {[a.linkedin_url, a.portfolio_url]
-            .filter((u) => /^https:\/\//.test(u))
-            .map((u) => (
-              <a key={u} href={u} target="_blank" rel="noreferrer">
-                {u}
-              </a>
-            ))}
-          <button
-            disabled={busy}
-            onClick={() =>
-              run(async () => {
-                setResumeLink(await service.resume(a.resume_path));
-              }, "Private download is ready. Open the link below within 60 seconds.")
-            }
-          >
-            Download résumé
-          </button>
-          {resumeLink && (
-            <a href={resumeLink} target="_blank" rel="noreferrer">
-              Open private résumé (60 seconds)
-            </a>
-          )}
+    <div className="h-candidate">
+      <header className="h-candidate-header">
+        <span className="h-avatar h-avatar-large">{initials(a.full_name)}</span>
+        <div>
+          <h2>{a.full_name}</h2>
+          <p>
+            Applied for <strong>{a.job_title}</strong> · Applied {appliedDate(a.created_at)}
+          </p>
+          <div className="h-contact">
+            <span>
+              <Mail size={16} />
+              {a.email}
+            </span>
+            <span>
+              <MapPin size={16} />
+              {a.location} · {a.timezone}
+            </span>
+            {[a.linkedin_url, a.portfolio_url]
+              .filter((u) => /^https:\/\//.test(u))
+              .map((u) => (
+                <a key={u} href={u} target="_blank" rel="noreferrer">
+                  {u === a.linkedin_url ? "LinkedIn" : "Portfolio"}
+                </a>
+              ))}
+          </div>
+          <small>Future roles: {a.talent_pool_consent ? "Opted in" : "Not opted in"}</small>
         </div>
-        <h3>In their words</h3>
-        {Object.entries(a.answers).map(([id, q]) => (
-          <section key={id}>
-            <h4>{q.label}</h4>
-            <p className="h-pre">{q.answer || "No answer"}</p>
-          </section>
-        ))}
-        <h3>Private notes & contact history</h3>
-        <label>
-          Add a note
-          <textarea value={note} maxLength={5000} onChange={(e) => setNote(e.target.value)} />
-        </label>
-        <button
-          disabled={busy || !note.trim()}
-          onClick={() =>
-            run(async () => {
-              await service.note(a.id, note, noteId.current);
-              noteId.current = crypto.randomUUID();
-              setNote("");
-            }, "Private note saved.")
-          }
-        >
-          Save note
-        </button>
-        {data.events
-          .filter((e) => e.application_id === a.id)
-          .map((e) => (
-            <article className="h-event" key={e.id}>
-              <strong>{activityLabels[e.kind] || "Activity"}</strong>
-              <small>
-                {e.actor
-                  ? name(e.actor)
-                  : e.detail["source"] === "provider-worker"
-                    ? "Delivery service"
-                    : "Applicant"}{" "}
-                · {new Date(e.created_at).toLocaleString()}
-              </small>
-              <p className="h-pre">{activityText(e)}</p>
-            </article>
-          ))}
-      </main>
-      <aside>
-        <h3>Next step</h3>
-        <label>
-          Stage
-          <select
-            aria-label="Stage"
-            value={stage}
-            onChange={(e) => setStage(e.target.value as Application["stage"])}
+        <span className={`h-stage h-stage-${a.stage}`}>{stageLabel(a.stage)}</span>
+      </header>
+      <nav className="h-detail-tabs" aria-label="Candidate views">
+        {["overview", "messages", "activity", "documents"].map((t) => (
+          <Button
+            variant="ghost"
+            key={t}
+            aria-pressed={detailTab === t}
+            onClick={() => setDetailTab(t)}
           >
-            {STAGES.map((s) => (
-              <option key={s} value={s}>
-                {stageLabel(s)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Owner value={owner} change={setOwner} />
-        <label>
-          Next action
-          <textarea value={next} maxLength={2000} onChange={(e) => setNext(e.target.value)} />
-        </label>
-        <label>
-          Review date
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </label>
-        <button
-          disabled={busy}
-          onClick={() =>
-            run(
-              () =>
-                service.update({
-                  target: a.id,
-                  expected: a.revision,
-                  stage,
-                  owner_id: owner || null,
-                  next_action: next,
-                  review_date: date || null,
-                }),
-              "Application updated. No email was sent.",
-            )
-          }
-        >
-          Save next step
-        </button>
-        <p className="h-muted">Changing a stage never sends a message.</p>
-        <h3>Write to the candidate</h3>
-        <label>
-          Subject
-          <input
-            aria-label="Subject"
-            value={subject}
-            maxLength={200}
-            onChange={(e) => {
-              setSubject(e.target.value);
-              setPreview(null);
-            }}
-          />
-        </label>
-        <label>
-          Message
-          <textarea
-            aria-label="Message"
-            rows={8}
-            value={body}
-            maxLength={10000}
-            onChange={(e) => {
-              setBody(e.target.value);
-              setPreview(null);
-            }}
-          />
-        </label>
-        <button
-          disabled={busy || !subject.trim() || !body.trim()}
-          onClick={() =>
-            run(async () => {
-              const id = message?.id ?? draftId.current;
-              await service.draft({
-                target: a.id,
-                message_id: id,
-                expected: message?.revision ?? 0,
-                subject,
-                body,
-              });
-              setMessage({
-                ...message,
-                id,
-                application_id: a.id,
-                subject,
-                body,
-                revision: (message?.revision ?? 0) + 1,
-                status: "draft",
-                receipt: null,
-              });
-            }, "Draft saved. Choose it below to preview the exact saved version.")
-          }
-        >
-          Save draft
-        </button>
-        {data.messages
-          .filter((m) => m.application_id === a.id)
-          .map((m) => (
-            <article className="h-event" key={m.id}>
-              <strong>{m.subject}</strong>
-              <small>
-                {m.status === "disabled" ? "Delivery disabled" : m.status} · v{m.revision}
-              </small>
-              <button
-                onClick={() => {
-                  setMessage(m);
-                  setSubject(m.subject);
-                  setBody(m.body);
-                  setPreview(m);
-                }}
-              >
-                Preview / edit
-              </button>
+            {stageLabel(t)}
+          </Button>
+        ))}
+      </nav>
+      <div className="h-detail">
+        <main>
+          {detailTab === "overview" && (
+            <article className="h-card">
+              {" "}
+              <div className="h-card-heading">
+                <h3>
+                  <FileText size={20} />
+                  Application answers
+                </h3>
+              </div>
+              {Object.entries(a.answers).map(([id, q]) => (
+                <section key={id}>
+                  <h4>{q.label}</h4>
+                  <p className="h-pre">{q.answer || "No answer"}</p>
+                </section>
+              ))}
+              {!Object.keys(a.answers).length && <p>No application answers recorded.</p>}
             </article>
-          ))}
-        {currentPreview && (
-          <section className="h-preview" aria-label="Email preview">
-            <h4>{currentPreview.subject}</h4>
-            <p>To: {a.email}</p>
-            <p className="h-pre">{currentPreview.body}</p>
-            <p>Version {currentPreview.revision}. Live applicant delivery is not enabled.</p>
-            {["delivered@resend.dev", "bounced@resend.dev"].includes(a.email) && (
-              <button
+          )}
+          {(detailTab === "overview" || detailTab === "activity") && (
+            <article className="h-card">
+              {" "}
+              <h3>Private notes & contact history</h3>
+              <label>
+                Add a note
+                <textarea
+                  ref={noteInput}
+                  value={note}
+                  maxLength={5000}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </label>
+              <Button
+                variant="outline"
+                disabled={busy || !note.trim()}
+                onClick={() =>
+                  run(async () => {
+                    await service.note(a.id, note, noteId.current);
+                    noteId.current = crypto.randomUUID();
+                    setNote("");
+                  }, "Private note saved.")
+                }
+              >
+                Save note
+              </Button>
+              <EventFeed
+                events={data.events.filter((e) => e.application_id === a.id)}
+                describe={(e) => `${activityLabels[e.kind] || "Activity"}: ${activityText(e)}`}
+              />
+              {!data.events.some((e) => e.application_id === a.id) && (
+                <p className="h-muted">No activity recorded yet.</p>
+              )}
+            </article>
+          )}
+          {detailTab === "messages" && (
+            <article className="h-card">
+              {" "}
+              <h3>Write to the candidate</h3>
+              <label>
+                Subject
+                <input
+                  aria-label="Subject"
+                  value={subject}
+                  maxLength={200}
+                  onChange={(e) => {
+                    setSubject(e.target.value);
+                    setPreview(null);
+                  }}
+                />
+              </label>
+              <label>
+                Message
+                <textarea
+                  aria-label="Message"
+                  rows={8}
+                  value={body}
+                  maxLength={10000}
+                  onChange={(e) => {
+                    setBody(e.target.value);
+                    setPreview(null);
+                  }}
+                />
+              </label>
+              <Button
+                variant="outline"
+                disabled={busy || !subject.trim() || !body.trim()}
+                onClick={() =>
+                  run(async () => {
+                    const id = message?.id ?? draftId.current;
+                    await service.draft({
+                      target: a.id,
+                      message_id: id,
+                      expected: message?.revision ?? 0,
+                      subject,
+                      body,
+                    });
+                    setMessage({
+                      ...message,
+                      id,
+                      application_id: a.id,
+                      subject,
+                      body,
+                      revision: (message?.revision ?? 0) + 1,
+                      status: "draft",
+                      receipt: null,
+                    });
+                  }, "Draft saved. Choose it below to preview the exact saved version.")
+                }
+              >
+                Save draft
+              </Button>
+              {data.messages
+                .filter((m) => m.application_id === a.id)
+                .map((m) => (
+                  <article className="h-event" key={m.id}>
+                    <strong>{m.subject}</strong>
+                    <small>
+                      {m.status === "disabled" ? "Delivery disabled" : m.status} · v{m.revision}
+                    </small>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setMessage(m);
+                        setSubject(m.subject);
+                        setBody(m.body);
+                        setPreview(m);
+                      }}
+                    >
+                      Preview / edit
+                    </Button>
+                  </article>
+                ))}
+              {currentPreview && (
+                <section className="h-preview" aria-label="Email preview">
+                  <h4>{currentPreview.subject}</h4>
+                  <p>To: {a.email}</p>
+                  <p className="h-pre">{currentPreview.body}</p>
+                  <p>Version {currentPreview.revision}. Live applicant delivery is not enabled.</p>
+                  {["delivered@resend.dev", "bounced@resend.dev"].includes(a.email) && (
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() =>
+                        run(async () => {
+                          const result = await service.providerQA(
+                            currentPreview.id,
+                            currentPreview.revision,
+                            ["sending", "sent", "delivered", "unknown", "failed"].includes(
+                              currentPreview.status,
+                            )
+                              ? currentPreview.receipt
+                              : undefined,
+                          );
+                          if (result.state === "unknown")
+                            throw new Error(
+                              "Provider outcome uncertain. Reconcile before retrying",
+                            );
+                        }, "Provider receipt refreshed. Check the saved delivery state below.")
+                      }
+                    >
+                      {["draft", "disabled"].includes(currentPreview.status)
+                        ? "Approve QA send"
+                        : currentPreview.status === "queued"
+                          ? "Resume QA dispatch"
+                          : "Reconcile provider receipt"}
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    disabled={busy || currentPreview.status !== "draft"}
+                    onClick={() =>
+                      run(async () => {
+                        await service.testSend(currentPreview.id, currentPreview.revision);
+                        setPreview({ ...currentPreview, status: "disabled" });
+                      }, "Test receipt saved. No email was sent.")
+                    }
+                  >
+                    Approve & test send
+                  </Button>
+                </section>
+              )}
+            </article>
+          )}
+          {detailTab === "documents" && (
+            <article className="h-card">
+              <h3>Documents</h3>
+              <p>Only the private application résumé is available.</p>
+              <p>{a.resume_name}</p>{" "}
+              <Button
+                variant="outline"
                 disabled={busy}
                 onClick={() =>
                   run(async () => {
-                    const result = await service.providerQA(
-                      currentPreview.id,
-                      currentPreview.revision,
-                      ["sending", "sent", "delivered", "unknown", "failed"].includes(
-                        currentPreview.status,
-                      )
-                        ? currentPreview.receipt
-                        : undefined,
-                    );
-                    if (result.state === "unknown")
-                      throw new Error("Provider outcome uncertain. Reconcile before retrying");
-                  }, "Provider receipt refreshed. Check the saved delivery state below.")
+                    setResumeLink(await service.resume(a.resume_path));
+                  }, "Private download is ready. Open the link below within 60 seconds.")
                 }
               >
-                {["draft", "disabled"].includes(currentPreview.status)
-                  ? "Approve QA send"
-                  : currentPreview.status === "queued"
-                    ? "Resume QA dispatch"
-                    : "Reconcile provider receipt"}
-              </button>
-            )}
-            <button
-              disabled={busy || currentPreview.status !== "draft"}
+                Download résumé
+              </Button>
+              {resumeLink && (
+                <a href={resumeLink} target="_blank" rel="noreferrer">
+                  Open private résumé (60 seconds)
+                </a>
+              )}
+            </article>
+          )}
+        </main>
+        <aside>
+          <article className="h-card h-next">
+            <h3>
+              <Zap size={20} />
+              Next step
+            </h3>
+            <p>{a.next_action || "Set the next action for personal review."}</p>
+            <small>
+              {name(a.owner_id)} · {a.review_date ? `Review ${a.review_date}` : "No review date"}
+            </small>
+            <div className="h-actions">
+              <Button className="h-primary" onClick={() => nextInput.current?.focus()}>
+                Edit next step
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDetailTab("activity");
+                  requestAnimationFrame(() => noteInput.current?.focus());
+                }}
+              >
+                Add note
+              </Button>
+              <Button variant="outline" onClick={() => setDetailTab("messages")}>
+                <Mail />
+                Draft message
+              </Button>
+            </div>
+          </article>
+          <article className="h-card">
+            {" "}
+            <div className="h-card-heading">
+              <h3>
+                <UserRound size={20} />
+                Details
+              </h3>
+              <small>Revision {a.revision}</small>
+            </div>
+            <label>
+              Stage
+              <select
+                aria-label="Stage"
+                value={stage}
+                onChange={(e) => setStage(e.target.value as Application["stage"])}
+              >
+                {STAGES.map((s) => (
+                  <option key={s} value={s}>
+                    {stageLabel(s)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Owner value={owner} change={setOwner} />
+            <label>
+              Next action
+              <textarea
+                ref={nextInput}
+                value={next}
+                maxLength={2000}
+                onChange={(e) => setNext(e.target.value)}
+              />
+            </label>
+            <label>
+              Review date
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </label>
+            <Button
+              variant="outline"
+              disabled={busy}
               onClick={() =>
-                run(async () => {
-                  await service.testSend(currentPreview.id, currentPreview.revision);
-                  setPreview({ ...currentPreview, status: "disabled" });
-                }, "Test receipt saved. No email was sent.")
+                run(
+                  () =>
+                    service.update({
+                      target: a.id,
+                      expected: a.revision,
+                      stage,
+                      owner_id: owner || null,
+                      next_action: next,
+                      review_date: date || null,
+                    }),
+                  "Application updated. No email was sent.",
+                )
               }
             >
-              Approve & test send
-            </button>
-          </section>
-        )}
-      </aside>
+              Save next step
+            </Button>
+            <p className="h-muted">Changing a stage never sends a message.</p>
+          </article>
+          {detailTab !== "documents" && (
+            <article className="h-card">
+              <h3>
+                <FileText size={20} />
+                Private résumé
+              </h3>
+              <p>{a.resume_name}</p>{" "}
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  run(async () => {
+                    setResumeLink(await service.resume(a.resume_path));
+                  }, "Private download is ready. Open the link below within 60 seconds.")
+                }
+              >
+                Download résumé
+              </Button>
+              {resumeLink && (
+                <a href={resumeLink} target="_blank" rel="noreferrer">
+                  Open private résumé (60 seconds)
+                </a>
+              )}
+            </article>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
@@ -675,7 +763,8 @@ function JobEditor({
           </label>
         ))}
         {v.questions.length === 2 ? (
-          <button
+          <Button
+            variant="outline"
             type="button"
             onClick={() =>
               setV({
@@ -685,11 +774,15 @@ function JobEditor({
             }
           >
             Add third question
-          </button>
+          </Button>
         ) : (
-          <button type="button" onClick={() => setV({ ...v, questions: v.questions.slice(0, 2) })}>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => setV({ ...v, questions: v.questions.slice(0, 2) })}
+          >
             Remove third question
-          </button>
+          </Button>
         )}
         <label>
           Status
@@ -703,17 +796,14 @@ function JobEditor({
             <option value="closed">Closed</option>
           </select>
         </label>
-        <p>
-          Opening allows applications. Closing stops new applications and keeps all
-          records.
-        </p>
+        <p>Opening allows applications. Closing stops new applications and keeps all records.</p>
         <div className="h-actions">
-          <button disabled={busy} type="submit">
+          <Button variant="outline" disabled={busy} type="submit">
             Save job
-          </button>
-          <button type="button" disabled={busy} onClick={close}>
+          </Button>
+          <Button variant="outline" type="button" disabled={busy} onClick={close}>
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </section>

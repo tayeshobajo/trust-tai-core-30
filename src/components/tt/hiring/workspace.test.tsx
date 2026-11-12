@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { HiringWorkspace } from "./workspace";
-import type { Snapshot } from "@/domain/hiring";
+import { blankJob, type Snapshot } from "@/domain/hiring";
 import type { HiringService } from "@/data/supabase/hiring";
 afterEach(cleanup);
 const app = {
@@ -40,6 +40,12 @@ function setup(d = data) {
     load: vi.fn(),
   } as HiringService;
   render(<HiringWorkspace data={d} service={service} refresh={async () => {}} loading={false} />);
+  if (d.applications.length)
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Hiring views" })).getByRole("button", {
+        name: "Candidates",
+      }),
+    );
   return service;
 }
 describe("Hiring room", () => {
@@ -69,6 +75,7 @@ describe("Hiring room", () => {
       ],
     });
     fireEvent.click(screen.getByText("Synthetic Candidate"));
+    fireEvent.click(screen.getByRole("button", { name: "Messages" }));
     expect(screen.queryByText("Approve & test send")).toBeNull();
     fireEvent.click(screen.getByText("Preview / edit"));
     fireEvent.click(screen.getByText("Approve & test send"));
@@ -87,13 +94,18 @@ describe("Hiring room", () => {
   });
   it("keeps an empty room useful", () => {
     setup({ ...data, applications: [] });
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Hiring views" })).getByRole("button", {
+        name: "Candidates",
+      }),
+    );
     expect(screen.getByText("Room for the right people.")).toBeTruthy();
     fireEvent.click(screen.getByText("Manage jobs"));
     expect(screen.getByText("Create job")).toBeTruthy();
   });
   it("blocks repeated update clicks while saving", async () => {
     const s = setup();
-    let resolve!: () => void;
+    let resolve = () => {};
     vi.mocked(s.update).mockImplementation(
       () =>
         new Promise<void>((r) => {
@@ -110,4 +122,202 @@ describe("Hiring room", () => {
       expect(screen.getByText("Application updated. No email was sent.")).toBeTruthy(),
     );
   });
+  it("requires an explicit save with the canonical revision and preserves all four edit fields", async () => {
+    const s = setup();
+    fireEvent.click(screen.getByText("Synthetic Candidate"));
+    fireEvent.change(screen.getByLabelText("Owner"), {
+      target: { value: "476e81ff-97d1-4316-9cc3-b8397cdb3fa4" },
+    });
+    fireEvent.change(screen.getByLabelText("Next action"), {
+      target: { value: "Review the application" },
+    });
+    fireEvent.change(screen.getByLabelText("Review date"), { target: { value: "2026-11-20" } });
+    fireEvent.change(screen.getByLabelText("Stage"), { target: { value: "reviewing" } });
+    expect(s.update).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Save next step"));
+    await waitFor(() =>
+      expect(s.update).toHaveBeenCalledWith({
+        target: "a",
+        expected: 1,
+        stage: "reviewing",
+        owner_id: "476e81ff-97d1-4316-9cc3-b8397cdb3fa4",
+        next_action: "Review the application",
+        review_date: "2026-11-20",
+      }),
+    );
+    expect(s.providerQA).not.toHaveBeenCalled();
+  });
+  it("paginates and filters real snapshot rows", () => {
+    setup({
+      ...data,
+      applications: Array.from({ length: 11 }, (_, i) => ({
+        ...app,
+        id: String(i),
+        full_name: `Candidate ${String(i).padStart(2, "0")}`,
+      })),
+    });
+    expect(screen.getAllByRole("row")).toHaveLength(11);
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    expect(screen.getAllByRole("row")).toHaveLength(2);
+    fireEvent.change(screen.getByPlaceholderText("Name or email"), {
+      target: { value: "Candidate 07" },
+    });
+    expect(screen.getAllByRole("row")).toHaveLength(2);
+    expect(screen.getByText("Candidate 07")).toBeTruthy();
+  });
+  it("keeps document and activity tabs functional without signing on navigation", () => {
+    const s = setup();
+    fireEvent.click(screen.getByText("Synthetic Candidate"));
+    fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+    expect(screen.getByText("Only the private application résumé is available.")).toBeTruthy();
+    expect(s.resume).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Activity" }));
+    fireEvent.change(screen.getByLabelText("Add a note"), {
+      target: { value: "Reviewed privately" },
+    });
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Candidate views" })).getByRole("button", {
+        name: "Overview",
+      }),
+    );
+    expect(screen.getByLabelText("Add a note").getAttribute("maxlength")).toBe("5000");
+    expect((screen.getByLabelText("Add a note") as HTMLTextAreaElement).value).toBe(
+      "Reviewed privately",
+    );
+  });
+  it("preserves stale-save errors and never sends a message", async () => {
+    const s = setup();
+    vi.mocked(s.update).mockRejectedValue(new Error("Revision changed. Reload before saving."));
+    fireEvent.click(screen.getByText("Synthetic Candidate"));
+    fireEvent.click(screen.getByText("Save next step"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain("Revision changed"),
+    );
+    expect(s.providerQA).not.toHaveBeenCalled();
+    expect(s.testSend).not.toHaveBeenCalled();
+  });
+  it("does not expose provider QA dispatch for ordinary applicants", () => {
+    const s = setup({
+      ...data,
+      messages: [
+        {
+          id: "m",
+          application_id: "a",
+          subject: "Saved",
+          body: "Saved draft",
+          revision: 2,
+          status: "draft",
+          receipt: null,
+        },
+      ],
+    });
+    fireEvent.click(screen.getByText("Synthetic Candidate"));
+    fireEvent.click(screen.getByRole("button", { name: "Messages" }));
+    fireEvent.click(screen.getByText("Preview / edit"));
+    expect(screen.queryByRole("button", { name: "Approve QA send" })).toBeNull();
+    expect(s.providerQA).not.toHaveBeenCalled();
+  });
+  it("does not turn unavailable or denied snapshots into zero-count dashboards", () => {
+    const service = {} as HiringService;
+    const view = render(
+      <HiringWorkspace service={service} refresh={async () => {}} loading={true} />,
+    );
+    expect(screen.getByRole("status").textContent).toContain("Opening your private hiring queue");
+    expect(screen.queryByText("Total applications")).toBeNull();
+    view.rerender(
+      <HiringWorkspace
+        service={service}
+        refresh={async () => {}}
+        loading={false}
+        error="Hiring access denied"
+      />,
+    );
+    expect(screen.getByRole("alert").textContent).toBe("Hiring access denied");
+    expect(screen.queryByText("Total applications")).toBeNull();
+  });
+  it("retains Digital Sales Intern open and AI Builder draft without saving on navigation", () => {
+    const s = setup({
+      ...data,
+      applications: [],
+      jobs: [
+        {
+          ...blankJob(),
+          id: "sales",
+          organization_id: "test",
+          revision: 1,
+          title: "Digital Sales Intern",
+          slug: "sales",
+          status: "open",
+        },
+        {
+          ...blankJob(),
+          id: "builder",
+          organization_id: "test",
+          revision: 1,
+          title: "AI Builder",
+          slug: "builder",
+          status: "draft",
+        },
+      ],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Roles" }));
+    expect(screen.getByText("Digital Sales Intern").closest("article")?.textContent).toContain(
+      "open",
+    );
+    expect(screen.getByText("AI Builder").closest("article")?.textContent).toContain("draft");
+    expect(s.saveJob).not.toHaveBeenCalled();
+  });
+  it("reads a changed saved provider receipt in the current preview", () => {
+    const service = {
+      update: vi.fn(),
+      note: vi.fn(),
+      draft: vi.fn(),
+      providerQA: vi.fn(),
+      testSend: vi.fn(),
+      resume: vi.fn(),
+      saveJob: vi.fn(),
+      load: vi.fn(),
+    } as HiringService;
+    const message = {
+      id: "m",
+      application_id: "a",
+      subject: "Saved",
+      body: "Saved body",
+      revision: 2,
+      status: "draft",
+      receipt: null,
+    };
+    const view = render(
+      <HiringWorkspace
+        data={{ ...data, messages: [message] }}
+        service={service}
+        refresh={async () => {}}
+        loading={false}
+        initialId="a"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Messages" }));
+    fireEvent.click(screen.getByText("Preview / edit"));
+    view.rerender(
+      <HiringWorkspace
+        data={{
+          ...data,
+          messages: [{ ...message, status: "delivered", receipt: "synthetic-receipt" }],
+        }}
+        service={service}
+        refresh={async () => {}}
+        loading={false}
+        initialId="a"
+      />,
+    );
+    expect(
+      (screen.getByRole("button", { name: "Approve & test send" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(safeCalls(service)).toBe(0);
+  });
 });
+function safeCalls(service: HiringService) {
+  return (
+    vi.mocked(service.providerQA).mock.calls.length + vi.mocked(service.testSend).mock.calls.length
+  );
+}
