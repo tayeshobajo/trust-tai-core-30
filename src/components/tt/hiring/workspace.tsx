@@ -19,6 +19,7 @@ import { appliedDate, initials } from "./presentation";
 import "./workspace.css";
 const name = (id: string | null) => HIRING_PEOPLE.find((p) => p.id === id)?.name ?? "Unassigned";
 const activityLabels: Record<string, string> = {
+  "job.saved": "Role saved",
   "application.received": "Application received",
   "application.updated": "Next step updated",
   "note.added": "Private note",
@@ -29,6 +30,11 @@ const activityLabels: Record<string, string> = {
 };
 function activityText(event: Event) {
   const d = event.detail;
+  if (event.kind === "job.saved") {
+    const status = typeof d["status"] === "string" ? `Status: ${d["status"]}.` : "";
+    const revision = typeof d["revision"] === "number" ? `Revision ${d["revision"]}.` : "";
+    return [status, revision].filter(Boolean).join(" ") || "Role save recorded.";
+  }
   if (typeof d["text"] === "string") return d["text"];
   if (event.kind === "application.updated")
     return `${stageLabel(String(d["from"]))} → ${stageLabel(String(d["to"]))}. Owner: ${name(typeof d["owner_id"] === "string" ? d["owner_id"] : null)}. Next: ${d["next_action"] || "Not set"}. Review: ${d["review_date"] || "Not set"}.`;
@@ -87,52 +93,61 @@ export function HiringWorkspace({
     }
   }
   const current = data?.applications.find((a) => a.id === selected);
+  const showingCandidate = tab === "queue" && Boolean(current);
   return (
     <section className="hiring">
-      <header className="h-page-heading">
-        <div>
-          <p className="h-eyebrow">PEOPLE / PRIVATE WORKSPACE</p>
-          <h1>Hiring</h1>
-          <p>Thoughtful decisions. Clear next steps. A person behind every application.</p>
-        </div>
-        {data && !current && (
-          <Button
-            className="h-primary"
-            onClick={() => {
-              setDuplicate(null);
-              setEdit("new");
-            }}
-          >
-            <Plus />
-            Create job
-          </Button>
-        )}
-      </header>
-      <nav className="h-nav" aria-label="Hiring views">
-        {(
-          [
-            ["overview", "Overview"],
-            ["queue", "Candidates"],
-            ["jobs", "Roles"],
-          ] as const
-        ).map(([value, label]) => (
-          <Button
-            variant="ghost"
-            key={value}
-            aria-pressed={tab === value}
-            onClick={() => {
-              setTab(value);
-              setSelected("");
-            }}
-          >
-            {label}
-          </Button>
-        ))}
-        <Button variant="ghost" disabled={busy} onClick={() => run(refresh, "Queue refreshed.")}>
-          <RefreshCw />
-          Reload
-        </Button>
-      </nav>
+      {!showingCandidate && (
+        <>
+          <header className="h-page-heading">
+            <div>
+              <p className="h-eyebrow">PEOPLE / PRIVATE WORKSPACE</p>
+              <h1>Hiring</h1>
+              <p>Thoughtful decisions. Clear next steps. A person behind every application.</p>
+            </div>
+            {data && !current && (
+              <Button
+                className="h-primary"
+                onClick={() => {
+                  setDuplicate(null);
+                  setEdit("new");
+                }}
+              >
+                <Plus />
+                Create job
+              </Button>
+            )}
+          </header>
+          <nav className="h-nav" aria-label="Hiring views">
+            {(
+              [
+                ["overview", "Overview"],
+                ["queue", "Candidates"],
+                ["jobs", "Roles"],
+              ] as const
+            ).map(([value, label]) => (
+              <Button
+                variant="ghost"
+                key={value}
+                aria-pressed={tab === value}
+                onClick={() => {
+                  setTab(value);
+                  setSelected("");
+                }}
+              >
+                {label}
+              </Button>
+            ))}
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => run(refresh, "Queue refreshed.")}
+            >
+              <RefreshCw />
+              Reload
+            </Button>
+          </nav>
+        </>
+      )}
       <p className="h-notice">
         Live applicant emails await separate approval. Provider QA uses test inboxes only. Cleanup
         review: Ayobami.

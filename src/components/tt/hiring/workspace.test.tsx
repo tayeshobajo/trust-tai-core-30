@@ -49,6 +49,37 @@ function setup(d = data) {
   return service;
 }
 describe("Hiring room", () => {
+  it("hides global Hiring orientation only while a current candidate is selected", () => {
+    setup();
+    expect(screen.getByRole("heading", { name: "Hiring" })).toBeTruthy();
+    fireEvent.click(screen.getByText("Synthetic Candidate"));
+    expect(screen.queryByRole("heading", { name: "Hiring" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Hiring views" })).toBeNull();
+    expect(screen.getByRole("button", { name: "All applications" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Candidate views" })).toBeTruthy();
+    expect(screen.getByText(/Live applicant emails await separate approval/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "All applications" }));
+    expect(screen.getByRole("heading", { name: "Hiring" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Hiring views" })).toBeTruthy();
+  });
+  it("describes role saves using only the recorded status and revision", () => {
+    setup({
+      ...data,
+      applications: [],
+      events: [
+        {
+          id: "role-event",
+          application_id: null,
+          actor: null,
+          kind: "job.saved",
+          detail: { status: "open", revision: 2 },
+          created_at: "2026-11-12T19:15:00Z",
+        },
+      ],
+    });
+    expect(screen.getByText("Role saved: Status: open. Revision 2.")).toBeTruthy();
+    expect(screen.queryByText("Activity: Activity recorded.")).toBeNull();
+  });
   it("separates stage edits from communication", async () => {
     const s = setup();
     fireEvent.click(screen.getByText("Synthetic Candidate"));
