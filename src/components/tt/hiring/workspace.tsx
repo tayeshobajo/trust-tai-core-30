@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import {
-  blankJob,
   HIRING_PEOPLE,
   needsAttention,
   stageLabel,
@@ -17,6 +16,7 @@ import { ArrowLeft, FileText, Mail, MapPin, Plus, RefreshCw, UserRound, Zap } fr
 import { CandidateList, EventFeed, HiringOverview } from "./views";
 import { appliedDate, initials } from "./presentation";
 import "./workspace.css";
+import { RoleEditor } from "./role-editor";
 const name = (id: string | null) => HIRING_PEOPLE.find((p) => p.id === id)?.name ?? "Unassigned";
 const activityLabels: Record<string, string> = {
   "job.saved": "Role saved",
@@ -94,6 +94,30 @@ export function HiringWorkspace({
   }
   const current = data?.applications.find((a) => a.id === selected);
   const showingCandidate = tab === "queue" && Boolean(current);
+  if (edit)
+    return (
+      <section className="hiring">
+        <p className="h-notice">
+          Live applicant emails await separate approval. Provider QA uses test inboxes only. Cleanup
+          review: Ayobami.
+        </p>
+        <RoleEditor
+          key={edit === "new" ? (duplicate?.id ?? "new") : edit.id}
+          existing={edit === "new" ? undefined : edit}
+          duplicate={duplicate}
+          currentRevision={
+            edit === "new" ? undefined : data?.jobs.find((j) => j.id === edit.id)?.revision
+          }
+          close={() => setEdit(null)}
+          read={() => service.load()}
+          save={(values, expected) => service.saveJob(values, expected)}
+          saved={() => {
+            setEdit(null);
+            void run(refresh, "Role saved.");
+          }}
+        />
+      </section>
+    );
   return (
     <section className="hiring">
       {!showingCandidate && (
@@ -241,20 +265,6 @@ export function HiringWorkspace({
             <p>No roles yet. Create a draft and choose two or three focused questions.</p>
           )}
         </>
-      )}
-      {edit && (
-        <JobEditor
-          key={typeof edit === "string" ? (duplicate?.id ?? "new") : edit.id}
-          existing={edit === "new" ? undefined : edit}
-          duplicate={duplicate}
-          busy={busy}
-          close={() => setEdit(null)}
-          save={async (values) => {
-            await service.saveJob(values, edit === "new" ? undefined : edit);
-            setEdit(null);
-          }}
-          run={run}
-        />
       )}
     </section>
   );
@@ -672,155 +682,5 @@ function Owner({ value, change }: { value: string; change: (s: string) => void }
         ))}
       </select>
     </label>
-  );
-}
-function JobEditor({
-  existing,
-  duplicate,
-  busy,
-  close,
-  save,
-  run,
-}: {
-  existing?: Job | undefined;
-  duplicate: Job | null;
-  busy: boolean;
-  close: () => void;
-  save: (v: unknown) => Promise<void>;
-  run: Run;
-}) {
-  const [v, setV] = useState(
-    () =>
-      existing ??
-      (duplicate
-        ? {
-            ...duplicate,
-            title: duplicate.title + " (copy)",
-            slug: duplicate.slug + "-copy",
-            status: "draft" as const,
-          }
-        : blankJob()),
-  );
-  return (
-    <section className="h-editor" aria-label="Job editor">
-      <h2>{existing ? "Edit role" : "Draft a role"}</h2>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void run(() => save(v), "Job saved.");
-        }}
-      >
-        <div className="h-form-grid">
-          {(["title", "slug", "team", "location", "arrangement"] as const).map((k) => (
-            <label key={k}>
-              {k}
-              <input
-                required={k === "title" || k === "slug"}
-                value={v[k]}
-                disabled={k === "slug" && !!existing}
-                onChange={(e) => setV({ ...v, [k]: e.target.value })}
-              />
-            </label>
-          ))}
-          <Owner
-            value={v.owner_id ?? ""}
-            change={(owner_id) => setV({ ...v, owner_id: owner_id || null })}
-          />
-        </div>
-        <p>Job URLs stay fixed after creation. Duplicate creates a new draft.</p>
-        {(["summary", "about"] as const).map((k) => (
-          <label key={k}>
-            {k}
-            <textarea value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} />
-          </label>
-        ))}
-        {(["responsibilities", "requirements", "nice_to_have"] as const).map((k) => (
-          <label key={k}>
-            {k.replaceAll("_", " ")} (one per line)
-            <textarea
-              value={v[k].join("\n")}
-              onChange={(e) => setV({ ...v, [k]: e.target.value.split("\n") })}
-            />
-          </label>
-        ))}
-        <h3>Screening questions</h3>
-        {v.questions.map((q, i) => (
-          <label key={q.id}>
-            Question {i + 1}
-            <input
-              required
-              value={q.label}
-              maxLength={300}
-              onChange={(e) =>
-                setV({
-                  ...v,
-                  questions: v.questions.map((x, n) =>
-                    n === i ? { ...x, label: e.target.value } : x,
-                  ),
-                })
-              }
-            />
-            <span className="h-check">
-              <input
-                type="checkbox"
-                checked={q.required}
-                onChange={(e) =>
-                  setV({
-                    ...v,
-                    questions: v.questions.map((x, n) =>
-                      n === i ? { ...x, required: e.target.checked } : x,
-                    ),
-                  })
-                }
-              />
-              Required
-            </span>
-          </label>
-        ))}
-        {v.questions.length === 2 ? (
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() =>
-              setV({
-                ...v,
-                questions: [...v.questions, { id: "additional", label: "", required: false }],
-              })
-            }
-          >
-            Add third question
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => setV({ ...v, questions: v.questions.slice(0, 2) })}
-          >
-            Remove third question
-          </Button>
-        )}
-        <label>
-          Status
-          <select
-            aria-label="Status"
-            value={v.status}
-            onChange={(e) => setV({ ...v, status: e.target.value as Job["status"] })}
-          >
-            <option value="draft">Draft</option>
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-          </select>
-        </label>
-        <p>Opening allows applications. Closing stops new applications and keeps all records.</p>
-        <div className="h-actions">
-          <Button variant="outline" disabled={busy} type="submit">
-            Save job
-          </Button>
-          <Button variant="outline" type="button" disabled={busy} onClick={close}>
-            Cancel
-          </Button>
-        </div>
-      </form>
-    </section>
   );
 }
