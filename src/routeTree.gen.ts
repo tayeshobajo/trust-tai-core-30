@@ -108,6 +108,7 @@ import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/publi
 import { Route as ApiPublicContentImageRouteImport } from './routes/api/public/content.image'
 import { Route as ApiPublicContentPublishRouteImport } from './routes/api/public/content.publish'
 import { Route as ApiPublicHiringDeliveryRouteImport } from './routes/api/public/hiring.delivery'
+import { Route as ApiPublicHiringIntakeRouteImport } from './routes/api/public/hiring.intake'
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
 import { Route as ApiPublicIntelligenceReconcileRouteImport } from './routes/api/public/intelligence.reconcile'
 import { Route as ApiPublicIntelligenceStatusRouteImport } from './routes/api/public/intelligence.status'
@@ -661,6 +662,11 @@ const ApiPublicHiringDeliveryRoute = ApiPublicHiringDeliveryRouteImport.update({
   path: '/api/public/hiring/delivery',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHiringIntakeRoute = ApiPublicHiringIntakeRouteImport.update({
+  id: '/api/public/hiring/intake',
+  path: '/api/public/hiring/intake',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicIntelligenceReasonRoute =
   ApiPublicIntelligenceReasonRouteImport.update({
     id: '/api/public/intelligence/reason',
@@ -1049,6 +1055,7 @@ export interface FileRoutesByFullPath {
   '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/hiring/delivery': typeof ApiPublicHiringDeliveryRoute
+  '/api/public/hiring/intake': typeof ApiPublicHiringIntakeRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
@@ -1192,6 +1199,7 @@ export interface FileRoutesByTo {
   '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/hiring/delivery': typeof ApiPublicHiringDeliveryRoute
+  '/api/public/hiring/intake': typeof ApiPublicHiringIntakeRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
@@ -1345,6 +1353,7 @@ export interface FileRoutesById {
   '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/hiring/delivery': typeof ApiPublicHiringDeliveryRoute
+  '/api/public/hiring/intake': typeof ApiPublicHiringIntakeRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
@@ -1499,6 +1508,7 @@ export interface FileRouteTypes {
     | '/api/public/content/image'
     | '/api/public/content/publish'
     | '/api/public/hiring/delivery'
+    | '/api/public/hiring/intake'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
@@ -1642,6 +1652,7 @@ export interface FileRouteTypes {
     | '/api/public/content/image'
     | '/api/public/content/publish'
     | '/api/public/hiring/delivery'
+    | '/api/public/hiring/intake'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
@@ -1794,6 +1805,7 @@ export interface FileRouteTypes {
     | '/api/public/content/image'
     | '/api/public/content/publish'
     | '/api/public/hiring/delivery'
+    | '/api/public/hiring/intake'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
@@ -1891,6 +1903,7 @@ export interface RootRouteChildren {
   ApiPublicContentImageRoute: typeof ApiPublicContentImageRoute
   ApiPublicContentPublishRoute: typeof ApiPublicContentPublishRoute
   ApiPublicHiringDeliveryRoute: typeof ApiPublicHiringDeliveryRoute
+  ApiPublicHiringIntakeRoute: typeof ApiPublicHiringIntakeRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
   ApiPublicIntelligenceReconcileRoute: typeof ApiPublicIntelligenceReconcileRoute
   ApiPublicIntelligenceStatusRoute: typeof ApiPublicIntelligenceStatusRoute
@@ -2633,6 +2646,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHiringDeliveryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hiring/intake': {
+      id: '/api/public/hiring/intake'
+      path: '/api/public/hiring/intake'
+      fullPath: '/api/public/hiring/intake'
+      preLoaderRoute: typeof ApiPublicHiringIntakeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/intelligence/reason': {
       id: '/api/public/intelligence/reason'
       path: '/api/public/intelligence/reason'
@@ -3262,6 +3282,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicContentImageRoute: ApiPublicContentImageRoute,
   ApiPublicContentPublishRoute: ApiPublicContentPublishRoute,
   ApiPublicHiringDeliveryRoute: ApiPublicHiringDeliveryRoute,
+  ApiPublicHiringIntakeRoute: ApiPublicHiringIntakeRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
   ApiPublicIntelligenceReconcileRoute: ApiPublicIntelligenceReconcileRoute,
   ApiPublicIntelligenceStatusRoute: ApiPublicIntelligenceStatusRoute,
