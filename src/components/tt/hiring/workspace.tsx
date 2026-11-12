@@ -295,8 +295,10 @@ function Candidate({
   const draftId = useRef(crypto.randomUUID());
   const recordedMessages = data.messages.filter((m) => m.application_id === a.id);
   const hasSent = recordedMessages.some((m) => ["sent", "delivered"].includes(m.status));
-  const deliveryPending = recordedMessages.some((m) =>
-    ["sending", "queued", "unknown", "uncertain"].includes(m.status),
+  const hasDeliveryAttempt = recordedMessages.some(
+    (m) =>
+      Boolean(m.receipt) ||
+      ["failed", "bounced", "sending", "queued", "unknown", "uncertain"].includes(m.status),
   );
   const currentPreview = preview && (data.messages.find((m) => m.id === preview.id) ?? preview);
   return (
@@ -412,9 +414,7 @@ function Candidate({
                 <div className="h-conversation-empty">
                   <MessagesSquare size={40} aria-hidden="true" />
                   <h3>
-                    {deliveryPending
-                      ? "Delivery is pending or uncertain."
-                      : "No messages sent yet."}
+                    {hasDeliveryAttempt ? "Recorded delivery attempts" : "No messages sent yet."}
                   </h3>
                   <p>
                     {recordedMessages.length
@@ -429,8 +429,7 @@ function Candidate({
                     <strong>{m.subject}</strong>
                     <p className="h-pre">{m.body}</p>
                     <small>
-                      {m.status === "disabled" ? "Delivery disabled · test state" : m.status} · v
-                      {m.revision}
+                      {m.status === "disabled" ? "Delivery disabled" : m.status} · v{m.revision}
                     </small>
                     <small>
                       {m.receipt

@@ -241,6 +241,58 @@ describe("Approved Hiring companions", () => {
         expect(screen.queryByText("No messages sent yet.")).toBeNull();
     },
   );
+  it.each(["failed", "bounced", "sending", "queued", "unknown", "uncertain"])(
+    "does not infer no send from a recorded %s attempt with a receipt",
+    (status) => {
+      const { service } = setup(
+        {
+          ...base,
+          messages: [
+            {
+              id: "attempt",
+              application_id: app.id,
+              subject: "Recorded attempt",
+              body: "Recorded body",
+              revision: 3,
+              status,
+              receipt: "recorded-attempt-receipt",
+            },
+          ],
+        },
+        true,
+      );
+      click("Messages");
+      expect(screen.getByRole("heading", { name: "Recorded delivery attempts" })).toBeTruthy();
+      expect(screen.queryByText("No messages sent yet.")).toBeNull();
+      expect(screen.getByText(`${status} · v3`)).toBeTruthy();
+      expect(service.providerQA).not.toHaveBeenCalled();
+      expect(service.testSend).not.toHaveBeenCalled();
+    },
+  );
+  it("does not label a disabled initial acknowledgment as a test", () => {
+    const { service } = setup(
+      {
+        ...base,
+        messages: [
+          {
+            id: "acknowledgment",
+            application_id: app.id,
+            subject: "Application acknowledgment",
+            body: "Recorded acknowledgment",
+            revision: 1,
+            status: "disabled",
+            receipt: null,
+          },
+        ],
+      },
+      true,
+    );
+    click("Messages");
+    expect(screen.getByText("Delivery disabled · v1")).toBeTruthy();
+    expect(screen.queryByText(/Delivery disabled · test state/)).toBeNull();
+    expect(service.testSend).not.toHaveBeenCalled();
+    expect(service.providerQA).not.toHaveBeenCalled();
+  });
   it("shows only stored résumé and external portfolio without signing on navigation", () => {
     const { service } = setup(base, true);
     click("Documents");
