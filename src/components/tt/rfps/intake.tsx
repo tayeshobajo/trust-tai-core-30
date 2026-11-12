@@ -240,6 +240,30 @@ export function OpportunityIntake({
           <div className="rfp-fields">
             {input("title", "Opportunity title *")}
             <label>
+              Visibility
+              <select
+                value={review.audience ?? "team_business"}
+                onChange={(e) =>
+                  setReview({
+                    ...review,
+                    audience: e.target.value as "private" | "team_business" | "qa",
+                  })
+                }
+              >
+                <option value="private">Private to creator</option>
+                <option value="team_business">Team business — approved seven accounts</option>
+                <option value="qa">Private QA / test</option>
+              </select>
+            </label>
+            {review.audience === "team_business" && (
+              <p role="note">
+                The approved team can read this opportunity, internal notes and submission evidence,
+                and download all current and future attachments. This does not grant edit or upload
+                access. Do not include confidential personal documents. New accounts are not added
+                automatically. Visibility cannot be changed here after creation.
+              </p>
+            )}
+            <label>
               Type
               <select
                 value={review.kind}

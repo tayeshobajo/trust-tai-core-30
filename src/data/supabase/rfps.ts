@@ -128,6 +128,10 @@ export function rfpService(org: string) {
       }
     },
     async create(input: OpportunityInput) {
+      if (!input.audience)
+        throw new Error(
+          "Choose Team business, Private, or QA visibility before creating an opportunity.",
+        );
       return insert("rfp_opportunities", opportunityInput.parse(input));
     },
     async update(o: Opportunity, input: OpportunityInput, stage: Stage) {

@@ -143,3 +143,21 @@ it("does not repeat a creation after the separate file step fails", async () => 
   expect(preserveSource).toHaveBeenCalledTimes(1);
   expect(complete).toHaveBeenCalled();
 });
+it("defaults business intake to disclosed team visibility", async () => {
+  const { create } = mount();
+  await reviewUrl();
+  expect((screen.getByLabelText("Visibility") as HTMLSelectElement).value).toBe("team_business");
+  fireEvent.change(screen.getByLabelText("Visibility"), { target: { value: "team_business" } });
+  expect(screen.getByText(/download all current and future attachments/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Create opportunity" }));
+  await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
+  expect(create.mock.calls[0]?.[0]).toMatchObject({ audience: "team_business" });
+});
+it("retains explicit QA classification on capture", async () => {
+  const { create } = mount();
+  await reviewUrl();
+  fireEvent.change(screen.getByLabelText("Visibility"), { target: { value: "qa" } });
+  fireEvent.click(screen.getByRole("button", { name: "Create opportunity" }));
+  await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
+  expect(create.mock.calls[0]?.[0]).toMatchObject({ audience: "qa" });
+});

@@ -1,0 +1,17 @@
+insert into organizations values('ee683a64-e045-4226-a8ff-4ae6590d6789');
+insert into auth.users values('e1b3c843-3a91-4c27-a291-9e6ced782b9f');
+insert into rfp_opportunities(id,organization_id,created_by,title,kind,source_url,source_name,cycle,source_evidence) values('d6fa7158-ab5a-4c78-9d63-69b7ac7d2c8f','ee683a64-e045-4226-a8ff-4ae6590d6789','e1b3c843-3a91-4c27-a291-9e6ced782b9f','Backfill fixture','rfp','https://example.org/d6fa7158-ab5a-4c78-9d63-69b7ac7d2c8f','synthetic','test','synthetic');
+update rfp_opportunities set title='Backfill fixture' where id='d6fa7158-ab5a-4c78-9d63-69b7ac7d2c8f';
+update rfp_opportunities set title='Backfill fixture' where id='d6fa7158-ab5a-4c78-9d63-69b7ac7d2c8f';
+insert into rfp_opportunities(id,organization_id,created_by,title,kind,source_url,source_name,cycle,source_evidence) values('bae7cafc-ee8e-4f53-9300-0cf6164c6bbf','ee683a64-e045-4226-a8ff-4ae6590d6789','e1b3c843-3a91-4c27-a291-9e6ced782b9f','Backfill fixture','rfp','https://example.org/bae7cafc-ee8e-4f53-9300-0cf6164c6bbf','synthetic','test','synthetic');
+update rfp_opportunities set title='Backfill fixture' where id='bae7cafc-ee8e-4f53-9300-0cf6164c6bbf';
+update rfp_opportunities set title='Backfill fixture' where id='bae7cafc-ee8e-4f53-9300-0cf6164c6bbf';
+insert into rfp_opportunities(id,organization_id,created_by,title,kind,source_url,source_name,cycle,source_evidence) values('6da6c89d-28ba-4174-9354-1c6790f64787','ee683a64-e045-4226-a8ff-4ae6590d6789','e1b3c843-3a91-4c27-a291-9e6ced782b9f','Backfill fixture','rfp','https://example.org/6da6c89d-28ba-4174-9354-1c6790f64787','synthetic','test','synthetic');
+update rfp_opportunities set title='Backfill fixture' where id='6da6c89d-28ba-4174-9354-1c6790f64787';
+update rfp_opportunities set title='Backfill fixture' where id='6da6c89d-28ba-4174-9354-1c6790f64787';
+insert into rfp_opportunities(id,organization_id,created_by,title,kind,source_url,source_name,cycle,source_evidence) values('df76f52f-94d2-4cd6-8f8f-3d876b59f49e','ee683a64-e045-4226-a8ff-4ae6590d6789','e1b3c843-3a91-4c27-a291-9e6ced782b9f','Backfill fixture','rfp','https://example.org/df76f52f-94d2-4cd6-8f8f-3d876b59f49e','synthetic','test','synthetic');
+update rfp_opportunities set title='Backfill fixture' where id='df76f52f-94d2-4cd6-8f8f-3d876b59f49e';
+update rfp_opportunities set title='Backfill fixture' where id='df76f52f-94d2-4cd6-8f8f-3d876b59f49e';
+insert into rfp_opportunities(id,organization_id,created_by,title,kind,source_url,source_name,cycle,source_evidence) values('c60dbd87-9c83-4a27-8ceb-eaee5bc074c1','ee683a64-e045-4226-a8ff-4ae6590d6789','e1b3c843-3a91-4c27-a291-9e6ced782b9f','Backfill fixture','rfp','https://example.org/c60dbd87-9c83-4a27-8ceb-eaee5bc074c1','synthetic','test','synthetic');
+update rfp_opportunities set title='Backfill fixture' where id='c60dbd87-9c83-4a27-8ceb-eaee5bc074c1';
+update rfp_opportunities set title='Backfill fixture' where id='c60dbd87-9c83-4a27-8ceb-eaee5bc074c1';

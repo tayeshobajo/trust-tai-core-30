@@ -46,6 +46,7 @@ const source = z
   });
 export const opportunityInput = z
   .object({
+    audience: z.enum(["private", "team_business", "qa"]).optional(),
     title: z.string().trim().min(1).max(240),
     kind: z.enum(["rfp", "grant"]),
     source_url: source.or(z.literal("")),
@@ -160,6 +161,7 @@ export interface Snapshot {
   }[];
 }
 export const blankOpportunity: OpportunityInput = {
+  audience: "team_business",
   title: "",
   kind: "rfp",
   source_url: "",
