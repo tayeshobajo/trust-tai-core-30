@@ -59,3 +59,32 @@ Roles: all/open/draft/closed counts from supplied canonical rows, no-match/empty
 - The guarded service creates download:true URLs, so Download is supported; inline Preview is intentionally absent. Expiring links must be requested again, never cached persistently.
 - Public careers link opens the existing website unchanged; Open starts intake only after explicit save. Draft/Closed intake is off and existing records remain.
 - Shared shell is not reconstructed by synthetic QA. Hosted/publication and live-data checks are outside this scope.
+
+## Completed / verification
+
+- Matched: role search/status table and paired guidance; candidate conversation/composer and two context cards; private document rows and privacy guidance. Preserved actual CMD typography/colors, grouped editor, Overview/Candidates tabs and all canonical services.
+- Intentionally adapted: no fake Pipeline/Settings/bulk/upload controls; no sample recipients/messages/files/dates/sizes; no inline résumé Preview because the existing guarded service is download-only. Initials replace fictional portraits. Compact tables scroll with keyboard focus; compact companion context follows the primary content.
+- Existing donut Applications label now explicitly uses foreground. Keyboard-focusable role table and role-editor aside checked. Mobile long résumé names wrap in a full-width text track above the download action, rather than compressing beside it.
+- `bunx vitest run --config /tmp/hiring-companion-checks/vitest.config.ts`: exit 0, 75 tests across seven files. Includes all 23 preserved editor tests, 18 new companion tests, workspace/presentation/domain/provider/intake tests; mocked/local fixtures only, no provider calls.
+- `bunx eslint src/components/tt/hiring/{companions.tsx,companions.test.tsx,views.tsx,workspace.tsx,workspace.test.tsx,role-editor.test.tsx}`: exit 0. `git diff --check`: exit 0.
+- `python3 /tmp/browser/hiring-companions/check_companions.py`: exit 0. At 375/768/1440, no page overflow or runtime errors; axe has zero violations on Roles/Messages/Documents after navigation transitions settle. Checked role filters/application routing, human draft save/read-back/preview, readonly recipient, disabled applicant send, denied download/retry, and retained editor Open status/focus. Each isolated run recorded one synthetic draft save, two synthetic signing requests, zero sends, zero role saves. No authentication restored and no external requests allowed.
+- Screenshot directory: `/tmp/browser/hiring-companions/`. Files at each width 375/768/1440: `roles-{width}.png`, `messages-empty-{width}.png`, `messages-saved-{width}.png`, `documents-{width}.png`, `documents-denied-{width}.png`, `documents-ready-{width}.png`, `preserved-editor-{width}.png`. Browser results: `results.json`; execution log: `browser.log`.
+- Actual automatic diagnostics at 2026-11-12T21:43:41Z show eight errors exclusively in `packages/studio-research-coordinator`: missing `@paperclipai/plugin-sdk` in host-admitted-routes/manifest/plugin/preview-bootstrap/signed-routes; implicit-any ctx/context; unknown verified.expiresAt. No Hiring/app errors reported. The checker does not expose an exit code or separate app-only result; full production-build success is not established. Manual build/typecheck is prohibited by the environment, so neither was rerun. Studio/dependencies were intentionally untouched.
+- Existing `/modules/hiring` metadata was inspected and already supplies app-specific title, description, Open Graph type/title/description and Twitter card; no route edits needed.
+- Known review boundary: synthetic QA imports real Hiring components/styles but does not reconstruct the shared shell or download externally hosted font files. Shared shell/fonts remain unchanged. No real applicant/job records read or changed, email sent, SQL/access/configuration modified, or publication performed.
+
+## Exact changed files
+
+- `src/components/tt/hiring/companions.tsx`
+- `src/components/tt/hiring/companions.css`
+- `src/components/tt/hiring/companions.test.tsx`
+- `src/components/tt/hiring/workspace.tsx`
+- `src/components/tt/hiring/views.tsx`
+- `src/components/tt/hiring/workspace.test.tsx`
+- `src/components/tt/hiring/role-editor.test.tsx` (existing Edit selector updated for the role-specific accessible name only)
+- `src/components/tt/hiring/AGENTS.md`
+- `docs/hiring/companion-design.md`
+- `AGENTS.md` (presentation-boundary rule only)
+- `roadmap.md` (requested-task tracking only)
+
+Skill shaping reference comparison: mockup-to-build-precision. No plan file created or changed.

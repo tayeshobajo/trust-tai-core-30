@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Hiring approved companion screens (2026-11-12)
-- [ ] Build Roles, Messages and Documents presentation from approved references while preserving the editor and service/access/send contracts.
-- [ ] Verify focused tests/lint, automatic diagnostics, and isolated 375/768/1440 keyboard/axe/screenshots; record gaps, no live mutations or publishing.
+- [x] Build Roles, Messages and Documents presentation from approved references while preserving the editor and service/access/send contracts.
+- [x] Verify 75 focused tests/lint and isolated 375/768/1440 keyboard/axe/screenshots; automatic diagnostics show only eight unrelated Studio errors, no full-build success claimed. Evidence in docs/hiring/companion-design.md; no live mutations or publishing.
 
 ## Steward final title cleanup (2026-10-18)
 - [x] Allow compact two-line task titles without changing stored text; correct comments and required-work copy.
