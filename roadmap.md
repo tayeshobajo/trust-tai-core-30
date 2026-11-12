@@ -1,5 +1,9 @@
 # Roadmap
 
+## Hiring approved companion screens (2026-11-12)
+- [ ] Build Roles, Messages and Documents presentation from approved references while preserving the editor and service/access/send contracts.
+- [ ] Verify focused tests/lint, automatic diagnostics, and isolated 375/768/1440 keyboard/axe/screenshots; record gaps, no live mutations or publishing.
+
 ## Steward final title cleanup (2026-10-18)
 - [x] Allow compact two-line task titles without changing stored text; correct comments and required-work copy.
 - [x] Run focused tests/lint and automatic preview checks; inspect fictional long titles at 1440 and 375, with no live writes or publication.

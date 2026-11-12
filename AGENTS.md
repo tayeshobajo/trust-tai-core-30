@@ -9,6 +9,8 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
+- Keep Hiring companion views presentation-only around existing revision-aware editors and guarded services; this prevents visual reference changes from introducing new persistence or dispatch contracts.
+
 ## Prototype boundaries
 - Identify manually required meeting scope through the classified task's immutable correlation key (meeting UUID plus operation UUID), not editable links; include archives and suppress closure on incomplete board reads, because required work cannot disappear through generic edits.
 - Associate canonical business tasks with meetings only through recognized internal context links and revision-checked board edits; discriminate task/commitment IDs and keep linked status/evidence outside commitment scores/history to preserve canonical provenance.

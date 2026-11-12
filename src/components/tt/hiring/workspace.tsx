@@ -12,11 +12,25 @@ import {
 } from "@/domain/hiring";
 import type { HiringService } from "@/data/supabase/hiring";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, Mail, MapPin, Plus, RefreshCw, UserRound, Zap } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  Mail,
+  MapPin,
+  Plus,
+  RefreshCw,
+  UserRound,
+  Zap,
+  MessagesSquare,
+  Info,
+  LockKeyhole,
+} from "lucide-react";
 import { CandidateList, EventFeed, HiringOverview } from "./views";
 import { appliedDate, initials } from "./presentation";
 import "./workspace.css";
 import { RoleEditor } from "./role-editor";
+import { CandidateContext, DocumentPrivacy, PrivateResume, RolesView } from "./companions";
+import "./companions.css";
 const name = (id: string | null) => HIRING_PEOPLE.find((p) => p.id === id)?.name ?? "Unassigned";
 const activityLabels: Record<string, string> = {
   "job.saved": "Role saved",
@@ -66,6 +80,7 @@ export function HiringWorkspace({
 }) {
   const [tab, setTab] = useState(initialId ? "queue" : "overview"),
     [selected, setSelected] = useState(initialId ?? "");
+  const [candidateRole, setCandidateRole] = useState("");
   const [edit, setEdit] = useState<Job | "new" | null>(null),
     [duplicate, setDuplicate] = useState<Job | null>(null),
     [busy, setBusy] = useState(false),
@@ -156,6 +171,7 @@ export function HiringWorkspace({
                 onClick={() => {
                   setTab(value);
                   setSelected("");
+                  setCandidateRole("");
                 }}
               >
                 {label}
@@ -199,7 +215,12 @@ export function HiringWorkspace({
               This application is unavailable. Reload to check your current access.
             </p>
           )}
-          <CandidateList data={data} choose={setSelected} />
+          <CandidateList
+            key={candidateRole}
+            data={data}
+            choose={setSelected}
+            initialRole={candidateRole}
+          />
           {!data.applications.length && (
             <Button variant="outline" onClick={() => setTab("jobs")}>
               Manage jobs
@@ -224,47 +245,22 @@ export function HiringWorkspace({
         </>
       )}
       {data && tab === "jobs" && (
-        <>
-          <div className="h-heading">
-            <h2>Roles worth doing</h2>
-          </div>
-          {data.jobs.map((j) => (
-            <article className="h-row h-card" key={j.id}>
-              <span>
-                <strong>{j.title}</strong>
-                <small>
-                  {j.status} · {name(j.owner_id)}
-                </small>
-                <a href={`https://trusttai.com/careers/${j.slug}`} target="_blank" rel="noreferrer">
-                  /careers/{j.slug}
-                </a>
-              </span>
-              <div>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setDuplicate(null);
-                    setEdit(j);
-                  }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setDuplicate(j);
-                    setEdit("new");
-                  }}
-                >
-                  Duplicate as draft
-                </Button>
-              </div>
-            </article>
-          ))}
-          {!data.jobs.length && (
-            <p>No roles yet. Create a draft and choose two or three focused questions.</p>
-          )}
-        </>
+        <RolesView
+          data={data}
+          edit={(j) => {
+            setDuplicate(null);
+            setEdit(j);
+          }}
+          duplicate={(j) => {
+            setDuplicate(j);
+            setEdit("new");
+          }}
+          applications={(id) => {
+            setCandidateRole(id);
+            setSelected("");
+            setTab("queue");
+          }}
+        />
       )}
     </section>
   );
@@ -293,13 +289,15 @@ function Candidate({
   const nextInput = useRef<HTMLTextAreaElement>(null);
   const noteId = useRef(crypto.randomUUID());
   const [message, setMessage] = useState<Message | null>(null),
-    [subject, setSubject] = useState(`Your application for ${a.job_title}`),
-    [body, setBody] = useState(
-      `Hello ${a.full_name},\n\nThank you for your interest in ${a.job_title}.\n\n`,
-    ),
+    [subject, setSubject] = useState(""),
+    [body, setBody] = useState(""),
     [preview, setPreview] = useState<Message | null>(null);
   const draftId = useRef(crypto.randomUUID());
-  const [resumeLink, setResumeLink] = useState<string | null>(null);
+  const recordedMessages = data.messages.filter((m) => m.application_id === a.id);
+  const hasSent = recordedMessages.some((m) => ["sent", "delivered"].includes(m.status));
+  const deliveryPending = recordedMessages.some((m) =>
+    ["sending", "queued", "unknown", "uncertain"].includes(m.status),
+  );
   const currentPreview = preview && (data.messages.find((m) => m.id === preview.id) ?? preview);
   return (
     <div className="h-candidate">
@@ -343,7 +341,9 @@ function Candidate({
           </Button>
         ))}
       </nav>
-      <div className="h-detail">
+      <div
+        className={`h-detail ${["messages", "documents"].includes(detailTab) ? "h-companion-detail" : ""}`}
+      >
         <main>
           {detailTab === "overview" && (
             <article className="h-card">
@@ -399,69 +399,43 @@ function Candidate({
             </article>
           )}
           {detailTab === "messages" && (
-            <article className="h-card">
-              {" "}
-              <h3>Write to the candidate</h3>
-              <label>
-                Subject
-                <input
-                  aria-label="Subject"
-                  value={subject}
-                  maxLength={200}
-                  onChange={(e) => {
-                    setSubject(e.target.value);
-                    setPreview(null);
-                  }}
-                />
-              </label>
-              <label>
-                Message
-                <textarea
-                  aria-label="Message"
-                  rows={8}
-                  value={body}
-                  maxLength={10000}
-                  onChange={(e) => {
-                    setBody(e.target.value);
-                    setPreview(null);
-                  }}
-                />
-              </label>
-              <Button
-                variant="outline"
-                disabled={busy || !subject.trim() || !body.trim()}
-                onClick={() =>
-                  run(async () => {
-                    const id = message?.id ?? draftId.current;
-                    await service.draft({
-                      target: a.id,
-                      message_id: id,
-                      expected: message?.revision ?? 0,
-                      subject,
-                      body,
-                    });
-                    setMessage({
-                      ...message,
-                      id,
-                      application_id: a.id,
-                      subject,
-                      body,
-                      revision: (message?.revision ?? 0) + 1,
-                      status: "draft",
-                      receipt: null,
-                    });
-                  }, "Draft saved. Choose it below to preview the exact saved version.")
-                }
-              >
-                Save draft
-              </Button>
-              {data.messages
-                .filter((m) => m.application_id === a.id)
-                .map((m) => (
+            <article className="h-card h-conversation">
+              <h3>
+                <MessagesSquare size={20} />
+                Conversation with {a.full_name}
+              </h3>
+              <p className="h-send-notice">
+                <Info size={18} />
+                Applicant sending is not enabled.
+              </p>
+              {!hasSent && (
+                <div className="h-conversation-empty">
+                  <MessagesSquare size={40} aria-hidden="true" />
+                  <h3>
+                    {deliveryPending
+                      ? "Delivery is pending or uncertain."
+                      : "No messages sent yet."}
+                  </h3>
+                  <p>
+                    {recordedMessages.length
+                      ? "Saved drafts and recorded delivery states appear below."
+                      : "No messages recorded for this application."}
+                  </p>
+                </div>
+              )}
+              <div className="h-recorded-messages">
+                {recordedMessages.map((m) => (
                   <article className="h-event" key={m.id}>
                     <strong>{m.subject}</strong>
+                    <p className="h-pre">{m.body}</p>
                     <small>
-                      {m.status === "disabled" ? "Delivery disabled" : m.status} · v{m.revision}
+                      {m.status === "disabled" ? "Delivery disabled · test state" : m.status} · v
+                      {m.revision}
+                    </small>
+                    <small>
+                      {m.receipt
+                        ? `Recorded receipt: ${m.receipt}`
+                        : "No delivery receipt recorded."}
                     </small>
                     <Button
                       variant="outline"
@@ -476,6 +450,75 @@ function Candidate({
                     </Button>
                   </article>
                 ))}
+              </div>
+              <div className="h-composer">
+                <label>
+                  To
+                  <input aria-label="Recipient" readOnly value={a.email} />
+                </label>
+                <label>
+                  Subject
+                  <input
+                    aria-label="Subject"
+                    value={subject}
+                    maxLength={200}
+                    onChange={(e) => {
+                      setSubject(e.target.value);
+                      setPreview(null);
+                    }}
+                  />
+                </label>
+                <label>
+                  Message
+                  <textarea
+                    aria-label="Message"
+                    rows={8}
+                    value={body}
+                    maxLength={10000}
+                    onChange={(e) => {
+                      setBody(e.target.value);
+                      setPreview(null);
+                    }}
+                  />
+                </label>
+                <Button
+                  variant="outline"
+                  disabled={busy || !subject.trim() || !body.trim()}
+                  onClick={() =>
+                    run(async () => {
+                      const id = message?.id ?? draftId.current;
+                      await service.draft({
+                        target: a.id,
+                        message_id: id,
+                        expected: message?.revision ?? 0,
+                        subject,
+                        body,
+                      });
+                      setMessage({
+                        ...message,
+                        id,
+                        application_id: a.id,
+                        subject,
+                        body,
+                        revision: (message?.revision ?? 0) + 1,
+                        status: "draft",
+                        receipt: null,
+                      });
+                    }, "Draft saved. Choose it below to preview the exact saved version.")
+                  }
+                >
+                  Save draft
+                </Button>
+                <Button variant="outline" disabled>
+                  <LockKeyhole size={16} />
+                  Send message
+                </Button>
+                <p className="h-muted">
+                  {preview
+                    ? "Saved version selected for preview."
+                    : "Draft · not sent. Save before previewing the exact recorded version."}
+                </p>
+              </div>
               {currentPreview && (
                 <section className="h-preview" aria-label="Email preview">
                   <h4>{currentPreview.subject}</h4>
@@ -529,140 +572,140 @@ function Candidate({
           )}
           {detailTab === "documents" && (
             <article className="h-card">
-              <h3>Documents</h3>
-              <p>Only the private application résumé is available.</p>
-              <p>{a.resume_name}</p>{" "}
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() =>
-                  run(async () => {
-                    setResumeLink(await service.resume(a.resume_path));
-                  }, "Private download is ready. Open the link below within 60 seconds.")
-                }
-              >
-                Download résumé
-              </Button>
-              {resumeLink && (
-                <a href={resumeLink} target="_blank" rel="noreferrer">
-                  Open private résumé (60 seconds)
-                </a>
+              <div className="h-card-heading">
+                <div>
+                  <h3>
+                    <FileText size={20} />
+                    Documents
+                  </h3>
+                  <p>Application files, together in one place.</p>
+                </div>
+              </div>
+              <PrivateResume app={a} service={service} />
+              {/^https:\/\//.test(a.portfolio_url) && (
+                <div className="h-document-row">
+                  <span className="h-icon">
+                    <FileText size={22} />
+                  </span>
+                  <div>
+                    <strong>External portfolio</strong>
+                    <small>External link · not a stored file</small>
+                    <a href={a.portfolio_url} target="_blank" rel="noreferrer">
+                      Open portfolio
+                    </a>
+                  </div>
+                </div>
               )}
+              <p className="h-muted">
+                Only the private application résumé is available.
+                {a.portfolio_url ? " Portfolio access uses the supplied external link." : ""}
+              </p>
             </article>
           )}
         </main>
         <aside>
-          <article className="h-card h-next">
-            <h3>
-              <Zap size={20} />
-              Next step
-            </h3>
-            <p>{a.next_action || "Set the next action for personal review."}</p>
-            <small>
-              {name(a.owner_id)} · {a.review_date ? `Review ${a.review_date}` : "No review date"}
-            </small>
-            <div className="h-actions">
-              <Button className="h-primary" onClick={() => nextInput.current?.focus()}>
-                Edit next step
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setDetailTab("activity");
-                  requestAnimationFrame(() => noteInput.current?.focus());
-                }}
-              >
-                Add note
-              </Button>
-              <Button variant="outline" onClick={() => setDetailTab("messages")}>
-                <Mail />
-                Draft message
-              </Button>
-            </div>
-          </article>
-          <article className="h-card">
-            {" "}
-            <div className="h-card-heading">
-              <h3>
-                <UserRound size={20} />
-                Details
-              </h3>
-              <small>Revision {a.revision}</small>
-            </div>
-            <label>
-              Stage
-              <select
-                aria-label="Stage"
-                value={stage}
-                onChange={(e) => setStage(e.target.value as Application["stage"])}
-              >
-                {STAGES.map((s) => (
-                  <option key={s} value={s}>
-                    {stageLabel(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Owner value={owner} change={setOwner} />
-            <label>
-              Next action
-              <textarea
-                ref={nextInput}
-                value={next}
-                maxLength={2000}
-                onChange={(e) => setNext(e.target.value)}
-              />
-            </label>
-            <label>
-              Review date
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </label>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                run(
-                  () =>
-                    service.update({
-                      target: a.id,
-                      expected: a.revision,
-                      stage,
-                      owner_id: owner || null,
-                      next_action: next,
-                      review_date: date || null,
-                    }),
-                  "Application updated. No email was sent.",
-                )
-              }
-            >
-              Save next step
-            </Button>
-            <p className="h-muted">Changing a stage never sends a message.</p>
-          </article>
-          {detailTab !== "documents" && (
-            <article className="h-card">
-              <h3>
-                <FileText size={20} />
-                Private résumé
-              </h3>
-              <p>{a.resume_name}</p>{" "}
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() =>
-                  run(async () => {
-                    setResumeLink(await service.resume(a.resume_path));
-                  }, "Private download is ready. Open the link below within 60 seconds.")
-                }
-              >
-                Download résumé
-              </Button>
-              {resumeLink && (
-                <a href={resumeLink} target="_blank" rel="noreferrer">
-                  Open private résumé (60 seconds)
-                </a>
-              )}
-            </article>
+          {detailTab === "messages" ? (
+            <CandidateContext app={a} view={() => setDetailTab("overview")} />
+          ) : detailTab === "documents" ? (
+            <DocumentPrivacy />
+          ) : (
+            <>
+              <article className="h-card h-next">
+                <h3>
+                  <Zap size={20} />
+                  Next step
+                </h3>
+                <p>{a.next_action || "Set the next action for personal review."}</p>
+                <small>
+                  {name(a.owner_id)} ·{" "}
+                  {a.review_date ? `Review ${a.review_date}` : "No review date"}
+                </small>
+                <div className="h-actions">
+                  <Button className="h-primary" onClick={() => nextInput.current?.focus()}>
+                    Edit next step
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDetailTab("activity");
+                      requestAnimationFrame(() => noteInput.current?.focus());
+                    }}
+                  >
+                    Add note
+                  </Button>
+                  <Button variant="outline" onClick={() => setDetailTab("messages")}>
+                    <Mail />
+                    Draft message
+                  </Button>
+                </div>
+              </article>
+              <article className="h-card">
+                {" "}
+                <div className="h-card-heading">
+                  <h3>
+                    <UserRound size={20} />
+                    Details
+                  </h3>
+                  <small>Revision {a.revision}</small>
+                </div>
+                <label>
+                  Stage
+                  <select
+                    aria-label="Stage"
+                    value={stage}
+                    onChange={(e) => setStage(e.target.value as Application["stage"])}
+                  >
+                    {STAGES.map((s) => (
+                      <option key={s} value={s}>
+                        {stageLabel(s)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Owner value={owner} change={setOwner} />
+                <label>
+                  Next action
+                  <textarea
+                    ref={nextInput}
+                    value={next}
+                    maxLength={2000}
+                    onChange={(e) => setNext(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Review date
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                </label>
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    run(
+                      () =>
+                        service.update({
+                          target: a.id,
+                          expected: a.revision,
+                          stage,
+                          owner_id: owner || null,
+                          next_action: next,
+                          review_date: date || null,
+                        }),
+                      "Application updated. No email was sent.",
+                    )
+                  }
+                >
+                  Save next step
+                </Button>
+                <p className="h-muted">Changing a stage never sends a message.</p>
+              </article>
+              <article className="h-card">
+                <h3>
+                  <FileText size={20} />
+                  Private résumé
+                </h3>
+                <PrivateResume app={a} service={service} />
+              </article>
+            </>
           )}
         </aside>
       </div>

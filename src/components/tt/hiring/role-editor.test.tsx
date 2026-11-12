@@ -434,7 +434,7 @@ describe("Approved role editor", () => {
       />,
     );
     fireEvent.click(button("Roles"));
-    fireEvent.click(button("Edit"));
+    fireEvent.click(button("Edit Synthetic Builder"));
     expect(screen.queryByRole("navigation", { name: "Hiring views" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Roles worth doing" })).toBeNull();
     expect(value("Status")).toBe("open");

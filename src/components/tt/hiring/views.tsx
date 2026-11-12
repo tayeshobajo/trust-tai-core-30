@@ -251,10 +251,18 @@ export function HiringOverview({
     </>
   );
 }
-export function CandidateList({ data, choose }: { data: Snapshot; choose: (id: string) => void }) {
+export function CandidateList({
+  data,
+  choose,
+  initialRole = "",
+}: {
+  data: Snapshot;
+  choose: (id: string) => void;
+  initialRole?: string;
+}) {
   const [filters, setFilters] = useState<CandidateFilters>({
     search: "",
-    role: "",
+    role: initialRole,
     stage: "",
     attention: false,
     days: "",

@@ -1,0 +1,206 @@
+.h-role-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 16px;
+  margin: 24px 0 20px;
+}
+.h-role-toolbar > label {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+.h-role-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hiring .h-role-status button {
+  border-radius: 999px;
+}
+.hiring .h-role-status button[aria-pressed="true"] {
+  background: var(--cloud-strong);
+  border-color: var(--royal);
+  color: var(--foreground);
+}
+.h-role-owner {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.h-role-owner svg {
+  flex-shrink: 0;
+  color: var(--cloud-ink);
+}
+.h-role-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hiring .h-roles-table td:last-child {
+  max-width: none;
+  min-width: 280px;
+}
+.h-role-open {
+  border-color: var(--success);
+}
+.h-role-draft {
+  background: var(--cloud-strong);
+}
+.h-role-closed {
+  border-color: var(--muted-foreground);
+}
+.h-table-footnote {
+  padding: 12px 24px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.h-role-guidance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 32px;
+}
+.h-guidance {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.h-guidance h2 {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.h-guidance p {
+  color: var(--muted-foreground);
+}
+.h-guidance a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--royal);
+  min-height: 44px;
+}
+.h-companion-detail {
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+}
+.h-send-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--cloud-strong);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.h-send-notice svg {
+  flex-shrink: 0;
+}
+.h-conversation-empty {
+  text-align: center;
+  padding: 32px 16px;
+}
+.h-conversation-empty > svg {
+  color: var(--cloud-ink);
+  margin: 8px auto 16px;
+}
+.h-conversation-empty h3 {
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.h-conversation-empty p {
+  color: var(--muted-foreground);
+}
+.h-recorded-messages:empty {
+  display: none;
+}
+.h-composer {
+  border-top: 1px solid var(--h-line);
+  padding-top: 16px;
+}
+.h-composer textarea {
+  min-height: 140px;
+}
+.h-composer > button {
+  margin: 8px 8px 0 0;
+}
+.h-context-list {
+  margin: 0 0 12px;
+}
+.h-context-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--h-line);
+}
+.h-context-list dt {
+  color: var(--muted-foreground);
+}
+.h-context-list dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.h-context-rule {
+  border: 0;
+  border-top: 1px solid var(--h-line);
+  margin: 20px 0;
+}
+.h-document-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--h-line);
+}
+.h-document-row > div {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.h-document-row small {
+  display: block;
+  margin-top: 6px;
+}
+.h-document-row button {
+  flex-shrink: 0;
+}
+.h-donut small {
+  color: var(--foreground);
+}
+.hiring .h-nav button:not([aria-pressed="true"]) {
+  color: var(--foreground);
+}
+.hiring .h-nav button[aria-pressed="true"]:hover {
+  background: var(--royal);
+  color: var(--accent-foreground);
+}
+@media (max-width: 1100px) {
+  .h-role-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+@media (max-width: 850px) {
+  .h-companion-detail,
+  .h-role-guidance {
+    grid-template-columns: 1fr;
+  }
+  .h-companion-detail aside {
+    order: 0;
+  }
+}
+@media (max-width: 500px) {
+  .h-document-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .h-document-row button {
+    margin-left: 48px;
+  }
+  .h-document-row > div {
+    flex-basis: calc(100% - 48px);
+  }
+  .h-role-guidance {
+    gap: 16px;
+    margin-top: 24px;
+  }
+}

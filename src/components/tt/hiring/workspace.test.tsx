@@ -266,7 +266,7 @@ describe("Hiring room", () => {
     expect(screen.getByRole("alert").textContent).toBe("Hiring access denied");
     expect(screen.queryByText("Total applications")).toBeNull();
   });
-  it("retains Digital Sales Intern open and AI Builder draft without saving on navigation", () => {
+  it("retains both approved live roles Open without saving on navigation", () => {
     const s = setup({
       ...data,
       applications: [],
@@ -287,15 +287,13 @@ describe("Hiring room", () => {
           revision: 1,
           title: "AI Builder",
           slug: "builder",
-          status: "draft",
+          status: "open",
         },
       ],
     });
     fireEvent.click(screen.getByRole("button", { name: "Roles" }));
-    expect(screen.getByText("Digital Sales Intern").closest("article")?.textContent).toContain(
-      "open",
-    );
-    expect(screen.getByText("AI Builder").closest("article")?.textContent).toContain("draft");
+    expect(screen.getByText("Digital Sales Intern").closest("tr")?.textContent).toContain("Open");
+    expect(screen.getByText("AI Builder").closest("tr")?.textContent).toContain("Open");
     expect(s.saveJob).not.toHaveBeenCalled();
   });
   it("reads a changed saved provider receipt in the current preview", () => {
