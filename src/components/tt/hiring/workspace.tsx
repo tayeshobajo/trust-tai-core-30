@@ -6,6 +6,7 @@ import {
   stageLabel,
   STAGES,
   type Application,
+  type Event,
   type Job,
   type Message,
   type Snapshot,
@@ -13,6 +14,31 @@ import {
 import type { HiringService } from "@/data/supabase/hiring";
 import "./workspace.css";
 const name = (id: string | null) => HIRING_PEOPLE.find((p) => p.id === id)?.name ?? "Unassigned";
+const activityLabels: Record<string, string> = {
+  "application.received": "Application received",
+  "application.updated": "Next step updated",
+  "note.added": "Private note",
+  "message.drafted": "Email draft saved",
+  "message.queued": "QA email approved",
+  "message.receipt": "Delivery receipt",
+  "message.tested": "Test receipt saved",
+};
+function activityText(event: Event) {
+  const d = event.detail;
+  if (typeof d["text"] === "string") return d["text"];
+  if (event.kind === "application.updated")
+    return `${stageLabel(String(d["from"]))} → ${stageLabel(String(d["to"]))}. Owner: ${name(typeof d["owner_id"] === "string" ? d["owner_id"] : null)}. Next: ${d["next_action"] || "Not set"}. Review: ${d["review_date"] || "Not set"}.`;
+  if (event.kind === "application.received")
+    return "Application and résumé saved for private review. No email sent.";
+  if (event.kind === "message.receipt")
+    return `Provider state: ${d["state"] || "unknown"}.${d["provider_event"] ? ` Observed event: ${d["provider_event"]}.` : ""}`;
+  if (event.kind === "message.drafted")
+    return `${d["subject"] || "Email"} · version ${d["revision"]}. Nothing sent.`;
+  if (event.kind === "message.queued")
+    return `Version ${d["revision"]} approved for the provider-owned QA inbox.`;
+  if (event.kind === "message.tested") return "Test receipt recorded. No email sent.";
+  return "Activity recorded.";
+}
 export function HiringWorkspace({
   data,
   service,
@@ -284,6 +310,8 @@ function Candidate({
     ),
     [preview, setPreview] = useState<Message | null>(null);
   const draftId = useRef(crypto.randomUUID());
+  const [resumeLink, setResumeLink] = useState<string | null>(null);
+  const currentPreview = preview && (data.messages.find((m) => m.id === preview.id) ?? preview);
   return (
     <div className="h-detail">
       <main>
@@ -308,17 +336,17 @@ function Candidate({
             disabled={busy}
             onClick={() =>
               run(async () => {
-                const url = await service.resume(a.resume_path);
-                const link = document.createElement("a");
-                link.href = url;
-                link.rel = "noreferrer";
-                link.target = "_blank";
-                link.click();
-              }, "Private download link opened; it expires in 60 seconds.")
+                setResumeLink(await service.resume(a.resume_path));
+              }, "Private download is ready. Open the link below within 60 seconds.")
             }
           >
             Download résumé
           </button>
+          {resumeLink && (
+            <a href={resumeLink} target="_blank" rel="noreferrer">
+              Open private résumé (60 seconds)
+            </a>
+          )}
         </div>
         <h3>In their words</h3>
         {Object.entries(a.answers).map(([id, q]) => (
@@ -348,13 +376,16 @@ function Candidate({
           .filter((e) => e.application_id === a.id)
           .map((e) => (
             <article className="h-event" key={e.id}>
-              <strong>{e.kind}</strong>
+              <strong>{activityLabels[e.kind] || "Activity"}</strong>
               <small>
-                {e.actor ? name(e.actor) : "Applicant"} · {new Date(e.created_at).toLocaleString()}
+                {e.actor
+                  ? name(e.actor)
+                  : e.detail["source"] === "provider-worker"
+                    ? "Delivery service"
+                    : "Applicant"}{" "}
+                · {new Date(e.created_at).toLocaleString()}
               </small>
-              <p className="h-pre">
-                {typeof e.detail["text"] === "string" ? e.detail["text"] : JSON.stringify(e.detail)}
-              </p>
+              <p className="h-pre">{activityText(e)}</p>
             </article>
           ))}
       </main>
@@ -476,22 +507,24 @@ function Candidate({
               </button>
             </article>
           ))}
-        {preview && (
+        {currentPreview && (
           <section className="h-preview" aria-label="Email preview">
-            <h4>{preview.subject}</h4>
+            <h4>{currentPreview.subject}</h4>
             <p>To: {a.email}</p>
-            <p className="h-pre">{preview.body}</p>
-            <p>Version {preview.revision}. Live applicant delivery is not enabled.</p>
+            <p className="h-pre">{currentPreview.body}</p>
+            <p>Version {currentPreview.revision}. Live applicant delivery is not enabled.</p>
             {["delivered@resend.dev", "bounced@resend.dev"].includes(a.email) && (
               <button
                 disabled={busy}
                 onClick={() =>
                   run(async () => {
                     const result = await service.providerQA(
-                      preview.id,
-                      preview.revision,
-                      ["sending", "sent", "delivered", "unknown", "failed"].includes(preview.status)
-                        ? preview.receipt
+                      currentPreview.id,
+                      currentPreview.revision,
+                      ["sending", "sent", "delivered", "unknown", "failed"].includes(
+                        currentPreview.status,
+                      )
+                        ? currentPreview.receipt
                         : undefined,
                     );
                     if (result.state === "unknown")
@@ -499,19 +532,19 @@ function Candidate({
                   }, "Provider receipt refreshed. Check the saved delivery state below.")
                 }
               >
-                {["draft", "disabled"].includes(preview.status)
+                {["draft", "disabled"].includes(currentPreview.status)
                   ? "Approve QA send"
-                  : preview.status === "queued"
+                  : currentPreview.status === "queued"
                     ? "Resume QA dispatch"
                     : "Reconcile provider receipt"}
               </button>
             )}
             <button
-              disabled={busy || preview.status !== "draft"}
+              disabled={busy || currentPreview.status !== "draft"}
               onClick={() =>
                 run(async () => {
-                  await service.testSend(preview.id, preview.revision);
-                  setPreview({ ...preview, status: "disabled" });
+                  await service.testSend(currentPreview.id, currentPreview.revision);
+                  setPreview({ ...currentPreview, status: "disabled" });
                 }, "Test receipt saved. No email was sent.")
               }
             >

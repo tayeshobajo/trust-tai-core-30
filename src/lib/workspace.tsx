@@ -186,8 +186,23 @@ export function useWorkspace(): WorkspaceState {
         }),
       });
 
+      // Hiring is governed by its explicit server entitlement, never an admin role template.
       const hiringIndex = apps.findIndex((a) => a.appId === "hiring");
-      if (hiringIndex >= 0 && !hiringAllowed) apps.splice(hiringIndex, 1);
+      if (hiringIndex >= 0) apps.splice(hiringIndex, 1);
+      if (
+        hiringAllowed &&
+        membershipActive &&
+        (organizationApps.value as Record<string, boolean>)["hiring"] !== false
+      ) {
+        apps.push({
+          appId: "hiring",
+          level: "work",
+          visible: true,
+          canWork: true,
+          canManage: false,
+          because: "Explicit Hiring-only access verified by the server.",
+        });
+      }
 
       /* Publish authority once, so room services can refuse a write that this
          person's access does not carry. Visibility alone is not authority. */

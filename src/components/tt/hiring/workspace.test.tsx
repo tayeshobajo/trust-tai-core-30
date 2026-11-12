@@ -74,6 +74,17 @@ describe("Hiring room", () => {
     fireEvent.click(screen.getByText("Approve & test send"));
     await waitFor(() => expect(s.testSend).toHaveBeenCalledWith("m", 4));
   });
+  it("offers an explicit expiring download link after authorization", async () => {
+    const s = setup();
+    vi.mocked(s.resume).mockResolvedValue("https://storage.example/signed-synthetic");
+    fireEvent.click(screen.getByText("Synthetic Candidate"));
+    fireEvent.click(screen.getByText("Download résumé"));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("link", { name: "Open private résumé (60 seconds)" }).getAttribute("href"),
+      ).toBe("https://storage.example/signed-synthetic"),
+    );
+  });
   it("keeps an empty room useful", () => {
     setup({ ...data, applications: [] });
     expect(screen.getByText("Room for the right people.")).toBeTruthy();
