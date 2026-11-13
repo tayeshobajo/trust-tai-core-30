@@ -399,7 +399,7 @@ it("Studio startup uses preview assembly only with explicit matching config and 
   const originalPublic = createPublicKey(keys.privateKey).export({type:"spki",format:"der"});
   assemble.mockClear();
   expect(loadStudioPreviewAssembly({ ...env, STUDIO_RESEARCH_SIGNING_PRIVATE_KEY: env.STUDIO_RESEARCH_SIGNING_PRIVATE_KEY.replace(/\n/g, "") }, assemble as never)).toBeDefined();
-  const parsedKey = assemble.mock.calls[0][0].studioPrivateKey;
+  const parsedKey = assemble.mock.calls[0]![0].studioPrivateKey;
   expect(createPublicKey(parsedKey).export({type:"spki",format:"der"})).toEqual(originalPublic);
   report.mockClear();
   expect(loadStudioPreviewAssembly({ ...env, STUDIO_RESEARCH_SIGNING_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----not!base64-----END PRIVATE KEY-----" }, assemble as never, report)).toBeUndefined();
