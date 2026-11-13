@@ -27,6 +27,9 @@ export const coordinatorRowSchema = z.object({
   coordinator_result_digest: z.string().nullable(),
   intake_recovery_authorization: z.unknown().nullable().optional(),
   intake_recovery_receipt: z.unknown().nullable().optional(),
+  coordinator_renewal_authorization: z.unknown().nullable().optional(),
+  coordinator_renewal_receipt: z.unknown().nullable().optional(),
+  coordinator_approval_history: z.array(z.unknown()).optional(),
 });
 export type CoordinatorRow = z.infer<typeof coordinatorRowSchema>;
 export function createCoordinatorRequestStore(key: string, fetcher: typeof fetch = fetch, backendUrl?: string) {
@@ -91,7 +94,7 @@ export function createCoordinatorRequestStore(key: string, fetcher: typeof fetch
   async function read(org: string, id: string) {
     return (await query("GET", where(org, id)))[0] ?? null;
   }
-  async function patch(row: CoordinatorRow, expected: string | null, body: unknown) {
+  async function patch(row: CoordinatorRow, expected: string | null, body: unknown, extra: Record<string,string> = {}) {
     const p = where(row.organization_id, row.request_id);
     p.delete("limit");
     p.set("id", `eq.${row.id}`);
@@ -105,6 +108,7 @@ export function createCoordinatorRequestStore(key: string, fetcher: typeof fetch
     p.set("coordinator_state", expected === null ? "is.null" : `eq.${expected}`);
     if (row.coordinator_approval_digest)
       p.set("coordinator_approval_digest", `eq.${row.coordinator_approval_digest}`);
+    for(const [key,value] of Object.entries(extra))p.set(key,value);
     return (await query("PATCH", p, body))[0] ?? null;
   }
   async function recoveryPatch(row: CoordinatorRow, expectedReceipt: unknown, body: unknown) {
@@ -121,6 +125,9 @@ export function createCoordinatorRequestStore(key: string, fetcher: typeof fetch
     observeIntakeRecovery: (row: CoordinatorRow, receipt: unknown) => recoveryPatch(row,row.intake_recovery_receipt,{intake_recovery_receipt:receipt}),
     claimIntakeRecovery: (row: CoordinatorRow, receipt: unknown) => recoveryPatch(row,null,{intake_recovery_receipt:receipt}),
     attachIntakeRecovery: (row: CoordinatorRow, receipt: unknown, issueId: string) => recoveryPatch(row,row.intake_recovery_receipt,{state:"submitted",issue_id:z.string().uuid().parse(issueId),intake_recovery_receipt:receipt}),
+    renewUnlaunched: (row: CoordinatorRow, approval: Approval, receipt: unknown, history: unknown[]) => patch(row,"approved",{
+      coordinator_approval:approval,coordinator_approval_digest:digest(approval),coordinator_renewal_receipt:receipt,coordinator_approval_history:history,
+    },{coordinator_admission:"is.null",coordinator_brief:"is.null",coordinator_result_digest:"is.null",coordinator_renewal_receipt:"is.null",coordinator_approval_history:"eq.[]",coordinator_renewal_authorization:`eq.${JSON.stringify(row.coordinator_renewal_authorization)}`}),
     async approve(row: CoordinatorRow, raw: Approval) {
       const a = approvalSchema.parse(raw);
       return patch(row, null, {

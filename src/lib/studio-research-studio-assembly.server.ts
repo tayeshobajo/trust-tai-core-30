@@ -63,6 +63,7 @@ function assembleStudio(
       approvalPrivateKey: d.studioPrivateKey,
       receiptPublicKey: d.coordinatorPublicKey,
       now: d.now,
+      ...(trial ? {renewalTrial:trial}:{}),
     },
     scopedAuthorize,
   );

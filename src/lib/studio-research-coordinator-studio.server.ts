@@ -1,3 +1,5 @@
+import { prepareApprovalRenewal } from "./studio-research-approval-renewal.server";
+import type { TrialConfig } from "./studio-research-trial.server";
 import { createStudioReceiptReceiver } from "./studio-research-receipt-receiver.server";
 import { type CliAccounting } from "./studio-research-coordinator-contracts";
 /** Staged Studio-side route handlers: not registered in router/startup, no env secret loading. */
@@ -68,6 +70,7 @@ export function createStudioCoordinatorHandlers(
     approvalPrivateKey?: KeyObject;
     receiptPublicKey?: KeyObject;
     now(): number;
+    renewalTrial?: TrialConfig;
   },
   authenticate: typeof authorizeStudioResearch = authorizeStudioResearch,
 ) {
@@ -138,6 +141,11 @@ export function createStudioCoordinatorHandlers(
             { organizationId: c.organizationId, requestId: c.requestId },
             true,
           ));
+      }
+      const prior = storedApproval(row);
+      if(prior.expiresAt<=d.now() && d.renewalTrial && row.coordinator_renewal_authorization) {
+        const renewal=prepareApprovalRenewal(row,prior,d.renewalTrial,d.now());
+        row=(await d.store.renewUnlaunched(row,renewal.approval,renewal.receipt,renewal.history)) ?? await owned(request,{organizationId:c.organizationId,requestId:c.requestId},true);
       }
       const a = storedApproval(row);
       if (
