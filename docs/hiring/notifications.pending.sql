@@ -18,13 +18,19 @@ alter table public.career_delivery_outbox
   add constraint hiring_notification_intent_shape check (
     (notification_application_id is null and notification_purpose is null
       and notification_template_version is null and notification_snapshot is null
-      and notification_mode is null)
+      and notification_mode is null and notification_lease is null
+      and notification_lease_expires_at is null)
     or
     (notification_application_id is not null
+      and notification_purpose is not null
       and notification_purpose in ('applicant_receipt','role_owner_alert','tai_alert_copy')
+      and notification_template_version is not null
       and notification_template_version = 1
       and notification_snapshot is not null
-      and notification_mode in ('live','qa'))
+      and notification_mode is not null
+      and notification_mode in ('live','qa')
+      and ((notification_lease is null and notification_lease_expires_at is null)
+        or (notification_lease is not null and notification_lease_expires_at is not null)))
   );
 create unique index hiring_notification_intent_unique
   on public.career_delivery_outbox
