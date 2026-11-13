@@ -4,6 +4,14 @@ import { sign, type KeyObject, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { COORDINATOR, digest } from "./studio-research-coordinator-contracts";
 import { verifySignedJson } from "./studio-research-coordinator-authority.server";
+class RouteDiagnosticError extends Error {
+  constructor(readonly diagnostic: string) { super("route_unconfirmed"); }
+}
+export function routeDiagnostic(error: unknown) {
+  if(error instanceof RouteDiagnosticError)return error.diagnostic;
+  const known=["bridge_unavailable","route_invalid","signer_invalid","approval_invalid","approval_changed","approval_mismatch","binding_invalid","recovery_binding_invalid","recovery_receipt_invalid","attestation_invalid","redirect_rejected","route_expired","response_missing","response_binding_invalid"];
+  return error instanceof Error && known.includes(error.message) ? error.message : "route_unknown";
+}
 export const ROUTES = {
   paperclip: "https://agents.trusttai.com/api/plugins/trusttai.studio-research-coordinator/api",
   callback: "https://okydosoacqdnursmmenf.supabase.co/functions/v1/studio-research-coordinator",
@@ -119,9 +127,11 @@ export function makeRouteClient(d: {
         redirect: "manual",
         signal: AbortSignal.timeout(65000),
       },
-    );
-    if (r.status !== 200)
-      throw Error(r.status >= 300 && r.status < 400 ? "redirect_rejected" : "route_unconfirmed");
+    ).catch(() => { throw new RouteDiagnosticError("route_network_failure"); });
+    if (r.status !== 200) {
+      if(r.status>=300 && r.status<400)throw Error("redirect_rejected");
+      throw new RouteDiagnosticError([401,403,404,408,429,500,502,503,504].includes(r.status)?`route_http_${r.status}`:"route_http_other");
+    }
     const reader = r.body?.getReader();
     if (!reader) throw Error("response_missing");
     let raw = "",

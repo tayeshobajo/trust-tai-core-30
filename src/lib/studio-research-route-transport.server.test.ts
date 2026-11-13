@@ -3,6 +3,7 @@ import { it, expect, vi, afterEach } from "vitest";
 import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import {
+  routeDiagnostic,
   makeRouteClient,
   makeRouteHandler,
   ROUTES,
@@ -274,4 +275,10 @@ it("SDK wrapper remains disabled and refuses missing forwarded scoped auth", asy
   const handler = vi.fn(async () => Response.json({}));
   expect((await makeSignedRoutePlugin(handler).definition.onApiRequest!(input)).status).toBe(403);
   expect(handler).not.toHaveBeenCalled();
+});
+
+it("returns only bounded launch diagnostic codes",()=>{
+ expect(routeDiagnostic(Error("bridge_unavailable"))).toBe("bridge_unavailable");
+ expect(routeDiagnostic(Error("private token or provider detail"))).toBe("route_unknown");
+ expect(routeDiagnostic({diagnostic:"route_http_403"})).toBe("route_unknown");
 });

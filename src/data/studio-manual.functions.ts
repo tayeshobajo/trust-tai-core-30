@@ -7,8 +7,9 @@ export const studioManualAction = createServerFn({ method: "POST" })
     const { studioManualApplication } = await import("@/lib/studio-research-app.server");
     try {
       return await studioManualApplication(getRequest(), data);
-    } catch {
-      return { status: "unavailable", reason: "request_unconfirmed" };
+    } catch (error) {
+      const { routeDiagnostic } = await import("@/lib/studio-research-route-transport.server");
+      return { status: "unavailable", reason: "request_unconfirmed", diagnostic: routeDiagnostic(error) };
     }
   });
 
