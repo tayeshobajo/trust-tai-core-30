@@ -54,6 +54,8 @@ async function fixture() {
     coordinator_result_digest: null,
   };
   const store: CoordinatorRequestStore = {
+    claimIntakeRecovery: async () => { throw Error("unexpected intake recovery"); },
+    attachIntakeRecovery: async () => { throw Error("unexpected intake recovery"); },
     read: vi.fn(async () => row),
     approve: async (_r, a) =>
       (row = {

@@ -1,3 +1,4 @@
+import { recoverReservedIntake, recoveryTransport, verifyRecoveredIssue } from "./studio-research-intake-recovery.server";
 import { assertActiveSigningKey } from "./studio-research-active-signing-key.server";
 import {
   trialConfigSchema,
@@ -84,10 +85,14 @@ function assembleStudio(
     },
     d.fetcher,
   );
+  const recoveryBridge = recoveryTransport(d.bridgeKey,d.fetcher);
   const prepare = async (request: Request, input: unknown) => {
     // Intake performs its own actual-user/organization authorization before each write.
-    const raw = input as { organizationId: string };
+    const raw = input as { organizationId: string; requestId: string };
     const auth = await scopedAuthorize(request, raw.organizationId, true);
+    const existing = await store.read(raw.organizationId,raw.requestId);
+    if (trial && existing?.state === "dispatch_uncertain" && existing.intake_recovery_authorization)
+      return recoverReservedIntake(input,{store,bridge:recoveryBridge,authorize:async()=>(await scopedAuthorize(request,raw.organizationId,true)).user.id,now:d.now,active:()=>assertTrialWindow(trial,d.now())});
     const storage = createResearchStore(auth.user.id, d.serviceKey, d.fetcher);
     return prepareManualResearchRequest(request, input, {
       mode: d.mode,
@@ -145,6 +150,11 @@ function assembleStudio(
           (input.approvedUrls?.length !== 1 || input.approvedUrls[0] !== trial.source)
         )
           throw Error("trial_source_rejected");
+      }
+      const action=manualActionSchema.parse(raw);
+      if(trial && ["queue","start"].includes(action.operation) && action.requestId) {
+        const row=await store.read(action.organizationId,action.requestId);
+        if(row?.intake_recovery_receipt && row.state==="submitted") await verifyRecoveredIssue(row,recoveryBridge);
       }
       return application(request, raw);
     },

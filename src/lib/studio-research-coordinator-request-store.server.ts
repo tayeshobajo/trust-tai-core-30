@@ -25,6 +25,8 @@ export const coordinatorRowSchema = z.object({
   coordinator_admission: z.unknown().nullable(),
   coordinator_brief: z.unknown().nullable(),
   coordinator_result_digest: z.string().nullable(),
+  intake_recovery_authorization: z.unknown().nullable().optional(),
+  intake_recovery_receipt: z.unknown().nullable().optional(),
 });
 export type CoordinatorRow = z.infer<typeof coordinatorRowSchema>;
 export function createCoordinatorRequestStore(key: string, fetcher: typeof fetch = fetch, backendUrl?: string) {
@@ -105,8 +107,19 @@ export function createCoordinatorRequestStore(key: string, fetcher: typeof fetch
       p.set("coordinator_approval_digest", `eq.${row.coordinator_approval_digest}`);
     return (await query("PATCH", p, body))[0] ?? null;
   }
+  async function recoveryPatch(row: CoordinatorRow, expectedReceipt: unknown, body: unknown) {
+    const p = where(row.organization_id, row.request_id); p.delete("limit");
+    for (const [key, value] of Object.entries({id:row.id,created_by:row.created_by,company_id:row.company_id,agent_id:row.agent_id,topic:row.topic})) p.set(key, `eq.${value}`);
+    p.set("state", "eq.dispatch_uncertain");
+    for (const key of ["issue_id","result","result_comment_id","coordinator_state","coordinator_approval","coordinator_approval_digest","coordinator_admission","coordinator_brief","coordinator_result_digest"]) p.set(key,"is.null");
+    p.set("intake_recovery_authorization", `eq.${JSON.stringify(row.intake_recovery_authorization)}`);
+    p.set("intake_recovery_receipt", expectedReceipt === null ? "is.null" : `eq.${JSON.stringify(expectedReceipt)}`);
+    return (await query("PATCH",p,body))[0] ?? null;
+  }
   return {
     read,
+    claimIntakeRecovery: (row: CoordinatorRow, receipt: unknown) => recoveryPatch(row,null,{intake_recovery_receipt:receipt}),
+    attachIntakeRecovery: (row: CoordinatorRow, receipt: unknown, issueId: string) => recoveryPatch(row,row.intake_recovery_receipt,{state:"submitted",issue_id:z.string().uuid().parse(issueId),intake_recovery_receipt:receipt}),
     async approve(row: CoordinatorRow, raw: Approval) {
       const a = approvalSchema.parse(raw);
       return patch(row, null, {

@@ -50,6 +50,26 @@ function fixture() {
   const request = new Request("https://studio.local/", { method: "POST" });
   return { d, request, input };
 }
+it.each(["HTTP 409", "response lost after creation", "invalid successful response"])(
+  "keeps %s uncertain without attachment or another create attempt",
+  async (message) => {
+    const f = fixture();
+    const attach = vi.spyOn(f.d, "attachIssue");
+    f.d.createIssue = vi.fn(async () => { throw Error(message); });
+    for (let i = 0; i < 4; i++)
+      expect((await prepareManualResearchRequest(f.request, f.input, f.d)).status).toBe("uncertain");
+    expect(f.d.createIssue).toHaveBeenCalledTimes(1);
+    expect(attach).not.toHaveBeenCalled();
+  },
+);
+it("does not recreate after attachment and uncertainty persistence failures", async () => {
+  const f = fixture();
+  f.d.attachIssue = vi.fn(async () => { throw Error("database response lost"); });
+  f.d.markUncertain = vi.fn(async () => { throw Error("database unavailable"); });
+  expect((await prepareManualResearchRequest(f.request, f.input, f.d)).status).toBe("uncertain");
+  expect((await prepareManualResearchRequest(f.request, f.input, f.d)).status).toBe("uncertain");
+  expect(f.d.createIssue).toHaveBeenCalledTimes(1);
+});
 it("prepares one bound issue while native agent remains paused, without wake APIs", async () => {
   const f = fixture();
   const results = await Promise.all([

@@ -8,7 +8,7 @@ const diagnosticCodes = new Set([
   'transport_configuration', 'network_failure', 'timeout', 'response_read_failed',
   'dns_failure', 'tls_failure', 'connection_refused', 'connection_reset',
   'redirect_rejected', 'network_type_error', 'request_aborted', 'runtime_timeout_unavailable',
-  'http_401', 'http_403', 'http_404', 'http_429', 'http_client_error', 'http_server_error', 'http_other',
+  'http_401', 'http_403', 'http_404', 'http_409', 'http_429', 'http_client_error', 'http_server_error', 'http_other',
   'response_format', 'response_empty', 'response_too_large', 'response_json',
   'identity_mismatch', 'scope_mismatch', 'identity_shape', 'transport_unknown',
 ]);
@@ -41,7 +41,24 @@ function networkDiagnostic(error) {
   if (error instanceof TypeError) return 'network_type_error';
   return 'network_failure';
 }
-export function createStudioTransport({ origin, key, companyId, projectId, agentId }, fetcher = fetch) {
+export function createStudioTransport(config, fetcher = fetch) {
+  return buildStudioTransport(config, fetcher);
+}
+// Separate paused-agent recovery transport. A caller
+// must pin the existing bridge key's public ID and the exact reserved correlation.
+// Recovery authority and a durable one-attempt claim are enforced by the caller.
+export function createPausedStudioIntakeTransport(config, binding, fetcher = fetch) {
+  if (!binding || !uuid(binding.bridgeKeyId) || !uuid(binding.organizationId) || !uuid(binding.requestId) ||
+      typeof binding.title !== 'string' || !binding.title.trim() || binding.title.length > 200 ||
+      typeof binding.description !== 'string' || !binding.description || binding.description.length > 20000)
+    throw new TransportDiagnosticError('transport_configuration');
+  return buildStudioTransport(config, fetcher, Object.freeze({
+    bridgeKeyId: binding.bridgeKeyId,
+    title: binding.title, description: binding.description,
+    correlationId: `studio:research:${binding.organizationId}:${binding.requestId}`,
+  }));
+}
+function buildStudioTransport({ origin, key, companyId, projectId, agentId }, fetcher, pausedBinding) {
   if (origin !== ORIGIN || agentId !== AGENT || !uuid(companyId) || !uuid(projectId) ||
       typeof key !== 'string' || !key.trim() || /[\r\n]/.test(key)) {
     throw new TransportDiagnosticError('transport_configuration');
@@ -65,7 +82,7 @@ export function createStudioTransport({ origin, key, companyId, projectId, agent
       throw new TransportDiagnosticError('redirect_rejected');
     if (!response.ok) {
       const status = response.status;
-      const code = [401,403,404,429].includes(status) ? `http_${status}`
+      const code = [401,403,404,409,429].includes(status) ? `http_${status}`
         : status >= 500 && status <= 599 ? 'http_server_error'
         : status >= 400 && status <= 499 ? 'http_client_error' : 'http_other';
       throw new TransportDiagnosticError(code);
@@ -93,12 +110,22 @@ export function createStudioTransport({ origin, key, companyId, projectId, agent
   }
   function verifyIssue(issue, expectedId) {
     if (!issue || !uuid(issue.id) || (expectedId && issue.id !== expectedId) ||
-        issue.companyId !== companyId || issue.projectId !== projectId || issue.assigneeAgentId !== agentId) {
+        issue.companyId !== companyId || issue.projectId !== projectId ||
+        (pausedBinding ? (
+          issue.assigneeAgentId !== null || issue.assigneeUserId !== null ||
+          issue.status !== 'backlog' || issue.originKind !== 'task_bridge' ||
+          issue.originId !== pausedBinding.bridgeKeyId || issue.createdByAgentId !== agentId ||
+          issue.createdByUserId !== null || issue.parentId !== null ||
+          issue.checkoutRunId != null || issue.executionRunId != null ||
+          issue.watchdog != null || issue.executionPolicy?.monitor != null ||
+          issue.deduplicated === true || issue.title !== pausedBinding.title ||
+          issue.description !== `${pausedBinding.description}\n\nStudio correlation: ${pausedBinding.correlationId}`
+        ) : issue.assigneeAgentId !== agentId)) {
       throw new Error('Paperclip issue binding mismatch.');
     }
     return issue;
   }
-  return {
+  const transport = {
     async readAgent(expectedId) {
       if (expectedId !== agentId) throw new Error('Invalid agent binding.');
       // Verified on the installed server: task_bridge can read its own identity.
@@ -121,10 +148,21 @@ export function createStudioTransport({ origin, key, companyId, projectId, agent
           typeof input.correlationId !== 'string' || input.correlationId.length > 300) {
         throw new Error('Invalid Studio research task.');
       }
-      // Assignment may wake the agent once enabled. No separate wakeup call.
+      if (pausedBinding) {
+        if (input.correlationId !== pausedBinding.correlationId ||
+            input.title !== pausedBinding.title || input.description !== pausedBinding.description)
+          throw new Error('Invalid reserved correlation.');
+        // Recheck the exact scoped self identity immediately before this single POST.
+        const current = await transport.readAgent(agentId);
+        if (current.status !== 'paused') throw new Error('Native agent is not paused.');
+      }
+      // Backlog + no assignee avoids the installed assignment wakeup hook.
+      // Provenance checks replace assignment only in this explicitly separate adapter.
       return verifyIssue(await request(`/companies/${companyId}/issues`, 'POST', {
         title: input.title, description: `${input.description}\n\nStudio correlation: ${input.correlationId}`,
-        projectId, assigneeAgentId: agentId, status: 'todo',
+        projectId, assigneeAgentId: pausedBinding ? null : agentId,
+        ...(pausedBinding ? { assigneeUserId: null, parentId: null } : {}),
+        status: pausedBinding ? 'backlog' : 'todo',
       }));
     },
     async readIssue(expectedCompanyId, issueId) {
@@ -140,4 +178,5 @@ export function createStudioTransport({ origin, key, companyId, projectId, agent
       return { ...issue, comments };
     },
   };
+  return transport;
 }
