@@ -4,6 +4,7 @@ import { authorizeStudioResearch } from "./studio-research-access.server";
 import { COORDINATOR, approvalSchema, digest } from "./studio-research-coordinator-contracts";
 import type { createStudioCoordinatorHandlers } from "./studio-research-coordinator-studio.server";
 import type { CoordinatorRequestStore } from "./studio-research-coordinator-request-store.server";
+import { routeDiagnostic } from "./studio-research-route-transport.server";
 import type { makeRouteClient } from "./studio-research-route-transport.server";
 const command = z
   .object({
@@ -32,9 +33,11 @@ export function makeStudioRemoteActions(
     const c = command.parse(raw);
     if ((c.operation === "review") !== Boolean(c.review)) throw Error("review_invalid");
     const auth = await authorize(request, c.organizationId, c.operation !== "read");
-    const row = await d.store.read(c.organizationId, c.requestId);
+    const row = await d.store.read(c.organizationId, c.requestId).catch(()=>{throw Error("remote_storage_failed")});
     if (!row || row.created_by !== auth.user.id) throw Error("request_not_owned");
-    const a = approvalSchema.parse(row.coordinator_approval);
+    const parsed=approvalSchema.safeParse(row.coordinator_approval);
+    if(!parsed.success)throw Error("remote_approval_shape");
+    const a=parsed.data;
     if (
       a.approvedBy !== auth.user.id ||
       a.request.organizationId !== c.organizationId ||
@@ -64,6 +67,6 @@ export function makeStudioRemoteActions(
       approvalDigest: digest(a),
       operation: c.operation,
       payload,
-    });
+    }).catch(error=>{if(routeDiagnostic(error)==="route_unknown")throw Error("remote_send_failed");throw error});
   };
 }

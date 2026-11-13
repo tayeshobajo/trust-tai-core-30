@@ -9,7 +9,7 @@ class RouteDiagnosticError extends Error {
 }
 export function routeDiagnostic(error: unknown) {
   if(error instanceof RouteDiagnosticError)return error.diagnostic;
-  const known=["bridge_unavailable","route_invalid","signer_invalid","approval_invalid","approval_changed","approval_mismatch","binding_invalid","recovery_binding_invalid","recovery_receipt_invalid","attestation_invalid","redirect_rejected","route_expired","response_missing","response_binding_invalid"];
+  const known=["bridge_unavailable","route_invalid","signer_invalid","approval_invalid","approval_changed","approval_mismatch","binding_invalid","recovery_binding_invalid","recovery_receipt_invalid","attestation_invalid","redirect_rejected","route_expired","response_missing","response_binding_invalid","remote_storage_failed","remote_approval_shape","remote_send_failed"];
   return error instanceof Error && known.includes(error.message) ? error.message : "route_unknown";
 }
 export const ROUTES = {
@@ -97,18 +97,23 @@ export function makeRouteClient(d: {
   return async (
     input: Omit<RouteEnvelope, "domain" | "sender" | "nonce" | "issuedAt" | "expiresAt" | "binding">,
   ) => {
-    const now = d.now(),
-      e = envelope.parse({
+    const now = d.now();
+    let nonce: string;
+    try { nonce=randomUUID(); } catch { throw new RouteDiagnosticError("route_nonce_unavailable"); }
+    const parsed = envelope.safeParse({
         ...input,
         ...(d.sender === "coordinator" && d.callbackEndpoint ? {binding:{method:"POST",destination:`${ROUTES.callback}/${input.requestId}/${input.operation}`}} : {}),
         domain: "studio-coordinator-route/v1",
         sender: d.sender,
-        nonce: randomUUID(),
+        nonce,
         issuedAt: now,
         expiresAt: now + (d.sender === "studio" && input.operation === "run" ? 60000 : 30000),
       });
+    if(!parsed.success)throw new RouteDiagnosticError("route_envelope_invalid");
+    const e=parsed.data;
     if (!permitted(e)) throw Error("route_invalid");
-    const token = signed(d.privateKey, e);
+    let token: string;
+    try { token=signed(d.privateKey,e); } catch { throw new RouteDiagnosticError("route_signing_failed"); }
     if (Buffer.byteLength(token) > 190000) throw Error("request_limit");
     // Bridge key is supplied only by the Studio secret store and never goes to Studio or redirects.
     if (d.sender === "studio" && (!d.bridgeKey || !d.bridgeKey.startsWith("pcp_")))
@@ -118,16 +123,18 @@ export function makeRouteClient(d: {
       "Cache-Control": "no-store",
     };
     if (d.sender === "studio") headers["Authorization"] = `Bearer ${d.bridgeKey}`;
-    const r = await d.fetcher(
+    let signal: AbortSignal;
+    try { signal=AbortSignal.timeout(65000); } catch { throw new RouteDiagnosticError("route_timeout_unavailable"); }
+    const r = await Promise.resolve().then(()=>d.fetcher(
       (d.sender === "studio" ? ROUTES.paperclip : (d.callbackEndpoint ?? ROUTES.studio)) + path(e),
       {
         method: "POST",
         headers,
         body: JSON.stringify({ token }),
         redirect: "manual",
-        signal: AbortSignal.timeout(65000),
+        signal,
       },
-    ).catch(() => { throw new RouteDiagnosticError("route_network_failure"); });
+    )).catch(() => { throw new RouteDiagnosticError("route_network_failure"); });
     if (r.status !== 200) {
       if(r.status>=300 && r.status<400)throw Error("redirect_rejected");
       throw new RouteDiagnosticError([401,403,404,408,429,500,502,503,504].includes(r.status)?`route_http_${r.status}`:"route_http_other");
