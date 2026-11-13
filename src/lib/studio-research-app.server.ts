@@ -120,11 +120,16 @@ export async function studioManualApplication(
   request: Request,
   raw: unknown,
 ): Promise<ManualReply> {
-  if (classifyStudioPreviewOrigin(request) !== "production")
-    return { status: "unavailable", reason: "runtime_not_configured" };
+  const command = manualActionSchema.parse(raw);
+  const diagnosticCheck = command.operation === "check" && request.method === "POST" && command.organizationId === COORDINATOR.organizationId;
+  const origin = classifyStudioPreviewOrigin(request);
+  if (origin !== "production")
+    return { status: "unavailable", reason: "runtime_not_configured", ...(diagnosticCheck ? { diagnostic: `origin_${origin}` } : {}) };
   const { loadStudioPreviewAssembly } = await import("./studio-research-preview-startup.server");
-  const configured = loadStudioPreviewAssembly();
-  return (configured?.application ?? makeStudioApplication())(request, raw);
+  let stage = "assembly_unavailable";
+  const configured = loadStudioPreviewAssembly(undefined, undefined, value => { stage = value; });
+  const reply = await (configured?.application ?? makeStudioApplication())(request, raw);
+  return !configured && diagnosticCheck && reply.status === "unavailable" ? { ...reply, diagnostic: stage } : reply;
 }
 export async function studioReceiptApplication(request: Request): Promise<Response> {
   if (classifyStudioPreviewOrigin(request) !== "production")

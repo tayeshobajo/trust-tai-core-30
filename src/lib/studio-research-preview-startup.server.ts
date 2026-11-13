@@ -19,22 +19,29 @@ export const studioPreviewConfig = z
 export function loadStudioPreviewAssembly(
   env: Record<string, string | undefined> = process.env,
   assemble = assembleLinuxPreviewStudio,
+  report: (stage: string) => void = () => {},
 ) {
+  let stage = "config_missing";
+  const unavailable = () => { report(stage); return undefined; };
   try {
     const raw = env["STUDIO_RESEARCH_PREVIEW_CONFIG"];
-    if (!raw) return undefined;
+    if (!raw) return unavailable();
+    stage = "config_invalid";
     const config = studioPreviewConfig.parse(JSON.parse(raw));
     const privatePem = env["STUDIO_RESEARCH_SIGNING_PRIVATE_KEY"];
     const serviceKey = env["TRUST_TAI_SUPABASE_SERVICE_KEY"] ?? env["SUPABASE_SERVICE_ROLE_KEY"];
     const bridgeKey = env["PAPERCLIP_STUDIO_BRIDGE_KEY"];
-    if (!privatePem || !serviceKey || !bridgeKey?.startsWith("pcp_")) return undefined;
+    stage = !privatePem ? "signer_missing" : !serviceKey ? "database_credential_missing" : !bridgeKey ? "bridge_credential_missing" : "bridge_credential_format";
+    if (!privatePem || !serviceKey || !bridgeKey?.startsWith("pcp_")) return unavailable();
+    stage = "signing_identity_invalid";
     const studioPrivateKey = createPrivateKey(privatePem),
       coordinatorPublicKey = createPublicKey(config.coordinatorPublicKeyPem);
     if (
       studioPrivateKey.asymmetricKeyType !== "ed25519" ||
       coordinatorPublicKey.asymmetricKeyType !== "ed25519"
     )
-      return undefined;
+      return unavailable();
+    stage = "assembly_failed";
     const client = createClient("https://okydosoacqdnursmmenf.supabase.co", serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -50,6 +57,6 @@ export function loadStudioPreviewAssembly(
       now: Date.now,
     });
   } catch {
-    return undefined;
+    return unavailable();
   }
 }

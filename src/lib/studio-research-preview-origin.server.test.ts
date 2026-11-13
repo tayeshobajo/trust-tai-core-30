@@ -94,6 +94,7 @@ it.each([
     expect(await studioManualApplication(manual, input)).toEqual({
       status: "unavailable",
       reason: "runtime_not_configured",
+      diagnostic: origin === rejectedPreview ? "origin_preview" : "origin_other",
     });
     const result = await studioReceiptApplication(callback);
     expect(result.status).toBe(503);
@@ -135,6 +136,7 @@ it("registered server function and callback route reach the guard", async () => 
   expect(await studioManualAction({ data: input as never })).toEqual({
     status: "unavailable",
     reason: "runtime_not_configured",
+    diagnostic: "origin_preview",
   });
   const route = Route as unknown as {
     options: { server: { handlers: { POST: (x: { request: Request }) => Promise<Response> } } };
@@ -164,6 +166,7 @@ it("installed TanStack request storage preserves canonical URL despite forwardin
   expect(await response.json()).toEqual({
     status: "unavailable",
     reason: "runtime_not_configured",
+    diagnostic: "origin_preview",
   });
   expect(loadStudioPreviewAssembly).not.toHaveBeenCalled();
 });
