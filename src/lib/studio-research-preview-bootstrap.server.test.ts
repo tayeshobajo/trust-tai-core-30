@@ -391,7 +391,7 @@ it("Studio startup uses preview assembly only with explicit matching config and 
   ).toBeUndefined();
   const report = vi.fn();
   expect(loadStudioPreviewAssembly({ ...env, STUDIO_RESEARCH_SIGNING_PRIVATE_KEY: "sensitive-invalid-value" }, assemble as never, report)).toBeUndefined();
-  expect(report).toHaveBeenLastCalledWith("signing_identity_invalid");
+  expect(report).toHaveBeenLastCalledWith("private_key_envelope_invalid");
   report.mockClear();
   expect(loadStudioPreviewAssembly({ ...env, STUDIO_RESEARCH_PREVIEW_CONFIG: "private-invalid-config" }, assemble as never, report)).toBeUndefined();
   expect(report).toHaveBeenLastCalledWith("config_invalid");

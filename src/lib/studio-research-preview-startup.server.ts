@@ -33,9 +33,13 @@ export function loadStudioPreviewAssembly(
     const bridgeKey = env["PAPERCLIP_STUDIO_BRIDGE_KEY"];
     stage = !privatePem ? "signer_missing" : !serviceKey ? "database_credential_missing" : !bridgeKey ? "bridge_credential_missing" : "bridge_credential_format";
     if (!privatePem || !serviceKey || !bridgeKey?.startsWith("pcp_")) return unavailable();
+    stage = "private_key_envelope_invalid";
+    if (!/^-----BEGIN PRIVATE KEY-----[\s\S]*-----END PRIVATE KEY-----\s*$/.test(privatePem)) return unavailable();
+    stage = "private_key_parse_failed";
+    const studioPrivateKey = createPrivateKey(privatePem);
+    stage = "public_key_parse_failed";
+    const coordinatorPublicKey = createPublicKey(config.coordinatorPublicKeyPem);
     stage = "signing_identity_invalid";
-    const studioPrivateKey = createPrivateKey(privatePem),
-      coordinatorPublicKey = createPublicKey(config.coordinatorPublicKeyPem);
     if (
       studioPrivateKey.asymmetricKeyType !== "ed25519" ||
       coordinatorPublicKey.asymmetricKeyType !== "ed25519"
@@ -56,7 +60,11 @@ export function loadStudioPreviewAssembly(
       fetcher: fetch,
       now: Date.now,
     });
-  } catch {
+  } catch (error) {
+    if (stage === "private_key_parse_failed" || stage === "public_key_parse_failed") {
+      const code = (error as { code?: unknown })?.code;
+      if (typeof code === "string" && ["ERR_OSSL_UNSUPPORTED", "ERR_OSSL_ASN1_HEADER_TOO_LONG", "ERR_INVALID_ARG_VALUE", "ERR_NOT_IMPLEMENTED"].includes(code)) stage += `_${code}`;
+    }
     return unavailable();
   }
 }
