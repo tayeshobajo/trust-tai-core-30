@@ -210,7 +210,7 @@ it("production without configuration or caller credentials stays closed at real 
   h.request = new Request(`${production}/_serverFn/manual`, { method: "POST" });
   await expect(studioManualApplication(h.request, input)).rejects.toMatchObject({ status: 401 });
   expect(await studioManualAction({ data: input as never })).toEqual({
-    status: "unavailable", reason: "request_unconfirmed",
+    status: "unavailable", reason: "request_unconfirmed", diagnostic: "route_unknown",
   });
   const route = Route as unknown as {
     options: { server: { handlers: { POST: (x: { request: Request }) => Promise<Response> } } };

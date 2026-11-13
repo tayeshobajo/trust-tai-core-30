@@ -483,3 +483,101 @@ export function createLinuxPreviewExecutor(setup: LinuxPreviewSetup) {
     }
   }
 }
+
+/** v2 preparation is separate from spawn: callers must perform fresh authority between these calls.
+ * No entrypoint selects this adapter without a separately approved v2 attempt. */
+export function createLinuxTimingAdapter(setup: Pick<LinuxPreviewSetup, "providerKey" | "shutdownSignal">) {
+  const prepared = new WeakSet<object>();
+  let consumed = false;
+  return {
+    async prepare(input: Omit<ExecutionInput, "launchDeadline" | "completionDeadline">,
+      attemptBinding: import("./studio-research-timing-candidate.server").TimingBinding) {
+      const { timingBindingSchema } = await import("./studio-research-timing-candidate.server");
+      const binding = timingBindingSchema.parse(attemptBinding);
+      if (binding.requestId !== input.requestId || binding.issueId !== input.issueId || binding.runId !== input.runId)
+        throw Error("runtime_binding_invalid");
+      inspectProtectedLinuxExecutable();
+      if (input.signal.aborted || setup.shutdownSignal?.aborted) throw Error("runtime_cancelled");
+      let key = await setup.providerKey();
+      if (input.signal.aborted || setup.shutdownSignal?.aborted) throw Error("runtime_cancelled");
+      if (!/^[A-Za-z0-9._-]{16,512}$/.test(key)) throw Error("provider_key_invalid");
+      const now = Date.now();
+      // These bounds validate file preparation only. Actual launch/provider deadlines arrive after final authority.
+      const spec = preparePrivateRun({ ...input, launchDeadline: now + 5000, completionDeadline: now + 60000 }, key, COORDINATOR.endpoint, now);
+      key = "";
+      try {
+        const bindingDigest = digest({ version: 2, binding, nativeBindingDigest: spec.bindingDigest });
+        writeFileSync(join(spec.options.cwd, "attempt-binding.json"), JSON.stringify({ version: 2, binding, bindingDigest }), { mode: 0o600, flag: "wx" });
+        const value = Object.freeze({ spec, bindingDigest, signal: input.signal });
+        prepared.add(value);
+        return value;
+      } catch { spec.cleanup(); throw Error("runtime_prepare_failed"); }
+    },
+    dispose(value: { spec: ReturnType<typeof preparePrivateRun> }) {
+      value.spec.removeCredential(); value.spec.cleanup(); prepared.delete(value);
+    },
+    spawn(value: { spec: ReturnType<typeof preparePrivateRun>; bindingDigest: string; signal: AbortSignal },
+      signal: AbortSignal, deadlines: { launchDeadline: number; providerDeadline: number }) {
+      if (consumed || !prepared.has(value)) throw Error("runtime_attempt_consumed");
+      consumed = true;
+      const check = () => {
+        const now = Date.now();
+        if (signal.aborted || value.signal.aborted || setup.shutdownSignal?.aborted ||
+            !Number.isSafeInteger(deadlines.launchDeadline) || !Number.isSafeInteger(deadlines.providerDeadline) ||
+            now >= deadlines.launchDeadline || deadlines.launchDeadline > now + 5000 ||
+            deadlines.launchDeadline > deadlines.providerDeadline || deadlines.providerDeadline > now + 60000)
+          throw Error("runtime_launch_expired");
+      };
+      check(); inspectProtectedLinuxExecutable(); check();
+      const { spec } = value;
+      const remaining = deadlines.providerDeadline - Date.now();
+      // Everything after native spawn is contained: even observer initialization failure returns this exact handle.
+      const child = spawn(spec.executable, spec.argv, { ...spec.options, stdio: ["pipe", "pipe", "pipe"] });
+      let closed = false, observer: ReturnType<typeof observeLinuxProcess> | undefined;
+      let resolveStarted!: () => void, rejectStarted!: (e: Error) => void;
+      const started = new Promise<void>((resolve, reject) => { resolveStarted = resolve; rejectStarted = reject; });
+      void started.catch(() => {});
+      let resolveClosed!: () => void;
+      const close = new Promise<void>(resolve => { resolveClosed = resolve; });
+      const stopExact = () => {
+        if (closed) return;
+        if (observer) observer.stop();
+        else if (child.pid && Number.isSafeInteger(child.pid) && child.pid > 1) {
+          try { process.kill(-child.pid, "SIGKILL"); } catch { /* unknown closure */ }
+        }
+        try { spec.removeCredential(); } catch { /* retained state; closure remains separately observed */ }
+      };
+      child.on("error", () => { rejectStarted(Error("runtime_spawn_failed")); stopExact(); });
+      child.once("spawn", resolveStarted);
+      child.once("close", () => { closed = true; resolveClosed(); });
+      const signals = [signal, value.signal, ...(setup.shutdownSignal ? [setup.shutdownSignal] : [])];
+      let completion: Promise<{ value: { text: string; nativeSessionId: string; bindingDigest: string }; immediateChildClosed: true }>;
+      try {
+        child.stdin.on("error", stopExact);
+        observer = observeLinuxProcess(child, Math.max(1, remaining), value.bindingDigest);
+        for (const s of signals) s.addEventListener("abort", stopExact, { once: true });
+        if (signals.some(s => s.aborted)) stopExact(); else child.stdin.end(spec.stdin);
+        completion = observer.completion.then(result => {
+          if (!closed || signals.some(s => s.aborted) || Date.now() >= deadlines.providerDeadline)
+            throw Error("runtime_completion_expired");
+          return { value: { text: result.text, nativeSessionId: result.nativeSessionId, bindingDigest: value.bindingDigest }, immediateChildClosed: true as const };
+        });
+      } catch {
+        stopExact(); rejectStarted(Error("runtime_observer_failed"));
+        completion = Promise.reject(Error("runtime_observer_failed"));
+      }
+      completion = completion.finally(() => {
+        for (const s of signals) s.removeEventListener("abort", stopExact);
+        spec.removeCredential();
+      });
+      void completion.catch(() => {});
+      return { started, completion, stop: async () => {
+        stopExact();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try { await Promise.race([close, new Promise<void>(resolve => { timer = setTimeout(resolve, 5000); })]); }
+        finally { clearTimeout(timer); }
+        return { immediateChildClosed: closed };
+      } };
+    },
+  };
+}

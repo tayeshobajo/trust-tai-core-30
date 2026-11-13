@@ -176,3 +176,17 @@ export function assembleLinuxPreviewStudio(
 ) {
   return assembleStudio(d, authorize);
 }
+
+/** Explicit CMD v2 assembly. It can start/read/cancel an existing approved attempt, never approve or renew one. */
+export function assembleStudioAttempt(d: {
+  attemptId: string; approvalDigest: string;
+  serviceKey: string; studioPrivateKey: KeyObject; coordinatorPublicKey: KeyObject;
+  bridgeKey: string; fetcher: typeof fetch; now(): number;
+}) {
+  assertActiveSigningKey(d.studioPrivateKey); assertActiveSigningKey(d.coordinatorPublicKey);
+  const repository=createAttemptSupabaseRepository(d.serviceKey,d.coordinatorPublicKey,d.fetcher);
+  const remote=makeRouteClient({sender:"studio",privateKey:d.studioPrivateKey,peerKey:d.coordinatorPublicKey,bridgeKey:d.bridgeKey,fetcher:d.fetcher,now:d.now});
+  return makeStudioAttemptApplication({repository,remote,now:d.now,attemptId:d.attemptId,approvalDigest:d.approvalDigest});
+}
+import { createAttemptSupabaseRepository } from "./studio-research-attempt-supabase.server";
+import { makeStudioAttemptApplication } from "./studio-research-attempt-app.server";

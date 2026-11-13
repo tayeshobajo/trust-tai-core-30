@@ -98,8 +98,10 @@ export function makeRouteClient(d: {
   const fetcher = d.fetcher;
   return async (
     input: Omit<RouteEnvelope, "domain" | "sender" | "nonce" | "issuedAt" | "expiresAt" | "binding">,
+    options?: { signal?: AbortSignal; deadline?: number },
   ) => {
     const now = d.now();
+    if (options?.signal?.aborted || (options?.deadline !== undefined && (!Number.isSafeInteger(options.deadline) || options.deadline <= now))) throw Error("route_expired");
     let nonce: string;
     try { nonce=randomUUID(); } catch { throw new RouteDiagnosticError("route_nonce_unavailable"); }
     const parsed = envelope.safeParse({
@@ -109,7 +111,7 @@ export function makeRouteClient(d: {
         sender: d.sender,
         nonce,
         issuedAt: now,
-        expiresAt: now + (d.sender === "studio" && input.operation === "run" ? 60000 : 30000),
+        expiresAt: Math.min(now + (d.sender === "studio" && input.operation === "run" ? 60000 : 30000), options?.deadline ?? Number.MAX_SAFE_INTEGER),
       });
     if(!parsed.success)throw new RouteDiagnosticError("route_envelope_invalid");
     const e=parsed.data;
@@ -126,7 +128,7 @@ export function makeRouteClient(d: {
     };
     if (d.sender === "studio") headers["Authorization"] = `Bearer ${d.bridgeKey}`;
     let signal: AbortSignal;
-    try { signal=AbortSignal.timeout(65000); } catch { throw new RouteDiagnosticError("route_timeout_unavailable"); }
+    try { const timeout = AbortSignal.timeout(Math.max(1, Math.min(65000, (options?.deadline ?? now + 65000) - now))); signal = options?.signal ? AbortSignal.any([timeout, options.signal]) : timeout; } catch { throw new RouteDiagnosticError("route_timeout_unavailable"); }
     const r = await Promise.resolve().then(()=>fetcher(
       (d.sender === "studio" ? ROUTES.paperclip : (d.callbackEndpoint ?? ROUTES.studio)) + path(e),
       {

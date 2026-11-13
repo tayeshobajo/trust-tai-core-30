@@ -167,3 +167,15 @@ describe("bounded public source reader (offline)", () => {
     expect(source.publishedAt).toBeNull();
   });
 });
+it("cancels during DNS without starting an HTTP source request",async()=>{
+ const controller=new AbortController();let resolve!: (value:{address:string;family:number}[])=>void;
+ const lookup=vi.fn(()=>new Promise<{address:string;family:number}[]>(r=>{resolve=r;})), request=vi.fn();
+ const promise=createPublicSourceReader({lookup,request} as any)([url],[url],controller.signal).catch(e=>e);
+ controller.abort();expect(await promise).toBeInstanceOf(Error);
+ resolve([{address:"93.184.216.34",family:4}]);await Promise.resolve();expect(request).not.toHaveBeenCalled();
+});
+it("passes the cancellation signal to the pinned HTTPS request",async()=>{
+ const f=fixture(),controller=new AbortController();
+ await createPublicSourceReader({lookup:f.lookup,request:f.request} as any)([url],[url],controller.signal);
+ expect(f.options().signal).toBe(controller.signal);
+});

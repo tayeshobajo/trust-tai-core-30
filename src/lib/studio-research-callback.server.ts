@@ -113,3 +113,29 @@ export function assembleSupabaseCallback(d: {
     currentMember: makeStudioCurrentMember(client as Pick<SupabaseClient, "from">),
   });
 }
+
+/** Explicit v2 assembly, pinned to one independently approved attempt; no approval creation or legacy mutation. */
+export function assembleSupabaseAttemptCallback(d: Omit<Parameters<typeof assembleSupabaseCallback>[0], "trial"> & {
+  attemptId: string; approvalDigest: string;
+}) {
+  for (const key of [d.callbackPrivateKey,d.studioPublicKey,d.hostPublicKey]) assertActiveSigningKey(key);
+  const own=createPublicKey(d.callbackPrivateKey).export({type:"spki",format:"der"});
+  if ([d.studioPublicKey,d.hostPublicKey].some(k=>own.equals(k.export({type:"spki",format:"der"})))) throw Error("callback_key_not_separate");
+  const repository=createAttemptSupabaseRepository(d.serviceKey,d.hostPublicKey,d.fetcher);
+  const roots=createCoordinatorRequestStore(d.serviceKey,d.fetcher);
+  const client=createClient("https://okydosoacqdnursmmenf.supabase.co",d.serviceKey,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:d.fetcher}});
+  const member=makeStudioCurrentMember(client as Pick<SupabaseClient,"from">);
+  return makeAttemptCallbackRoutes({repository,ledger:repository.ledger,hostKey:d.hostPublicKey,privateKey:d.callbackPrivateKey,now:d.now,
+    authorizeCurrent:async approval=>{
+      if(approval.attemptId!==d.attemptId||digest(approval)!==d.approvalDigest)throw Error("attempt_pin_mismatch");
+      await member(approval.subjectId,approval.historicalApproval.request.organizationId);
+      const root=await roots.read(approval.historicalApproval.request.organizationId,approval.historicalApproval.request.requestId);
+      if(!root||root.created_by!==approval.subjectId||root.issue_id!==approval.historicalApproval.issueId||
+        digest(root.coordinator_approval)!==digest(approval.historicalApproval)||root.coordinator_state==="cancelled"||
+        (root.coordinator_admission as {runId?:string}|null)?.runId!==approval.priorRunId)throw Error("attempt_owner_mismatch");
+    },
+  });
+}
+import { createAttemptSupabaseRepository } from "./studio-research-attempt-supabase.server";
+import { makeAttemptCallbackRoutes } from "./studio-research-attempt-routes.server";
+import { digest } from "./studio-research-coordinator-contracts";

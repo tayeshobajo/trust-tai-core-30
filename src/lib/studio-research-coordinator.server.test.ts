@@ -1183,3 +1183,11 @@ describe("versioned CLI accounting policy", () => {
     expect(cliAccountingSchema.safeParse(measured).success).toBe(false);
   });
 });
+
+// Reproduces the deployed coupling without network/provider work or changing production policy.
+it("records generic uncertainty when admission exhausts the legacy five-second launch budget",async()=>{
+ const f=fixture();let now=2000;f.deps.now=()=>now;f.deps.admit=async()=>{now+=5001;};
+ await f.approve();const state=await f.run();expect(state.state).toBe("uncertain");
+ expect(f.deps.executor!.start).not.toHaveBeenCalled();expect(f.store.read(f.id)?.data.reason).toBe("job_failed_requires_review");
+ await f.run();expect(f.deps.executor!.start).not.toHaveBeenCalled();
+});

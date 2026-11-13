@@ -1,3 +1,5 @@
+import { makeTimingPreview, timingPreviewConfigSchema } from "./timing-preview";
+import { AttemptStore } from "../../../src/lib/studio-research-attempt-store.server";
 import { assertActiveSigningKey } from "../../../src/lib/studio-research-active-signing-key.server";
 import {
   trialConfigSchema,
@@ -55,6 +57,7 @@ export const previewWorkerConfig = z
     providerKey: secretRef,
   })
   .strict();
+export const timingWorkerConfig = previewWorkerConfig.omit({ version: true, policyDigest: true, trial: true }).extend(timingPreviewConfigSchema.shape).strict();
 const STATE = "/home/paperclip/.local/share/trusttai-studio-research";
 function openState() {
   const stat = lstatSync(STATE);
@@ -144,6 +147,32 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
       }
     },
   });
+  async function handleTimingApiRequest(input: PluginApiRequestInput, admission: HostAdmission,
+    host: { revalidate(a: HostAdmission): Promise<unknown> }, raw: unknown) {
+    const config = timingWorkerConfig.parse(raw);
+    const studioKey = createPublicKey(config.studioPublicKeyPem), callbackKey = createPublicKey(config.callbackPublicKeyPem);
+    for (const key of [studioKey, callbackKey]) assertActiveSigningKey(key);
+    if (studioKey.export({ type: "spki", format: "der" }).equals(callbackKey.export({ type: "spki", format: "der" })))
+      throw Error("callback_key_not_separate");
+    const resolve = (path: "hostSigningKey" | "providerKey") => ctx!.secrets.resolve(config[path], { companyId: COORDINATOR.companyId, configPath: path });
+    const privateKey = createPrivateKey(await resolve("hostSigningKey")); assertActiveSigningKey(privateKey);
+    state ??= d.openState();
+    const attempts = new AttemptStore(STATE + "/coordinator.sqlite", createPublicKey(privateKey));
+    try {
+      const plugin = makeTimingPreview({ config: { version: 4, policyDigest: config.policyDigest, attemptId: config.attemptId, approvalDigest: config.approvalDigest },
+        store: attempts, ledger: state.ledger, studioKey, callbackKey, privateKey, hostAdmissionExpiresAt: admission.expiresAt,
+        providerKey: () => resolve("providerKey"), fetcher: d.fetcher, now: d.now, shutdownSignal: shutdown.signal,
+        revalidateHost: async e => {
+          if (e.requestId !== admission.requestId || e.issueId !== admission.issueId || e.operation !== admission.operation || admission.expiresAt <= d.now())
+            throw Error("attempt_host_binding");
+          const returned = await host.revalidate(admission);
+          if (JSON.stringify(returned) !== JSON.stringify(admission) || admission.expiresAt <= d.now()) throw Error("attempt_host_revalidation");
+        },
+      });
+      await plugin.definition.setup(ctx!);
+      return await plugin.definition.onApiRequest!(input);
+    } finally { attempts.close(); }
+  }
   async function handleApiRequest(input: PluginApiRequestInput) {
     const unavailable = {
       status: 503,
@@ -160,7 +189,10 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
         .studioAdmission;
       if (!host || !admission) return unavailable;
       await host.revalidate(admission);
-      const config = previewWorkerConfig.parse(await ctx.config.get(COORDINATOR.companyId));
+      const rawConfig = await ctx.config.get(COORDINATOR.companyId);
+      if (rawConfig && typeof rawConfig === "object" && "version" in rawConfig && rawConfig["version"] === 4)
+        return handleTimingApiRequest(input, admission, host, rawConfig);
+      const config = previewWorkerConfig.parse(rawConfig);
       const studioKey = createPublicKey(config.studioPublicKeyPem);
       if (studioKey.asymmetricKeyType !== "ed25519") throw Error("studio_key_invalid");
       const callbackKey = createPublicKey(config.callbackPublicKeyPem);

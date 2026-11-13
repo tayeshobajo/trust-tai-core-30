@@ -1,6 +1,9 @@
 import { build } from "../../node_modules/esbuild/lib/main.js";
 await build({
   entryPoints: {
+    attemptStore: "../../src/lib/studio-research-attempt-store.server.ts",
+    attemptContracts: "../../src/lib/studio-research-attempt-contracts.server.ts",
+    attemptTiming: "../../src/lib/studio-research-timing-candidate.server.ts",
     linuxComposition: "../../src/lib/studio-research-linux-composition.server.ts",
     hostAdmittedRoutes: "src/host-admitted-routes.ts",
     linuxRuntime: "../../src/lib/studio-research-linux-runtime.server.ts",

@@ -1,0 +1,1 @@
+export const STUDIO_APPROVED_FOLLOWUP = {"attemptId": "96d0e7fd-1664-48b3-93df-c99c87260bfb", "requestId": "6e04eb1f-720b-4b43-86a7-7330207a94aa", "organizationId": "ee683a64-e045-4226-a8ff-4ae6590d6789"} as const;

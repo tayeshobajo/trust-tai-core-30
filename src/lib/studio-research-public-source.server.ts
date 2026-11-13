@@ -15,6 +15,7 @@ export function createPublicSourceReader(io = { lookup, request: httpsRequest })
   return async (
     inputs: readonly string[],
     approved: readonly string[],
+    signal?: AbortSignal,
   ): Promise<SourceEvidence[]> => {
     if (
       !inputs.length ||
@@ -22,13 +23,16 @@ export function createPublicSourceReader(io = { lookup, request: httpsRequest })
       new Set(inputs).size !== inputs.length
     )
       throw new PublicSourceError("url_not_approved");
+    if (signal?.aborted) throw new PublicSourceError("fetch_failed");
     const urls = inputs.map((value) => approvedSourceUrl(value, approved));
     const deadline = Date.now() + SOURCE_LIMITS.timeoutMs;
     const evidence: SourceEvidence[] = [];
     let totalBytes = 0;
     for (const url of urls) {
       let timer: ReturnType<typeof setTimeout> | undefined;
+      let cancelLookup: (() => void) | undefined;
       const addresses = await Promise.race([
+        new Promise<never>((_, reject) => { cancelLookup = () => reject(new PublicSourceError("fetch_failed")); signal?.addEventListener("abort", cancelLookup, { once: true }); if (signal?.aborted) cancelLookup(); }),
         io.lookup(url.hostname, { all: true }),
         new Promise<never>((_, reject) => {
           timer = setTimeout(
@@ -40,10 +44,11 @@ export function createPublicSourceReader(io = { lookup, request: httpsRequest })
         .catch((error) => {
           throw error instanceof PublicSourceError ? error : new PublicSourceError("fetch_failed");
         })
-        .finally(() => clearTimeout(timer));
+        .finally(() => { clearTimeout(timer); if (cancelLookup) signal?.removeEventListener("abort", cancelLookup); });
       if (!addresses.length || addresses.some((a) => !isPublicSourceAddress(a.address)))
         throw new PublicSourceError("non_public_address");
       const pinned = addresses[0]!;
+      if (signal?.aborted) throw new PublicSourceError("fetch_failed");
       if (Date.now() >= deadline) throw new PublicSourceError("timeout");
       const received = await new Promise<{ body: string; mime: string }>((resolve, reject) => {
         let settled = false;
@@ -57,6 +62,7 @@ export function createPublicSourceReader(io = { lookup, request: httpsRequest })
           url,
           {
             method: "GET",
+            ...(signal ? { signal } : {}),
             agent: false,
             family: pinned.family,
             servername: url.hostname,
@@ -150,6 +156,7 @@ export function createPublicSourceReader(io = { lookup, request: httpsRequest })
       }).catch((error) => {
         throw error instanceof PublicSourceError ? error : new PublicSourceError("fetch_failed");
       });
+      if (signal?.aborted) throw new PublicSourceError("fetch_failed");
       evidence.push(extractSource(received.body, received.mime, url.href, Date.now()));
     }
     return evidence;

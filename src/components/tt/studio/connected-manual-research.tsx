@@ -1,3 +1,4 @@
+import { ApprovedFollowup } from "./approved-followup";
 import { useState, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { studioManualAction } from "@/data/studio-manual.functions";
@@ -18,6 +19,7 @@ function Connection({ organizationId }: { organizationId: string }) {
   );
   return (
     <>
+      <ApprovedFollowup organizationId={organizationId} />
       <div className="sr-note">
         <button
           className="sv-button"

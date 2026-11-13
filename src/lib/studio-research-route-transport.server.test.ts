@@ -285,3 +285,20 @@ it("returns only bounded launch diagnostic codes",()=>{
 });
 
 for(const [body,code] of [["RPC call timed out after 30000ms","route_rpc_timeout"],["Cannot serialize BigInt","route_rpc_serialization"],["unknown method","route_rpc_method"],["private token arbitrary detail","route_http_502"],["x".repeat(2001)+"timed out","route_http_502"]])it(`bounds RPC diagnostic ${code}`,async()=>{const f=fixture();const client=makeRouteClient({sender:"studio",privateKey:f.studio.privateKey,peerKey:f.host.publicKey,now:()=>1000,bridgeKey:"pcp_synthetic",fetcher:async()=>new Response(body,{status:502})});let diagnostic;try{await client(f.input);}catch(e){diagnostic=routeDiagnostic(e);}expect(diagnostic).toBe(code);});
+it("v2 caller cancellation reaches the actual transport and does not retry", async () => {
+  const f=fixture(), abort=new AbortController(); let observed:AbortSignal|undefined;
+  const fetcher=vi.fn(async (_u:unknown,init?:RequestInit)=>new Promise<Response>((_resolve,reject)=>{
+    observed=init?.signal as AbortSignal;
+    observed.addEventListener("abort",()=>reject(Error("aborted")),{once:true});
+  }));
+  const send=makeRouteClient({sender:"studio",privateKey:f.studio.privateKey,peerKey:f.host.publicKey,now:()=>1000,bridgeKey:"pcp_synthetic",fetcher});
+  const result=send(f.input,{signal:abort.signal,deadline:4000}).catch(e=>e);
+  await Promise.resolve();abort.abort();
+  expect(await result).toBeInstanceOf(Error);expect(observed?.aborted).toBe(true);expect(fetcher).toHaveBeenCalledOnce();
+});
+it("v2 earlier invocation deadline is signed into the transport envelope",async()=>{
+ const f=fixture();await f.client(f.input,{deadline:4000});
+ const outer=await f.requests[0]!.json();
+ const body=JSON.parse(Buffer.from(outer.token.split(".")[0],"base64url").toString());
+ expect(body.expiresAt).toBe(4000);
+});
