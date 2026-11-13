@@ -26,6 +26,8 @@ export type NotificationOutcome = {
 export interface NotificationStore {
   claim(): Promise<NotificationClaim | null>;
   settle(claim: NotificationClaim, outcome: NotificationOutcome): Promise<void>;
+  /** Reviewed DB contract must return at most five eligible rows, including recent delivered
+   * rows inside a fixed observation window; terminal failures and historical rows excluded. */
   reconcileCandidates(): Promise<Array<{ id: string; providerId: string; state: string }>>;
   observe(id: string, outcome: NotificationOutcome): Promise<void>;
 }
@@ -33,10 +35,11 @@ export function observedOutcome(
   previous: string,
   event: string | undefined,
 ): NotificationOutcome | null {
-  if (previous === "failed" || previous === "bounced") return null;
+  if (["failed", "bounced", "complained", "suppressed"].includes(previous)) return null;
   if (["bounced", "failed", "complained", "suppressed"].includes(event ?? ""))
     return { state: "failed", providerId: null, code: event ?? null };
-  if (event === "delivered") return { state: "delivered", providerId: null, code: null };
+  if (event === "delivered" && previous !== "delivered")
+    return { state: "delivered", providerId: null, code: null };
   // Accepted is not delivered. Unknown event never erases a stronger observation.
   return null;
 }
@@ -114,7 +117,8 @@ export async function runNotificationBatch(
     await store.settle(claim, result);
   }
   for (const row of (await store.reconcileCandidates()).slice(0, 5)) {
-    if (!row.providerId || ["failed", "bounced", "delivered"].includes(row.state)) continue;
+    if (!row.providerId || ["failed", "bounced", "complained", "suppressed"].includes(row.state))
+      continue;
     try {
       const r = await transport(`${provider.base}/emails/${encodeURIComponent(row.providerId)}`, {
         headers: provider.headers,

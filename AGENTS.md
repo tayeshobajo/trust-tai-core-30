@@ -11,6 +11,7 @@
 
 - Keep Hiring companion views presentation-only around existing revision-aware editors and guarded services; this prevents visual reference changes from introducing new persistence or dispatch contracts.
 - Hiring automatic notifications extend only the canonical private outbox through reviewed atomic SQL contracts; keep the scheduler source-held until exact schema review, because inferred constraints cannot safely activate delivery.
+- Hiring notification observations include bounded recent delivered rows and atomically preserve terminal failures; delivery evidence must not hide later complaints or be downgraded by weaker provider events.
 - Declare the separate Studio plugin's pinned SDK as a root development dependency while app checks traverse its imports; this makes fresh preview checks reproducible without runtime activation or local-only installs.
 
 ## Prototype boundaries

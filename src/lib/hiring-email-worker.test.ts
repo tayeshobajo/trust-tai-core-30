@@ -176,9 +176,69 @@ describe("disabled Hiring notification candidate", () => {
     expect(f.mock.calls[0]?.[1]?.method).toBeUndefined();
     expect(vi.mocked(store.observe).mock.calls[0]?.[1].state).toBe("delivered");
   });
-  it.each(["failed", "bounced"])("preserves definitive %s", (state) => {
-    expect(observedOutcome(state, "delivered")).toBeNull();
+  it.each(["bounced", "complained", "failed"])(
+    "observes delivered → %s without resending",
+    async (event) => {
+      const store = fixture([]);
+      vi.mocked(store.reconcileCandidates).mockResolvedValue([
+        { id: claim.id, providerId: "synthetic", state: "delivered" },
+      ]);
+      const f = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ last_event: event }));
+      expect(await runNotificationBatch(store, provider, f)).toEqual({ claimed: 0, reconciled: 1 });
+      expect(f).toHaveBeenCalledTimes(1);
+      expect(f.mock.calls[0]?.[1]?.method).toBeUndefined();
+      expect(f.mock.calls[0]?.[1]?.redirect).toBe("error");
+      expect(store.observe).toHaveBeenCalledWith(claim.id, {
+        state: "failed",
+        providerId: "synthetic",
+        code: event,
+      });
+      expect(store.settle).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["sent", "unknown", "delivered"])(
+    "does not degrade or re-record delivered on %s",
+    async (event) => {
+      const store = fixture([]);
+      vi.mocked(store.reconcileCandidates).mockResolvedValue([
+        { id: claim.id, providerId: "synthetic", state: "delivered" },
+      ]);
+      const f = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ last_event: event }));
+      expect((await runNotificationBatch(store, provider, f)).reconciled).toBe(0);
+      expect(f).toHaveBeenCalledTimes(1);
+      expect(store.observe).not.toHaveBeenCalled();
+    },
+  );
+  it("bounds recent-delivered observation to five provider reads", async () => {
+    const store = fixture([]);
+    vi.mocked(store.reconcileCandidates).mockResolvedValue(
+      Array.from({ length: 9 }, (_, i) => ({
+        id: String(i),
+        providerId: `synthetic-${i}`,
+        state: "delivered",
+      })),
+    );
+    const f = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => Response.json({ last_event: "complained" }));
+    expect((await runNotificationBatch(store, provider, f)).reconciled).toBe(5);
+    expect(f).toHaveBeenCalledTimes(5);
+    expect(store.observe).toHaveBeenCalledTimes(5);
   });
+  it.each(["failed", "bounced", "complained", "suppressed"])(
+    "preserves definitive %s",
+    async (state) => {
+      expect(observedOutcome(state, "delivered")).toBeNull();
+      const store = fixture([]);
+      vi.mocked(store.reconcileCandidates).mockResolvedValue([
+        { id: claim.id, providerId: "synthetic", state },
+      ]);
+      const f = vi.fn<typeof fetch>();
+      await runNotificationBatch(store, provider, f);
+      expect(f).not.toHaveBeenCalled();
+      expect(store.observe).not.toHaveBeenCalled();
+    },
+  );
   it("unknown provider observations do not erase delivery evidence", () => {
     expect(observedOutcome("sent", "sent")).toBeNull();
   });

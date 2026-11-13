@@ -1,9 +1,10 @@
 # Roadmap
 
 ## Hiring system notification release candidate (2026-11-13)
+- [x] Correct bounded delivered-event observation and Bash 3 harness; inspect the unrelated SDK addition and clarify existing authorization without activation (136 focused tests, lint and isolated root/non-root SQL checks passed).
 - [x] Import approved prepared templates/tests; add Tai copy/dedupe and source-held bounded worker/scheduler candidates.
 - [x] Verify 127 focused tests/lint and isolated additive SQL sketch; document disabled configuration and review boundaries without production actions or email.
-- [ ] Complete canonical transactional intent generation, authority-checked queue/claim/lease/audit and protected synthetic QA entry — blocked by missing exact hosted schema/grant/function definitions; pending SQL sketch is not activatable.
+- [ ] Complete canonical transactional intent generation, authority-checked queue/claim/lease/audit and protected synthetic QA entry — canonical metadata exists locally but transfer to this project is explicitly blocked pending user confirmation; contracts remain unimplemented and the pending SQL sketch is not activatable.
 
 ## Hiring approved companion screens (2026-11-12)
 - [x] Build Roles, Messages and Documents presentation from approved references while preserving the editor and service/access/send contracts.

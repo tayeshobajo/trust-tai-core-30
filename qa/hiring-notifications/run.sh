@@ -7,7 +7,7 @@ if [ "$(id -u)" = 0 ]; then
   chown -R lovable "$ROOT"
   PG_RUN=(setpriv --reuid=1000 --regid=1000 --clear-groups)
 else
-  PG_RUN=()
+  PG_RUN=(env)
 fi
 trap '"${PG_RUN[@]}" pg_ctl -D "$ROOT/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$ROOT"' EXIT
 "${PG_RUN[@]}" initdb -D "$ROOT/data" -U postgres --auth=trust --no-locale --encoding=UTF8 >/dev/null

@@ -18,7 +18,9 @@ The sequential worker candidate caps five claims and five observed-status reads
 per invocation. It uses existing Resend gateway credentials, HTML plus text,
 stable application/purpose/version/mode idempotency, TLS and redirect:error.
 Provider acceptance is sent, not delivered. Interrupted/uncertain outcomes do
-not automatically resend. Definitive failures/bounces are preserved. All QA
+not automatically resend. Recent delivered rows remain observable for subsequent
+bounced/complained/failed events. Sent, unknown and repeated delivered events do
+not downgrade or duplicate delivered evidence; failures remain terminal. All QA
 purposes target `delivered@resend.dev`, never live owners or applicants.
 
 The authenticated-secret scheduler endpoint is
@@ -31,11 +33,11 @@ and existing service contracts are unchanged.
 
 ## Blocking canonical schema prerequisite
 
-The supplied introspection confirms runtime id/intake state and historical
-synthetic counts, but not exact table columns, nullability, CHECKs, foreign keys,
-grants, RLS or bodies of `hiring_submit`, `hiring_allowed`, `hiring_queue_qa`,
-`hiring_claim_delivery` and `hiring_settle_delivery`. Those definitions are not
-in this checkout or uploaded patches. No hosted introspection was attempted.
+Canonical metadata now exists locally with the independent reviewer, but its
+upload to this Lovable project was explicitly BLOCKED by automatic approval
+review; user confirmation of that transfer is pending. No alternate route,
+hosted introspection or inferred SQL is permitted. The exact columns, constraints,
+grants, RLS and routine definitions remain unavailable here for implementation.
 
 Consequently this is a **partial, source-held candidate**, not a complete
 activatable notification system. Missing work: canonical transactional queue
@@ -67,27 +69,96 @@ The isolated SQL fixture tests only this additive sketch, never hosted schema.
    attempted claims become unknown, never queued. Snapshot revision/payload bound
    settlement requires matching lease; revoke public/member system-write access.
 5. Reconciliation uses provider ID and observations only; unknown without provider
-   ID needs human review, never resubmission. Preserve definitive failed/bounced.
+   ID needs human review, never resubmission. Preserve definitive failures.
 6. Explicit authenticated Hiring QA entry queues synthetic records only; accepts
    no recipient/mode/public payload override. All generated intents go to an
    approved test destination. Manual employment-message sends remain QA-only.
 
-## Review/release steps (all pending; nothing executed)
+### Required bounded reconciliation contracts (not implemented SQL)
 
-1. Supply exact canonical schema/routine/grant definitions, finish and review SQL;
+- `hiring_notification_reconcile_candidates` must enforce a hard DB limit of five,
+  purpose/org/runtime/activation-cutoff scope and a durable provider ID. Include
+  eligible sent/unknown rows and recent delivered rows, exclude failed/bounced/
+  complained/suppressed. Never select historical intake or create new intents.
+- Define an exact finite delivered-observation duration and minimum poll interval
+  after metadata review; no duration is invented here. Anchor the window to the
+  first durable delivery observation, not the last poll, so polling cannot extend
+  it indefinitely. Track last check/next eligibility separately and rotate eligible
+  rows deterministically to avoid starving sent/unknown rows. Reserve eligibility
+  atomically for concurrent workers; unavailable provider reads must still respect
+  the polling interval. Observations outside the window are not guaranteed.
+- `hiring_observe_notification` must lock and re-read current canonical state and
+  provider binding, reject stale/mismatched observations, preserve provider ID,
+  make repeated evidence idempotent, and append authorized audit evidence atomically.
+  Delivered may become failed for bounce/complaint/failure/suppression, never sent
+  or unknown. A concurrent terminal failure must not be overwritten by delivered.
+- Existing candidate port names/shapes are proposals only. Exact schema review must
+  settle reservation/version ownership and timestamp fields before adapter wiring.
+  Worker tests prove bounded mocked reads/state mapping, not durable SQL enforcement.
+
+## Review/release steps (pending; existing authorization preserved)
+
+Tai's existing approval authorizes the scoped bounded activation/controlled tests
+after checks. No new blanket approval is required. This turn remains source-only:
+Tai handles final migration, deployment and sending after independent review.
+The current gate is denied metadata transfer and unimplemented canonical contracts,
+not absent email authorization. Intake enablement is not email enablement.
+
+1. Resolve the explicitly blocked metadata transfer through its existing approval,
+   then review exact canonical definitions, finish and review SQL;
    run complete isolated policy/transaction/replay/lease/nonbackfill tests.
 2. Wire reviewed routines to the source-held scheduler; independent app type/build
    and deployed evidence required. No Studio/dependency repairs in this change.
-3. Review disabled migration separately; user applies production SQL only after
-   approval, then verifies notification runtime remains false and queue empty.
-4. User authorizes secure separate scheduler secret provisioning and cron setup.
+3. Under existing scoped authorization, user applies reviewed disabled migration,
+   then verifies notification runtime remains false and queue empty.
+4. User handles secure separate scheduler secret provisioning and cron setup.
    Generate without display; bind to the published CMD endpoint only after release.
    Cadence/batch must be reviewed; no inline secret SQL or logs.
-5. User approves explicit synthetic QA, then reviews provider receipts; no emails
+5. User runs already-authorized controlled synthetic QA, then reviews provider receipts; no emails
    were sent here. Only after this review activate runtime with a new cutoff,
    independently of intake_enabled. Never backfill historical notifications.
 
 ## Evidence
+
+### Independent source correction verification
+
+- `bunx vitest run --config vitest.hiring-design.config.ts`: exit **0**, **136
+  tests in nine files**, including delivered → bounced/complained/failed, no
+  downgrade on sent/unknown, repeated delivered no-op, terminal failure retention,
+  and five-read bound. An initial test run exited **1** because a mocked Response
+  body was reused across reads; fresh mocked responses corrected the test fixture.
+- `bunx eslint src/lib/hiring-email-worker.server.ts src/lib/hiring-email-worker.test.ts`:
+  final exit **0** after scoped formatter corrections; `git diff --check`: **0**.
+- `bash -n qa/hiring-notifications/run.sh`: **0**;
+  `bash qa/hiring-notifications/run.sh`: **0**;
+  `setpriv --reuid=1000 --regid=1000 --clear-groups bash qa/hiring-notifications/run.sh`:
+  **0**. Root and unprivileged isolated additive checks passed. The non-root
+  branch now uses `PG_RUN=(env)` under nounset. Sandbox Bash is 5.3.9; native
+  macOS Bash 3 execution was not available, so no macOS pass is claimed.
+- Logs: `/tmp/hiring-email-review/{tests-final,lint-final,sql,sql-unprivileged}.log`.
+  No manual build/typecheck, dependency changes, metadata retrieval, production
+  actions, provider calls or sends. Automatic preview diagnostics reported
+  `build OK` at 2026-11-13T02:17:52Z; this is not deployed runtime evidence.
+
+### Unrelated SDK commit inspection (read-only)
+
+`b4bc67d1e43eeb52e1145d4b68e5f92a2b90fd2b` was outside the requested Hiring
+scope. Its exact diff: package.json +1 pinned root development dependency
+`@paperclipai/plugin-sdk: 2026.1012.0`; bun.lock +11 lines (root dev declaration,
+SDK resolution and `@paperclipai/shared`, `three`, plus two nested `zod` resolutions);
+AGENTS.md +1 dependency/check rule. No Studio source changed. Left intact.
+
+Baseline tsconfig includes `src/**/*.ts`, including Studio test files importing
+`packages/studio-research-coordinator/src/{signed-routes,host-admitted-routes,
+preview-bootstrap}`. Those files import the SDK. The nested package already pins
+the same SDK, but root install does not install that independent package's
+dependencies. Thus the SDK must be resolvable for the existing full typecheck
+graph on a fresh root install; a root declaration solves that. It is not required
+by Hiring or evidence that the web bundler itself needs the SDK, and was not the
+only possible remedy. No install, removal, Studio repair or build rerun here.
+
+The prior automatic-build diagnostic below is historical, before that SDK commit;
+it is not a current failure claim or fresh full-build evidence.
 
 - `bunx vitest run --config vitest.hiring-design.config.ts`: exit **0**, **127 tests
   passed in nine files** (existing 82, prepared templates 22 including seven
