@@ -1,6 +1,7 @@
 import { trialConfigSchema } from "./studio-research-trial.server";
 /** Server-only preview startup. Configuration and secret values are read only on invocation. */
 import { createPrivateKey, createPublicKey } from "node:crypto";
+import { Buffer } from "node:buffer";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { assembleLinuxPreviewStudio } from "./studio-research-studio-assembly.server";
@@ -35,8 +36,15 @@ export function loadStudioPreviewAssembly(
     if (!privatePem || !serviceKey || !bridgeKey?.startsWith("pcp_")) return unavailable();
     stage = "private_key_envelope_invalid";
     if (!/^-----BEGIN PRIVATE KEY-----[\s\S]*-----END PRIVATE KEY-----\s*$/.test(privatePem)) return unavailable();
+    // Some secure single-line inputs remove PEM line breaks. Decode the exact
+    // PKCS#8 body strictly; this changes formatting tolerance, never key identity.
+    const body = privatePem.replace(/^-----BEGIN PRIVATE KEY-----/, "").replace(/-----END PRIVATE KEY-----\s*$/, "").replace(/[ \t\r\n]/g, "");
+    stage = "private_key_encoding_invalid";
+    if (privatePem.length > 2000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(body)) return unavailable();
+    const der = Buffer.from(body, "base64");
+    if (der.toString("base64") !== body) return unavailable();
     stage = "private_key_parse_failed";
-    const studioPrivateKey = createPrivateKey(privatePem);
+    const studioPrivateKey = createPrivateKey({ key: der, format: "der", type: "pkcs8" });
     stage = "public_key_parse_failed";
     const coordinatorPublicKey = createPublicKey(config.coordinatorPublicKeyPem);
     stage = "signing_identity_invalid";

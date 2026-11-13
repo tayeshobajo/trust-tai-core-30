@@ -355,7 +355,7 @@ it("missing or invalid worker config remains closed before state or secrets", as
 });
 it("Studio startup uses preview assembly only with explicit matching config and secrets", () => {
   const keys = generateKeyPairSync("ed25519"),
-    assemble = vi.fn(() => ({
+    assemble = vi.fn((_input: { studioPrivateKey: KeyObject }) => ({
       application: vi.fn(),
       receiptHandler: vi.fn(),
       receiptOperations: vi.fn(),
@@ -396,6 +396,15 @@ it("Studio startup uses preview assembly only with explicit matching config and 
   expect(loadStudioPreviewAssembly({ ...env, STUDIO_RESEARCH_PREVIEW_CONFIG: "private-invalid-config" }, assemble as never, report)).toBeUndefined();
   expect(report).toHaveBeenLastCalledWith("config_invalid");
   expect(loadStudioPreviewAssembly(env, assemble as never)).toBeDefined();
+  const originalPublic = createPublicKey(keys.privateKey).export({type:"spki",format:"der"});
+  assemble.mockClear();
+  expect(loadStudioPreviewAssembly({ ...env, STUDIO_RESEARCH_SIGNING_PRIVATE_KEY: env.STUDIO_RESEARCH_SIGNING_PRIVATE_KEY.replace(/\n/g, "") }, assemble as never)).toBeDefined();
+  const parsedKey = assemble.mock.calls[0][0].studioPrivateKey;
+  expect(createPublicKey(parsedKey).export({type:"spki",format:"der"})).toEqual(originalPublic);
+  report.mockClear();
+  expect(loadStudioPreviewAssembly({ ...env, STUDIO_RESEARCH_SIGNING_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----not!base64-----END PRIVATE KEY-----" }, assemble as never, report)).toBeUndefined();
+  expect(report).toHaveBeenLastCalledWith("private_key_encoding_invalid");
+
   expect(assemble).toHaveBeenCalledWith(expect.objectContaining({ mode: "linux-public-preview" }));
 });
 
