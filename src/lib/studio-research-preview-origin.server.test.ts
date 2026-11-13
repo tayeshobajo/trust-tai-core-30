@@ -1,3 +1,5 @@
+import { STUDIO_TRIAL_REQUEST_ID, STUDIO_TRIAL_SOURCE } from "@/domain/studio-research-trial";
+import { TRIAL_POLICY_SHA256 } from "./studio-research-trial.server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { generateKeyPairSync } from "node:crypto";
 import { LINUX_PREVIEW_POLICY_SHA256, COORDINATOR } from "./studio-research-coordinator-contracts";
@@ -36,7 +38,8 @@ import { studioManualApplication, studioReceiptApplication } from "./studio-rese
 import { studioManualAction, studioManualOriginDiagnostic } from "@/data/studio-manual.functions";
 import { Route } from "@/routes/api.studio.research.coordinator.$requestId.$operation";
 
-const preview = new URL(ROUTES.studio).origin;
+const production = new URL(ROUTES.studio).origin;
+const rejectedPreview = "https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app";
 const input = { organizationId: COORDINATOR.organizationId, operation: "check" };
 const callbackPath =
   "/api/studio/research/coordinator/11111111-1111-4111-8111-111111111111/authority";
@@ -49,10 +52,11 @@ beforeEach(() => {
   vi.stubEnv(
     "STUDIO_RESEARCH_PREVIEW_CONFIG",
     JSON.stringify({
-      version: 1,
+      version: 2,
       mode: "linux-public-preview",
       enabled: true,
       policyDigest: LINUX_PREVIEW_POLICY_SHA256,
+      trial: {policyDigest: TRIAL_POLICY_SHA256, requestId: STUDIO_TRIAL_REQUEST_ID, subjectId: "11111111-1111-4111-8111-111111111111", source: STUDIO_TRIAL_SOURCE, notBefore: 0, expiresAt: 3600000},
       coordinatorPublicKeyPem: publicPem,
     }),
   );
@@ -66,24 +70,24 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 it.each([
-  "https://cmd.trusttai.com",
+  rejectedPreview,
   "https://trusttai-os-foundation.lovable.app",
   "https://preview--trusttai-os-foundation.lovable.app",
   "https://other.lovable.app",
-  `${preview}.attacker.example`,
-  preview.replace("https:", "http:"),
-  `${preview}:444`,
-  `${preview}.`,
+  `${production}.attacker.example`,
+  production.replace("https:", "http:"),
+  `${production}:444`,
+  `${production}.`,
   "http://localhost:3000",
 ])(
   "rejects both real entrypoints at %s before assembly despite complete secrets and forged headers",
   async (origin) => {
     const headers = {
-      Origin: preview,
-      Host: new URL(preview).host,
-      "X-Forwarded-Host": new URL(preview).host,
+      Origin: production,
+      Host: new URL(production).host,
+      "X-Forwarded-Host": new URL(production).host,
       "X-Forwarded-Proto": "https",
-      Forwarded: `proto=https;host=${new URL(preview).host}`,
+      Forwarded: `proto=https;host=${new URL(production).host}`,
     };
     const manual = new Request(`${origin}/_serverFn/manual`, { method: "POST", headers });
     const callback = new Request(origin + callbackPath, { method: "POST", headers });
@@ -104,8 +108,8 @@ it.each([
 it.each([
   "/relative",
   "not a URL",
-  `${preview}/manual#fragment`,
-  `${preview.replace("https://", "https://user:pass@")}/manual`,
+  `${production}/manual#fragment`,
+  `${production.replace("https://", "https://user:pass@")}/manual`,
 ])("fails closed for malformed or noncanonical input %s", async (url) => {
   // Structural Request doubles exercise parser rejection, including URLs native Request disallows.
   const request = { url } as Request;
@@ -113,12 +117,12 @@ it.each([
   expect((await studioReceiptApplication(request)).status).toBe(503);
   expect(loadStudioPreviewAssembly).not.toHaveBeenCalled();
 });
-it("passes the original canonical preview requests to existing authenticated/signed handlers", async () => {
-  const manual = new Request(`${preview}:443/_serverFn/manual`, {
+it("passes the original canonical production requests to existing authenticated/signed handlers", async () => {
+  const manual = new Request(`${production}:443/_serverFn/manual`, {
     method: "POST",
-    headers: { Origin: "https://cmd.trusttai.com", "X-Forwarded-Host": "cmd.trusttai.com" },
+    headers: { Origin: rejectedPreview, "X-Forwarded-Host": new URL(rejectedPreview).host },
   });
-  const callback = new Request(preview + callbackPath, { method: "POST" });
+  const callback = new Request(production + callbackPath, { method: "POST" });
   expect(await studioManualApplication(manual, input)).toEqual({ status: "available" });
   expect(await (await studioReceiptApplication(callback)).text()).toBe("synthetic-handler");
   expect(loadStudioPreviewAssembly).toHaveBeenCalledTimes(2);
@@ -127,7 +131,7 @@ it("passes the original canonical preview requests to existing authenticated/sig
   expect(h.receiptHandler).toHaveBeenCalledWith(callback);
 });
 it("registered server function and callback route reach the guard", async () => {
-  h.request = new Request("https://cmd.trusttai.com/_serverFn/manual", { method: "POST" });
+  h.request = new Request(`${rejectedPreview}/_serverFn/manual`, { method: "POST" });
   expect(await studioManualAction({ data: input as never })).toEqual({
     status: "unavailable",
     reason: "runtime_not_configured",
@@ -146,14 +150,14 @@ it("installed TanStack request storage preserves canonical URL despite forwardin
     expect(stored).toBe(incoming);
     return Response.json(await studioManualApplication(stored, input));
   });
-  const request = new Request("https://cmd.trusttai.com/_serverFn/manual", {
+  const request = new Request(`${rejectedPreview}/_serverFn/manual`, {
     method: "POST",
     headers: {
-      Host: new URL(preview).host,
-      Origin: preview,
-      "X-Forwarded-Host": new URL(preview).host,
+      Host: new URL(production).host,
+      Origin: production,
+      "X-Forwarded-Host": new URL(production).host,
       "X-Forwarded-Proto": "https",
-      Forwarded: `proto=https;host=${new URL(preview).host}`,
+      Forwarded: `proto=https;host=${new URL(production).host}`,
     },
   });
   const response = await handler(request, {});
@@ -165,8 +169,8 @@ it("installed TanStack request storage preserves canonical URL despite forwardin
 });
 
 it.each([
-  [preview, "preview"],
-  ["https://cmd.trusttai.com", "production"],
+  [rejectedPreview, "preview"],
+  [production, "production"],
   ["https://other.lovable.app", "other"],
 ])("both inert diagnostic entrypoints classify %s without loading runtime", async (origin, classification) => {
   const { setResponseHeader } = await import("@tanstack/react-start/server");
@@ -174,8 +178,8 @@ it.each([
     options: { server: { handlers: { GET: (x: { request: Request }) => Response } } };
   };
   for (const headers of [{}, {
-    Origin: preview,
-    Host: new URL(preview).host,
+    Origin: production,
+    Host: new URL(production).host,
     "X-Forwarded-Host": "cmd.trusttai.com",
     "X-Forwarded-Proto": "http",
     Forwarded: "proto=http;host=cmd.trusttai.com",
@@ -190,6 +194,29 @@ it.each([
     expect(h.request.bodyUsed).toBe(false);
   }
   expect(loadStudioPreviewAssembly).not.toHaveBeenCalled();
+  expect(h.assemble).not.toHaveBeenCalled();
+  expect(h.application).not.toHaveBeenCalled();
+  expect(h.receiptHandler).not.toHaveBeenCalled();
+});
+
+it("production without configuration or caller credentials stays closed at real entrypoints", async () => {
+  vi.stubEnv("STUDIO_RESEARCH_PREVIEW_CONFIG", "");
+  vi.stubEnv("STUDIO_RESEARCH_SIGNING_PRIVATE_KEY", "");
+  vi.stubEnv("TRUST_TAI_SUPABASE_SERVICE_KEY", "");
+  vi.stubEnv("PAPERCLIP_STUDIO_BRIDGE_KEY", "");
+  h.request = new Request(`${production}/_serverFn/manual`, { method: "POST" });
+  await expect(studioManualApplication(h.request, input)).rejects.toMatchObject({ status: 401 });
+  expect(await studioManualAction({ data: input as never })).toEqual({
+    status: "unavailable", reason: "request_unconfirmed",
+  });
+  const route = Route as unknown as {
+    options: { server: { handlers: { POST: (x: { request: Request }) => Promise<Response> } } };
+  };
+  const response = await route.options.server.handlers.POST({
+    request: new Request(production + callbackPath, { method: "POST", body: "{}" }),
+  });
+  expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ error: "runtime_unavailable" });
   expect(h.assemble).not.toHaveBeenCalled();
   expect(h.application).not.toHaveBeenCalled();
   expect(h.receiptHandler).not.toHaveBeenCalled();

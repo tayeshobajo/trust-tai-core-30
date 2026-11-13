@@ -22,7 +22,7 @@ function bind(e: RouteEnvelope, a: Approval) {
     throw Error("operation_binding_invalid");
 }
 export function makeStudioReceiptOperations(d: {
-  handlers: ReturnType<typeof createStudioCoordinatorHandlers>;
+  handlers: Pick<ReturnType<typeof createStudioCoordinatorHandlers>, "receive">;
   store: CoordinatorRequestStore;
   hostKey: KeyObject;
   studioKey: KeyObject;
@@ -68,6 +68,8 @@ export function makeStudioReceiptOperations(d: {
     if (receipt.job.id !== e.requestId || receipt.job.approvalDigest !== e.approvalDigest)
       throw Error("receipt_binding_invalid");
     await d.handlers.receive(p.receipt);
+    // A write may have committed before revocation. Do not acknowledge after a failed fresh check.
+    await d.currentMember(e.subjectId, e.organizationId);
     const now = d.now();
     if (now >= e.expiresAt) throw Error("operation_expired");
     const payload = {

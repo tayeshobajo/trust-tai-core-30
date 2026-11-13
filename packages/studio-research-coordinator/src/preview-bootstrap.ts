@@ -1,3 +1,10 @@
+import { assertActiveSigningKey } from "../../../src/lib/studio-research-active-signing-key.server";
+import {
+  trialConfigSchema,
+  assertTrialScope,
+  assertTrialApproval,
+  assertTrialWindow,
+} from "../../../src/lib/studio-research-trial.server";
 import {
   definePlugin,
   type PluginContext,
@@ -11,6 +18,7 @@ import { CoordinatorStore } from "../../../src/lib/studio-research-coordinator-s
 import { createRouteLedger } from "../../../src/lib/studio-research-route-ledger-node.server";
 import {
   makeRouteClient,
+  ROUTES,
   type RouteEnvelope,
 } from "../../../src/lib/studio-research-route-transport.server";
 import { createLinuxPublicPreviewComposition } from "../../../src/lib/studio-research-linux-composition.server";
@@ -36,11 +44,13 @@ const secretRef = z
   .strict();
 export const previewWorkerConfig = z
   .object({
-    version: z.literal(1),
+    version: z.literal(3),
     mode: z.literal("linux-public-preview"),
     enabled: z.literal(true),
     policyDigest: z.literal(LINUX_PREVIEW_POLICY_SHA256),
+    trial: z.unknown().transform((value) => trialConfigSchema.parse(value)),
     studioPublicKeyPem: z.string().min(40).max(1000),
+    callbackPublicKeyPem: z.string().min(40).max(1000),
     hostSigningKey: secretRef,
     providerKey: secretRef,
   })
@@ -153,6 +163,12 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
       const config = previewWorkerConfig.parse(await ctx.config.get(COORDINATOR.companyId));
       const studioKey = createPublicKey(config.studioPublicKeyPem);
       if (studioKey.asymmetricKeyType !== "ed25519") throw Error("studio_key_invalid");
+      const callbackKey = createPublicKey(config.callbackPublicKeyPem);
+      if (callbackKey.asymmetricKeyType !== "ed25519" ||
+          callbackKey.export({type:"spki",format:"der"}).equals(studioKey.export({type:"spki",format:"der"})))
+        throw Error("callback_key_not_separate");
+      assertActiveSigningKey(studioKey);
+      assertActiveSigningKey(callbackKey);
       const signed = z
         .object({ token: z.string().max(190000) })
         .strict()
@@ -164,15 +180,24 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
           issueId: z.literal(admission.issueId),
           operation: z.literal(admission.operation),
           expiresAt: z.number(),
+          subjectId: z.string().uuid(),
         })
         .passthrough()
         .parse(verifySignedJson(studioKey, signed.token));
+      assertTrialScope(
+        config.trial,
+        verified.subjectId,
+        COORDINATOR.organizationId,
+        admission.requestId,
+      );
+      if (admission.operation === "run") assertTrialWindow(config.trial, d.now());
       if (verified.expiresAt <= d.now()) throw Error("signed_invocation_expired");
       const resolve = (path: "hostSigningKey" | "providerKey") =>
         ctx!.secrets.resolve(config[path], { companyId: COORDINATOR.companyId, configPath: path });
       // Resolve on invocation; never retain secret values in worker-global state.
       const privateKey = createPrivateKey(await resolve("hostSigningKey"));
       if (privateKey.asymmetricKeyType !== "ed25519") throw Error("host_key_invalid");
+      assertActiveSigningKey(privateKey);
       state ??= d.openState();
       let current: RouteEnvelope | undefined;
       const requireCurrent = () => {
@@ -182,7 +207,8 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
       const send = makeRouteClient({
         sender: "coordinator",
         privateKey,
-        peerKey: studioKey,
+        peerKey: callbackKey,
+        callbackEndpoint: ROUTES.callback,
         now: d.now,
         fetcher: d.fetcher,
       });
@@ -195,6 +221,7 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
         if (e.organizationId !== org || e.requestId !== id) throw Error("ownership_binding");
         const owned = ownedSchema.parse(await remote("authority", {}));
         const approval = approvalSchema.parse(owned.approval);
+        assertTrialApproval(config.trial, approval);
         if (
           digest(approval) !== e.approvalDigest ||
           approval.approvedBy !== e.subjectId ||
@@ -218,8 +245,9 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
         reader: d.sourceReader,
         grantPublicKey: studioKey,
         hostPrivateKey: privateKey,
-        ackPublicKey: studioKey,
+        ackPublicKey: callbackKey,
         authorizeCurrent: async (i) => {
+          assertTrialWindow(config.trial, d.now());
           const e = requireCurrent();
           if (i.requestId !== e.requestId || i.issueId !== e.issueId) throw Error("launch_binding");
           const owned = await loadOwned(e.organizationId, e.requestId);
@@ -240,7 +268,8 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
             .strict()
             .parse(await remote(kind, { receipt })).ack;
         },
-        completionDeadline: () => requireCurrent().expiresAt - 5000,
+        completionDeadline: () =>
+          Math.min(requireCurrent().expiresAt, config.trial.expiresAt) - 5000,
         trackRuntime: (handle) => {
           activeStops.add(handle.stop);
           handle.completion.finally(() => activeStops.delete(handle.stop)).catch(() => {});
@@ -262,7 +291,14 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
           const owned = await loadOwned(e.organizationId, e.requestId);
           if (owned.revoked && !["read", "cancel"].includes(e.operation)) throw Error("revoked");
         },
-        dispatch: operations,
+        dispatch: async (e) => {
+          if (e.operation === "run") {
+            const owned = await loadOwned(e.organizationId, e.requestId);
+            await host.revalidate(admission);
+            state!.store.consumeTrial(config.trial, owned.approval, d.now());
+          }
+          return operations(e);
+        },
       });
       await plugin.definition.setup(ctx);
       return await plugin.definition.onApiRequest!(input);

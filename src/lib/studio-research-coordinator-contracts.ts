@@ -7,7 +7,7 @@ import {
 } from "./studio-research-manual-test.server";
 import { approvedSourceUrl, type SourceEvidence } from "./studio-research-source-evidence.server";
 export const COORDINATOR = {
-  version: "0.1.0-dev.12",
+  version: "0.1.0-dev.14",
   organizationId: "ee683a64-e045-4226-a8ff-4ae6590d6789",
   companyId: "aaa4eceb-44fb-4492-823c-65d3d90c5519",
   projectId: "d5160872-5d1c-41fb-b793-9ad7e4469f86",

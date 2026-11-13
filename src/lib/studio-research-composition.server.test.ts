@@ -849,3 +849,11 @@ it("preview refuses offline policy proof and mismatched native binding", async (
     (await c.run(f.request, { approval: f.issued.approval, grant: f.issued.attestation })).state,
   ).not.toBe("ready");
 });
+
+it("rejects a result ACK substituted for admission without launch",async()=>{const f=await fixture();f.ackPatch={domain:"studio-result-ack/v1"};const c=await composed(f);await c.run(f.request,{approval:f.issued.approval,grant:f.issued.attestation});expect(f.deps.runtime.start).not.toHaveBeenCalled()});
+it("rejects an admission ACK substituted for result, preserving delivery uncertainty",async()=>{
+ const f=await fixture();f.ackPatch={domain:"studio-admission-ack/v1"};const c=await composed(f);
+ expect((await c.run(f.request,{approval:f.issued.approval,grant:f.issued.attestation})).state).toBe("delivery_uncertain");
+ expect(f.deps.runtime.start).toHaveBeenCalledTimes(1);expect(f.ledger.read(f.requestId)!.data.delivery).toBeUndefined();
+ await expect(c.review(f.request,f.requestId,{decision:"save"})).rejects.toThrow("delivery_unconfirmed");
+});

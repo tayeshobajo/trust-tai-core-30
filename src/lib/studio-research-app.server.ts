@@ -120,14 +120,14 @@ export async function studioManualApplication(
   request: Request,
   raw: unknown,
 ): Promise<ManualReply> {
-  if (classifyStudioPreviewOrigin(request) !== "preview")
+  if (classifyStudioPreviewOrigin(request) !== "production")
     return { status: "unavailable", reason: "runtime_not_configured" };
   const { loadStudioPreviewAssembly } = await import("./studio-research-preview-startup.server");
   const configured = loadStudioPreviewAssembly();
   return (configured?.application ?? makeStudioApplication())(request, raw);
 }
 export async function studioReceiptApplication(request: Request): Promise<Response> {
-  if (classifyStudioPreviewOrigin(request) !== "preview")
+  if (classifyStudioPreviewOrigin(request) !== "production")
     return Response.json(
       { error: "runtime_unavailable" },
       { status: 503, headers: { "Cache-Control": "no-store" } },

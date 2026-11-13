@@ -9,6 +9,7 @@ export function ConnectedManualResearch({ organizationId }: { organizationId: st
 function Connection({ organizationId }: { organizationId: string }) {
   const send = useServerFn(studioManualAction),
     [available, setAvailable] = useState(false),
+    [launchAllowed, setLaunchAllowed] = useState(false),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const adapter = useMemo(
@@ -26,9 +27,12 @@ function Connection({ organizationId }: { organizationId: string }) {
             void send({ data: { operation: "check", organizationId } })
               .then((reply) => {
                 setAvailable(reply.status === "available");
+                setLaunchAllowed(reply.status === "available" && reply.launchAllowed === true);
                 setMessage(
                   reply.status === "available"
-                    ? "Manual research connection is configured."
+                    ? reply.launchAllowed === true
+                      ? "Manual research connection is configured."
+                      : "Connected for settlement only. Recover the existing trial to check, stop, reconcile or review it."
                     : "Manual research is not connected yet. You can still explore the local example.",
                 );
               })
@@ -43,7 +47,7 @@ function Connection({ organizationId }: { organizationId: string }) {
         </button>
         <p role="status">{message}</p>
       </div>
-      <ManualResearch organizationId={organizationId} {...(available ? { adapter } : {})} />
+      <ManualResearch organizationId={organizationId} {...(available ? { adapter, settlementOnly: !launchAllowed } : {})} />
     </>
   );
 }

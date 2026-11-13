@@ -1,3 +1,4 @@
+import { callbackDestinationMatches } from "./studio-research-callback-destination";
 /** Exact server-to-server candidate. No default fetch, keys, routes or startup registration. */
 import { sign, type KeyObject, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -5,8 +6,9 @@ import { COORDINATOR, digest } from "./studio-research-coordinator-contracts";
 import { verifySignedJson } from "./studio-research-coordinator-authority.server";
 export const ROUTES = {
   paperclip: "https://agents.trusttai.com/api/plugins/trusttai.studio-research-coordinator/api",
+  callback: "https://okydosoacqdnursmmenf.supabase.co/functions/v1/studio-research-coordinator",
   studio:
-    "https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/api/studio/research/coordinator",
+    "https://cmd.trusttai.com/api/studio/research/coordinator",
 } as const;
 const operation = z.enum([
   "run",
@@ -35,6 +37,7 @@ const envelope = z
     issuedAt: z.number().finite(),
     expiresAt: z.number().finite(),
     payload: z.unknown(),
+    binding: z.object({ method: z.literal("POST"), destination: z.string().max(300) }).strict().optional(),
   })
   .strict();
 export type RouteEnvelope = z.infer<typeof envelope>;
@@ -81,13 +84,15 @@ export function makeRouteClient(d: {
   now(): number;
   fetcher: typeof fetch;
   bridgeKey?: string;
+  callbackEndpoint?: typeof ROUTES.callback;
 }) {
   return async (
-    input: Omit<RouteEnvelope, "domain" | "sender" | "nonce" | "issuedAt" | "expiresAt">,
+    input: Omit<RouteEnvelope, "domain" | "sender" | "nonce" | "issuedAt" | "expiresAt" | "binding">,
   ) => {
     const now = d.now(),
       e = envelope.parse({
         ...input,
+        ...(d.sender === "coordinator" && d.callbackEndpoint ? {binding:{method:"POST",destination:`${ROUTES.callback}/${input.requestId}/${input.operation}`}} : {}),
         domain: "studio-coordinator-route/v1",
         sender: d.sender,
         nonce: randomUUID(),
@@ -106,7 +111,7 @@ export function makeRouteClient(d: {
     };
     if (d.sender === "studio") headers["Authorization"] = `Bearer ${d.bridgeKey}`;
     const r = await d.fetcher(
-      (d.sender === "studio" ? ROUTES.paperclip : ROUTES.studio) + path(e),
+      (d.sender === "studio" ? ROUTES.paperclip : (d.callbackEndpoint ?? ROUTES.studio)) + path(e),
       {
         method: "POST",
         headers,
@@ -156,6 +161,7 @@ export type RouteLedger = {
 };
 export function makeRouteHandler(d: {
   receiver: "studio" | "coordinator";
+  callbackEndpoint?: typeof ROUTES.callback;
   peerKey: KeyObject;
   privateKey: KeyObject;
   now(): number;
@@ -178,8 +184,11 @@ export function makeRouteHandler(d: {
       const e = envelope.parse(verifySignedJson(d.peerKey, outer.token));
       current(e, d.now());
       if (e.sender === d.receiver || !permitted(e)) throw Error("route_invalid");
-      const expected = (d.receiver === "coordinator" ? ROUTES.paperclip : ROUTES.studio) + path(e);
-      if (request.url !== expected) throw Error("route_binding_invalid");
+      const expected = (d.receiver === "coordinator" ? ROUTES.paperclip : (d.callbackEndpoint ?? ROUTES.studio)) + path(e);
+      if (d.receiver === "studio" && d.callbackEndpoint) {
+        if (!e.binding || e.binding.destination !== expected || e.binding.method !== request.method ||
+            !callbackDestinationMatches(request.url,request.method,e.binding.destination)) throw Error("route_binding_invalid");
+      } else if (request.url !== expected) throw Error("route_binding_invalid");
       await d.authenticate(request, e);
       await d.authorizeCurrent(e);
       current(e, d.now());

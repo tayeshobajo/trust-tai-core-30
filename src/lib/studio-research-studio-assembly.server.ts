@@ -1,3 +1,11 @@
+import { assertActiveSigningKey } from "./studio-research-active-signing-key.server";
+import {
+  trialConfigSchema,
+  assertTrialScope,
+  assertTrialWindow,
+  type TrialConfig,
+} from "./studio-research-trial.server";
+import { manualActionSchema } from "@/domain/studio-manual-wire";
 import { createSupabaseRouteLedger } from "./studio-research-route-ledger-supabase.server";
 /** Local Studio-side assembly; deliberately not installed in application startup. */
 import type { KeyObject } from "node:crypto";
@@ -17,6 +25,7 @@ import { COORDINATOR } from "./studio-research-coordinator-contracts";
 function assembleStudio(
   d: {
     mode: "offline-synthetic" | "linux-public-preview";
+    trial?: TrialConfig;
     studioPrivateKey: KeyObject;
     coordinatorPublicKey: KeyObject;
     serviceKey: string;
@@ -34,6 +43,16 @@ function assembleStudio(
     [d.coordinatorPublicKey, "public"],
   ] as const)
     if (key.type !== type || key.asymmetricKeyType !== "ed25519") throw Error("signer_invalid");
+  const trial = d.mode === "linux-public-preview" ? trialConfigSchema.parse(d.trial) : undefined;
+  if (trial) {
+    assertActiveSigningKey(d.studioPrivateKey);
+    assertActiveSigningKey(d.coordinatorPublicKey);
+  }
+  const scopedAuthorize: typeof authorize = async (request, org, write) => {
+    const auth = await authorize(request, org, write);
+    if (trial) assertTrialScope(trial, auth.user.id, org);
+    return auth;
+  };
   const store = createCoordinatorRequestStore(d.serviceKey, d.fetcher);
   const issuer = createStudioCoordinatorHandlers(
     {
@@ -44,7 +63,7 @@ function assembleStudio(
       receiptPublicKey: d.coordinatorPublicKey,
       now: d.now,
     },
-    authorize,
+    scopedAuthorize,
   );
   const send = makeRouteClient({
     sender: "studio",
@@ -54,7 +73,7 @@ function assembleStudio(
     fetcher: d.fetcher,
     now: d.now,
   });
-  const remote = makeStudioRemoteActions({ store, issuer, send }, authorize);
+  const remote = makeStudioRemoteActions({ store, issuer, send }, scopedAuthorize);
   const bridge = createStudioTransport(
     {
       origin: "https://agents.trusttai.com",
@@ -68,7 +87,7 @@ function assembleStudio(
   const prepare = async (request: Request, input: unknown) => {
     // Intake performs its own actual-user/organization authorization before each write.
     const raw = input as { organizationId: string };
-    const auth = await authorize(request, raw.organizationId, true);
+    const auth = await scopedAuthorize(request, raw.organizationId, true);
     const storage = createResearchStore(auth.user.id, d.serviceKey, d.fetcher);
     return prepareManualResearchRequest(request, input, {
       mode: d.mode,
@@ -76,7 +95,7 @@ function assembleStudio(
       agent: bridge.readAgent,
       createIssue: bridge.createIssue,
       owner: async (org, id) => (await store.read(org, id))?.created_by ?? null,
-      authorize: async (r, org) => ({ userId: (await authorize(r, org, true)).user.id }),
+      authorize: async (r, org) => ({ userId: (await scopedAuthorize(r, org, true)).user.id }),
     });
   };
   const receiptOperations = makeStudioReceiptOperations({
@@ -94,6 +113,7 @@ function assembleStudio(
     now: d.now,
     ledger: createSupabaseRouteLedger(d.serviceKey, d.fetcher),
     authenticate: async (_request, e) => {
+      if (trial) assertTrialScope(trial, e.subjectId, e.organizationId, e.requestId);
       if (e.sender !== "coordinator") throw Error("sender_invalid");
     },
     authorizeCurrent: async (e) => {
@@ -101,9 +121,33 @@ function assembleStudio(
     },
     dispatch: receiptOperations,
   });
+  const application = makeStudioApplication({ issuer, remote, prepare }, scopedAuthorize);
   return {
-    receiptHandler,
-    application: makeStudioApplication({ issuer, remote, prepare }, authorize),
+    // Live callbacks have moved to a separately signed boundary; no CMD fallback.
+    receiptHandler: trial ? async (_request: Request) => new Response(JSON.stringify({error:"callback_relocated"}), {status:410,headers:{"Cache-Control":"no-store","Content-Type":"application/json"}}) : receiptHandler,
+    application: async (request: Request, raw: unknown) => {
+      if (trial) {
+        const input = manualActionSchema.parse(raw);
+        const auth = await scopedAuthorize(
+          request,
+          input.organizationId,
+          input.operation !== "read" && input.operation !== "check",
+        );
+        assertTrialScope(trial, auth.user.id, input.organizationId, input.requestId);
+        if (input.operation === "check") {
+          const now = d.now();
+          return { status: "available" as const, launchAllowed: Number.isFinite(now) && now >= trial.notBefore && now < trial.expiresAt };
+        }
+        if (["queue", "start"].includes(input.operation))
+          assertTrialWindow(trial, d.now());
+        if (
+          input.operation === "queue" &&
+          (input.approvedUrls?.length !== 1 || input.approvedUrls[0] !== trial.source)
+        )
+          throw Error("trial_source_rejected");
+      }
+      return application(request, raw);
+    },
     receiptOperations,
   };
 }

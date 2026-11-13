@@ -1,5 +1,7 @@
+import { STUDIO_TRIAL_REQUEST_ID, STUDIO_TRIAL_SOURCE } from "@/domain/studio-research-trial";
+import { TRIAL_POLICY_SHA256 } from "./studio-research-trial.server";
 import { it, expect, vi, afterEach } from "vitest";
-import { generateKeyPairSync, randomUUID, createHash, sign, type KeyObject } from "node:crypto";
+import { generateKeyPairSync, randomUUID, createHash, createPrivateKey, createPublicKey, sign, type KeyObject } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,7 +20,7 @@ import { loadStudioPreviewAssembly } from "./studio-research-preview-startup.ser
 import { CoordinatorStore, type Job } from "./studio-research-coordinator-store.server";
 import { createRouteLedger } from "./studio-research-route-ledger-node.server";
 import { makeStudioReceiptOperations } from "./studio-research-route-operations.server";
-import { makeRouteHandler, makeRouteClient } from "./studio-research-route-transport.server";
+import { makeRouteHandler, makeRouteClient, ROUTES } from "./studio-research-route-transport.server";
 import { verifySignedJson } from "./studio-research-coordinator-authority.server";
 import {
   COORDINATOR,
@@ -43,12 +45,13 @@ function signed(key: KeyObject, p: unknown) {
   const b = Buffer.from(JSON.stringify(p));
   return b.toString("base64url") + "." + sign(null, b, key).toString("base64url");
 }
-async function fixture(delay = 35000) {
+async function fixture(delay = 35000, commandSigner = "studio", grantSigner = "studio", responseSigner = "callback", ackSigner = "callback") {
   vi.useFakeTimers();
   vi.setSystemTime(1000);
   vi.spyOn(process, "kill").mockImplementation(() => true);
   const studio = generateKeyPairSync("ed25519"),
-    host = generateKeyPairSync("ed25519");
+    host = generateKeyPairSync("ed25519"),
+    callback = generateKeyPairSync("ed25519");
   const root = mkdtempSync(join(tmpdir(), "studio-bootstrap-")),
     store = new CoordinatorStore(join(root, "state.sqlite")),
     nonce = new DatabaseSync(":memory:"),
@@ -59,7 +62,7 @@ async function fixture(delay = 35000) {
     studioNonce.close();
     rmSync(root, { recursive: true, force: true });
   });
-  const requestId = randomUUID(),
+  const requestId = STUDIO_TRIAL_REQUEST_ID,
     issueId = randomUUID(),
     userId = randomUUID();
   const approval = approvalSchema.parse({
@@ -73,7 +76,7 @@ async function fixture(delay = 35000) {
     approvedBy: userId,
     approvedAt: 1000,
     expiresAt: 901000,
-    approvedUrls: ["https://example.org/article"],
+    approvedUrls: ["https://www.iana.org/help/example-domains"],
     issueId,
     primaryModel: COORDINATOR.model,
     auxiliaryModel: COORDINATOR.model,
@@ -104,14 +107,15 @@ async function fixture(delay = 35000) {
       }),
     } as never,
     hostKey: host.publicKey,
-    studioKey: studio.privateKey,
+    studioKey: callback.privateKey,
     now: Date.now,
     currentMember: async () => {},
   });
   const studioHandler = makeRouteHandler({
     receiver: "studio",
+    callbackEndpoint: ROUTES.callback,
     peerKey: host.publicKey,
-    privateKey: studio.privateKey,
+    privateKey: responseSigner === "studio" ? studio.privateKey : callback.privateKey,
     now: Date.now,
     ledger: createRouteLedger(studioNonce),
     authenticate: async () => {},
@@ -139,7 +143,7 @@ async function fixture(delay = 35000) {
         if (job.data.resultDigest) owned.resultDigest = job.data.resultDigest;
       }
       return {
-        ack: signed(studio.privateKey, {
+        ack: signed(ackSigner === "studio" ? studio.privateKey : callback.privateKey, {
           domain: e.operation === "admission" ? "studio-admission-ack/v1" : "studio-result-ack/v1",
           companyId: COORDINATOR.companyId,
           projectId: COORDINATOR.projectId,
@@ -158,11 +162,20 @@ async function fixture(delay = 35000) {
     },
   });
   const config = {
-    version: 1,
+    version: 3,
     enabled: true,
     mode: "linux-public-preview",
     policyDigest: LINUX_PREVIEW_POLICY_SHA256,
+    trial: {
+      policyDigest: TRIAL_POLICY_SHA256,
+      requestId,
+      subjectId: userId,
+      source: STUDIO_TRIAL_SOURCE,
+      notBefore: 0,
+      expiresAt: 3600000,
+    },
     studioPublicKeyPem: studio.publicKey.export({ type: "spki", format: "pem" }).toString(),
+    callbackPublicKeyPem: callback.publicKey.export({ type: "spki", format: "pem" }).toString(),
     hostSigningKey: { type: "secret_ref", secretId: randomUUID(), version: 1 },
     providerKey: { type: "secret_ref", secretId: randomUUID(), version: 1 },
   };
@@ -177,7 +190,12 @@ async function fixture(delay = 35000) {
     openState,
     compose,
     sourceReader: async () => [
-      extractSource("public source text", "text/plain", "https://example.org/article", 1000),
+      extractSource(
+        "public source text",
+        "text/plain",
+        "https://www.iana.org/help/example-domains",
+        1000,
+      ),
     ],
     fetcher: async (u, i) => studioHandler(new Request(u, i)),
     now: Date.now,
@@ -226,7 +244,7 @@ async function fixture(delay = 35000) {
     }, delay);
     return c;
   });
-  const grant = signed(studio.privateKey, {
+  const grant = signed(grantSigner === "callback" ? callback.privateKey : studio.privateKey, {
     version: 1,
     issuer: "studio-approved-task",
     audience: "studio-research-coordinator",
@@ -244,14 +262,15 @@ async function fixture(delay = 35000) {
   });
   const client = makeRouteClient({
     sender: "studio",
-    privateKey: studio.privateKey,
+    privateKey: commandSigner === "callback" ? callback.privateKey : studio.privateKey,
     peerKey: host.publicKey,
     bridgeKey: "pcp_synthetic",
     now: Date.now,
     fetcher: async (u, i) => {
       const request = new Request(u, i),
         body = await request.json();
-      const envelope = verifySignedJson(studio.publicKey, body.token) as { expiresAt: number };
+      // Synthetic host-admission fixture parses metadata; worker must independently verify signature.
+      const envelope = JSON.parse(Buffer.from(body.token.split(".")[0], "base64url").toString()) as { expiresAt: number };
       expect(envelope.expiresAt - Date.now()).toBe(60000);
       const admission = {
         version: 1 as const,
@@ -343,10 +362,18 @@ it("Studio startup uses preview assembly only with explicit matching config and 
     }));
   const env = {
     STUDIO_RESEARCH_PREVIEW_CONFIG: JSON.stringify({
-      version: 1,
+      version: 2,
       mode: "linux-public-preview",
       enabled: true,
       policyDigest: LINUX_PREVIEW_POLICY_SHA256,
+      trial: {
+        policyDigest: TRIAL_POLICY_SHA256,
+        requestId: STUDIO_TRIAL_REQUEST_ID,
+        subjectId: "11111111-1111-4111-8111-111111111111",
+        source: STUDIO_TRIAL_SOURCE,
+        notBefore: 0,
+        expiresAt: 3600000,
+      },
       coordinatorPublicKeyPem: keys.publicKey.export({ type: "spki", format: "pem" }).toString(),
     }),
     STUDIO_RESEARCH_SIGNING_PRIVATE_KEY: keys.privateKey
@@ -409,4 +436,46 @@ it("shutdown aborts a pending authorized startup before spawn and waits before c
   await pending;
   expect(mocked.spawn).not.toHaveBeenCalled();
   expect(close).toHaveBeenCalledOnce();
+});
+
+it("trial subject and expiry reject before host secrets, state, or spawn", async () => {
+  const f = await fixture();
+  const config = await f.context.config.get();
+  f.context.config.get.mockResolvedValue({
+    ...config,
+    trial: { ...config.trial, subjectId: randomUUID() },
+  });
+  await f.run().catch(() => undefined);
+  expect(f.secret).not.toHaveBeenCalled();
+  expect(f.openState).not.toHaveBeenCalled();
+  f.context.config.get.mockResolvedValue({
+    ...config,
+    trial: { ...config.trial, notBefore: 0, expiresAt: 1000 },
+  });
+  await f.run().catch(() => undefined);
+  expect(f.secret).not.toHaveBeenCalled();
+  expect(f.openState).not.toHaveBeenCalled();
+  expect(mocked.spawn).not.toHaveBeenCalled();
+});
+
+it.each(["command", "grant", "response", "ack"])("separate callback trust rejects wrong signer at %s boundary without spawn", async boundary => {
+ const f=await fixture(35000,boundary==="command"?"callback":"studio",boundary==="grant"?"callback":"studio",boundary==="response"?"studio":"callback",boundary==="ack"?"studio":"callback");
+ const pending=f.run().catch(e=>e);await vi.advanceTimersByTimeAsync(36000);await pending;
+ expect(mocked.spawn).not.toHaveBeenCalled();
+});
+it("rejects same canonical Studio/callback key despite PEM whitespace differences before secrets/state",async()=>{
+ const f=await fixture();const c=await f.context.config.get();c.callbackPublicKeyPem="\n"+c.studioPublicKeyPem+"\n";
+ const pending=f.run().catch(e=>e);await vi.advanceTimersByTimeAsync(1);await pending;
+ expect(f.secret).not.toHaveBeenCalled();expect(f.openState).not.toHaveBeenCalled();
+});
+
+it.each(["studioPublicKeyPem","callbackPublicKeyPem","hostSigningKey"])("rejects diagnostic identity in active host %s before state/provider access",async role=>{
+ const f=await fixture();
+ const diagnostic=createPrivateKey({type:"pkcs8",format:"der",key:Buffer.from("302e020100300506032b6570042204209d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60","hex")});
+ if(role==="hostSigningKey") f.secret.mockResolvedValue(diagnostic.export({type:"pkcs8",format:"pem"}).toString());
+ else {const config=await f.context.config.get();config[role as "studioPublicKeyPem"|"callbackPublicKeyPem"]="\n"+createPublicKey(diagnostic).export({type:"spki",format:"pem"}).toString().replace(/\n/g,"\r\n")+"\n";}
+ const pending=f.run().catch(e=>e);await vi.advanceTimersByTimeAsync(1);await pending;
+ expect(f.openState).not.toHaveBeenCalled();expect(mocked.spawn).not.toHaveBeenCalled();
+ if(role!=="hostSigningKey")expect(f.secret).not.toHaveBeenCalled();
+ else expect(f.secret.mock.calls.every(c=>c[1].configPath==="hostSigningKey")).toBe(true);
 });

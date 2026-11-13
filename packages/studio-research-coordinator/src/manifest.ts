@@ -2,7 +2,7 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 export const manifest: PaperclipPluginManifestV1 = {
   id: "trusttai.studio-research-coordinator",
   apiVersion: 1,
-  version: "0.1.0-dev.12",
+  version: "0.1.0-dev.14",
   displayName: "Studio Research Coordinator (local candidate)",
   description:
     "Disabled-by-default, request-specific manual research coordinator. No native heartbeat, schedules, outreach or publishing.",
@@ -14,11 +14,13 @@ export const manifest: PaperclipPluginManifestV1 = {
     type: "object",
     additionalProperties: false,
     properties: {
-      version: { const: 1 },
+      version: { const: 3 },
       mode: { const: "linux-public-preview" },
       enabled: { type: "boolean" },
+      trial: { type: "object" },
       policyDigest: { type: "string" },
       studioPublicKeyPem: { type: "string" },
+      callbackPublicKeyPem: { type: "string" },
       hostSigningKey: { type: "object" },
       providerKey: { type: "object" },
     },

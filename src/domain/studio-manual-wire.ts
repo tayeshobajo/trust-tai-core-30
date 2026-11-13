@@ -65,7 +65,7 @@ export const manualViewSchema = z
   })
   .strict();
 export type ManualReply =
-  | { status: "available" }
+  | { status: "available"; launchAllowed?: boolean }
   | { status: "unavailable"; reason: "runtime_not_configured" | "request_unconfirmed" }
   | { status: "ok"; view: ManualView };
 /** Same-origin authenticated server-function caller. No retry or transport keys in browser. */

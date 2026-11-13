@@ -27,9 +27,9 @@ export const coordinatorRowSchema = z.object({
   coordinator_result_digest: z.string().nullable(),
 });
 export type CoordinatorRow = z.infer<typeof coordinatorRowSchema>;
-export function createCoordinatorRequestStore(key: string, fetcher: typeof fetch = fetch) {
+export function createCoordinatorRequestStore(key: string, fetcher: typeof fetch = fetch, backendUrl?: string) {
   if (!key) throw Error("coordinator_storage_unavailable");
-  const backend = new URL(trustTaiSupabaseUrl());
+  const backend = new URL(backendUrl ?? trustTaiSupabaseUrl());
   if (
     backend.origin !== "https://okydosoacqdnursmmenf.supabase.co" ||
     backend.pathname !== "/" ||

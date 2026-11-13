@@ -1,3 +1,4 @@
+import { STUDIO_TRIAL_REQUEST_ID } from "@/domain/studio-research-trial";
 import { useId, useRef, useState } from "react";
 import {
   createManualResearchFixture,
@@ -9,17 +10,17 @@ import {
 } from "@/domain/studio-manual-research";
 import "./manual-research.css";
 /** No adapter is passed by the live page: no request runs, fetches or subscriptions on mount. */
-type ManualResearchProps = { organizationId: string; adapter?: ManualResearchAdapter };
+type ManualResearchProps = { organizationId: string; adapter?: ManualResearchAdapter; settlementOnly?: boolean };
 export function ManualResearch(props: ManualResearchProps) {
   const context = useRef({ adapter: props.adapter, revision: 0 });
   if (context.current.adapter !== props.adapter)
     context.current = { adapter: props.adapter, revision: context.current.revision + 1 };
   // Remount all context-bound state. Old promises belong only to the discarded instance.
   return (
-    <ManualResearchContext key={`${props.organizationId}:${context.current.revision}`} {...props} />
+    <ManualResearchContext key={`${props.organizationId}:${context.current.revision}:${props.settlementOnly ? "settlement" : "launch"}`} {...props} />
   );
 }
-function ManualResearchContext({ organizationId, adapter }: ManualResearchProps) {
+function ManualResearchContext({ organizationId, adapter, settlementOnly = false }: ManualResearchProps) {
   const id = useId(),
     [local, setLocal] = useState<ManualResearchAdapter | undefined>(),
     driver = adapter ?? local;
@@ -27,6 +28,7 @@ function ManualResearchContext({ organizationId, adapter }: ManualResearchProps)
     [urls, setUrls] = useState(""),
     [approved, setApproved] = useState(false),
     [command, setCommand] = useState<ManualCommand | null>(null),
+    [recovered, setRecovered] = useState(false),
     [view, setView] = useState<ManualView | null>(null),
     [busy, setBusy] = useState(false),
     [starting, setStarting] = useState(false),
@@ -41,7 +43,7 @@ function ManualResearchContext({ organizationId, adapter }: ManualResearchProps)
   const preview = driver?.mode === "local-fixture";
   async function act(
     operation: () => Promise<ManualView>,
-    expectedId = command?.requestId,
+    expectedId = command?.requestId ?? (recovered ? STUDIO_TRIAL_REQUEST_ID : undefined),
     control = false,
     start = false,
   ) {
@@ -83,7 +85,7 @@ function ManualResearchContext({ organizationId, adapter }: ManualResearchProps)
     }
   }
   function queue() {
-    if (!driver || !approved || command || lock.current) return;
+    if (!driver || settlementOnly || recovered || !approved || command || lock.current) return;
     let sources: string[];
     try {
       sources = manualSourceUrls(urls);
@@ -94,14 +96,14 @@ function ManualResearchContext({ organizationId, adapter }: ManualResearchProps)
     }
     const next = {
       organizationId,
-      requestId: crypto.randomUUID(),
+      requestId: adapter ? STUDIO_TRIAL_REQUEST_ID : crypto.randomUUID(),
       topic: topic.trim(),
       approvedUrls: sources,
     };
     setCommand(next);
     void act(() => driver.approve(next), next.requestId);
   }
-  const requestId = command?.requestId;
+  const requestId = command?.requestId ?? (recovered ? STUDIO_TRIAL_REQUEST_ID : undefined);
   return (
     <section className="sv-card sr-manual" aria-labelledby={`${id}-heading`}>
       <header className="sw-section-heading">
@@ -145,7 +147,7 @@ function ManualResearchContext({ organizationId, adapter }: ManualResearchProps)
           id={`${id}-topic`}
           value={topic}
           maxLength={1200}
-          disabled={!!command || busy}
+          disabled={settlementOnly || recovered || !!command || busy}
           onChange={(e) => setTopic(e.target.value)}
         />
         <label htmlFor={`${id}-urls`}>Public source URLs · one per line</label>
@@ -153,7 +155,7 @@ function ManualResearchContext({ organizationId, adapter }: ManualResearchProps)
           id={`${id}-urls`}
           value={urls}
           maxLength={6000}
-          disabled={!!command || busy}
+          disabled={settlementOnly || recovered || !!command || busy}
           placeholder="https://example.org/article"
           aria-describedby={`${id}-source-note`}
           onChange={(e) => {
@@ -169,21 +171,27 @@ function ManualResearchContext({ organizationId, adapter }: ManualResearchProps)
           <input
             type="checkbox"
             checked={approved}
-            disabled={!!command || busy}
+            disabled={settlementOnly || recovered || !!command || busy}
             onChange={(e) => setApproved(e.target.checked)}
           />
           I approve these exact URLs for this request.
         </label>
       </div>
       <div className="sr-actions">
-        <button
+        {adapter && !command && !recovered && (
+          <button className="sv-button" disabled={busy || checking} onClick={() => {
+            setRecovered(true);
+            void act(() => adapter.read(STUDIO_TRIAL_REQUEST_ID), STUDIO_TRIAL_REQUEST_ID);
+          }}>Recover existing trial</button>
+        )}
+        {!settlementOnly && !recovered && <button
           className="sv-button sv-button-primary"
           disabled={!driver || busy || !approved || !!command}
           onClick={queue}
         >
           {preview ? "Queue local example" : "Approve sources and queue"}
-        </button>
-        {view?.status === "queued" && requestId && (
+        </button>}
+        {!settlementOnly && !recovered && view?.status === "queued" && requestId && (
           <button
             className="sv-button"
             disabled={busy}
@@ -192,32 +200,32 @@ function ManualResearchContext({ organizationId, adapter }: ManualResearchProps)
             {preview ? "Start local example" : "Start approved request"}
           </button>
         )}
-        {command && view?.status === "delivery_uncertain" && driver?.reconcile && (
+        {requestId && view?.status === "delivery_uncertain" && driver?.reconcile && (
           <button
             className="sv-button"
             disabled={checking}
             onClick={() =>
-              void act(() => driver.reconcile!(command.requestId), command.requestId, true)
+              void act(() => driver.reconcile!(requestId), requestId, true)
             }
           >
             Reconcile brief delivery
           </button>
         )}
-        {command && (
+        {requestId && (
           <button
             className="sv-button"
             disabled={(busy && !starting) || checking || !driver}
-            onClick={() => void act(() => driver!.read(command.requestId), command.requestId, true)}
+            onClick={() => void act(() => driver!.read(requestId), requestId, true)}
           >
             Check status
           </button>
         )}
-        {command && ["queued", "started", "uncertain"].includes(view?.status ?? "") && (
+        {requestId && ["queued", "started", "uncertain"].includes(view?.status ?? "") && (
           <button
             className="sv-button"
             disabled={(busy && !starting) || checking || !driver}
             onClick={() =>
-              void act(() => driver!.cancel(command.requestId), command.requestId, true)
+              void act(() => driver!.cancel(requestId), requestId, true)
             }
           >
             Request stop
@@ -231,6 +239,7 @@ function ManualResearchContext({ organizationId, adapter }: ManualResearchProps)
             ? manualStatusLabel(view)
             : "No request has started."}
       </p>
+      {recovered && <p className="sr-note">Existing trial {STUDIO_TRIAL_REQUEST_ID}. Recovery can settle this request; it cannot queue or restart it.</p>}
       {command && (
         <div className="sr-approved">
           <strong>Approved request</strong>

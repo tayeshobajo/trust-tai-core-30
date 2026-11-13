@@ -1,3 +1,8 @@
+import {
+  assertTrialApproval,
+  assertTrialWindow,
+  type TrialConfig,
+} from "./studio-research-trial.server";
 import { cliAccountingSchema, type CliAccounting } from "./studio-research-coordinator-contracts";
 /** Private local SQLite candidate. No production DB connection or automatic host migration. */
 import { DatabaseSync } from "node:sqlite";
@@ -91,6 +96,9 @@ export class CoordinatorStore {
     this.db = new DatabaseSync(path);
     chmodSync(path, 0o600);
     this.db.exec(`PRAGMA busy_timeout=1000; PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL;
+   CREATE TABLE IF NOT EXISTS single_trial_admission(slot INTEGER PRIMARY KEY CHECK(slot=1), binding TEXT NOT NULL, approval_digest TEXT NOT NULL, consumed_at INTEGER NOT NULL);
+   CREATE TRIGGER IF NOT EXISTS no_trial_update BEFORE UPDATE ON single_trial_admission BEGIN SELECT RAISE(ABORT,'trial_immutable'); END;
+   CREATE TRIGGER IF NOT EXISTS no_trial_delete BEFORE DELETE ON single_trial_admission BEGIN SELECT RAISE(ABORT,'trial_consumed'); END;
    CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, revision INTEGER NOT NULL, state TEXT NOT NULL CHECK(state IN ('approved','collecting','running','cancel_requested','cancelled','failed','uncertain','ready','reviewed')), approval TEXT NOT NULL, approval_digest TEXT NOT NULL, data TEXT NOT NULL);
    CREATE UNIQUE INDEX IF NOT EXISTS one_unsettled_job ON jobs((1)) WHERE state IN ('collecting','running','cancel_requested','uncertain');
    CREATE TABLE IF NOT EXISTS events(job_id TEXT NOT NULL, revision INTEGER NOT NULL, state TEXT NOT NULL, data_digest TEXT NOT NULL, PRIMARY KEY(job_id,revision));
@@ -98,6 +106,22 @@ export class CoordinatorStore {
    CREATE TRIGGER IF NOT EXISTS no_job_delete BEFORE DELETE ON jobs BEGIN SELECT RAISE(ABORT,'retain_reservation'); END;
    CREATE TRIGGER IF NOT EXISTS no_event_update BEFORE UPDATE ON events BEGIN SELECT RAISE(ABORT,'immutable_history'); END;
    CREATE TRIGGER IF NOT EXISTS no_event_delete BEFORE DELETE ON events BEGIN SELECT RAISE(ABORT,'immutable_history'); END;`);
+  }
+  /** Single global slot; committed before dispatch. Never deleted on failure or restart. */
+  consumeTrial(t: TrialConfig, approval: Approval, now: number): void {
+    assertTrialApproval(t, approval);
+    assertTrialWindow(t, now);
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      const r = this.db
+        .prepare("INSERT OR IGNORE INTO single_trial_admission VALUES(1,?,?,?)")
+        .run(digest(t), digest(approval), now);
+      if (r.changes !== 1) throw Error("trial_already_consumed");
+      this.db.exec("COMMIT");
+    } catch (e) {
+      this.db.exec("ROLLBACK");
+      throw e;
+    }
   }
   close() {
     this.db.close();

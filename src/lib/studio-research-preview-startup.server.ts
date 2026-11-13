@@ -1,3 +1,4 @@
+import { trialConfigSchema } from "./studio-research-trial.server";
 /** Server-only preview startup. Configuration and secret values are read only on invocation. */
 import { createPrivateKey, createPublicKey } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -6,10 +7,11 @@ import { assembleLinuxPreviewStudio } from "./studio-research-studio-assembly.se
 import { LINUX_PREVIEW_POLICY_SHA256 } from "./studio-research-coordinator-contracts";
 export const studioPreviewConfig = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
     mode: z.literal("linux-public-preview"),
     enabled: z.literal(true),
     policyDigest: z.literal(LINUX_PREVIEW_POLICY_SHA256),
+    trial: trialConfigSchema,
     coordinatorPublicKeyPem: z.string().min(40).max(1000),
   })
   .strict();
@@ -38,6 +40,7 @@ export function loadStudioPreviewAssembly(
     });
     return assemble({
       mode: "linux-public-preview",
+      trial: config.trial,
       studioPrivateKey,
       coordinatorPublicKey,
       serviceKey,

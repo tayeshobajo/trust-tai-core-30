@@ -1,4 +1,5 @@
-import { cliAccountingSchema, type CliAccounting } from "./studio-research-coordinator-contracts";
+import { createStudioReceiptReceiver } from "./studio-research-receipt-receiver.server";
+import { type CliAccounting } from "./studio-research-coordinator-contracts";
 /** Staged Studio-side route handlers: not registered in router/startup, no env secret loading. */
 import { sign, type KeyObject } from "node:crypto";
 import { z } from "zod";
@@ -29,25 +30,6 @@ const ids = z
   .object({ organizationId: z.literal(COORDINATOR.organizationId), requestId: z.string().uuid() })
   .strict();
 const command = ids.extend({ approvedUrls: z.array(z.string().url()).min(1).max(3) }).strict();
-const receiptEnvelope = z
-  .object({
-    issuer: z.literal("studio-coordinator-receipt"),
-    audience: z.literal("studio-existing-request"),
-    stage: z.enum(["admission", "result"]),
-    issuedAt: z.number().finite(),
-    expiresAt: z.number().finite(),
-    job: z.unknown(),
-  })
-  .strict();
-const launchSchema = z
-  .object({
-    nonce: z.string().uuid(),
-    profile: profileSchema,
-    startedAt: z.number().finite(),
-    launchDeadline: z.number().finite(),
-    completionDeadline: z.number().finite(),
-  })
-  .strict();
 function signed(key: KeyObject, payload: unknown) {
   if (key.type !== "private" || key.asymmetricKeyType !== "ed25519")
     throw Error("signer_unavailable");
@@ -194,138 +176,7 @@ export function createStudioCoordinatorHandlers(
         }),
       };
     },
-    async receive(token: unknown) {
-      enabled();
-      if (!d.receiptPublicKey) throw Error("receipt_unavailable");
-      try {
-        const e = receiptEnvelope.parse(verifySignedJson(d.receiptPublicKey, token));
-        if (
-          e.issuedAt > d.now() ||
-          e.expiresAt <= d.now() ||
-          e.expiresAt <= e.issuedAt ||
-          e.expiresAt - e.issuedAt > 60000
-        )
-          throw Error();
-        const job = z
-          .object({
-            id: z.string().uuid(),
-            state: z.enum(["running", "ready"]),
-            revision: z.number().int().nonnegative(),
-            approval: approvalSchema,
-            approvalDigest: z.string(),
-            data: z
-              .object({
-                runId: z.string().uuid(),
-                sessionId: z.string().min(1).max(200),
-                evidence: z.array(z.unknown()).min(1).max(3),
-                evidenceDigest: z.string(),
-                promptDigest: z.string(),
-                launch: launchSchema,
-                result: z.unknown().optional(),
-                resultDigest: z.string().optional(),
-                completion: z
-                  .object({
-                    receipt: receiptSchema,
-                    outputDigest: z.string().regex(/^[a-f0-9]{64}$/),
-                    providerRequests: z.null(),
-                    accounting: cliAccountingSchema,
-                    completedAt: z.number().finite(),
-                  })
-                  .strict()
-                  .optional(),
-              })
-              .strict(),
-          })
-          .strict()
-          .parse(e.job);
-        let row = await d.store.read(job.approval.request.organizationId, job.id);
-        if (!row) throw Error();
-        const a = storedApproval(row),
-          evidence = job.data.evidence as SourceEvidence[];
-        validateSourceReceipt(a, evidence);
-        const launch = job.data.launch;
-        if (
-          digest(a) !== job.approvalDigest ||
-          digest(a) !== digest(job.approval) ||
-          job.id !== a.request.requestId ||
-          digest(evidence) !== job.data.evidenceDigest ||
-          digest(coordinatorPrompt(a, evidence)) !== job.data.promptDigest ||
-          launch.startedAt < a.approvedAt ||
-          launch.startedAt >= a.expiresAt ||
-          launch.launchDeadline <= launch.startedAt ||
-          launch.launchDeadline > a.expiresAt ||
-          launch.launchDeadline > launch.startedAt + 5000 ||
-          launch.completionDeadline !== launch.startedAt + 60000
-        )
-          throw Error();
-        const admission = {
-          origin: "coordinator",
-          requestId: job.id,
-          issueId: a.issueId,
-          approvalDigest: job.approvalDigest,
-          runId: job.data.runId,
-          sessionId: job.data.sessionId,
-          evidence,
-          promptDigest: job.data.promptDigest,
-          evidenceDigest: job.data.evidenceDigest,
-          launch,
-        };
-        if (e.expiresAt <= d.now()) throw Error();
-        if (e.stage === "admission") {
-          if (
-            job.state !== "running" ||
-            job.data.result !== undefined ||
-            job.data.completion !== undefined ||
-            d.now() >= launch.launchDeadline
-          )
-            throw Error();
-          if (row.coordinator_state === "approved")
-            row =
-              (await d.store.admit(row, admission)) ??
-              (await d.store.read(row.organization_id, row.request_id)!);
-          if (
-            !row ||
-            row.coordinator_state !== "running" ||
-            digest(row.coordinator_admission) !== digest(admission)
-          )
-            throw Error();
-          return { status: "admitted" as const };
-        }
-        if (
-          job.state !== "ready" ||
-          !job.data.completion ||
-          !job.data.result ||
-          digest(row.coordinator_admission) !== digest(admission)
-        )
-          throw Error();
-        const receipt = job.data.completion.receipt;
-        if (
-          receipt.requestId !== job.id ||
-          receipt.issueId !== a.issueId ||
-          receipt.runId !== job.data.runId ||
-          receipt.sessionId !== job.data.sessionId ||
-          job.data.completion.completedAt < launch.startedAt ||
-          job.data.completion.completedAt >= launch.completionDeadline
-        )
-          throw Error();
-        const brief = validateBrief(JSON.stringify(job.data.result), a, evidence);
-        if (digest(brief) !== job.data.resultDigest) throw Error();
-        if (row.coordinator_state === "running")
-          row =
-            (await d.store.accept(row, brief)) ??
-            (await d.store.read(row.organization_id, row.request_id)!);
-        if (
-          !row ||
-          row.coordinator_state !== "ready" ||
-          row.coordinator_result_digest !== digest(brief) ||
-          digest(row.coordinator_brief) !== digest(brief)
-        )
-          throw Error();
-        return { status: "accepted" as const };
-      } catch {
-        throw Error("coordinator_receipt_rejected");
-      }
-    },
+    receive: createStudioReceiptReceiver(d),
     async read(request: Request, raw: unknown) {
       const row = await owned(request, raw, false);
       if (row.coordinator_state !== "ready")
