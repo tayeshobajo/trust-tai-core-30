@@ -40,7 +40,8 @@ function fixture() {
     peerKey: host.publicKey,
     now: () => now,
     bridgeKey: "pcp_synthetic",
-    fetcher: async (u, i) => {
+    fetcher: async function (this: unknown, u, i) {
+      expect(this).toBeUndefined();
       const r = new Request(u, i);
       requests.push(r.clone());
       return handler(r);

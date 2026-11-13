@@ -94,6 +94,8 @@ export function makeRouteClient(d: {
   bridgeKey?: string;
   callbackEndpoint?: typeof ROUTES.callback;
 }) {
+  // Platform fetch may enforce its receiver; never call it as d.fetcher(...).
+  const fetcher = d.fetcher;
   return async (
     input: Omit<RouteEnvelope, "domain" | "sender" | "nonce" | "issuedAt" | "expiresAt" | "binding">,
   ) => {
@@ -125,7 +127,7 @@ export function makeRouteClient(d: {
     if (d.sender === "studio") headers["Authorization"] = `Bearer ${d.bridgeKey}`;
     let signal: AbortSignal;
     try { signal=AbortSignal.timeout(65000); } catch { throw new RouteDiagnosticError("route_timeout_unavailable"); }
-    const r = await Promise.resolve().then(()=>d.fetcher(
+    const r = await Promise.resolve().then(()=>fetcher(
       (d.sender === "studio" ? ROUTES.paperclip : (d.callbackEndpoint ?? ROUTES.studio)) + path(e),
       {
         method: "POST",
