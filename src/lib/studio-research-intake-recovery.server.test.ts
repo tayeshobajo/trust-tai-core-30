@@ -65,3 +65,13 @@ it("does not attach when readback verification fails",async()=>{
  expect((await recoverReservedIntake(f.input,f.d)).status).toBe('uncertain');
  expect(f.row.issue_id).toBeNull();expect(f.row.state).toBe('dispatch_uncertain');
 });
+
+it("reconciles only the known created issue without another create POST",async()=>{
+ const f=fixture();f.d.bridge.createIssue.mockRejectedValueOnce(Error("lost response"));
+ await recoverReservedIntake(f.input,f.d);
+ f.d.now=()=>45000;
+ f.d.bridge.readIssue.mockResolvedValue({id:"a0344163-409e-42c2-982c-b942ef1c7596"});
+ expect((await recoverReservedIntake(f.input,f.d)).status).toBe("prepared");
+ expect(f.d.bridge.createIssue).toHaveBeenCalledTimes(1);
+ expect(f.row.issue_id).toBe("a0344163-409e-42c2-982c-b942ef1c7596");
+});

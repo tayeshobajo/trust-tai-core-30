@@ -118,6 +118,7 @@ export function createCoordinatorRequestStore(key: string, fetcher: typeof fetch
   }
   return {
     read,
+    observeIntakeRecovery: (row: CoordinatorRow, receipt: unknown) => recoveryPatch(row,row.intake_recovery_receipt,{intake_recovery_receipt:receipt}),
     claimIntakeRecovery: (row: CoordinatorRow, receipt: unknown) => recoveryPatch(row,null,{intake_recovery_receipt:receipt}),
     attachIntakeRecovery: (row: CoordinatorRow, receipt: unknown, issueId: string) => recoveryPatch(row,row.intake_recovery_receipt,{state:"submitted",issue_id:z.string().uuid().parse(issueId),intake_recovery_receipt:receipt}),
     async approve(row: CoordinatorRow, raw: Approval) {
