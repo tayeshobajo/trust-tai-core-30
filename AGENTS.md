@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Keep Hiring companion views presentation-only around existing revision-aware editors and guarded services; this prevents visual reference changes from introducing new persistence or dispatch contracts.
+- Hiring automatic notifications extend only the canonical private outbox through reviewed atomic SQL contracts; keep the scheduler source-held until exact schema review, because inferred constraints cannot safely activate delivery.
 
 ## Prototype boundaries
 - Identify manually required meeting scope through the classified task's immutable correlation key (meeting UUID plus operation UUID), not editable links; include archives and suppress closure on incomplete board reads, because required work cannot disappear through generic edits.

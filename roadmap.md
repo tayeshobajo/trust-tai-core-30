@@ -1,5 +1,10 @@
 # Roadmap
 
+## Hiring system notification release candidate (2026-11-13)
+- [x] Import approved prepared templates/tests; add Tai copy/dedupe and source-held bounded worker/scheduler candidates.
+- [x] Verify 127 focused tests/lint and isolated additive SQL sketch; document disabled configuration and review boundaries without production actions or email.
+- [ ] Complete canonical transactional intent generation, authority-checked queue/claim/lease/audit and protected synthetic QA entry — blocked by missing exact hosted schema/grant/function definitions; pending SQL sketch is not activatable.
+
 ## Hiring approved companion screens (2026-11-12)
 - [x] Build Roles, Messages and Documents presentation from approved references while preserving the editor and service/access/send contracts.
 - [x] Verify 75 focused tests/lint and isolated 375/768/1440 keyboard/axe/screenshots; automatic diagnostics show only eight unrelated Studio errors, no full-build success claimed. Evidence in docs/hiring/companion-design.md; no live mutations or publishing.

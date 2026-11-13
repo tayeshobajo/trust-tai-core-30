@@ -1,0 +1,11 @@
+# Hiring email preparation (NOT ACTIVE)
+
+Approved references: applicant receipt libfile_598db69ab3748191b56e68b12379520c and assigned-owner alert libfile_ab8313ecdd048191a2764fd4f2f2e913, visually inspected. Existing logo public/brand/trust-tai-logo.png is byte-identical to src/assets/brand/trust-tai-logo.png (SHA256 6af9eaf58b6167dadd354dc658b7257d7c8d8ad18c7f43e9fd2f3a1ec2c40e6a); reuse it, no recreated logo.
+
+Design: centered white rounded email card on #eef2f6, ink #08172d, pale blue #eaf4ff metadata panel, blue divider, existing image logo, serif 32px heading and sans 16px/1.6 body. Table layout and inline styles for email compatibility, responsive padding; no external fonts, tracking pixels or fabricated records. Decorative mockup wave omitted for dependable email rendering. Components: shared shell, metadata rows, receipt, owner alert; plain-text alternatives. Public role CTA for applicant; authenticated CMD application link for owner. No resume attachments, signed URLs, answers or private portfolio content.
+
+Preparation is pure and server-only; no queue writes or automatic intake hook. Call only with the durably saved application and canonical job, plus an authoritative current membership/auth projection. Receipt goes only to saved submitted email. Owner must match saved job owner ID, one unambiguous active verified account with Hiring entitlement, allowed org and allowed Hiring person. Missing/ambiguous/revoked/unverified owner blocks the alert, never broadcasts. Blocks do not undo the saved application or suppress a valid receipt preparation. A separate internal alert copy targets verified active entitled Tai at tai@trust-tai.com and deduplicates when Tai is owner.
+
+Stable application/kind/template-version keys are proposed for future immutable delivery snapshots. Rendering again never claims queued/sent/delivered. Existing live intake and outbox remain untouched. Existing message/revision idempotency and uncertain-outcome reconciliation remain authoritative if later integrated.
+
+The source-held worker/scheduler candidate and exact incomplete pending SQL sketch are documented in `notification-release-candidate.md`. They cannot activate delivery: exact canonical schema/routines/grants are still required. Full focused suite: 127 tests passed; no emails or production changes.
