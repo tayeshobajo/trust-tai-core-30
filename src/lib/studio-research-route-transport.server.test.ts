@@ -283,3 +283,5 @@ it("returns only bounded launch diagnostic codes",()=>{
  expect(routeDiagnostic(Error("private token or provider detail"))).toBe("route_unknown");
  expect(routeDiagnostic({diagnostic:"route_http_403"})).toBe("route_unknown");
 });
+
+for(const [body,code] of [["RPC call timed out after 30000ms","route_rpc_timeout"],["Cannot serialize BigInt","route_rpc_serialization"],["unknown method","route_rpc_method"],["private token arbitrary detail","route_http_502"],["x".repeat(2001)+"timed out","route_http_502"]])it(`bounds RPC diagnostic ${code}`,async()=>{const f=fixture();const client=makeRouteClient({sender:"studio",privateKey:f.studio.privateKey,peerKey:f.host.publicKey,now:()=>1000,bridgeKey:"pcp_synthetic",fetcher:async()=>new Response(body,{status:502})});let diagnostic;try{await client(f.input);}catch(e){diagnostic=routeDiagnostic(e);}expect(diagnostic).toBe(code);});

@@ -139,6 +139,13 @@ export function makeRouteClient(d: {
     )).catch(() => { throw new RouteDiagnosticError("route_network_failure"); });
     if (r.status !== 200) {
       if(r.status>=300 && r.status<400)throw Error("redirect_rejected");
+      if(r.status===502) {
+        const reader=r.body?.getReader();let detail="",size=0;
+        if(reader)try {for(;;){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.byteLength;if(size>2000){detail="";break;}detail+=new TextDecoder().decode(chunk.value);}} catch {detail="";} finally {await reader.cancel().catch(()=>{});}
+        if(/timed out/i.test(detail))throw new RouteDiagnosticError("route_rpc_timeout");
+        if(/serialize|circular|BigInt/i.test(detail))throw new RouteDiagnosticError("route_rpc_serialization");
+        if(/not implemented|unknown method/i.test(detail))throw new RouteDiagnosticError("route_rpc_method");
+      }
       throw new RouteDiagnosticError([401,403,404,408,429,500,502,503,504].includes(r.status)?`route_http_${r.status}`:"route_http_other");
     }
     const reader = r.body?.getReader();
