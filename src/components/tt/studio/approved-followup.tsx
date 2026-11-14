@@ -14,7 +14,7 @@ export function ApprovedFollowup({ organizationId }: { organizationId: string })
     if (operation === "start") setStarted(true);
     try {
       const reply = await send({ data: { version: 2, operation, ...approved } });
-      if (reply.status !== "ok") throw Error();
+      if (reply.status !== "ok") { setMessage(`Status is unconfirmed (${reply.diagnostic}). Check this attempt’s status; do not start another attempt.`); return; }
       const next = attemptViewSchema.parse(reply.view);
       if (next.attemptId !== approved.attemptId || next.requestId !== approved.requestId) throw Error();
       setView(next); setMessage(next.brief ? "Research result received in Studio. Review the brief below." : `Attempt status: ${next.status}. Studio receipt: ${next.callbackStatus ?? "pending"}.`);
