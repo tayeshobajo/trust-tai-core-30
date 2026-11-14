@@ -157,9 +157,9 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
     const resolve = (path: "hostSigningKey" | "providerKey") => ctx!.secrets.resolve(config[path], { companyId: COORDINATOR.companyId, configPath: path });
     const privateKey = createPrivateKey(await resolve("hostSigningKey")); assertActiveSigningKey(privateKey);
     state ??= d.openState();
-    const attempts = new AttemptStore(STATE + "/coordinator.sqlite", createPublicKey(privateKey));
+    const attempts = new AttemptStore(STATE + "/coordinator.sqlite", createPublicKey(privateKey), config.version === 5 ? 3 : 2);
     try {
-      const plugin = makeTimingPreview({ config: { version: 4, policyDigest: config.policyDigest, attemptId: config.attemptId, approvalDigest: config.approvalDigest },
+      const plugin = makeTimingPreview({ config: { version: config.version, policyDigest: config.policyDigest, attemptId: config.attemptId, approvalDigest: config.approvalDigest },
         store: attempts, ledger: state.ledger, studioKey, callbackKey, privateKey, hostAdmissionExpiresAt: admission.expiresAt,
         providerKey: () => resolve("providerKey"), fetcher: d.fetcher, now: d.now, shutdownSignal: shutdown.signal,
         revalidateHost: async e => {
@@ -190,7 +190,7 @@ export function makePreviewWorker(dependencies: Partial<Dependencies> = {}) {
       if (!host || !admission) return unavailable;
       await host.revalidate(admission);
       const rawConfig = await ctx.config.get(COORDINATOR.companyId);
-      if (rawConfig && typeof rawConfig === "object" && "version" in rawConfig && rawConfig["version"] === 4)
+      if (rawConfig && typeof rawConfig === "object" && "version" in rawConfig && [4,5].includes(Number(rawConfig["version"])))
         return handleTimingApiRequest(input, admission, host, rawConfig);
       const config = previewWorkerConfig.parse(rawConfig);
       const studioKey = createPublicKey(config.studioPublicKeyPem);

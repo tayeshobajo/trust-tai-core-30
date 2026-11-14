@@ -54,6 +54,7 @@ export function makeStudioAttemptApplication(d: {
     )
       throw Error("attempt_view_mismatch");
     const persisted = await d.repository.read(input.attemptId);
+    if (digest(persisted.approval) !== d.approvalDigest) throw Error("attempt_owner_mismatch");
     const callbackStatus =
       persisted.state.terminal ??
       (persisted.state.cancelled
@@ -61,7 +62,45 @@ export function makeStudioAttemptApplication(d: {
         : persisted.state.admission
           ? "admitted"
           : "approved");
-    const { brief: _remoteBrief, ...receiptView } = view;
-    return attemptViewSchema.parse({ ...receiptView, callbackStatus, ...(persisted.state.terminal === "ready" && persisted.state.result ? { brief: persisted.state.result } : {}) });
+    const checkedAt = d.now();
+    if (!Number.isSafeInteger(checkedAt) || checkedAt < 0) throw Error("attempt_clock_invalid");
+    const untouched =
+      view.status === "approved" &&
+      view.receiptCount === 0 &&
+      view.phase === null &&
+      view.stopEvidence === "not_attempted" &&
+      persisted.state.revision === 0 &&
+      persisted.state.admission === null &&
+      persisted.state.tokens.length === 0 &&
+      persisted.state.terminal === null &&
+      !persisted.state.cancelled &&
+      persisted.state.packetDigests.length === 0 &&
+      persisted.state.result === null;
+    const reason =
+      checkedAt >= approval.expiresAt
+        ? "expired"
+        : checkedAt < approval.approvedAt
+          ? "not_yet_valid"
+          : !auth.access.canWork
+            ? "access_denied"
+            : !untouched
+              ? "attempt_not_untouched"
+              : "eligible";
+    const launchEligibility = {
+      eligible: reason === "eligible",
+      checkedAt,
+      expiresAt: approval.expiresAt,
+      ttlMs: reason === "eligible" ? approval.expiresAt - checkedAt : 0,
+      reason,
+    };
+    const { brief: _remoteBrief, launchEligibility: _remoteEligibility, ...receiptView } = view;
+    return attemptViewSchema.parse({
+      ...receiptView,
+      callbackStatus,
+      launchEligibility,
+      ...(persisted.state.terminal === "ready" && persisted.state.result
+        ? { brief: persisted.state.result }
+        : {}),
+    });
   };
 }

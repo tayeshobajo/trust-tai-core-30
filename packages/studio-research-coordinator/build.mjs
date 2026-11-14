@@ -1,6 +1,7 @@
 import { build } from "../../node_modules/esbuild/lib/main.js";
 await build({
   entryPoints: {
+    successor: "../../src/lib/studio-research-successor.server.ts",
     attemptStore: "../../src/lib/studio-research-attempt-store.server.ts",
     attemptContracts: "../../src/lib/studio-research-attempt-contracts.server.ts",
     attemptTiming: "../../src/lib/studio-research-timing-candidate.server.ts",

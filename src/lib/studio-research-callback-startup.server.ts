@@ -12,7 +12,7 @@ export const callbackConfigSchema = z.object({
   hostPublicKeyPem: z.string().min(40).max(1000).regex(/^-----BEGIN PUBLIC KEY-----[\s\S]*-----END PUBLIC KEY-----\s*$/),
 }).strict();
 export const callbackAttemptConfigSchema = callbackConfigSchema.omit({ version: true, trial: true }).extend({
-  version: z.literal(2), attemptId: z.string().uuid(), approvalDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  version: z.union([z.literal(2), z.literal(3)]), attemptId: z.string().uuid(), approvalDigest: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict();
 /** SUPABASE_SERVICE_ROLE_KEY is platform-injected project authority; never copy a CMD key. */
 export function loadCallbackStartup(
@@ -38,7 +38,7 @@ export function loadCallbackStartup(
     // Validate config/trust before even accessing the injected privileged credential.
     const serviceKey = get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceKey || serviceKey.length > 16000) return undefined;
-    if (config.version === 2) return assembleAttempt({callbackPrivateKey,studioPublicKey,hostPublicKey,attemptId:config.attemptId,approvalDigest:config.approvalDigest,serviceKey,fetcher,now});
+    if (config.version !== 1) return assembleAttempt({storageVersion:config.version,callbackPrivateKey,studioPublicKey,hostPublicKey,attemptId:config.attemptId,approvalDigest:config.approvalDigest,serviceKey,fetcher,now});
     return assemble({callbackPrivateKey, studioPublicKey, hostPublicKey, trial:config.trial,
       serviceKey, fetcher, now});
   } catch { return undefined; }

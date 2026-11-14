@@ -1,6 +1,6 @@
 {
   "name": "@trusttai/studio-research-coordinator",
-  "version": "0.1.0-dev.15",
+  "version": "0.1.0-dev.16",
   "private": true,
   "type": "module",
   "files": [
@@ -50,6 +50,7 @@
     "./studioLedger": "./dist/studioLedger.js",
     "./linuxRuntime": "./dist/linuxRuntime.js",
     "./hostAdmittedRoutes": "./dist/hostAdmittedRoutes.js",
-    "./linuxComposition": "./dist/linuxComposition.js"
+    "./linuxComposition": "./dist/linuxComposition.js",
+    "./successor": "./dist/successor.js"
   }
 }

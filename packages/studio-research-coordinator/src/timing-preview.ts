@@ -24,7 +24,7 @@ import { digest } from "../../../src/lib/studio-research-coordinator-contracts";
 import { TIMING_POLICY_DIGEST } from "../../../src/lib/studio-research-timing-candidate.server";
 export const timingPreviewConfigSchema = z
   .object({
-    version: z.literal(4),
+    version: z.union([z.literal(4), z.literal(5)]),
     policyDigest: z.literal(TIMING_POLICY_DIGEST),
     attemptId: z.string().uuid(),
     approvalDigest: z.string().regex(/^[a-f0-9]{64}$/),
@@ -53,7 +53,11 @@ export function makeTimingPreview(d: {
   const config = timingPreviewConfigSchema.parse(d.config),
     approval = d.store.read(config.attemptId),
     binding = attemptBinding(approval);
-  if (config.approvalDigest !== digest(approval)) throw Error("attempt_pin_mismatch");
+  if (
+    approval.version !== (config.version === 5 ? 3 : 2) ||
+    config.approvalDigest !== digest(approval)
+  )
+    throw Error("attempt_pin_mismatch");
   const hostPublicKey = createPublicKey(d.privateKey),
     reader = createPublicSourceReader();
   const send = makeRouteClient({
@@ -80,7 +84,7 @@ export function makeTimingPreview(d: {
   };
   const view = () => {
     const outcome = d.store.outcome(approval.attemptId);
-    return projectAttempt(
+    const projected = projectAttempt(
       approval,
       {
         ...initialAttemptState(),
@@ -90,6 +94,9 @@ export function makeTimingPreview(d: {
       },
       hostPublicKey,
     );
+    return projected.status === "approved" && d.store.hasClaim(approval.attemptId)
+      ? { ...projected, status: "claimed" as const }
+      : projected;
   };
   const authority = async (
     e: RouteEnvelope,

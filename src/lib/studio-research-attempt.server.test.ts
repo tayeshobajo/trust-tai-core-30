@@ -299,3 +299,264 @@ it("lost result acknowledgement preserves CMD ready and host uncertain evidence"
   expect(f.state().terminal).toBe("ready");
   expect(f.store.outcome(f.a.attemptId)).toBe("uncertain");
 });
+
+// Successor tests use only synthetic keys and isolated local ledgers.
+it("reserves one successor, freezes the untouched predecessor and preserves immutable history across restart", () => {
+  const f = fixture();
+  vi.setSystemTime(f.a.expiresAt + 1);
+  const next = successor(f.a);
+  const host = new AttemptStore(f.path, f.keys.publicKey, 3);
+  cleanup.push(() => host.close());
+  const token = signed(next, f.keys.privateKey);
+  const reservation = host.provisionSuccessor(
+    token,
+    f.keys.publicKey,
+    digest(next),
+    f.keys.privateKey,
+    Date.now,
+  );
+  expect(host.reservation(next.attemptId)).toBe(reservation);
+  expect(() =>
+    host.provisionSuccessor(token, f.keys.publicKey, digest(next), f.keys.privateKey, Date.now),
+  ).toThrow();
+  expect(() => f.store.cancel(f.a.attemptId, Date.now())).toThrow(/frozen/);
+  expect(() => f.store.settle(f.a.attemptId, "uncertain", Date.now())).toThrow(/frozen/);
+  expect(() => f.store.claim(attemptBinding(f.a), Date.now())).toThrow(/expired/);
+  const checked = verifySuccessorRegistration({
+    approvalToken: token,
+    reservationToken: reservation,
+    pinnedApprovalDigest: digest(next),
+    studioKey: f.keys.publicKey,
+    hostKey: f.keys.publicKey,
+    predecessor: f.a,
+    predecessorState: initialAttemptState(),
+    now: Date.now(),
+  });
+  expect(checked.approval).toEqual(next);
+  expect(() =>
+    verifySuccessorRegistration({
+      approvalToken: token,
+      reservationToken: reservation,
+      pinnedApprovalDigest: digest(next),
+      studioKey: f.keys.publicKey,
+      hostKey: f.keys.publicKey,
+      predecessor: f.a,
+      predecessorState: { ...initialAttemptState(), revision: 1, cancelled: true },
+      now: Date.now(),
+    }),
+  ).toThrow(/consumed/);
+  host.claim(attemptBinding(next), Date.now());
+  const reopened = new AttemptStore(f.path, f.keys.publicKey, 3);
+  cleanup.push(() => reopened.close());
+  expect(reopened.hasClaim(next.attemptId)).toBe(true);
+  expect(() => reopened.claim(attemptBinding(next), Date.now())).toThrow();
+  expect(() => f.store.read(next.attemptId)).toThrow();
+  expect(() => host.read(f.a.attemptId)).toThrow();
+  expect(f.store.read(f.a.attemptId)).toEqual(f.a);
+  const old = new CoordinatorStore(f.path);
+  expect(JSON.stringify(old.read(f.a.historicalApproval.request.requestId))).toBe(f.historical);
+  old.close();
+});
+function successor(prior: ReturnType<typeof parseAttemptApproval>) {
+  return parseAttemptApproval({
+    ...prior,
+    version: 3,
+    domain: "studio-successor-approval/v1",
+    attemptId: "99999999-9999-4999-8999-999999999999",
+    runId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    nonce: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    sessionId: "ses_cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    predecessorAttemptId: prior.attemptId,
+    predecessorRunId: prior.runId,
+    predecessorApprovalDigest: digest(prior),
+    predecessorExpiresAt: prior.expiresAt,
+    userApprovalReference: "synthetic-owner-approval",
+    approvedAt: Date.now(),
+    expiresAt: Date.now() + 900000,
+  });
+}
+it.each(["claim", "cancel", "settle"])(
+  "blocks successor when predecessor has %s evidence",
+  (kind) => {
+    const f = fixture();
+    if (kind === "claim") f.store.claim(attemptBinding(f.a), Date.now());
+    if (kind === "cancel") f.store.cancel(f.a.attemptId, Date.now());
+    if (kind === "settle") f.store.settle(f.a.attemptId, "uncertain", Date.now());
+    vi.setSystemTime(f.a.expiresAt + 1);
+    const a = successor(f.a);
+    const host = new AttemptStore(f.path, f.keys.publicKey, 3);
+    cleanup.push(() => host.close());
+    expect(() =>
+      host.provisionSuccessor(
+        signed(a, f.keys.privateKey),
+        f.keys.publicKey,
+        digest(a),
+        f.keys.privateKey,
+        Date.now,
+      ),
+    ).toThrow(/consumed/);
+  },
+);
+it("rejects lineage/scope/key/window substitutions and never silently chains successors", () => {
+  const f = fixture();
+  vi.setSystemTime(f.a.expiresAt + 1);
+  const a = successor(f.a);
+  const host = new AttemptStore(f.path, f.keys.publicKey, 3);
+  cleanup.push(() => host.close());
+  for (const mutation of [
+    { predecessorApprovalDigest: "0".repeat(64) },
+    { predecessorRunId: a.runId },
+    { nonce: f.a.nonce },
+    { sessionId: f.a.sessionId },
+    {
+      historicalApproval: {
+        ...f.a.historicalApproval,
+        request: { ...f.a.historicalApproval.request, topic: "changed" },
+      },
+    },
+    { approvedAt: Date.now() + 1 },
+    { expiresAt: Date.now() },
+  ]) {
+    const bad = { ...a, ...mutation };
+    expect(() =>
+      host.provisionSuccessor(
+        signed(bad, f.keys.privateKey),
+        f.keys.publicKey,
+        digest(bad),
+        f.keys.privateKey,
+        Date.now,
+      ),
+    ).toThrow();
+  }
+  expect(() =>
+    host.provision(signed(f.a, f.keys.privateKey), f.keys.publicKey, digest(f.a), Date.now()),
+  ).toThrow();
+  const other = generateKeyPairSync("ed25519");
+  expect(() =>
+    host.provisionSuccessor(
+      signed(a, other.privateKey),
+      f.keys.publicKey,
+      digest(a),
+      f.keys.privateKey,
+      Date.now,
+    ),
+  ).toThrow();
+  const token = host.provisionSuccessor(
+    signed(a, f.keys.privateKey),
+    f.keys.publicKey,
+    digest(a),
+    f.keys.privateKey,
+    Date.now,
+  );
+  for (const [now, hostKey] of [
+    [Date.now() + 60000, f.keys.publicKey],
+    [Date.now(), other.publicKey],
+  ] as const)
+    expect(() =>
+      verifySuccessorRegistration({
+        approvalToken: signed(a, f.keys.privateKey),
+        reservationToken: token,
+        pinnedApprovalDigest: digest(a),
+        studioKey: f.keys.publicKey,
+        hostKey,
+        predecessor: f.a,
+        predecessorState: initialAttemptState(),
+        now,
+      }),
+    ).toThrow();
+  const child = {
+    ...a,
+    attemptId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    predecessorAttemptId: a.attemptId,
+  };
+  expect(() =>
+    host.provisionSuccessor(
+      signed(child, f.keys.privateKey),
+      f.keys.publicKey,
+      digest(child),
+      f.keys.privateKey,
+      Date.now,
+    ),
+  ).toThrow();
+});
+import { verifySuccessorRegistration } from "./studio-research-successor.server";
+
+it.each([true, false])(
+  "runs the synthetic successor only when callback registration exists (%s)",
+  async (registered) => {
+    const f = fixture();
+    vi.setSystemTime(f.a.expiresAt + 1);
+    const a = successor(f.a);
+    const store = new AttemptStore(f.path, f.keys.publicKey, 3);
+    cleanup.push(() => store.close());
+    const reservation = store.provisionSuccessor(
+      signed(a, f.keys.privateKey),
+      f.keys.publicKey,
+      digest(a),
+      f.keys.privateKey,
+      Date.now,
+    );
+    let persisted:
+      { approval: typeof a; state: ReturnType<typeof initialAttemptState> } | undefined;
+    if (registered)
+      await provisionCallbackSuccessor(
+        {
+          approvalToken: signed(a, f.keys.privateKey),
+          reservationToken: reservation,
+          pinnedApprovalDigest: digest(a),
+          studioKey: f.keys.publicKey,
+          hostKey: f.keys.publicKey,
+          now: Date.now(),
+        },
+        {
+          readPredecessor: async () => ({ approval: f.a, state: initialAttemptState() }),
+          insert: async (row) => {
+            persisted = { approval: row.approval, state: initialAttemptState() };
+          },
+        },
+      );
+    const callback = createAttemptCallback({
+      peerKey: f.keys.publicKey,
+      now: Date.now,
+      authorizeCurrent: async () => {},
+      repository: {
+        read: async () => {
+          if (!persisted) throw Error("missing registration");
+          return persisted;
+        },
+        commit: async (_id, revision, state) => {
+          if (!persisted || persisted.state.revision !== revision) throw Error("conflict");
+          persisted.state = state;
+        },
+      },
+    });
+    const run = createAttemptCoordinator({
+      ...f.deps,
+      approval: a,
+      store,
+      pinnedApprovalDigest: digest(a),
+      callback,
+      authority: async (_a, admissionDigest) => ({
+        bindingDigest: digest(attemptBinding(a)),
+        admissionDigest,
+        approvalDigest: digest(a),
+        checkedAt: Date.now(),
+        expiresAt: a.expiresAt,
+      }),
+    }).run;
+    if (registered) {
+      await run(Date.now() + 65000, new AbortController().signal);
+      expect(persisted?.state.terminal).toBe("ready");
+      expect(store.outcome(a.attemptId)).toBe("complete");
+      expect(f.spawn).toHaveBeenCalledOnce();
+    } else {
+      await expect(run(Date.now() + 65000, new AbortController().signal)).rejects.toThrow();
+      expect(f.spawn).not.toHaveBeenCalled();
+      expect(store.hasClaim(a.attemptId)).toBe(true);
+    }
+    await expect(run(Date.now() + 65000, new AbortController().signal)).rejects.toThrow();
+    expect(f.spawn).toHaveBeenCalledTimes(registered ? 1 : 0);
+    expect(f.store.tokens(f.a.attemptId)).toEqual([]);
+  },
+);
+import { provisionCallbackSuccessor } from "./studio-research-successor.server";

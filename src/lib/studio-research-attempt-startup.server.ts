@@ -7,7 +7,7 @@ import { TIMING_POLICY_DIGEST } from "./studio-research-timing-candidate.server"
 import { classifyStudioPreviewOrigin } from "./studio-research-preview-origin.server";
 export const studioAttemptConfigSchema = z
   .object({
-    version: z.literal(2),
+    version: z.union([z.literal(2), z.literal(3)]),
     enabled: z.literal(true),
     policyDigest: z.literal(TIMING_POLICY_DIGEST),
     attemptId: z.string().uuid(),
@@ -21,7 +21,10 @@ export function loadStudioAttemptAssembly(
   report: (stage: AttemptStartupDiagnostic) => void = () => {},
 ) {
   let stage: AttemptStartupDiagnostic = "attempt_config_missing";
-  const unavailable = () => { report(stage); return undefined; };
+  const unavailable = () => {
+    report(stage);
+    return undefined;
+  };
   try {
     const raw = env["STUDIO_RESEARCH_ATTEMPT_CONFIG"];
     if (!raw) return unavailable();
@@ -36,8 +39,15 @@ export function loadStudioAttemptAssembly(
     stage = "attempt_private_key_invalid";
     // Match the existing Studio loader: strict PKCS#8 decoding also accepts
     // line breaks removed by single-line secret inputs, without changing identity.
-    if (pem.length > 2000 || !/^-----BEGIN PRIVATE KEY-----[\s\S]*-----END PRIVATE KEY-----\s*$/.test(pem)) return unavailable();
-    const body = pem.replace(/^-----BEGIN PRIVATE KEY-----/, "").replace(/-----END PRIVATE KEY-----\s*$/, "").replace(/[ \t\r\n]/g, "");
+    if (
+      pem.length > 2000 ||
+      !/^-----BEGIN PRIVATE KEY-----[\s\S]*-----END PRIVATE KEY-----\s*$/.test(pem)
+    )
+      return unavailable();
+    const body = pem
+      .replace(/^-----BEGIN PRIVATE KEY-----/, "")
+      .replace(/-----END PRIVATE KEY-----\s*$/, "")
+      .replace(/[ \t\r\n]/g, "");
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(body)) return unavailable();
     const der = Buffer.from(body, "base64");
     if (der.toString("base64") !== body) return unavailable();
@@ -46,6 +56,7 @@ export function loadStudioAttemptAssembly(
     const coordinatorPublicKey = createPublicKey(c.coordinatorPublicKeyPem);
     stage = "attempt_assembly_failed";
     return assemble({
+      storageVersion: c.version,
       attemptId: c.attemptId,
       approvalDigest: c.approvalDigest,
       studioPrivateKey,
@@ -60,15 +71,32 @@ export function loadStudioAttemptAssembly(
   }
 }
 export const ATTEMPT_STARTUP_DIAGNOSTICS = [
-  "attempt_origin_rejected", "attempt_config_missing", "attempt_config_invalid",
-  "attempt_credentials_unavailable", "attempt_private_key_invalid",
-  "attempt_public_key_invalid", "attempt_assembly_failed",
+  "attempt_origin_rejected",
+  "attempt_config_missing",
+  "attempt_config_invalid",
+  "attempt_credentials_unavailable",
+  "attempt_private_key_invalid",
+  "attempt_public_key_invalid",
+  "attempt_assembly_failed",
 ] as const;
-export type AttemptStartupDiagnostic = typeof ATTEMPT_STARTUP_DIAGNOSTICS[number];
+export type AttemptStartupDiagnostic = (typeof ATTEMPT_STARTUP_DIAGNOSTICS)[number];
 export async function studioAttemptApplication(request: Request, raw: unknown) {
   if (classifyStudioPreviewOrigin(request) !== "production") throw Error("attempt_origin_rejected");
   let diagnostic: AttemptStartupDiagnostic = "attempt_assembly_failed";
-  const application = loadStudioAttemptAssembly(process.env, assembleStudioAttempt, (stage) => { diagnostic = stage; });
+  const application = loadStudioAttemptAssembly(process.env, assembleStudioAttempt, (stage) => {
+    diagnostic = stage;
+  });
   if (!application) throw Error(diagnostic);
   return application(request, raw);
+}
+
+/** Read-only identity discovery from the strict server config, never browser-supplied approval. */
+export function configuredStudioAttemptId(env: Record<string, string | undefined> = process.env) {
+  const raw = env["STUDIO_RESEARCH_ATTEMPT_CONFIG"];
+  if (!raw || raw.length > 8000) throw Error("attempt_config_missing");
+  try {
+    return studioAttemptConfigSchema.parse(JSON.parse(raw)).attemptId;
+  } catch {
+    throw Error("attempt_config_invalid");
+  }
 }

@@ -32,9 +32,23 @@ export const attemptApprovalSchema = z
     duplicateCostAccepted: z.literal(true),
   })
   .strict();
-export type AttemptApproval = z.infer<typeof attemptApprovalSchema>;
+export const successorApprovalSchema = attemptApprovalSchema
+  .extend({
+    version: z.literal(3),
+    domain: z.literal("studio-successor-approval/v1"),
+    predecessorAttemptId: uuid,
+    predecessorRunId: uuid,
+    predecessorApprovalDigest: sha,
+    predecessorExpiresAt: z.number().int().nonnegative(),
+    userApprovalReference: z.string().min(1).max(300),
+  })
+  .strict();
+export type SuccessorApproval = z.infer<typeof successorApprovalSchema>;
+export type AttemptApproval = z.infer<typeof attemptApprovalSchema> | SuccessorApproval;
 export function parseAttemptApproval(raw: unknown): AttemptApproval {
-  const a = attemptApprovalSchema.parse(raw);
+  const a = z
+    .discriminatedUnion("version", [attemptApprovalSchema, successorApprovalSchema])
+    .parse(raw);
   if (
     a.runId === a.priorRunId ||
     a.attemptId === a.historicalApproval.request.requestId ||
@@ -49,6 +63,14 @@ export function parseAttemptApproval(raw: unknown): AttemptApproval {
     a.historicalApproval.approvedUrls[0] !== "https://www.iana.org/help/example-domains"
   )
     throw Error("attempt_approval_invalid");
+  if (
+    a.version === 3 &&
+    (a.approvedAt < a.predecessorExpiresAt ||
+      a.attemptId === a.predecessorAttemptId ||
+      a.runId === a.predecessorRunId ||
+      a.predecessorRunId === a.priorRunId)
+  )
+    throw Error("successor_lineage_invalid");
   return a;
 }
 export function assertAttemptCurrent(a: AttemptApproval, now: number) {

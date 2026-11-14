@@ -24,6 +24,7 @@ export function createAttemptSupabaseRepository(
   key: string,
   peerKey: KeyObject,
   fetcher: typeof fetch,
+  version: 2 | 3 = 2,
 ): AttemptCallbackRepository & { ledger: RouteLedger } {
   if (!key) throw Error("attempt_storage_unavailable");
   const origin = "https://okydosoacqdnursmmenf.supabase.co/rest/v1";
@@ -38,7 +39,7 @@ export function createAttemptSupabaseRepository(
     });
     try {
       const response = await Promise.race([
-        fetcher(origin + path, {
+        fetcher(origin + (version === 3 ? path.replaceAll("_v2", "_v3") : path), {
           method: body === undefined ? "GET" : "POST",
           redirect: "manual",
           signal: controller.signal,
@@ -131,7 +132,7 @@ export function createAttemptSupabaseRepository(
         );
       const row = rows[0]!,
         approval = parseAttemptApproval(row.approval);
-      if (approval.attemptId !== id || digest(approval) !== row.approval_digest)
+      if (approval.version !== version || approval.attemptId !== id || digest(approval) !== row.approval_digest)
         throw Error("attempt_storage_binding");
       const chain = verifyPhaseChain(row.state.tokens, peerKey, approval);
       let result = null;

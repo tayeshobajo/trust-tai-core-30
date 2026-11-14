@@ -1,0 +1,3 @@
+import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "node:url";
+export default defineConfig({resolve:{alias:{"@":fileURLToPath(new URL("../../src",import.meta.url))}},test:{environment:"node",include:["src/lib/studio-research*.test.ts","src/components/tt/studio/approved-followup.test.tsx"]}});

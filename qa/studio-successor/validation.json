@@ -1,0 +1,19 @@
+{
+  "mode": "local synthetic only",
+  "tests": 578,
+  "testFiles": 42,
+  "typecheck": "passed",
+  "cmdBuild": "passed",
+  "hostBuild": "passed",
+  "callbackBuildAndImportAudit": "passed",
+  "isolatedPostgres": "passed including inherited ACL and expiry during lock contention",
+  "securityReview": "independent source review: no remaining blocker after fixes; reviewer did not independently execute tests",
+  "deployed": false,
+  "liveSuccessorAuthorizationCreated": false,
+  "runtimeConfigured": false,
+  "artifacts": {
+    "qa/studio-successor/trusttai-studio-research-coordinator-0.1.0-dev.16.tgz": "a391a7a534803ce8a4b1d597c9836b86132b314d6b7ce3ca7831317f3b612be2",
+    "qa/studio-successor/callback/callback-startup.mjs": "099620ae3a3e41c60e9b49c2a1f449950382e6f76da6d12ffe9c81e59080d8b0",
+    "supabase/migrations/20261114000200_studio_successor_candidate.sql": "6485594bc5fc7c7ecb908ea1ae894d1b1ed774603c33285cf48bcdc89b51ad85"
+  }
+}

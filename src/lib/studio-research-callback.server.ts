@@ -116,12 +116,12 @@ export function assembleSupabaseCallback(d: {
 
 /** Explicit v2 assembly, pinned to one independently approved attempt; no approval creation or legacy mutation. */
 export function assembleSupabaseAttemptCallback(d: Omit<Parameters<typeof assembleSupabaseCallback>[0], "trial"> & {
-  attemptId: string; approvalDigest: string;
+  attemptId: string; approvalDigest: string; storageVersion?: 2 | 3;
 }) {
   for (const key of [d.callbackPrivateKey,d.studioPublicKey,d.hostPublicKey]) assertActiveSigningKey(key);
   const own=createPublicKey(d.callbackPrivateKey).export({type:"spki",format:"der"});
   if ([d.studioPublicKey,d.hostPublicKey].some(k=>own.equals(k.export({type:"spki",format:"der"})))) throw Error("callback_key_not_separate");
-  const repository=createAttemptSupabaseRepository(d.serviceKey,d.hostPublicKey,d.fetcher);
+  const repository=createAttemptSupabaseRepository(d.serviceKey,d.hostPublicKey,d.fetcher,d.storageVersion);
   const roots=createCoordinatorRequestStore(d.serviceKey,d.fetcher);
   const client=createClient("https://okydosoacqdnursmmenf.supabase.co",d.serviceKey,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:d.fetcher}});
   const member=makeStudioCurrentMember(client as Pick<SupabaseClient,"from">);
