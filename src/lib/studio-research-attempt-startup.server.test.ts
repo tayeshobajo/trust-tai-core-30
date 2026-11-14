@@ -1,5 +1,5 @@
 import { it, expect, vi } from "vitest";
-import { generateKeyPairSync } from "node:crypto";
+import { createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify } from "node:crypto";
 import { loadStudioAttemptAssembly } from "./studio-research-attempt-startup.server";
 import {
   loadCallbackStartup,
@@ -77,4 +77,44 @@ it("callback v2 startup selects only its separately pinned assembly and never th
     attemptId: config.attemptId,
     approvalDigest: config.approvalDigest,
   });
+});
+
+it("preserves signer identity when secure inputs flatten PKCS8 PEM and rejects corrupt material", () => {
+  const pair = generateKeyPairSync("ed25519");
+  const pem = pair.privateKey.export({ type: "pkcs8", format: "pem" }) as string;
+  const config = {
+    version: 2, enabled: true, policyDigest: TIMING_POLICY_DIGEST,
+    attemptId: "11111111-1111-4111-8111-111111111111", approvalDigest: "a".repeat(64),
+    coordinatorPublicKeyPem: pair.publicKey.export({ type: "spki", format: "pem" }),
+  };
+  const env = {
+    STUDIO_RESEARCH_ATTEMPT_CONFIG: JSON.stringify(config),
+    STUDIO_RESEARCH_SIGNING_PRIVATE_KEY: pem,
+    TRUST_TAI_SUPABASE_SERVICE_KEY: "synthetic", PAPERCLIP_STUDIO_BRIDGE_KEY: "pcp_synthetic",
+  };
+  const assemble = vi.fn((_d: Parameters<NonNullable<Parameters<typeof loadStudioAttemptAssembly>[1]>>[0]) => vi.fn());
+  const report = vi.fn();
+  const flat = pem.replace(/\r?\n/g, "");
+  // Reproduce the deployed loader regression using only synthetic material.
+  expect(() => createPrivateKey(flat)).toThrow();
+  for (const encoding of [pem, pem.replace(/\n/g, "\r\n"), flat]) {
+    expect(loadStudioAttemptAssembly({ ...env, STUDIO_RESEARCH_SIGNING_PRIVATE_KEY: encoding }, assemble, report)).toBeDefined();
+    const key = assemble.mock.calls.at(-1)![0].studioPrivateKey;
+    expect(createPublicKey(key).export({ type: "spki", format: "der" })).toEqual(pair.publicKey.export({ type: "spki", format: "der" }));
+    expect(verify(null, Buffer.from("synthetic probe"), pair.publicKey, sign(null, Buffer.from("synthetic probe"), key))).toBe(true);
+  }
+  expect(report).not.toHaveBeenCalled();
+  for (const encoding of [flat.replace("BEGIN PRIVATE", "BEGIN RSA PRIVATE"), flat.replace("-----END", "!-----END"), flat + "trailing", "x".repeat(2001)]) {
+    expect(loadStudioAttemptAssembly({ ...env, STUDIO_RESEARCH_SIGNING_PRIVATE_KEY: encoding }, assemble, report)).toBeUndefined();
+    expect(report).toHaveBeenLastCalledWith("attempt_private_key_invalid");
+  }
+  expect(assemble).toHaveBeenCalledTimes(3);
+  expect(loadStudioAttemptAssembly({ ...env, STUDIO_RESEARCH_ATTEMPT_CONFIG: "{}" }, assemble, report)).toBeUndefined();
+  expect(report).toHaveBeenLastCalledWith("attempt_config_invalid");
+  expect(loadStudioAttemptAssembly({ ...env, PAPERCLIP_STUDIO_BRIDGE_KEY: "" }, assemble, report)).toBeUndefined();
+  expect(report).toHaveBeenLastCalledWith("attempt_credentials_unavailable");
+  const fail = vi.fn(() => { throw Error("sensitive material must not escape"); });
+  expect(loadStudioAttemptAssembly(env, fail, report)).toBeUndefined();
+  expect(report).toHaveBeenLastCalledWith("attempt_assembly_failed");
+  expect(JSON.stringify(report.mock.calls)).not.toContain("sensitive");
 });
